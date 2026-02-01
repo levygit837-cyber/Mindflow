@@ -1,41 +1,19 @@
 {
-  "name": "omnimind-v03",
+  "name": "omnimind-backend",
   "version": "0.1.0",
-  "description": "OmniMind AI Agent System - Full Stack Application",
-  "private": true,
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
+  "description": "OmniMind AI Agent Backend with LangGraph and TypeScript",
+  "main": "dist/index.js",
   "scripts": {
-    "dev": "npm run dev --workspace=backend",
-    "dev:backend": "npm run dev --workspace=backend",
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
-    "build:backend": "npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend",
-    "start": "npm run start --workspace=backend",
-    "start:backend": "npm run start --workspace=backend",
-    "start:frontend": "npm run start --workspace=frontend",
-    "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
-    "test:backend": "npm run test --workspace=backend",
-    "test:frontend": "npm run test --workspace=frontend",
-    "lint": "npm run lint --workspace=backend && npm run lint --workspace=frontend",
-    "lint:backend": "npm run lint --workspace=backend",
-    "lint:frontend": "npm run lint --workspace=frontend",
-    "lint:fix": "npm run lint:fix --workspace=backend && npm run lint:fix --workspace=frontend",
-    "format": "npm run format --workspace=backend && npm run format --workspace=frontend",
-    "clean": "npm run clean --workspace=backend && npm run clean --workspace=frontend",
-    "install:all": "npm install && npm install --workspace=backend && npm install --workspace=frontend",
-    "reset": "rm -rf node_modules backend/node_modules frontend/node_modules && npm install"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "ai",
@@ -43,13 +21,37 @@
     "langgraph",
     "langchain",
     "typescript",
-    "deepagents",
-    "fullstack"
+    "deepagents"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@langchain/core": "^1.1.18",
-    "langchain": "^1.2.16"
+    "@langchain/community": "^0.3.14",
+    "@langchain/core": "^0.3.23",
+    "@langchain/langgraph": "^0.2.20",
+    "@langchain/openai": "^0.3.14",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "zod": "^3.24.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "@typescript-eslint/parser": "^8.18.2",
+    "eslint": "^9.17.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
