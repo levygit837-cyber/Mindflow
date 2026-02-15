@@ -68,7 +68,8 @@ export default function SettingsPage() {
               <SelectContent>
                 <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
                 <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                <SelectItem value="google">Google (Gemini)</SelectItem>
+                <SelectItem value="google">Google (Gemini API)</SelectItem>
+                <SelectItem value="vertexai">Vertex AI</SelectItem>
                 <SelectItem value="ollama">Ollama (Local)</SelectItem>
               </SelectContent>
             </Select>
@@ -122,7 +123,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Google API Key</Label>
+            <Label>Google (Gemini API) Key</Label>
             <Input
               type="password"
               value={settings.googleApiKey}

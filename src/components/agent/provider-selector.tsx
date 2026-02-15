@@ -34,9 +34,10 @@ export function ProviderSelector({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="vertexai">Vertex AI</SelectItem>
+          <SelectItem value="google">Google (Gemini API)</SelectItem>
           <SelectItem value="anthropic">Anthropic</SelectItem>
           <SelectItem value="openai">OpenAI</SelectItem>
-          <SelectItem value="google">Google</SelectItem>
           <SelectItem value="ollama">Ollama</SelectItem>
         </SelectContent>
       </Select>

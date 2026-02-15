@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { settings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { ensureDbInitialized } from "@/lib/db/init";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/types/settings";
 
+/**
+ * In-memory settings store.
+ * Returns DEFAULT_SETTINGS merged with any saved overrides.
+ */
+const settingsStore = new Map<string, string>();
+
 export async function GET() {
-  ensureDbInitialized();
-  const rows = db.select().from(settings).all();
-  const result: Record<string, string> = {};
-  for (const row of rows) {
-    result[row.key] = row.value;
+  const overrides: Record<string, string> = {};
+  for (const [key, value] of settingsStore) {
+    overrides[key] = value;
   }
 
   const appSettings: AppSettings = {
     ...DEFAULT_SETTINGS,
     ...Object.fromEntries(
-      Object.entries(result).filter(([key]) => key in DEFAULT_SETTINGS)
+      Object.entries(overrides).filter(([key]) => key in DEFAULT_SETTINGS)
     ),
   } as AppSettings;
 
@@ -24,17 +24,11 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  ensureDbInitialized();
   const body = await request.json();
 
   for (const [key, value] of Object.entries(body)) {
     if (typeof value === "string") {
-      const existing = db.select().from(settings).where(eq(settings.key, key)).get();
-      if (existing) {
-        db.update(settings).set({ value }).where(eq(settings.key, key)).run();
-      } else {
-        db.insert(settings).values({ key, value }).run();
-      }
+      settingsStore.set(key, value);
     }
   }
 

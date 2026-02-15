@@ -44,7 +44,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Ask OmniMind anything..."
-        className="min-h-[40px] max-h-[200px] resize-none"
+        className="min-h-10 max-h-52 resize-none"
         rows={1}
         disabled={disabled}
       />
