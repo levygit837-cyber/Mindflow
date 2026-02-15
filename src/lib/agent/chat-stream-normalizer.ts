@@ -723,7 +723,12 @@ export function createAgentChatStreamNormalizer({
 
     for (const [nodeName, nodeUpdate] of Object.entries(payload)) {
       if (emitUpdateSteps && isUserVisibleUpdateNode(nodeName)) {
-        emitEvent("step", userVisibleUpdateLabel(nodeName), "updates", {
+        const stepPayload = JSON.stringify({
+          stepName: userVisibleUpdateLabel(nodeName),
+          detail: `Node: ${nodeName}`,
+          action: "start",
+        });
+        emitEvent("agent_step" as StreamEventType, stepPayload, "updates", {
           node: nodeName,
           path,
         });
