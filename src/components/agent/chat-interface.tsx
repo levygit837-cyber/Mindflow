@@ -1,17 +1,21 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./message-bubble";
 import { ThinkingBlock } from "./thinking-block";
 import { ToolCallBlock } from "./tool-call-block";
+import { ResponseBlock } from "./response-block";
 import { ChatInput } from "./chat-input";
 import { ProviderSelector } from "./provider-selector";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import type { ContentPart } from "@/types/agent";
 
+/* ------------------------------------------------------------------ */
+/*  Content Part Renderer                                              */
+/* ------------------------------------------------------------------ */
 interface ContentPartRendererProps {
   part: ContentPart;
   isLastTextPart: boolean;
@@ -43,17 +47,17 @@ function ContentPartRenderer({ part, isLastTextPart, messageIsStreaming }: Conte
     case "text":
       if (!part.content) return null;
       return (
-        <MessageBubble
-          role="assistant"
+        <ResponseBlock
           content={part.content}
           isStreaming={isLastTextPart && messageIsStreaming}
         />
       );
     case "notifier":
-      // Minimal inline notifier — will be replaced by a dedicated component in a later step
       return (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground py-0.5 px-2">
-          <span className="text-[10px] opacity-60">{part.label}</span>
+        <div className="py-0.5 animate-fade-in-up">
+          <span className="text-[10px] text-zinc-700 font-mono">
+            {part.label}
+          </span>
         </div>
       );
     default:
@@ -61,6 +65,9 @@ function ContentPartRenderer({ part, isLastTextPart, messageIsStreaming }: Conte
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Chat Interface                                                     */
+/* ------------------------------------------------------------------ */
 export function ChatInterface() {
   const {
     messages,
@@ -81,29 +88,41 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] backdrop-blur-sm bg-white/[0.02]">
         <ProviderSelector
           provider={provider}
           model={model}
           onProviderChange={setProvider}
           onModelChange={setModel}
         />
-        <Button variant="ghost" size="sm" onClick={clearMessages} className="text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearMessages}
+          className="text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.05]"
+        >
           <Trash2 className="h-4 w-4 mr-1" />
           Clear
         </Button>
       </div>
 
+      {/* Messages area */}
       <ScrollArea className="flex-1 px-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-center py-20">
-            <div>
-              <p className="text-lg font-medium">OmniMind Agent</p>
-              <p className="text-sm mt-1">Ask me anything about your notes</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-center">
+                <div className="h-12 w-12 rounded-2xl backdrop-blur-md bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                  <Bot className="h-6 w-6 text-cyan-400/70" />
+                </div>
+              </div>
+              <p className="text-lg font-medium text-foreground/80">OmniMind Agent</p>
+              <p className="text-sm text-muted-foreground/50">Ask me anything about your notes</p>
             </div>
           </div>
         ) : (
-          <div className="py-4">
+          <div className="py-4 space-y-1">
             {messages.map((msg) => (
               <div key={msg.id}>
                 {msg.role === "user" ? (
@@ -113,10 +132,8 @@ export function ChatInterface() {
                     isStreaming={false}
                   />
                 ) : msg.contentParts.length > 0 ? (
-                  // Render ordered content parts chronologically
                   <>
                     {msg.contentParts.map((part, idx) => {
-                      // Determine if this is the last text part in the array
                       const isLastTextPart =
                         part.type === "text" &&
                         msg.contentParts.findLastIndex((p) => p.type === "text") === idx;
@@ -129,17 +146,9 @@ export function ChatInterface() {
                         />
                       );
                     })}
-                    {/* Show streaming cursor when assistant is streaming but has no text part yet */}
-                    {msg.isStreaming && !msg.contentParts.some((p) => p.type === "text") && (
-                      <MessageBubble
-                        role="assistant"
-                        content=""
-                        isStreaming={true}
-                      />
-                    )}
                   </>
                 ) : (
-                  // Fallback: legacy render for messages without contentParts
+                  // Legacy fallback for messages without contentParts
                   <>
                     {msg.thoughts && (
                       <ThinkingBlock
@@ -159,11 +168,12 @@ export function ChatInterface() {
                         startedAt={new Date().toISOString()}
                       />
                     ))}
-                    <MessageBubble
-                      role="assistant"
-                      content={msg.content}
-                      isStreaming={msg.isStreaming}
-                    />
+                    {msg.content && (
+                      <ResponseBlock
+                        content={msg.content}
+                        isStreaming={msg.isStreaming}
+                      />
+                    )}
                   </>
                 )}
               </div>
@@ -173,6 +183,7 @@ export function ChatInterface() {
         )}
       </ScrollArea>
 
+      {/* Input */}
       <ChatInput onSend={sendMessage} disabled={isLoading} />
     </div>
   );
