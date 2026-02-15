@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
       const normalizer = createAgentChatStreamNormalizer({
         provider,
-        emitUpdateSteps: debugStepsRequested,
+        emitUpdateSteps: true,
         emit,
       });
 
