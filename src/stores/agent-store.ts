@@ -18,16 +18,6 @@ interface ChatMessage {
   agentColor?: string;
 }
 
-interface NotifierFilters {
-  state_change: boolean;
-  graph_transition: boolean;
-  sub_graph: boolean;
-  agent_start: boolean;
-  agent_end: boolean;
-  error: boolean;
-  warning: boolean;
-}
-
 interface AgentStore {
   messages: ChatMessage[];
   isLoading: boolean;
@@ -35,7 +25,6 @@ interface AgentStore {
   model: string;
   conversationId: string;
   noteContext: string[];
-  notifierFilters: NotifierFilters;
   setProvider: (provider: LLMProvider) => void;
   setModel: (model: string) => void;
   setNoteContext: (noteIds: string[]) => void;
@@ -52,7 +41,6 @@ interface AgentStore {
   cancelEmptyThinking: (messageId: string) => void;
   finishAssistant: (id: string) => void;
   setLoading: (loading: boolean) => void;
-  setNotifierFilter: (type: NotifierType, enabled: boolean) => void;
   clearMessages: () => void;
 }
 
@@ -75,15 +63,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
   model: "gemini-3-flash-preview",
   conversationId: "default",
   noteContext: [],
-  notifierFilters: {
-    state_change: true,
-    graph_transition: true,
-    sub_graph: true,
-    agent_start: true,
-    agent_end: true,
-    error: true,
-    warning: true,
-  },
 
   setProvider: (provider) => set({ provider }),
   setModel: (model) => set({ model }),
@@ -414,11 +393,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
   },
 
   setLoading: (loading) => set({ isLoading: loading }),
-
-  setNotifierFilter: (type, enabled) =>
-    set((state) => ({
-      notifierFilters: { ...state.notifierFilters, [type]: enabled },
-    })),
 
   clearMessages: () => set({ messages: [] }),
 }));
