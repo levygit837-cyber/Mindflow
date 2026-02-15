@@ -1,8 +1,6 @@
-import winston from 'winston';
-import path from 'path';
+type LogLevel = "error" | "warn" | "info" | "http" | "debug";
 
-// Define log levels
-const levels = {
+const LOG_LEVELS: Record<LogLevel, number> = {
   error: 0,
   warn: 1,
   info: 2,
@@ -10,101 +8,56 @@ const levels = {
   debug: 4,
 };
 
-// Define log colors
-const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'blue',
-};
-
-// Tell winston about our colors
-winston.addColors(colors);
-
-// Determine log level based on environment
-const level = () => {
-  const env = process.env.NODE_ENV || 'development';
-  const isDevelopment = env === 'development';
-  return isDevelopment ? 'debug' : process.env.LOG_LEVEL || 'info';
-};
-
-// Define format for logs
-const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-  winston.format.colorize({ all: true }),
-  winston.format.printf(
-    (info) => `${info.timestamp} [${info.level}] ${info.message} ${
-      info.metadata && Object.keys(info.metadata).length
-        ? JSON.stringify(info.metadata, null, 2)
-        : ''
-    }`
-  )
-);
-
-// Define format for file logs (without colors)
-const fileFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-  winston.format.uncolorize(),
-  winston.format.printf(
-    (info) => `${info.timestamp} [${info.level}] ${info.message} ${
-      info.metadata && Object.keys(info.metadata).length
-        ? JSON.stringify(info.metadata)
-        : ''
-    }`
-  )
-);
-
-// Define transports
-const transports = [
-  // Console transport
-  new winston.transports.Console({
-    format: format,
-  }),
-];
-
-// Add file transports in production
-if (process.env.NODE_ENV === 'production') {
-  transports.push(
-    new winston.transports.File({
-      filename: path.join('logs', 'error.log'),
-      level: 'error',
-      format: fileFormat,
-    }),
-    new winston.transports.File({
-      filename: path.join('logs', 'combined.log'),
-      format: fileFormat,
-    })
-  );
+function getCurrentLevel(): number {
+  const env = process.env.NODE_ENV || "development";
+  if (env === "development") return LOG_LEVELS.debug;
+  const configLevel = (process.env.LOG_LEVEL || "info") as LogLevel;
+  return LOG_LEVELS[configLevel] ?? LOG_LEVELS.info;
 }
 
-// Create the logger
-const logger = winston.createLogger({
-  level: level(),
-  levels,
-  transports,
-  exitOnError: false,
-});
+function timestamp(): string {
+  return new Date().toISOString();
+}
 
-// Create a logger factory that allows creating loggers with context
-export const createLogger = (context: string) => {
+function formatMeta(metadata?: Record<string, unknown>): string {
+  if (!metadata || Object.keys(metadata).length === 0) return "";
+  return " " + JSON.stringify(metadata);
+}
+
+function log(level: LogLevel, context: string, message: string, metadata?: Record<string, unknown>): void {
+  if (LOG_LEVELS[level] > getCurrentLevel()) return;
+
+  const prefix = `${timestamp()} [${level.toUpperCase()}] [${context}]`;
+  const meta = formatMeta(metadata);
+
+  switch (level) {
+    case "error":
+      console.error(`${prefix} ${message}${meta}`);
+      break;
+    case "warn":
+      console.warn(`${prefix} ${message}${meta}`);
+      break;
+    case "debug":
+      console.debug(`${prefix} ${message}${meta}`);
+      break;
+    default:
+      console.log(`${prefix} ${message}${meta}`);
+  }
+}
+
+export function createLogger(context: string) {
   return {
-    error: (message: string, metadata?: any) => {
-      logger.error(`[${context}] ${message}`, { metadata });
-    },
-    warn: (message: string, metadata?: any) => {
-      logger.warn(`[${context}] ${message}`, { metadata });
-    },
-    info: (message: string, metadata?: any) => {
-      logger.info(`[${context}] ${message}`, { metadata });
-    },
-    http: (message: string, metadata?: any) => {
-      logger.http(`[${context}] ${message}`, { metadata });
-    },
-    debug: (message: string, metadata?: any) => {
-      logger.debug(`[${context}] ${message}`, { metadata });
-    },
+    error: (message: string, metadata?: Record<string, unknown>) =>
+      log("error", context, message, metadata),
+    warn: (message: string, metadata?: Record<string, unknown>) =>
+      log("warn", context, message, metadata),
+    info: (message: string, metadata?: Record<string, unknown>) =>
+      log("info", context, message, metadata),
+    http: (message: string, metadata?: Record<string, unknown>) =>
+      log("http", context, message, metadata),
+    debug: (message: string, metadata?: Record<string, unknown>) =>
+      log("debug", context, message, metadata),
   };
-};
+}
 
-export default logger;
+export default createLogger("app");

@@ -1,5 +1,6 @@
 # dependencies
 /node_modules
+/node_modules_old
 /.pnp
 .pnp.*
 .yarn/*
@@ -37,3 +38,18 @@ next-env.d.ts
 
 # local data
 /data/
+/src/data/
+
+# backup files
+*.bak
+
+# legacy directories
+backend/
+frontend/
+
+# IDE
+.vscode/
+.idea/
+
+# codesearch index
+.coa/

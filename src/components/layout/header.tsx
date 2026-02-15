@@ -7,6 +7,7 @@ const pageTitles: Record<string, string> = {
   "/notes": "Notes",
   "/graph": "Knowledge Graph",
   "/agent": "AI Agent",
+  "/swarm": "Swarm Dashboard",
   "/settings": "Settings",
 };
 

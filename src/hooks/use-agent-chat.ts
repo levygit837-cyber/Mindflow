@@ -3,6 +3,39 @@
 import { useCallback } from "react";
 import { useAgentStore } from "@/stores/agent-store";
 import type { StreamEvent } from "@/types/agent";
+import type { NotifierType } from "@/types/agent";
+
+function parseToolCallPayload(raw: string): { id?: string; name: string; args: Record<string, unknown> } | null {
+  try {
+    const parsed = JSON.parse(raw) as {
+      id?: string;
+      name?: string;
+      args?: Record<string, unknown>;
+    };
+    if (!parsed?.name) return null;
+    return {
+      id: parsed.id,
+      name: parsed.name,
+      args: parsed.args ?? {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseToolResultPayload(raw: string): { id?: string; name?: string; result: string } | null {
+  try {
+    const parsed = JSON.parse(raw) as { id?: string; name?: string; result?: string };
+    if (typeof parsed?.result !== "string") return null;
+    return {
+      id: parsed.id,
+      name: parsed.name,
+      result: parsed.result,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function useAgentChat() {
   const store = useAgentStore();
@@ -46,39 +79,68 @@ export function useAgentChat() {
 
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
+
             try {
-              const event: StreamEvent = JSON.parse(line.slice(6));
+              const event = JSON.parse(line.slice(6)) as StreamEvent;
 
               switch (event.type) {
                 case "response":
                   store.appendToAssistant(assistantId, event.data);
                   break;
+
                 case "thought":
                   store.appendThought(assistantId, event.data);
                   break;
-                case "tool_call":
+
+                case "tool_call": {
+                  const tc = parseToolCallPayload(event.data);
+                  if (!tc) break;
+                  store.addToolCall(assistantId, {
+                    id: tc.id || event.meta?.toolCallId,
+                    name: tc.name,
+                    args: tc.args,
+                  });
+                  break;
+                }
+
+                case "tool_result": {
+                  const tr = parseToolResultPayload(event.data);
+                  if (!tr) break;
+                  store.updateToolResult(
+                    assistantId,
+                    tr.id || event.meta?.toolCallId || "",
+                    tr.result,
+                    tr.name
+                  );
+                  break;
+                }
+
+                case "step":
+                  store.addNotifier(
+                    assistantId,
+                    "state_change",
+                    event.data,
+                    event.meta?.node || event.mode
+                  );
+                  break;
+
+                case "notifier":
                   try {
-                    const tc = JSON.parse(event.data);
-                    store.addToolCall(assistantId, { name: tc.name, args: tc.args });
+                    const nd = JSON.parse(event.data) as {
+                      notifierType: NotifierType;
+                      label: string;
+                      detail?: string;
+                    };
+                    store.addNotifier(assistantId, nd.notifierType, nd.label, nd.detail);
                   } catch {
-                    // ignore parse errors
+                    // ignore malformed notifier events
                   }
                   break;
-                case "tool_result":
-                  try {
-                    const tr = JSON.parse(event.data);
-                    const toolCalls = useAgentStore.getState().messages.find((m) => m.id === assistantId)?.toolCalls;
-                    if (toolCalls && toolCalls.length > 0) {
-                      const lastTc = toolCalls[toolCalls.length - 1];
-                      lastTc.result = tr.result;
-                    }
-                  } catch {
-                    // ignore
-                  }
-                  break;
+
                 case "error":
                   store.appendToAssistant(assistantId, `\n\nError: ${event.data}`);
                   break;
+
                 case "done":
                   break;
               }
