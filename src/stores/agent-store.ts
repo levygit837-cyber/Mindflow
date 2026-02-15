@@ -46,6 +46,9 @@ interface AgentStore {
   addToolCall: (id: string, toolCall: ToolCallInfo) => void;
   updateToolResult: (messageId: string, toolCallId: string, result: string, toolName?: string) => void;
   addNotifier: (messageId: string, notifierType: NotifierType, label: string, detail?: string) => void;
+  addAgentStep: (messageId: string, stepName: string, detail: string) => void;
+  updateAgentStep: (messageId: string, stepId: string, subStep: string) => void;
+  completeAgentStep: (messageId: string, stepId: string) => void;
   cancelEmptyThinking: (messageId: string) => void;
   finishAssistant: (id: string) => void;
   setLoading: (loading: boolean) => void;
@@ -325,6 +328,65 @@ export const useAgentStore = create<AgentStore>((set) => ({
         const parts = m.contentParts.map((part) => {
           if (part.type === "thinking" && part.isStreaming && !part.content) {
             return { ...part, isStreaming: false };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  addAgentStep: (messageId, stepName, detail) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = [...m.contentParts];
+        parts.push({
+          type: "agent_step",
+          id: nextPartId(),
+          stepName,
+          detail,
+          status: "running",
+          startedAt: new Date().toISOString(),
+          subSteps: [],
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  updateAgentStep: (messageId, stepId, subStep) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "agent_step" && part.id === stepId) {
+            return { ...part, subSteps: [...part.subSteps, subStep] };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  completeAgentStep: (messageId, stepId) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "agent_step" && part.id === stepId) {
+            return {
+              ...part,
+              status: "completed" as const,
+              completedAt: new Date().toISOString(),
+            };
           }
           return part;
         });

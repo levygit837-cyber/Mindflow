@@ -52,7 +52,18 @@ export interface NotifierPart {
   timestamp: string;
 }
 
-export type ContentPart = ThinkingPart | TextPart | ToolCallPart | NotifierPart;
+export interface AgentStepPart {
+  type: "agent_step";
+  id: string;
+  stepName: string;
+  detail: string;
+  status: "running" | "completed";
+  startedAt: string;
+  completedAt?: string;
+  subSteps: string[];
+}
+
+export type ContentPart = ThinkingPart | TextPart | ToolCallPart | NotifierPart | AgentStepPart;
 
 // -- Agent activity types (used by activity-stream) ------------------
 
@@ -106,6 +117,7 @@ export type StreamEventType =
   | "tool_result"
   | "response"
   | "step"
+  | "agent_step"
   | "done"
   | "error"
   | "notifier";

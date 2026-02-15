@@ -8,6 +8,7 @@ import { MessageBubble } from "./message-bubble";
 import { ThinkingBlock } from "./thinking-block";
 import { ToolCallBlock } from "./tool-call-block";
 import { ResponseBlock } from "./response-block";
+import { AgentStepsBlock } from "./agent-steps-block";
 import { ChatInput } from "./chat-input";
 import { ProviderSelector } from "./provider-selector";
 import { useAgentChat } from "@/hooks/use-agent-chat";
@@ -59,6 +60,18 @@ function ContentPartRenderer({ part, isLastTextPart, messageIsStreaming }: Conte
             {part.label}
           </span>
         </div>
+      );
+    case "agent_step":
+      return (
+        <AgentStepsBlock
+          id={part.id}
+          stepName={part.stepName}
+          detail={part.detail}
+          status={part.status}
+          subSteps={part.subSteps}
+          startedAt={part.startedAt}
+          completedAt={part.completedAt}
+        />
       );
     default:
       return null;
