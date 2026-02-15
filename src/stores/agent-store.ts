@@ -46,6 +46,7 @@ interface AgentStore {
   addToolCall: (id: string, toolCall: ToolCallInfo) => void;
   updateToolResult: (messageId: string, toolCallId: string, result: string, toolName?: string) => void;
   addNotifier: (messageId: string, notifierType: NotifierType, label: string, detail?: string) => void;
+  cancelEmptyThinking: (messageId: string) => void;
   finishAssistant: (id: string) => void;
   setLoading: (loading: boolean) => void;
   setNotifierFilter: (type: NotifierType, enabled: boolean) => void;
@@ -116,7 +117,14 @@ export const useAgentStore = create<AgentStore>((set) => ({
           thoughts: "",
           toolCalls: [],
           isStreaming: true,
-          contentParts: [],
+          contentParts: [
+            {
+              type: "thinking" as const,
+              id: nextPartId(),
+              content: "",
+              isStreaming: true,
+            },
+          ],
           agentId,
           agentColor,
         },
@@ -131,13 +139,25 @@ export const useAgentStore = create<AgentStore>((set) => ({
         if (m.id !== id) return m;
 
         const parts = [...m.contentParts];
-        const lastPart = parts[parts.length - 1];
 
-        if (lastPart && lastPart.type === "text") {
-          parts[parts.length - 1] = {
-            ...lastPart,
-            content: lastPart.content + text,
-          };
+        // Find the last text part anywhere in the array
+        let lastTextIdx = -1;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          if (parts[i].type === "text") {
+            lastTextIdx = i;
+            break;
+          }
+        }
+
+        if (lastTextIdx >= 0) {
+          // Append to the existing text part
+          const existing = parts[lastTextIdx];
+          if (existing.type === "text") {
+            parts[lastTextIdx] = {
+              ...existing,
+              content: existing.content + text,
+            };
+          }
         } else {
           parts.push({ type: "text", id: nextPartId(), content: text });
         }
@@ -157,14 +177,28 @@ export const useAgentStore = create<AgentStore>((set) => ({
         if (m.id !== id) return m;
 
         const parts = [...m.contentParts];
-        const lastPart = parts[parts.length - 1];
 
-        if (lastPart && lastPart.type === "thinking") {
-          parts[parts.length - 1] = {
-            ...lastPart,
-            content: lastPart.content + thought,
-          };
+        // Find the last thinking part anywhere in the array (not just the very last part)
+        let lastThinkingIdx = -1;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          const p = parts[i];
+          if (p.type === "thinking" && p.isStreaming) {
+            lastThinkingIdx = i;
+            break;
+          }
+        }
+
+        if (lastThinkingIdx >= 0) {
+          // Append to the existing streaming thinking part
+          const existing = parts[lastThinkingIdx];
+          if (existing.type === "thinking") {
+            parts[lastThinkingIdx] = {
+              ...existing,
+              content: existing.content + thought,
+            };
+          }
         } else {
+          // Check if the last part is a finished thinking block — start a new one
           parts.push({
             type: "thinking",
             id: nextPartId(),
@@ -276,6 +310,23 @@ export const useAgentStore = create<AgentStore>((set) => ({
           label,
           detail,
           timestamp: new Date().toISOString(),
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  cancelEmptyThinking: (messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "thinking" && part.isStreaming && !part.content) {
+            return { ...part, isStreaming: false };
+          }
+          return part;
         });
 
         return { ...m, contentParts: parts };
