@@ -126,16 +126,16 @@ export function ChatInterface() {
           <div className="flex items-center justify-center h-full text-muted-foreground text-center py-20">
             <div className="space-y-2">
               <div className="flex items-center justify-center">
-                <div className="h-12 w-12 rounded-2xl backdrop-blur-md bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-                  <Bot className="h-6 w-6 text-cyan-400/70" />
+                <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-zinc-500" />
                 </div>
               </div>
-              <p className="text-lg font-medium text-foreground/80">OmniMind Agent</p>
-              <p className="text-sm text-muted-foreground/50">Ask me anything about your notes</p>
+              <p className="text-sm font-medium text-zinc-400">OmniMind Agent</p>
+              <p className="text-xs text-zinc-600">Ask me anything</p>
             </div>
           </div>
         ) : (
-          <div className="py-4 space-y-1">
+          <div className="py-3 space-y-0.5">
             {messages.map((msg) => (
               <div key={msg.id}>
                 {msg.role === "user" ? (
