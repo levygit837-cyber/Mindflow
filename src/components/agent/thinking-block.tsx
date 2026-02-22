@@ -58,21 +58,20 @@ function ThinkingBlockInner({
   // Streaming state: compact inline indicator
   if (isStreaming && !expanded) {
     return (
-      <div className="flex items-center gap-2 py-1.5 animate-fade-in-up">
+      <div className="flex items-center gap-2 py-1">
         <button
           onClick={() => setExpanded(true)}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
         >
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-500/40" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-zinc-500" />
-          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-pulse" />
           <span className="font-medium">
             {agentId ? `${agentId} thinking` : "Thinking"}
           </span>
-          <span className="text-zinc-600 font-mono text-[10px]">
-            ~{formatTokenCount(tokenCount)}t
-          </span>
+          {tokenCount > 0 && (
+            <span className="text-zinc-600 font-mono text-[10px]">
+              ~{formatTokenCount(tokenCount)}t
+            </span>
+          )}
           <ChevronRight className="h-3 w-3 text-zinc-600" />
         </button>
       </div>
@@ -81,7 +80,7 @@ function ThinkingBlockInner({
 
   // Completed or expanded state: compact expandable
   return (
-    <div className="py-1 animate-fade-in-up">
+    <div className="py-1">
       <button
         onClick={() => setExpanded(!expanded)}
         className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
