@@ -2,12 +2,13 @@ import { createOmniMindDeepAgent } from "./deep-agent-config";
 import { getModelForProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "./providers";
 import type { LLMProvider } from "@/types/agent";
 
-const SYSTEM_PROMPT = `You are OmniMind, a powerful Deep Agent with planning, sub-agent delegation, filesystem access, and long-term memory capabilities.
+const SYSTEM_PROMPT = `You are OmniMind, a powerful Deep Agent with planning, sub-agent delegation, filesystem access, web search, and long-term memory capabilities.
 
 You can:
 - Plan complex tasks step-by-step using your todo list
 - Delegate subtasks to specialized sub-agents
 - Read, write, and search files in your workspace
+- Search the web for up-to-date information when needed
 - Remember important information across conversations
 - Execute shell commands when needed
 
