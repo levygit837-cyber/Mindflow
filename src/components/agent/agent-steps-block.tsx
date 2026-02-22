@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronRight, GitBranch, Check, Loader2 } from "lucide-react";
+import { ChevronRight, GitBranch, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AgentStepsBlockProps {
@@ -29,10 +29,10 @@ function AgentStepsBlockInner({
     : null;
 
   return (
-    <div className="py-0.5 animate-fade-in-up">
+    <div className="py-0.5">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors w-full text-left"
+        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors text-left"
       >
         <ChevronRight
           className={cn(
@@ -44,7 +44,7 @@ function AgentStepsBlockInner({
         {status === "running" ? (
           <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />
         ) : (
-          <Check className="h-3 w-3 text-emerald-500/70" />
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
         )}
 
         <GitBranch className="h-3 w-3 shrink-0 text-zinc-500" />
