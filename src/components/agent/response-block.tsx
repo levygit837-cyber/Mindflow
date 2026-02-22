@@ -15,10 +15,10 @@ function ResponseBlockInner({ content, isStreaming }: ResponseBlockProps) {
   if (!content && !isStreaming) return null;
 
   return (
-    <div className="py-1 animate-fade-in-up">
+    <div className="py-1">
       <div
         className={cn(
-          "prose prose-sm dark:prose-invert max-w-none",
+          "prose prose-sm dark:prose-invert",
           "prose-p:my-1.5 prose-headings:my-2 prose-pre:my-2",
           "prose-code:before:content-none prose-code:after:content-none",
           "prose-code:rounded-md prose-code:bg-zinc-800/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[13px] prose-code:font-mono prose-code:text-zinc-300",
