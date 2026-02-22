@@ -55,7 +55,7 @@ function ContentPartRenderer({ part, isLastTextPart, messageIsStreaming }: Conte
       );
     case "notifier":
       return (
-        <div className="py-0.5 animate-fade-in-up">
+        <div className="py-0.5">
           <span className="text-[10px] text-zinc-700 font-mono">
             {part.label}
           </span>
@@ -135,7 +135,7 @@ export function ChatInterface() {
             </div>
           </div>
         ) : (
-          <div className="py-3 space-y-0.5">
+          <div className="py-2 space-y-0">
             {messages.map((msg) => (
               <div key={msg.id}>
                 {msg.role === "user" ? (
@@ -145,7 +145,7 @@ export function ChatInterface() {
                     isStreaming={false}
                   />
                 ) : msg.contentParts.length > 0 ? (
-                  <>
+                  <div data-testid="assistant-message" className="max-w-3xl">
                     {msg.contentParts.map((part, idx) => {
                       const isLastTextPart =
                         part.type === "text" &&
@@ -159,7 +159,7 @@ export function ChatInterface() {
                         />
                       );
                     })}
-                  </>
+                  </div>
                 ) : (
                   // Legacy fallback for messages without contentParts
                   <>
