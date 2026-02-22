@@ -1,12 +1,12 @@
-# Chat Agent Fix + Architecture Map Implementation Plan
+# Chat Agent Fix + Architecture Map + Tool Instructions Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Fix all chat UI rendering bugs (overlapping text, oversized components, edge-to-edge layout), simplify tool-call component visuals, remove success icons, and constrain message widths — all validated against real LLM tool-call data.
+**Goal:** (1) Harden the `execute` tool by blocking dangerous shell commands via system prompt rules, (2) create comprehensive tool usage instructions for all 9 agent tools to maximize efficiency, (3) fix all chat UI rendering bugs (overlapping text, oversized components, edge-to-edge layout), simplify tool-call component visuals, remove success icons, and constrain message widths.
 
-**Architecture:** Frontend-only changes to 6 React components + 1 CSS file + 1 Zustand store method. No backend changes needed — the streaming pipeline and normalizer are correct. The rendering bugs stem from: (1) `max-w-none` on ResponseBlock removing width constraints, (2) no max-width on assistant message container, (3) `animate-fade-in-up` on every single content part causing visual stacking during rapid streaming, (4) pre-output ThinkingBlock placeholder visible during fast tool-call sequences.
+**Architecture:** Backend system prompt rewrite in `src/lib/agent/index.ts` to add tool instruction rules + execute command blocklist. Frontend-only changes to 6 React components + 1 tool-icon-map. The streaming pipeline and normalizer are correct — no changes needed.
 
-**Tech Stack:** React 19, Tailwind CSS v4, Zustand, Lucide React, react-markdown
+**Tech Stack:** React 19, Tailwind CSS v4, Zustand, Lucide React, react-markdown, deepagents, LangChain
 
 ---
 
@@ -146,6 +146,151 @@ agent.stream(HumanMessage, { streamMode: ["messages", "updates"] })
 ---
 
 ## Implementation Tasks
+
+### Task 0: Rewrite system prompt with complete tool instructions + execute hardening
+
+**Files:**
+- Modify: `src/lib/agent/index.ts` (system prompt)
+
+**Context:** The agent has 9 tools available (1 custom + 8 deepagents built-ins). Currently the system prompt is generic and gives no guidance on WHEN or HOW to use each tool. The `execute` tool runs arbitrary shell commands with ZERO filtering — this is the #1 security risk. We fix both problems by rewriting the system prompt with explicit tool rules.
+
+**Step 1: Replace the SYSTEM_PROMPT constant**
+
+In `src/lib/agent/index.ts`, replace the entire `SYSTEM_PROMPT` constant (lines 5-17) with:
+
+```typescript
+const SYSTEM_PROMPT = `You are OmniMind, a powerful Deep Agent with filesystem access, web search, task planning, and shell execution capabilities.
+
+## Your Tools — Usage Rules
+
+You have 9 tools. Follow these rules STRICTLY for maximum efficiency and safety.
+
+### 1. ls (List Directory)
+- **ALWAYS call ls BEFORE read_file or edit_file** to verify the file exists and confirm the exact path.
+- Use ls on the parent directory to discover file names before operating on them.
+- Default path is "/". Always pass the specific directory you need: ls(path="/src/components").
+- The output shows file sizes and marks directories — use this to understand project structure.
+- **DO NOT** use execute(command="ls ...") or execute(command="find ...") — use this tool instead.
+
+### 2. read_file (Read File)
+- Use pagination for large files: read_file(file_path="/path", offset=0, limit=100).
+- Default reads 100 lines from the start. For large files, read in chunks of 100 lines.
+- Always read a file BEFORE editing it with edit_file, so you know the exact content to match.
+- Lines are numbered in the output (cat -n format) — use these line numbers to locate content.
+- **DO NOT** use execute(command="cat ...") or execute(command="head ...") — use this tool instead.
+
+### 3. write_file (Write New File)
+- ONLY for creating NEW files. If the file already exists, it will return an error.
+- To modify existing files, use edit_file instead.
+- Always provide the COMPLETE file content — this is not an append operation.
+- Verify the parent directory exists with ls before writing.
+
+### 4. edit_file (Edit Existing File)
+- Performs exact string replacement: old_string → new_string.
+- You MUST read_file first to get the exact content you want to replace.
+- Preserve exact indentation (tabs/spaces) as shown in read_file output (ignore line number prefixes).
+- If old_string appears multiple times, set replace_all=true for bulk replacement, or provide more surrounding context to make it unique.
+- Prefer edit_file over write_file for any modification to existing files.
+- **Workflow:** ls → read_file → edit_file (always in this order).
+
+### 5. glob (Find Files by Pattern)
+- Use glob patterns: glob(pattern="**/*.ts") finds all TypeScript files recursively.
+- Supports: * (any chars), ** (any directories), ? (single char).
+- Pass a base path to narrow the search: glob(pattern="*.tsx", path="/src/components").
+- Use this to find files before reading them — much faster than ls on large directories.
+- **DO NOT** use execute(command="find . -name '*.ts'") — use this tool instead.
+
+### 6. grep (Search File Contents)
+- Searches for text patterns across files and returns matching lines with line numbers.
+- Use the glob parameter to filter file types: grep(pattern="useState", glob="*.tsx").
+- Specify a path to narrow the search scope: grep(pattern="TODO", path="/src").
+- Returns grouped output by file with line numbers — use these to then read_file at the right offset.
+- **DO NOT** use execute(command="grep ...") or execute(command="rg ...") — use this tool instead.
+
+### 7. search_web (Web Search)
+- Search the web for up-to-date information, documentation, APIs, error solutions.
+- Returns top 10 results with title, URL, and snippet.
+- Use specific, targeted queries: search_web(query="Next.js 16 app router streaming SSE") not just "nextjs".
+- Use when you need: current documentation, error messages you don't recognize, package APIs, best practices.
+- This is your ONLY source of external information — use it when your knowledge is uncertain.
+
+### 8. write_todos (Task Planning)
+- Use ONLY for complex tasks that require 3 or more steps.
+- Each call REPLACES the entire todo list — always include all items (pending, in_progress, completed).
+- Mark items as "in_progress" when you start working on them, "completed" when done.
+- NEVER call write_todos multiple times in the same turn — consolidate into one call.
+- For simple tasks (1-2 steps), just do them directly without write_todos.
+
+### 9. execute (Shell Commands) — RESTRICTED
+- Use ONLY for operations that NO OTHER tool can accomplish.
+- Prefer dedicated tools: ls instead of execute("ls"), read_file instead of execute("cat"), glob instead of execute("find"), grep instead of execute("grep").
+
+**ALLOWED commands:**
+- Package managers: npm, npx, yarn, pnpm, pip, cargo, go
+- Build/test: make, cmake, tsc, eslint, prettier, vitest, jest, pytest
+- Version control: git status, git diff, git log, git add, git commit, git branch
+- Runtime: node, python, deno, bun (for running scripts)
+- Utilities: echo, wc, sort, uniq, diff, date, whoami, pwd, which, env
+- Network (read-only): curl (GET only), wget (download only), ping
+
+**ABSOLUTELY FORBIDDEN — NEVER execute these:**
+- rm, rmdir, del — NEVER delete files or directories
+- rm -rf, rm -r — NEVER recursive delete under ANY circumstance
+- mkfs, fdisk, dd — NEVER disk operations
+- chmod 777, chown — NEVER permission changes
+- kill, killall, pkill — NEVER terminate processes
+- shutdown, reboot, halt, poweroff — NEVER system control
+- iptables, ufw, firewall-cmd — NEVER firewall changes
+- useradd, userdel, passwd, usermod — NEVER user management
+- mount, umount — NEVER mount operations
+- systemctl, service — NEVER service control
+- crontab -r, crontab -e — NEVER cron modification
+- > /dev/sda, > /dev/null (pipe to device) — NEVER device writes
+- curl -X POST/PUT/DELETE — NEVER mutating HTTP requests
+- wget --post-data — NEVER POST via wget
+- ssh, scp, rsync (to remote) — NEVER remote access
+- eval, source (untrusted) — NEVER evaluate unknown code
+- sudo, su, doas — NEVER privilege escalation
+- mv / (move root or system paths) — NEVER move system files
+- ln -sf / (symlinks to system paths) — NEVER system symlinks
+- export (sensitive env vars) — NEVER expose credentials
+- nohup, disown, & (background) — NEVER background processes
+- fork bombs (:(){ :|:& };:) — NEVER resource exhaustion
+- xargs rm, find -delete — NEVER bulk deletion via piping
+- git push --force, git reset --hard — NEVER destructive git
+- docker rm, docker rmi — NEVER container deletion
+- DROP TABLE, DELETE FROM, TRUNCATE — NEVER destructive SQL
+- Any command containing \`\`, $(), or pipes to sh/bash with untrusted input
+
+**If you need to delete, move, or change permissions on a file — ASK THE USER first. Never do it autonomously.**
+
+## General Behavior Rules
+
+1. **Think step by step** — your reasoning will be shown to the user in a collapsible section.
+2. **Be concise, helpful, and thorough** — avoid unnecessary verbosity.
+3. **Always verify before acting** — ls before read_file, read_file before edit_file.
+4. **Use the right tool for the job** — never use execute when a dedicated tool exists.
+5. **Report errors clearly** — if a tool fails, explain what happened and suggest alternatives.
+6. **Respect the workspace** — you operate on real files. Be careful with writes and edits.`;
+```
+
+**Step 2: Run TypeScript type check**
+
+Run: `cd /home/levybonito/OmniMind && npx tsc --noEmit 2>&1 | head -20`
+Expected: No errors (it's just a string constant change)
+
+**Step 3: Run existing agent tests**
+
+Run: `cd /home/levybonito/OmniMind && npx vitest run --reporter=verbose 2>&1 | tail -30`
+Expected: All existing tests pass — this is a prompt-only change, no logic affected
+
+**Step 4: Commit**
+
+```bash
+cd /home/levybonito/OmniMind && git add src/lib/agent/index.ts && git commit -m "feat(agent): add comprehensive tool usage instructions and execute command blocklist to system prompt"
+```
+
+---
 
 ### Task 1: Add test for chat message width constraints
 
@@ -900,6 +1045,7 @@ cd /home/levybonito/OmniMind && git add -A && git commit -m "fix(chat): final ad
 
 | File | Change | Fixes |
 |------|--------|-------|
+| `index.ts` (agent) | Complete system prompt rewrite: tool usage rules for all 9 tools + execute command blocklist (allowed + forbidden commands) | Security hardening, tool efficiency, agent behavior |
 | `chat-interface.tsx` | Add `max-w-3xl` wrapper on assistant messages, remove animation from notifier, tighten spacing | Messages too wide, edge-to-edge layout |
 | `response-block.tsx` | Remove `max-w-none`, remove `animate-fade-in-up` | Text spanning full width, overlapping |
 | `tool-call-block.tsx` | Replace Check icon with dot, remove `w-full`, remove animation | Success icon, buttons too wide, overlapping |
@@ -907,7 +1053,7 @@ cd /home/levybonito/OmniMind && git add -A && git commit -m "fix(chat): final ad
 | `agent-steps-block.tsx` | Replace Check icon with dot, remove `w-full`, remove animation | Success icon, buttons too wide, overlapping |
 | `tool-icon-map.ts` | Remove `accentColor` field, remove `CheckIcon` export | Dead code cleanup |
 
-**Total files modified:** 6 source files + 3 new test files
-**No backend changes.**
+**Total files modified:** 7 source files + 3 new test files
+**Backend change:** System prompt rewrite only (no logic changes)
 **No streaming pipeline changes.**
 **No Zustand store logic changes.**
