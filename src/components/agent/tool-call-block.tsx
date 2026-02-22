@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronRight, Loader2, Check, X } from "lucide-react";
+import { ChevronRight, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getToolConfig } from "./tool-icon-map";
 
@@ -64,7 +64,7 @@ function StatusDot({ status }: { status: ToolCallBlockProps["status"] }) {
     case "running":
       return <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />;
     case "success":
-      return <Check className="h-3 w-3 text-emerald-500/70" />;
+      return <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />;
     case "error":
       return <X className="h-3 w-3 text-red-400/70" />;
   }
@@ -89,10 +89,10 @@ function ToolCallBlockInner({
     : null;
 
   return (
-    <div className="py-0.5 animate-fade-in-up">
+    <div className="py-0.5">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors w-full text-left"
+        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors text-left"
       >
         <ChevronRight
           className={cn(
