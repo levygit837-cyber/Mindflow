@@ -14,7 +14,7 @@ import { glob } from "glob";
 
 const execAsync = promisify(exec);
 
-const SEARCHNXG_URL = process.env.SEARCHNXG_URL ?? "http://localhost:8080";
+const SEARXNG_URL = process.env.SEARXNG_URL ?? "http://localhost:8080";
 
 // ============================================================================
 // NOTE: read_file is NOT defined here. It is provided automatically by the
@@ -94,7 +94,7 @@ export const reviewerSearchContentTool = tool(
 export const reviewerSearchWebTool = tool(
   async ({ query }) => {
     try {
-      const res = await fetch(`${SEARCHNXG_URL}/search?q=${encodeURIComponent(query)}&format=json`, {
+      const res = await fetch(`${SEARXNG_URL}/search?q=${encodeURIComponent(query)}&format=json`, {
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
