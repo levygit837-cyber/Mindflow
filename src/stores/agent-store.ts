@@ -61,7 +61,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   isLoading: false,
   provider: "vertexai",
   model: "gemini-3-flash-preview",
-  conversationId: "default",
+  conversationId: `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
   noteContext: [],
 
   setProvider: (provider) => set({ provider }),
