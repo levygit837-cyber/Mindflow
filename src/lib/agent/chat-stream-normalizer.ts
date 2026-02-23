@@ -324,6 +324,8 @@ function toolResultText(message: UnknownRecord): string {
   return "Done";
 }
 
+const VALID_STREAM_MODES = new Set(["messages", "updates", "custom"]);
+
 function parseStreamTuple(item: unknown): StreamTuple | null {
   if (!Array.isArray(item)) return null;
 
@@ -332,7 +334,7 @@ function parseStreamTuple(item: unknown): StreamTuple | null {
     const second = item[1];
 
     // Multi-mode wrapper: ["messages" | "updates" | "custom", payload]
-    if (typeof first === "string") {
+    if (typeof first === "string" && VALID_STREAM_MODES.has(first)) {
       return { mode: first as StreamModeName, payload: second };
     }
 
@@ -397,52 +399,53 @@ function splitGeminiThinkTags(text: string): Array<{ type: "response" | "thought
 
 function createThinkTagParser(send: (type: StreamEventType, data: string, mode: StreamModeName) => void) {
   let insideThink = false;
-  let buffer = "";
+  // Acumula apenas o mínimo necessário para detectar os tags (7 chars para "<think>" ou 8 para "</think>")
+  let tagBuffer = "";
 
   return {
     push(text: string) {
-      buffer += text;
+      // Processa char por char para emitir o mais cedo possível
+      for (const ch of text) {
+        tagBuffer += ch;
 
-      while (buffer.length > 0) {
         if (insideThink) {
-          const closeIdx = buffer.indexOf("</think>");
-          if (closeIdx === -1) {
-            if (buffer.length > 8) {
-              send("thought", buffer.slice(0, -8), "messages");
-              buffer = buffer.slice(-8);
-            }
-            break;
+          // Procura por "</think>" no buffer
+          const closeTag = "</think>";
+          if (tagBuffer.endsWith(closeTag)) {
+            // Emite o conteúdo antes do close tag
+            const content = tagBuffer.slice(0, -closeTag.length);
+            if (content) send("thought", content, "messages");
+            tagBuffer = "";
+            insideThink = false;
+          } else if (tagBuffer.length > closeTag.length) {
+            // Pode emitir os chars que com certeza não fazem parte do tag
+            const safe = tagBuffer.slice(0, tagBuffer.length - closeTag.length + 1);
+            send("thought", safe, "messages");
+            tagBuffer = tagBuffer.slice(safe.length);
           }
-
-          const thoughtContent = buffer.slice(0, closeIdx);
-          if (thoughtContent) send("thought", thoughtContent, "messages");
-
-          buffer = buffer.slice(closeIdx + "</think>".length);
-          insideThink = false;
         } else {
-          const openIdx = buffer.indexOf("<think>");
-          if (openIdx === -1) {
-            if (buffer.length > 7) {
-              const safeText = buffer.slice(0, -7);
-              if (safeText) send("response", safeText, "messages");
-              buffer = buffer.slice(-7);
-            }
-            break;
+          // Procura por "<think>" no buffer
+          const openTag = "<think>";
+          if (tagBuffer.endsWith(openTag)) {
+            // Emite o que vem antes do tag como response
+            const before = tagBuffer.slice(0, -openTag.length);
+            if (before) send("response", before, "messages");
+            tagBuffer = "";
+            insideThink = true;
+          } else if (tagBuffer.length > openTag.length) {
+            // Emite chars que com certeza não fazem parte do tag
+            const safe = tagBuffer.slice(0, tagBuffer.length - openTag.length + 1);
+            send("response", safe, "messages");
+            tagBuffer = tagBuffer.slice(safe.length);
           }
-
-          const beforeTag = buffer.slice(0, openIdx);
-          if (beforeTag) send("response", beforeTag, "messages");
-
-          buffer = buffer.slice(openIdx + "<think>".length);
-          insideThink = true;
         }
       }
     },
 
     flush() {
-      if (!buffer) return;
-      send(insideThink ? "thought" : "response", buffer, "messages");
-      buffer = "";
+      if (!tagBuffer) return;
+      send(insideThink ? "thought" : "response", tagBuffer, "messages");
+      tagBuffer = "";
     },
   };
 }
@@ -684,10 +687,20 @@ export function createAgentChatStreamNormalizer({
 
   const processMessageMode = (payload: unknown, path?: string[]) => {
     if (!Array.isArray(payload) || payload.length !== 2) return;
-    const rawMessage = asRecord(payload[0]);
+    const rawMessage = payload[0];
     const metadata = asRecord(payload[1]);
-    if (!rawMessage) return;
-    const message = unwrapMessageLike(rawMessage);
+
+    // Handle raw string tokens directly (Gemini token-by-token)
+    if (typeof rawMessage === "string") {
+      const node = safeString(metadata?.langgraph_node);
+      const meta = { node, runId: safeString(metadata?.run_id), path };
+      emitText(rawMessage, "messages", meta);
+      return;
+    }
+
+    const messageRecord = asRecord(rawMessage);
+    if (!messageRecord) return;
+    const message = unwrapMessageLike(messageRecord);
 
     const node = safeString(metadata?.langgraph_node);
     const meta = {
