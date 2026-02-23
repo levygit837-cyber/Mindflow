@@ -5,6 +5,7 @@ import { createSSEStream } from "@/lib/agent/stream";
 import { createAgentChatStreamNormalizer } from "@/lib/agent/chat-stream-normalizer";
 import type { LLMProvider, StreamEvent, StreamEventType, StreamModeName } from "@/types/agent";
 import { HumanMessage } from "@langchain/core/messages";
+import { logBus } from "@/lib/agent/log-bus";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest) {
 
   (async () => {
     let seq = 0;
+    const sessionId = conversationId || `session-${Date.now()}`;
 
     const emit = (
       type: StreamEventType,
@@ -45,6 +47,7 @@ export async function POST(request: NextRequest) {
         },
       };
       send(event);
+      logBus.publish(event, sessionId);
     };
 
     try {
