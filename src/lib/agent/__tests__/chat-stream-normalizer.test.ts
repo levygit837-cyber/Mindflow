@@ -90,7 +90,8 @@ describe("createAgentChatStreamNormalizer", () => {
           ],
         ],
       ]);
-      expect(events.some((e) => e.type === "thought" && e.data.includes("pensando em passos"))).toBe(true);
+      const totalThought = events.filter((e) => e.type === "thought").map((e) => e.data).join("");
+      expect(totalThought.includes("pensando em passos")).toBe(true);
       const fullResponse = events
         .filter((e) => e.type === "response")
         .map((e) => e.data)
@@ -352,6 +353,35 @@ describe("createAgentChatStreamNormalizer", () => {
     expect(toolResult?.data).toContain("read_note");
     expect(toolResult?.data).not.toContain("unknown");
     expect(toolResult?.data).toContain("tc-1");
+  });
+
+  it("emite thought tokens individualmente (token-a-token) sem acumular buffer", () => {
+    const emitted: Array<{ type: StreamEventType; data: string }> = [];
+
+    const normalizer = createAgentChatStreamNormalizer({
+      provider: "vertexai",
+      emit: (type, data) => emitted.push({ type, data }),
+    });
+
+    // Simula chegada de tokens individuais (1 char por vez)
+    const tokens = ["<", "t", "h", "i", "n", "k", ">", "p", "e", "n", "s", "a", "<", "/", "t", "h", "i", "n", "k", ">", "o", "k"];
+    for (const token of tokens) {
+      normalizer.process([token, { langgraph_node: "agent" }]);
+    }
+    normalizer.flush();
+
+    // Deve emitir "thought" com "pensa" progressivamente (não acumular tudo)
+    const thoughtEvents = emitted.filter(e => e.type === "thought");
+    const responseEvents = emitted.filter(e => e.type === "response");
+
+    // Deve ter pelo menos 1 evento thought com conteúdo partial
+    expect(thoughtEvents.length).toBeGreaterThan(0);
+    // Conteúdo total pensado deve ser "pensa"
+    const totalThought = thoughtEvents.map(e => e.data).join("");
+    expect(totalThought).toBe("pensa");
+    // Response deve ser "ok"
+    const totalResponse = responseEvents.map(e => e.data).join("");
+    expect(totalResponse).toBe("ok");
   });
 
   it("filters middleware update nodes and keeps only user-visible steps", () => {
