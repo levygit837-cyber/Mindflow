@@ -4,6 +4,7 @@ import type {
   StreamEventType,
   StreamModeName,
 } from "@/types/agent";
+import { classifyNode, getNodeLabel, isStreamableNode, NodeCategory } from "./node-registry";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -64,27 +65,6 @@ function titleCase(value: string): string {
     .trim()
     .replace(/\s+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function isUserVisibleUpdateNode(nodeName: string): boolean {
-  if (!nodeName) return false;
-
-  if (
-    nodeName.includes("Middleware") ||
-    nodeName.includes(".before_") ||
-    nodeName.includes(".after_") ||
-    nodeName.includes("patchToolCalls")
-  ) {
-    return false;
-  }
-
-  return nodeName === "tools" || nodeName === "agent";
-}
-
-function userVisibleUpdateLabel(nodeName: string): string {
-  if (nodeName === "tools") return "Tools";
-  if (nodeName === "agent") return "Agent";
-  return `Node update: ${nodeName}`;
 }
 
 function normalizeToolName(value: unknown): string {
@@ -734,14 +714,17 @@ export function createAgentChatStreamNormalizer({
     if (!isRecord(payload)) return;
 
     for (const [nodeName, nodeUpdate] of Object.entries(payload)) {
-      if (emitUpdateSteps && isUserVisibleUpdateNode(nodeName)) {
+      if (emitUpdateSteps && isStreamableNode(nodeName)) {
+        const label = getNodeLabel(nodeName);
+        const category = classifyNode(nodeName);
         const stepPayload = JSON.stringify({
-          stepName: userVisibleUpdateLabel(nodeName),
-          detail: `Node: ${nodeName}`,
+          stepName: label,
+          detail: `Node: ${nodeName} [${category}]`,
           action: "start",
         });
         emitEvent("agent_step" as StreamEventType, stepPayload, "updates", {
           node: nodeName,
+          nodeCategory: category,
           path,
         });
       }

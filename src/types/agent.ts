@@ -111,6 +111,17 @@ export interface Conversation {
 
 export type StreamModeName = "updates" | "messages" | "custom";
 
+export type { NodeCategory } from "@/lib/agent/node-registry";
+
+/** Metadados de um node do LangGraph */
+export interface NodeMeta {
+  name: string;
+  category: import("@/lib/agent/node-registry").NodeCategory;
+  label: string;
+  isStreamable: boolean;
+  subgraphPath?: string[];
+}
+
 export type StreamEventType =
   | "thought"
   | "tool_call"
@@ -132,6 +143,7 @@ export interface StreamEvent {
     runId?: string;
     parentRunId?: string;
     node?: string;
+    nodeCategory?: string;
     toolCallId?: string;
     provider?: LLMProvider;
     model?: string;
