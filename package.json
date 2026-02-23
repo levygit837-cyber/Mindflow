@@ -2,6 +2,9 @@
   "name": "omnimind",
   "version": "2.0.0",
   "private": true,
+  "bin": {
+    "omni": "./omni.js"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
