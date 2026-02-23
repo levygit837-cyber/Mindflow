@@ -78,12 +78,11 @@ function isUserVisibleUpdateNode(nodeName: string): boolean {
     return false;
   }
 
-  return nodeName === "tools" || nodeName === "model_request" || nodeName === "agent";
+  return nodeName === "tools" || nodeName === "agent";
 }
 
 function userVisibleUpdateLabel(nodeName: string): string {
   if (nodeName === "tools") return "Tools";
-  if (nodeName === "model_request") return "Model request";
   if (nodeName === "agent") return "Agent";
   return `Node update: ${nodeName}`;
 }
