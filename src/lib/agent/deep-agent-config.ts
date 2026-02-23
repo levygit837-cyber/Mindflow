@@ -2,11 +2,12 @@ import {
   createDeepAgent,
   CompositeBackend,
   StateBackend,
-  StoreBackend,
   FilesystemBackend,
 } from "deepagents";
+import { SafeBackend } from "./safe-backend";
 import type { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { getCheckpointer } from "@/lib/db/postgres";
+import { searchWebTool } from "./tools/search-web";
 
 export interface DeepAgentOptions {
   model: BaseLanguageModel;
@@ -21,12 +22,15 @@ export function createOmniMindDeepAgent(options: DeepAgentOptions) {
     systemPrompt: options.systemPrompt,
     name: "omnimind-agent",
     checkpointer,
-    backend: new CompositeBackend(
-      new FilesystemBackend({ rootDir: process.cwd() }),
-      {
-        "/memories/": new StateBackend({ state: {}, store: undefined }),
-      }
-    ),
+    tools: [searchWebTool],
+    backend: new SafeBackend(
+      new CompositeBackend(
+        new FilesystemBackend({ rootDir: process.cwd() }),
+        {
+          "/memories/": new StateBackend({ state: {}, store: undefined }),
+        }
+      )
+    ) as unknown as CompositeBackend,
   });
 
   return agent;

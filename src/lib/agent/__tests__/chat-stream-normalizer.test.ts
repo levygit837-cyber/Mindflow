@@ -369,7 +369,7 @@ describe("createAgentChatStreamNormalizer", () => {
     ]);
 
     const steps = events.filter((e) => e.type === "step").map((e) => e.data);
-    expect(steps).toContain("Model request");
+    expect(steps).not.toContain("Model request");
     expect(steps).toContain("Tools");
     expect(steps.some((s) => s.includes("Node update"))).toBe(false);
   });

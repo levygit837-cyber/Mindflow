@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Brain, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ThinkingBlockProps {
@@ -22,69 +22,104 @@ function formatTokenCount(count: number): string {
   return String(count);
 }
 
+function parseReasoningContent(text: string): React.ReactNode[] {
+  if (!text) return [];
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-zinc-300">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
+}
+
 function ThinkingBlockInner({
   content,
   isStreaming,
   agentId,
 }: ThinkingBlockProps) {
-  // Auto-collapsed by default - user can expand to see reasoning
   const [expanded, setExpanded] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isStreaming && expanded && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [content, isStreaming, expanded]);
 
   if (!content && !isStreaming) return null;
 
-  const tokenCount = useMemo(() => estimateTokenCount(content), [content]);
-  const preview = useMemo(() => {
-    if (!content) return "";
-    const firstLine = content.split("\n")[0] || "";
-    return firstLine.length > 80 ? firstLine.slice(0, 77).trimEnd() + "..." : firstLine;
-  }, [content]);
+  const tokenCount = estimateTokenCount(content);
 
+  // Streaming state: indicador compacto com preview dos últimos tokens
+  if (isStreaming && !expanded) {
+    const previewText = content.length > 0
+      ? content.slice(-120).replace(/\n+/g, " ").trim()
+      : "";
+
+    return (
+      <div className="flex flex-col gap-0.5 py-1">
+        <button
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-pulse" />
+          <span className="font-medium">
+            {agentId ? `${agentId} thinking` : "Thinking"}
+          </span>
+          {tokenCount > 0 && (
+            <span className="text-zinc-600 font-mono text-[10px]">
+              ~{formatTokenCount(tokenCount)}t
+            </span>
+          )}
+          <ChevronRight className="h-3 w-3 text-zinc-600" />
+        </button>
+        {previewText && (
+          <div className="ml-4 pl-3 border-l border-zinc-800">
+            <span className="text-[10px] font-mono text-zinc-600 italic line-clamp-2">
+              {previewText}
+              <span className="ml-0.5 inline-block w-1 h-2.5 bg-zinc-600 animate-typewriter-blink rounded-sm align-middle" />
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Completed or expanded state: compact expandable
   return (
-    <div
-      className={cn(
-        "mb-2 rounded-lg border border-purple-500/20 bg-purple-500/5 dark:bg-purple-400/5 transition-all duration-200",
-        isStreaming && "border-purple-500/40 shadow-sm shadow-purple-500/10"
-      )}
-    >
+    <div className="py-1">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-purple-500/10 rounded-lg"
+        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
       >
-        {isStreaming ? (
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-purple-400 animate-pulse" />
-        ) : (
-          <Brain className="h-3.5 w-3.5 shrink-0 text-purple-500/70" />
-        )}
-
-        <span className="font-medium text-purple-600 dark:text-purple-400">
-          {agentId ? `${agentId} - ` : ""}
-          {isStreaming ? "Reasoning..." : "Reasoning"}
-        </span>
-
-        {!expanded && preview && (
-          <span className="min-w-0 flex-1 truncate text-muted-foreground/60 italic">
-            {preview}
-          </span>
-        )}
-
-        <span className="ml-auto flex items-center gap-2 shrink-0">
-          <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-mono text-purple-500/80">
-            {isStreaming ? `~${formatTokenCount(tokenCount)} tokens` : `${formatTokenCount(tokenCount)} tokens`}
-          </span>
-          {expanded ? (
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+        <ChevronRight
+          className={cn(
+            "h-3 w-3 text-zinc-600 transition-transform duration-200",
+            expanded && "rotate-90"
           )}
+        />
+        <span className="font-medium">
+          {agentId ? `${agentId} thought` : "Thought"}
+        </span>
+        <span className="text-zinc-600 font-mono text-[10px]">
+          {formatTokenCount(tokenCount)} tokens
         </span>
       </button>
 
       {expanded && (
-        <div className="border-t border-purple-500/10 px-3 pb-3 pt-2">
-          <div className="max-h-96 overflow-y-auto whitespace-pre-wrap text-xs text-muted-foreground leading-relaxed font-mono">
-            {content}
+        <div className="mt-1.5 ml-4 pl-3 border-l border-zinc-800">
+          <div
+            ref={scrollRef}
+            className="max-h-72 overflow-y-auto whitespace-pre-wrap text-xs text-zinc-500 leading-relaxed font-mono scrollbar-thin"
+          >
+            {parseReasoningContent(content)}
             {isStreaming && (
-              <span className="ml-0.5 inline-block w-1.5 h-3.5 bg-purple-400 animate-blink rounded-sm" />
+              <span className="ml-0.5 inline-block w-1 h-3 bg-zinc-500 animate-typewriter-blink rounded-sm" />
             )}
           </div>
         </div>
