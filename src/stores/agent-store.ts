@@ -38,6 +38,7 @@ interface AgentStore {
   addAgentStep: (messageId: string, stepName: string, detail: string) => void;
   updateAgentStep: (messageId: string, stepId: string, subStep: string) => void;
   completeAgentStep: (messageId: string, stepId: string) => void;
+  completeAllAgentSteps: (messageId: string) => void;
   cancelEmptyThinking: (messageId: string) => void;
   finishAssistant: (id: string) => void;
   setLoading: (loading: boolean) => void;
@@ -366,6 +367,24 @@ export const useAgentStore = create<AgentStore>((set) => ({
               status: "completed" as const,
               completedAt: new Date().toISOString(),
             };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  completeAllAgentSteps: (messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const now = new Date().toISOString();
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "agent_step" && part.status === "running") {
+            return { ...part, status: "completed" as const, completedAt: now };
           }
           return part;
         });
