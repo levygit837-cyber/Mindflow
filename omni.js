@@ -131,10 +131,10 @@ server.on("close", (code) => {
 
 process.on("SIGINT", () => {
   server.kill("SIGINT");
-  process.exit(0);
+  // process.exit será chamado pelo handler server.on("close", ...)
 });
 
 process.on("SIGTERM", () => {
   server.kill("SIGTERM");
-  process.exit(0);
+  // process.exit será chamado pelo handler server.on("close", ...)
 });

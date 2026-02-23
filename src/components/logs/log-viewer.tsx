@@ -45,7 +45,7 @@ function summarizeData(type: string, data: string): string {
     try {
       const parsed = JSON.parse(data) as { name?: string; result?: string; args?: unknown };
       if (parsed.name) {
-        const extra = parsed.result
+        const extra = typeof parsed.result === "string" && parsed.result
           ? ` → ${parsed.result.slice(0, 60)}`
           : parsed.args
           ? `(${JSON.stringify(parsed.args).slice(0, 60)})`

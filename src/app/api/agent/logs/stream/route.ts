@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const encoder = new TextEncoder();
+  let unsubscribe: (() => void) | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -22,16 +23,26 @@ export async function GET() {
       );
 
       // Assinar novos eventos
-      const unsubscribe = logBus.subscribe((entry: LogEntry) => {
+      unsubscribe = logBus.subscribe((entry: LogEntry) => {
         try {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(entry)}\n\n`)
           );
         } catch {
-          // Stream fechado pelo cliente
-          unsubscribe();
+          // Stream fechado pelo cliente — limpar subscriber
+          if (unsubscribe) {
+            unsubscribe();
+            unsubscribe = null;
+          }
         }
       });
+    },
+    cancel() {
+      // Cliente desconectou — remover subscriber do LogBus
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
     },
   });
 
