@@ -55,10 +55,14 @@ function ThinkingBlockInner({
 
   const tokenCount = estimateTokenCount(content);
 
-  // Streaming state: compact inline indicator
+  // Streaming state: indicador compacto com preview dos últimos tokens
   if (isStreaming && !expanded) {
+    const previewText = content.length > 0
+      ? content.slice(-120).replace(/\n+/g, " ").trim()
+      : "";
+
     return (
-      <div className="flex items-center gap-2 py-1">
+      <div className="flex flex-col gap-0.5 py-1">
         <button
           onClick={() => setExpanded(true)}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
@@ -74,6 +78,14 @@ function ThinkingBlockInner({
           )}
           <ChevronRight className="h-3 w-3 text-zinc-600" />
         </button>
+        {previewText && (
+          <div className="ml-4 pl-3 border-l border-zinc-800">
+            <span className="text-[10px] font-mono text-zinc-600 italic line-clamp-2">
+              {previewText}
+              <span className="ml-0.5 inline-block w-1 h-2.5 bg-zinc-600 animate-typewriter-blink rounded-sm align-middle" />
+            </span>
+          </div>
+        )}
       </div>
     );
   }
