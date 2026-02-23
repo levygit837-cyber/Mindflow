@@ -1,11 +1,10 @@
 /**
  * Dynamic prompt builder para o OmniMind agent.
  *
- * Em vez de um único systemPrompt monolítico, constrói o prompt dinamicamente
- * baseado no estado atual do agente (quais tools foram chamadas recentemente).
- *
- * Compatível com a API de `prompt` function do createReactAgent do LangGraph:
- * (state: State, config?: RunnableConfig) => BaseMessageLike[]
+ * Fornece duas funções:
+ * - buildStaticSystemPrompt(): string — prompt completo para passar ao createDeepAgent
+ * - buildDynamicPrompt(): BaseMessageLike[] — para uso futuro quando o runtime
+ *   suportar uma `prompt` function nativa no createReactAgent
  */
 
 import type { BaseMessageLike } from "@langchain/core/messages";
@@ -73,6 +72,14 @@ function extractRecentToolNames(
   }
 
   return names;
+}
+
+/**
+ * Retorna o system prompt completo (todos os módulos) como string.
+ * Use isto com createDeepAgent({ systemPrompt: buildStaticSystemPrompt() }).
+ */
+export function buildStaticSystemPrompt(): string {
+  return [BASE_PROMPT, FILESYSTEM_PROMPT, WEB_SEARCH_PROMPT, TASK_PLANNING_PROMPT, SHELL_PROMPT].join("\n\n");
 }
 
 /**
