@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await ensureDbInitialized();
-      const agent = createOmniMindAgent(provider, model);
+      const { agent, promptFn } = createOmniMindAgent(provider, model);
       const config = { configurable: { thread_id: conversationId || "default" } };
 
       const normalizer = createAgentChatStreamNormalizer({
@@ -61,8 +61,14 @@ export async function POST(request: NextRequest) {
         emit,
       });
 
+      // Monta o input com prompt dinâmico se disponível
+      const inputMessages = [new HumanMessage(message)];
+      const agentInput = promptFn
+        ? { messages: promptFn({ messages: inputMessages }) }
+        : { messages: inputMessages };
+
       const agentStream = await agent.stream(
-        { messages: [new HumanMessage(message)] },
+        agentInput,
         {
           ...config,
           streamMode: ["messages", "updates"],
