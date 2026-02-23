@@ -1,0 +1,18 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: omnimind-searxng
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/searxng/searxng:/etc/searxng
+    environment:
+      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY:-omnimind-secret-key-change-in-production}
+      - SEARXNG_BASE_URL=http://localhost:8080
+    restart: unless-stopped
+    networks:
+      - omnimind-network
+
+networks:
+  omnimind-network:
+    driver: bridge

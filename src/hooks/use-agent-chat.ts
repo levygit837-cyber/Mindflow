@@ -85,6 +85,7 @@ export function useAgentChat() {
 
               switch (event.type) {
                 case "response":
+                  store.cancelEmptyThinking(assistantId);
                   store.appendToAssistant(assistantId, event.data);
                   break;
 
@@ -93,6 +94,7 @@ export function useAgentChat() {
                   break;
 
                 case "tool_call": {
+                  store.cancelEmptyThinking(assistantId);
                   const tc = parseToolCallPayload(event.data);
                   if (!tc) break;
                   store.addToolCall(assistantId, {
@@ -124,6 +126,28 @@ export function useAgentChat() {
                   );
                   break;
 
+                case "agent_step": {
+                  try {
+                    const stepData = JSON.parse(event.data) as {
+                      stepName: string;
+                      detail: string;
+                      action?: "start" | "update" | "complete";
+                      subStep?: string;
+                      stepId?: string;
+                    };
+                    if (stepData.action === "update" && stepData.stepId && stepData.subStep) {
+                      store.updateAgentStep(assistantId, stepData.stepId, stepData.subStep);
+                    } else if (stepData.action === "complete" && stepData.stepId) {
+                      store.completeAgentStep(assistantId, stepData.stepId);
+                    } else {
+                      store.addAgentStep(assistantId, stepData.stepName, stepData.detail);
+                    }
+                  } catch {
+                    // ignore malformed agent_step events
+                  }
+                  break;
+                }
+
                 case "notifier":
                   try {
                     const nd = JSON.parse(event.data) as {
@@ -142,6 +166,7 @@ export function useAgentChat() {
                   break;
 
                 case "done":
+                  store.completeAllAgentSteps(assistantId);
                   break;
               }
             } catch {

@@ -18,16 +18,6 @@ interface ChatMessage {
   agentColor?: string;
 }
 
-interface NotifierFilters {
-  state_change: boolean;
-  graph_transition: boolean;
-  sub_graph: boolean;
-  agent_start: boolean;
-  agent_end: boolean;
-  error: boolean;
-  warning: boolean;
-}
-
 interface AgentStore {
   messages: ChatMessage[];
   isLoading: boolean;
@@ -35,7 +25,6 @@ interface AgentStore {
   model: string;
   conversationId: string;
   noteContext: string[];
-  notifierFilters: NotifierFilters;
   setProvider: (provider: LLMProvider) => void;
   setModel: (model: string) => void;
   setNoteContext: (noteIds: string[]) => void;
@@ -46,9 +35,13 @@ interface AgentStore {
   addToolCall: (id: string, toolCall: ToolCallInfo) => void;
   updateToolResult: (messageId: string, toolCallId: string, result: string, toolName?: string) => void;
   addNotifier: (messageId: string, notifierType: NotifierType, label: string, detail?: string) => void;
+  addAgentStep: (messageId: string, stepName: string, detail: string) => void;
+  updateAgentStep: (messageId: string, stepId: string, subStep: string) => void;
+  completeAgentStep: (messageId: string, stepId: string) => void;
+  completeAllAgentSteps: (messageId: string) => void;
+  cancelEmptyThinking: (messageId: string) => void;
   finishAssistant: (id: string) => void;
   setLoading: (loading: boolean) => void;
-  setNotifierFilter: (type: NotifierType, enabled: boolean) => void;
   clearMessages: () => void;
 }
 
@@ -69,17 +62,8 @@ export const useAgentStore = create<AgentStore>((set) => ({
   isLoading: false,
   provider: "vertexai",
   model: "gemini-3-flash-preview",
-  conversationId: "default",
+  conversationId: `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
   noteContext: [],
-  notifierFilters: {
-    state_change: true,
-    graph_transition: true,
-    sub_graph: true,
-    agent_start: true,
-    agent_end: true,
-    error: true,
-    warning: true,
-  },
 
   setProvider: (provider) => set({ provider }),
   setModel: (model) => set({ model }),
@@ -116,7 +100,14 @@ export const useAgentStore = create<AgentStore>((set) => ({
           thoughts: "",
           toolCalls: [],
           isStreaming: true,
-          contentParts: [],
+          contentParts: [
+            {
+              type: "thinking" as const,
+              id: nextPartId(),
+              content: "",
+              isStreaming: true,
+            },
+          ],
           agentId,
           agentColor,
         },
@@ -131,13 +122,25 @@ export const useAgentStore = create<AgentStore>((set) => ({
         if (m.id !== id) return m;
 
         const parts = [...m.contentParts];
-        const lastPart = parts[parts.length - 1];
 
-        if (lastPart && lastPart.type === "text") {
-          parts[parts.length - 1] = {
-            ...lastPart,
-            content: lastPart.content + text,
-          };
+        // Find the last text part anywhere in the array
+        let lastTextIdx = -1;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          if (parts[i].type === "text") {
+            lastTextIdx = i;
+            break;
+          }
+        }
+
+        if (lastTextIdx >= 0) {
+          // Append to the existing text part
+          const existing = parts[lastTextIdx];
+          if (existing.type === "text") {
+            parts[lastTextIdx] = {
+              ...existing,
+              content: existing.content + text,
+            };
+          }
         } else {
           parts.push({ type: "text", id: nextPartId(), content: text });
         }
@@ -157,14 +160,28 @@ export const useAgentStore = create<AgentStore>((set) => ({
         if (m.id !== id) return m;
 
         const parts = [...m.contentParts];
-        const lastPart = parts[parts.length - 1];
 
-        if (lastPart && lastPart.type === "thinking") {
-          parts[parts.length - 1] = {
-            ...lastPart,
-            content: lastPart.content + thought,
-          };
+        // Find the last thinking part anywhere in the array (not just the very last part)
+        let lastThinkingIdx = -1;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          const p = parts[i];
+          if (p.type === "thinking" && p.isStreaming) {
+            lastThinkingIdx = i;
+            break;
+          }
+        }
+
+        if (lastThinkingIdx >= 0) {
+          // Append to the existing streaming thinking part
+          const existing = parts[lastThinkingIdx];
+          if (existing.type === "thinking") {
+            parts[lastThinkingIdx] = {
+              ...existing,
+              content: existing.content + thought,
+            };
+          }
         } else {
+          // Check if the last part is a finished thinking block — start a new one
           parts.push({
             type: "thinking",
             id: nextPartId(),
@@ -283,6 +300,100 @@ export const useAgentStore = create<AgentStore>((set) => ({
     }));
   },
 
+  cancelEmptyThinking: (messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "thinking" && part.isStreaming && !part.content) {
+            return { ...part, isStreaming: false };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  addAgentStep: (messageId, stepName, detail) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = [...m.contentParts];
+        parts.push({
+          type: "agent_step",
+          id: nextPartId(),
+          stepName,
+          detail,
+          status: "running",
+          startedAt: new Date().toISOString(),
+          subSteps: [],
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  updateAgentStep: (messageId, stepId, subStep) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "agent_step" && part.id === stepId) {
+            return { ...part, subSteps: [...part.subSteps, subStep] };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  completeAgentStep: (messageId, stepId) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "agent_step" && part.id === stepId) {
+            return {
+              ...part,
+              status: "completed" as const,
+              completedAt: new Date().toISOString(),
+            };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
+  completeAllAgentSteps: (messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const now = new Date().toISOString();
+        const parts = m.contentParts.map((part) => {
+          if (part.type === "agent_step" && part.status === "running") {
+            return { ...part, status: "completed" as const, completedAt: now };
+          }
+          return part;
+        });
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
+
   finishAssistant: (id) => {
     set((state) => ({
       messages: state.messages.map((m) => {
@@ -301,11 +412,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
   },
 
   setLoading: (loading) => set({ isLoading: loading }),
-
-  setNotifierFilter: (type, enabled) =>
-    set((state) => ({
-      notifierFilters: { ...state.notifierFilters, [type]: enabled },
-    })),
 
   clearMessages: () => set({ messages: [] }),
 }));
