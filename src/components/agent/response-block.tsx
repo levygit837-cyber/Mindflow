@@ -14,6 +14,24 @@ interface ResponseBlockProps {
 function ResponseBlockInner({ content, isStreaming }: ResponseBlockProps) {
   if (!content && !isStreaming) return null;
 
+  // Durante o streaming, usar texto plano para evitar markdown parcial quebrado
+  if (isStreaming) {
+    return (
+      <div className="py-1">
+        <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+          {content}
+          <span
+            className={cn(
+              "ml-0.5 inline-block w-1 h-4 rounded-sm align-middle",
+              "bg-zinc-400 animate-typewriter-blink"
+            )}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Quando completo, renderizar markdown completo
   return (
     <div className="py-1">
       <div
@@ -34,14 +52,6 @@ function ResponseBlockInner({ content, isStreaming }: ResponseBlockProps) {
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
           {content}
         </ReactMarkdown>
-        {isStreaming && (
-          <span
-            className={cn(
-              "ml-0.5 inline-block w-1 h-4 rounded-sm",
-              "bg-zinc-400 animate-typewriter-blink"
-            )}
-          />
-        )}
       </div>
     </div>
   );
