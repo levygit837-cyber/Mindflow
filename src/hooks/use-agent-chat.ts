@@ -166,6 +166,7 @@ export function useAgentChat() {
                   break;
 
                 case "done":
+                  store.completeAllAgentSteps(assistantId);
                   break;
               }
             } catch {
