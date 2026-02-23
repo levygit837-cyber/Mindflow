@@ -12,6 +12,7 @@ interface AgentStepsBlockProps {
   subSteps: string[];
   startedAt: string;
   completedAt?: string;
+  hidden?: boolean;
 }
 
 function AgentStepsBlockInner({
@@ -21,8 +22,11 @@ function AgentStepsBlockInner({
   subSteps,
   startedAt,
   completedAt,
+  hidden,
 }: AgentStepsBlockProps) {
   const [expanded, setExpanded] = useState(status === "running");
+
+  if (hidden) return null;
 
   const duration = completedAt
     ? new Date(completedAt).getTime() - new Date(startedAt).getTime()

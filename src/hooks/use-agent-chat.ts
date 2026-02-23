@@ -135,6 +135,9 @@ export function useAgentChat() {
                       subStep?: string;
                       stepId?: string;
                     };
+                    // Filtra nodes INTERNAL antes de exibir
+                    if (stepData.detail?.includes("[INTERNAL]")) break;
+
                     if (stepData.action === "update" && stepData.stepId && stepData.subStep) {
                       store.updateAgentStep(assistantId, stepData.stepId, stepData.subStep);
                     } else if (stepData.action === "complete" && stepData.stepId) {
