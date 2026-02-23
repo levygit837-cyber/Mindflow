@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, Bot, Settings, Users } from "lucide-react";
+import { Brain, Bot, Settings, Users, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: Brain },
   { href: "/agent", label: "Deep Agent", icon: Bot },
   { href: "/swarm", label: "Swarm", icon: Users },
+  { href: "/logs", label: "Logs", icon: ScrollText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
