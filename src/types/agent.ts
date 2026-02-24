@@ -109,7 +109,14 @@ export interface Conversation {
   updatedAt: string;
 }
 
-export type StreamModeName = "updates" | "messages" | "custom";
+export type OutputCategory =
+  | "explanation"
+  | "decision"
+  | "code_result"
+  | "summary"
+  | "response"; // fallback
+
+export type StreamModeName = "updates" | "messages" | "custom" | "values" | "debug";
 
 export type { NodeCategory } from "@/lib/agent/node-registry";
 
@@ -149,5 +156,13 @@ export interface StreamEvent {
     model?: string;
     status?: "start" | "update" | "end";
     path?: string[];
+    // Turn filter & ordering
+    turnRunId?: string;
+    insertBefore?: string;
+    /** Stable marker ID emitted on the first response part of a turn.
+     *  The frontend stores the mapping marker → TextPart ID for insertBefore resolution. */
+    firstResponseMarker?: string;
+    // Structured output
+    category?: OutputCategory;
   };
 }

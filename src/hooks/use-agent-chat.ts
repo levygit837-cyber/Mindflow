@@ -2,8 +2,7 @@
 
 import { useCallback } from "react";
 import { useAgentStore } from "@/stores/agent-store";
-import type { StreamEvent } from "@/types/agent";
-import type { NotifierType } from "@/types/agent";
+import type { StreamEvent, NotifierType, ToolCallInfo } from "@/types/agent";
 
 function parseToolCallPayload(raw: string): { id?: string; name: string; args: Record<string, unknown> } | null {
   try {
@@ -97,11 +96,36 @@ export function useAgentChat() {
                   store.cancelEmptyThinking(assistantId);
                   const tc = parseToolCallPayload(event.data);
                   if (!tc) break;
-                  store.addToolCall(assistantId, {
+
+                  const toolCallPart: ToolCallInfo = {
                     id: tc.id || event.meta?.toolCallId,
                     name: tc.name,
                     args: tc.args,
-                  });
+                  };
+
+                  if (event.meta?.insertBefore) {
+                    // Find the first TextPart of the current assistant message
+                    // and insert the tool_call block before it for correct ordering.
+                    const msg = store.messages.find((m) => m.id === assistantId);
+                    const firstTextPart = msg?.contentParts.find((p) => p.type === "text");
+
+                    if (firstTextPart) {
+                      const toolCallId = toolCallPart.id || `tc-${Date.now()}`;
+                      store.insertPartBefore(assistantId, firstTextPart.id, {
+                        type: "tool_call",
+                        id: `part-ins-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                        toolCallId,
+                        name: toolCallPart.name,
+                        args: toolCallPart.args ?? {},
+                        status: "running",
+                        startedAt: new Date().toISOString(),
+                      });
+                      break;
+                    }
+                  }
+
+                  // Fallback: append normally
+                  store.addToolCall(assistantId, toolCallPart);
                   break;
                 }
 
