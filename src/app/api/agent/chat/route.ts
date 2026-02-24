@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         { messages: [new HumanMessage(message)] },
         {
           ...config,
-          streamMode: ["messages", "updates"],
+          streamMode: ["messages", "updates", "values", "debug"],
         }
       );
 

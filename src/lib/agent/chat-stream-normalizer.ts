@@ -1,10 +1,13 @@
 import type {
   LLMProvider,
+  OutputCategory,
   StreamEvent,
   StreamEventType,
   StreamModeName,
 } from "@/types/agent";
 import { classifyNode, getNodeLabel, isStreamableNode, NodeCategory } from "./node-registry";
+import { categorizeOutput } from "./output-categorizer";
+import { StreamEventQueue } from "./stream-event-queue";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -29,6 +32,9 @@ export interface ChatStreamNormalizerOptions {
     mode: StreamModeName,
     meta?: StreamEvent["meta"]
   ) => void;
+  /** Optional: pass the run_id of the current turn to filter out replayed messages.
+   *  If omitted, the normalizer auto-detects it from the first run_id seen in messages mode. */
+  currentTurnRunId?: string;
 }
 
 export interface ChatStreamNormalizer {
@@ -304,7 +310,7 @@ function toolResultText(message: UnknownRecord): string {
   return "Done";
 }
 
-const VALID_STREAM_MODES = new Set(["messages", "updates", "custom"]);
+const VALID_STREAM_MODES = new Set(["messages", "updates", "custom", "values", "debug"]);
 
 function parseStreamTuple(item: unknown): StreamTuple | null {
   if (!Array.isArray(item)) return null;
@@ -476,6 +482,7 @@ export function createAgentChatStreamNormalizer({
   provider,
   emitUpdateSteps = true,
   emit,
+  currentTurnRunId: initialTurnRunId,
 }: ChatStreamNormalizerOptions): ChatStreamNormalizer {
   const useThinkParser = isGeminiProvider(provider);
 
@@ -487,6 +494,12 @@ export function createAgentChatStreamNormalizer({
   const seenToolResults = new Set<string>();
   const pendingTools = new Map<string, { name: string; args: Record<string, unknown> }>();
   const pendingByName = new Map<string, string[]>();
+
+  /** Turn filter: run_id of the current LangGraph turn. Auto-detected lazily. */
+  let currentTurnRunId: string | null = initialTurnRunId ?? null;
+
+  /** Deferred event queue for tool_calls / tool_results from updates mode. */
+  const eventQueue = new StreamEventQueue();
 
   const emitEvent = (
     type: StreamEventType,
@@ -553,8 +566,19 @@ export function createAgentChatStreamNormalizer({
   const emitText = (text: string, mode: StreamModeName, meta: StreamEvent["meta"]) => {
     if (!text) return;
 
+    // Attach category + firstResponseMarker on the first response emission
+    const enrichResponseMeta = (baseMeta: StreamEvent["meta"]): StreamEvent["meta"] => {
+      const category: OutputCategory = categorizeOutput(text);
+      const enriched: StreamEvent["meta"] = { ...baseMeta, category };
+      if (currentTurnRunId && !eventQueue.hasFirstResponseMarker()) {
+        const marker = eventQueue.setFirstResponseMarker(currentTurnRunId);
+        enriched.firstResponseMarker = marker;
+      }
+      return enriched;
+    };
+
     if (!useThinkParser) {
-      emitEvent("response", text, mode, meta);
+      emitEvent("response", text, mode, enrichResponseMeta(meta));
       return;
     }
 
@@ -565,12 +589,16 @@ export function createAgentChatStreamNormalizer({
 
     const split = splitGeminiThinkTags(text);
     if (split.length === 0) {
-      emitEvent("response", text, mode, meta);
+      emitEvent("response", text, mode, enrichResponseMeta(meta));
       return;
     }
 
     for (const part of split) {
-      emitEvent(part.type, part.text, mode, meta);
+      if (part.type === "response") {
+        emitEvent(part.type, part.text, mode, enrichResponseMeta(meta));
+      } else {
+        emitEvent(part.type, part.text, mode, meta);
+      }
     }
   };
 
@@ -586,12 +614,25 @@ export function createAgentChatStreamNormalizer({
       seenToolCalls.add(tc.id);
       pushPending(tc.id, tc.name, tc.args);
 
-      emitEvent(
-        "tool_call",
-        JSON.stringify({ id: tc.id, name: tc.name, args: tc.args }),
-        mode,
-        { node, toolCallId: tc.id, path }
-      );
+      const tcMeta: StreamEvent["meta"] = { node, toolCallId: tc.id, path };
+
+      if (mode === "updates") {
+        // Defer: will be emitted in flush() with insertBefore set
+        eventQueue.enqueue(
+          "tool_call",
+          JSON.stringify({ id: tc.id, name: tc.name, args: tc.args }),
+          mode,
+          tcMeta,
+          true // wantsInsertBefore
+        );
+      } else {
+        emitEvent(
+          "tool_call",
+          JSON.stringify({ id: tc.id, name: tc.name, args: tc.args }),
+          mode,
+          tcMeta
+        );
+      }
     }
   };
 
@@ -627,13 +668,25 @@ export function createAgentChatStreamNormalizer({
     removePendingById(resolvedName, toolCallId);
 
     const result = toolResultText(message);
+    const trMeta: StreamEvent["meta"] = { node, toolCallId, path };
 
-    emitEvent(
-      "tool_result",
-      JSON.stringify({ id: toolCallId, name: resolvedName, result }),
-      mode,
-      { node, toolCallId, path }
-    );
+    if (mode === "updates") {
+      // Defer tool_result alongside its tool_call
+      eventQueue.enqueue(
+        "tool_result",
+        JSON.stringify({ id: toolCallId, name: resolvedName, result }),
+        mode,
+        trMeta,
+        false // tool_result goes after tool_call, no insertBefore needed
+      );
+    } else {
+      emitEvent(
+        "tool_result",
+        JSON.stringify({ id: toolCallId, name: resolvedName, result }),
+        mode,
+        trMeta
+      );
+    }
   };
 
   const emitAIFallbackFromUpdate = (
@@ -670,10 +723,30 @@ export function createAgentChatStreamNormalizer({
     const rawMessage = payload[0];
     const metadata = asRecord(payload[1]);
 
+    const eventRunId = safeString(metadata?.run_id);
+
+    // Lazy run_id detection: adopt the first run_id seen as the current turn's run_id
+    if (eventRunId && !currentTurnRunId) {
+      currentTurnRunId = eventRunId;
+      eventQueue.reset(); // ensure fresh queue for this turn
+    }
+
+    // Turn filter: skip replayed messages from previous turns (log-only, no SSE)
+    if (currentTurnRunId && eventRunId && eventRunId !== currentTurnRunId) {
+      // Event belongs to a previous turn — silently discard from SSE stream.
+      // The route.ts already published it to logBus before calling process().
+      return;
+    }
+
     // Handle raw string tokens directly (Gemini token-by-token)
     if (typeof rawMessage === "string") {
       const node = safeString(metadata?.langgraph_node);
-      const meta = { node, runId: safeString(metadata?.run_id), path };
+      const meta: StreamEvent["meta"] = {
+        node,
+        runId: eventRunId,
+        turnRunId: currentTurnRunId ?? undefined,
+        path,
+      };
       emitText(rawMessage, "messages", meta);
       return;
     }
@@ -683,9 +756,10 @@ export function createAgentChatStreamNormalizer({
     const message = unwrapMessageLike(messageRecord);
 
     const node = safeString(metadata?.langgraph_node);
-    const meta = {
+    const meta: StreamEvent["meta"] = {
       node,
-      runId: safeString(metadata?.run_id),
+      runId: eventRunId,
+      turnRunId: currentTurnRunId ?? undefined,
       path,
     };
 
@@ -777,11 +851,16 @@ export function createAgentChatStreamNormalizer({
 
       if (tuple.mode === "custom") {
         processCustomMode(tuple.payload, tuple.path);
+        return;
       }
+
+      // "values" and "debug" modes: logged by route.ts via logBus, ignored for SSE
     },
 
     flush() {
       thinkParser?.flush();
+      // Drain deferred tool_calls / tool_results with insertBefore positioning
+      eventQueue.drain(emitEvent);
     },
   };
 }

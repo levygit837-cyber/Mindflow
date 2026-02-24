@@ -43,6 +43,8 @@ interface AgentStore {
   finishAssistant: (id: string) => void;
   setLoading: (loading: boolean) => void;
   clearMessages: () => void;
+  /** Insert a ContentPart immediately before the part with targetPartId in the given message. */
+  insertPartBefore: (messageId: string, targetPartId: string, newPart: ContentPart) => void;
 }
 
 let msgCounter = 0;
@@ -414,4 +416,24 @@ export const useAgentStore = create<AgentStore>((set) => ({
   setLoading: (loading) => set({ isLoading: loading }),
 
   clearMessages: () => set({ messages: [] }),
+
+  insertPartBefore: (messageId, targetPartId, newPart) => {
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+
+        const parts = [...m.contentParts];
+        const targetIdx = parts.findIndex((p) => p.id === targetPartId);
+
+        if (targetIdx === -1) {
+          // targetPartId not found — append as fallback
+          parts.push(newPart);
+        } else {
+          parts.splice(targetIdx, 0, newPart);
+        }
+
+        return { ...m, contentParts: parts };
+      }),
+    }));
+  },
 }));
