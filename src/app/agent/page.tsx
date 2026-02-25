@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChatInterface } from "@/components/agent/chat-interface";
-import { useAgentStore } from "@/stores/agent-store";
+import { ChatInterface } from "@frontend/components/agent/chat-interface";
+import { useAgentStore } from "@frontend/stores/agent.store";
 
 function AgentPageInner() {
   const searchParams = useSearchParams();

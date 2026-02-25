@@ -1,4 +1,4 @@
-import { LogViewer } from "@/components/logs/log-viewer";
+import { LogViewer } from "@frontend/components/logs/log-viewer";
 
 export default function LogsPage() {
   return (
