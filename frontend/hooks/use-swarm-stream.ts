@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSwarmStore } from "@/stores/swarm-store";
-import type { NotificationEvent } from "@/types/swarm";
+import { useSwarmStore } from "@frontend/stores/swarm.store";
+import type { NotificationEvent } from "@shared/types/swarm";
 
 /**
  * Hook that connects to the swarm SSE stream for a given task and routes

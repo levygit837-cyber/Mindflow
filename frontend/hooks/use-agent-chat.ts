@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { useAgentStore } from "@/stores/agent-store";
-import type { StreamEvent, NotifierType, ToolCallInfo } from "@/types/agent";
+import { useAgentStore } from "@frontend/stores/agent.store";
+import type { StreamEvent, NotifierType, ToolCallInfo } from "@shared/types/agent";
 
 function parseToolCallPayload(raw: string): { id?: string; name: string; args: Record<string, unknown> } | null {
   try {

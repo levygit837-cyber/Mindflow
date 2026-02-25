@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronRight, Loader2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@frontend/lib/utils";
 import { getToolConfig } from "./tool-icon-map";
 
 interface ToolCallBlockProps {

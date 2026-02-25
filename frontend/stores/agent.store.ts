@@ -4,7 +4,7 @@ import type {
   ToolCallInfo,
   ContentPart,
   NotifierType,
-} from "@/types/agent";
+} from "@shared/types/agent";
 
 interface ChatMessage {
   id: string;

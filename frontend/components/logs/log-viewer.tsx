@@ -2,11 +2,11 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Download, Trash2, ChevronDown, ChevronUp, Wifi, WifiOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { useLogStream, type LogFilter } from "@/hooks/use-log-stream";
-import type { LogEntry } from "@/lib/agent/log-bus";
+import { Button } from "@frontend/components/ui/button";
+import { ScrollArea } from "@frontend/components/ui/scroll-area";
+import { cn } from "@frontend/lib/utils";
+import { useLogStream, type LogFilter } from "@frontend/hooks/use-log-stream";
+import type { LogEntry } from "@backend/agent/log-bus";
 
 const FILTER_OPTIONS: { value: LogFilter; label: string }[] = [
   { value: "all", label: "ALL" },

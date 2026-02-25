@@ -2,8 +2,8 @@
 
 import { useRef, useEffect } from "react";
 import { Trash2, Bot } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@frontend/components/ui/button";
+import { ScrollArea } from "@frontend/components/ui/scroll-area";
 import { MessageBubble } from "./message-bubble";
 import { ThinkingBlock } from "./thinking-block";
 import { ToolCallBlock } from "./tool-call-block";
@@ -11,8 +11,8 @@ import { ResponseBlock } from "./response-block";
 import { AgentStepsBlock } from "./agent-steps-block";
 import { ChatInput } from "./chat-input";
 import { ProviderSelector } from "./provider-selector";
-import { useAgentChat } from "@/hooks/use-agent-chat";
-import type { ContentPart } from "@/types/agent";
+import { useAgentChat } from "@frontend/hooks/use-agent-chat";
+import type { ContentPart } from "@shared/types/agent";
 
 /* ------------------------------------------------------------------ */
 /*  Content Part Renderer                                              */

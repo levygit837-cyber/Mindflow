@@ -1,10 +1,10 @@
 "use client";
 
 import { MessageSquarePlus, Trash2, MessageSquare, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import type { Conversation } from "@/types/agent";
+import { Button } from "@frontend/components/ui/button";
+import { ScrollArea } from "@frontend/components/ui/scroll-area";
+import { cn } from "@frontend/lib/utils";
+import type { Conversation } from "@shared/types/agent";
 
 interface ConversationSidebarProps {
   conversations: Conversation[];

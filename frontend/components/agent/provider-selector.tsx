@@ -6,9 +6,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { LLMProvider } from "@/types/agent";
-import { PROVIDER_MODELS } from "@/types/settings";
+} from "@frontend/components/ui/select";
+import type { LLMProvider } from "@shared/types/agent";
+import { PROVIDER_MODELS } from "@shared/types/settings";
 
 interface ProviderSelectorProps {
   provider: LLMProvider;

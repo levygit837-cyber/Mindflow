@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { useSwarmStore } from "@/stores/swarm-store";
-import { ProviderSelector } from "@/components/agent/provider-selector";
+import { Button } from "@frontend/components/ui/button";
+import { Textarea } from "@frontend/components/ui/textarea";
+import { Input } from "@frontend/components/ui/input";
+import { useSwarmStore } from "@frontend/stores/swarm.store";
+import { ProviderSelector } from "@frontend/components/agent/provider-selector";
 
 export function TaskInput() {
   const [value, setValue] = useState("");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { LogEntry } from "@/lib/agent/log-bus";
+import type { LogEntry } from "@backend/agent/log-bus";
 
 export type LogFilter =
   | "all"
