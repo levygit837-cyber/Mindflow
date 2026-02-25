@@ -7,11 +7,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { swarmTaskSubmissionSchema } from "@/types/swarm";
-import type { LLMProvider } from "@/types/agent";
-import { createSwarmGraph, buildInitialState } from "@/lib/swarm/graph";
-import { registerSession, updateSession } from "@/lib/swarm/registry";
-import { createLogger } from "@/utils/logger";
+import { swarmTaskSubmissionSchema } from "@backend/schemas/swarm.schema";
+import type { LLMProvider } from "@shared/types/agent";
+import { createSwarmGraph, buildInitialState } from "@backend/swarm/graph";
+import { registerSession, updateSession } from "@backend/swarm/registry";
+import { createLogger } from "@backend/utils/logger";
 
 const logger = createLogger("api:swarm");
 

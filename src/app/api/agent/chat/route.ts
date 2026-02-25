@@ -1,26 +1,31 @@
 import { NextRequest } from "next/server";
-import { createOmniMindAgent, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@/lib/agent";
-import { ensureDbInitialized } from "@/lib/db/postgres";
-import { createSSEStream } from "@/lib/agent/stream";
-import { createAgentChatStreamNormalizer } from "@/lib/agent/chat-stream-normalizer";
-import type { LLMProvider, StreamEvent, StreamEventType, StreamModeName } from "@/types/agent";
+import { createOmniMindAgent, DEFAULT_PROVIDER, DEFAULT_MODEL } from "@backend/agent";
+import { ensureDbInitialized } from "@backend/db/postgres";
+import { createSSEStream } from "@backend/agent/stream";
+import { createAgentChatStreamNormalizer } from "@backend/agent/chat-stream-normalizer";
+import type { LLMProvider, StreamEvent, StreamEventType, StreamModeName } from "@shared/types/agent";
 import { HumanMessage } from "@langchain/core/messages";
-import { logBus } from "@/lib/agent/log-bus";
+import { logBus } from "@backend/agent/log-bus";
+import { agentChatRequestSchema } from "@backend/schemas/agent.schema";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const debugStepsRequested = body?.debugSteps === true;
+
+  const parsed = agentChatRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const {
     message,
     provider = DEFAULT_PROVIDER,
     model = DEFAULT_MODEL,
     conversationId,
-  } = body as {
-    message: string;
-    provider?: LLMProvider;
-    model?: string;
-    conversationId?: string;
-  };
+    debugSteps: debugStepsRequested,
+  } = parsed.data;
 
   const { stream, send, close } = createSSEStream();
 
