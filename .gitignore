@@ -43,13 +43,13 @@ next-env.d.ts
 # backup files
 *.bak
 
-# legacy directories
-backend/
-frontend/
 
 # IDE
 .vscode/
 .idea/
+
+# searxng docker volume (permission-restricted)
+backend/searxng/searxng/
 
 # codesearch index
 .coa/
