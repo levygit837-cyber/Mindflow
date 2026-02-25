@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildDynamicPrompt } from "@/lib/agent/prompts/dynamic-prompt";
+import { buildDynamicPrompt } from "@backend/agent/prompts/dynamic-prompt";
 import { MessagesAnnotation } from "@langchain/langgraph";
 import { HumanMessage } from "@langchain/core/messages";
 

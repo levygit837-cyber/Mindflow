@@ -11,7 +11,7 @@
  */
 
 import { HumanMessage } from "@langchain/core/messages";
-import { createLogger } from "@/utils/logger";
+import { createLogger } from "@backend/utils/logger";
 import type { NotifierService } from "./notifier";
 import type { SwarmState, SwarmStateUpdate } from "./state";
 
@@ -81,7 +81,7 @@ export function createOrchestratorNode(notifier: NotifierService) {
         messages: [interruptionMessage],
         notifications: [
           notifier.emit("ANALYST_STATE_CHANGE", "orchestrator", {
-            old_state: "ALERT_CRITICO",
+            old_state: "ALERT_CRITICAL",
             new_state: "MONITORING",
             reason: "Interruption delivered to coder. Resuming monitoring.",
           }),

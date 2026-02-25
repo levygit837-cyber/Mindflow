@@ -1,4 +1,4 @@
-import type { StreamEvent } from "@/types/agent";
+import type { StreamEvent } from "@shared/types/agent";
 
 export interface LogEntry extends StreamEvent {
   sessionId: string;

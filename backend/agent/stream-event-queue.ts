@@ -1,4 +1,4 @@
-import type { StreamEventType, StreamModeName, StreamEvent } from "@/types/agent";
+import type { StreamEventType, StreamModeName, StreamEvent } from "@shared/types/agent";
 
 type EmitFn = (
   type: StreamEventType,

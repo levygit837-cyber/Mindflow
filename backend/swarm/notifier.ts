@@ -7,12 +7,12 @@
  */
 
 import { v4 as uuidv4 } from "uuid";
-import { createLogger } from "@/utils/logger";
+import { createLogger } from "@backend/utils/logger";
 import type {
   SwarmEventType,
   SwarmAgentId,
   NotificationEvent,
-} from "@/types/swarm";
+} from "@shared/types/swarm";
 
 const logger = createLogger("swarm:notifier");
 

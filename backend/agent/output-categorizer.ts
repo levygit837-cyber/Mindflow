@@ -1,4 +1,4 @@
-import type { OutputCategory } from "@/types/agent";
+import type { OutputCategory } from "@shared/types/agent";
 
 /**
  * Heuristically categorizes a text response from the LLM.

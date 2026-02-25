@@ -6,7 +6,7 @@
  */
 
 import type { TemplateParams } from "./index";
-import type { FileChangeEntry } from "@/types/swarm";
+import type { FileChangeEntry } from "@shared/types/swarm";
 import {
   TOP_BORDER,
   BOTTOM_BORDER,

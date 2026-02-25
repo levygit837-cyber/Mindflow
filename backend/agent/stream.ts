@@ -1,4 +1,4 @@
-import type { StreamEvent } from "@/types/agent";
+import type { StreamEvent } from "@shared/types/agent";
 
 export function encodeSSE(event: StreamEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;

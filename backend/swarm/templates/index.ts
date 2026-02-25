@@ -6,7 +6,7 @@
  * structured box-drawing display for the sandbox panel.
  */
 
-import type { FileChangeEntry } from "@/types/swarm";
+import type { FileChangeEntry } from "@shared/types/swarm";
 import type { ProjectType } from "../prompts/router";
 import { detectProjectType } from "../prompts/router";
 import { renderRestApiTemplate } from "./rest-api";

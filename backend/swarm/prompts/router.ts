@@ -9,7 +9,7 @@
  * design reference only.
  */
 
-import type { SwarmAgentId } from "@/types/swarm";
+import type { SwarmAgentId } from "@shared/types/swarm";
 import { buildCoderPrompt } from "./coder-prompt";
 import { buildAnalystPrompt } from "./analyst-prompt";
 import { buildReviewerPrompt } from "./reviewer-prompt";

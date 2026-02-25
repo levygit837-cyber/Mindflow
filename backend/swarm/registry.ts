@@ -7,8 +7,8 @@
  */
 
 import type { NotifierService } from "./notifier";
-import type { TaskStatus } from "@/types/swarm";
-import { createLogger } from "@/utils/logger";
+import type { TaskStatus } from "@shared/types/swarm";
+import { createLogger } from "@backend/utils/logger";
 
 const logger = createLogger("swarm:registry");
 
