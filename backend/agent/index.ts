@@ -1,3 +1,4 @@
+import "server-only";
 import { createOmniMindDeepAgent } from "./deep-agent-config";
 import { getModelForProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "./providers";
 import { buildStaticSystemPrompt } from "./prompts/dynamic-prompt";

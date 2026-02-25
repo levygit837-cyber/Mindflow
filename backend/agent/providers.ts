@@ -1,3 +1,4 @@
+import "server-only";
 import { ChatVertexAI } from "@langchain/google-vertexai";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatAnthropic } from "@langchain/anthropic";

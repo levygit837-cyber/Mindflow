@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Orchestrator Node — pure-function graph node that routes tasks through the swarm.
  *

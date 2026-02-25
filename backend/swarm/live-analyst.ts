@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Live Analyst Agent Node — stealth monitoring LLM agent that analyzes
  * the Coder's output for quality, security, and correctness issues.
