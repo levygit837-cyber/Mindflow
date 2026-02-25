@@ -2,10 +2,10 @@
 
 import { useRef, useEffect } from "react";
 import { Code2 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { useSwarmStore } from "@/stores/swarm-store";
+import { Card, CardHeader, CardTitle, CardContent } from "@frontend/components/ui/card";
+import { ScrollArea } from "@frontend/components/ui/scroll-area";
+import { Badge } from "@frontend/components/ui/badge";
+import { useSwarmStore } from "@frontend/stores/swarm.store";
 
 export function TokenStreamPanel() {
   const coderTokens = useSwarmStore((s) => s.coderTokens);

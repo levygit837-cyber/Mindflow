@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@frontend/lib/utils";
 
 interface MessageBubbleProps {
   role: "user" | "assistant";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@frontend/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@frontend/components/ui/tooltip";
 import {
   Wrench,
   Check,
@@ -17,7 +17,7 @@ import {
   Folder,
 } from "lucide-react";
 import { ThinkingBlock } from "./thinking-block";
-import type { AgentActivity, ToolActivity } from "@/types/agent";
+import type { AgentActivity, ToolActivity } from "@shared/types/agent";
 
 interface ActivityStreamProps {
   activities: AgentActivity[];

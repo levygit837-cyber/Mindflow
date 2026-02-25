@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Button } from "@frontend/components/ui/button";
+import { Textarea } from "@frontend/components/ui/textarea";
+import { cn } from "@frontend/lib/utils";
 
 interface ChatInputProps {
   onSend: (message: string) => void;

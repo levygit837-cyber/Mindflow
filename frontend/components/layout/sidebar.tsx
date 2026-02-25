@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brain, Bot, Settings, Users, ScrollText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@frontend/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   TooltipProvider,
-} from "@/components/ui/tooltip";
+} from "@frontend/components/ui/tooltip";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Brain },

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@frontend/lib/utils";
 
 interface ThinkingBlockProps {
   id: string;

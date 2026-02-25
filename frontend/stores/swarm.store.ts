@@ -5,8 +5,8 @@ import type {
   TaskStatus,
   AnalystAlertLevel,
   NotificationEvent,
-} from "@/types/swarm";
-import type { LLMProvider } from "@/types/agent";
+} from "@shared/types/swarm";
+import type { LLMProvider } from "@shared/types/agent";
 
 interface SwarmStore {
   // Connection state

@@ -2,18 +2,18 @@
 
 import { useMemo } from "react";
 import { Bell } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@frontend/components/ui/card";
+import { ScrollArea } from "@frontend/components/ui/scroll-area";
+import { Badge } from "@frontend/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useSwarmStore } from "@/stores/swarm-store";
-import type { SwarmAgentId, SwarmEventType, NotificationEvent } from "@/types/swarm";
+} from "@frontend/components/ui/select";
+import { useSwarmStore } from "@frontend/stores/swarm.store";
+import type { SwarmAgentId, SwarmEventType, NotificationEvent } from "@shared/types/swarm";
 
 const AGENT_IDS: SwarmAgentId[] = [
   "orchestrator",

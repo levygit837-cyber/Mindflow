@@ -1,11 +1,11 @@
 "use client";
 
 import { Eye, Shield, AlertTriangle, AlertOctagon, type LucideProps } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { useSwarmStore } from "@/stores/swarm-store";
-import type { AnalystAlertLevel } from "@/types/swarm";
+import { Card, CardHeader, CardTitle, CardContent } from "@frontend/components/ui/card";
+import { ScrollArea } from "@frontend/components/ui/scroll-area";
+import { Badge } from "@frontend/components/ui/badge";
+import { useSwarmStore } from "@frontend/stores/swarm.store";
+import type { AnalystAlertLevel } from "@shared/types/swarm";
 
 type LucideIcon = React.FC<LucideProps>;
 
@@ -15,14 +15,14 @@ const alertConfig: Record<
 > = {
   IDLE: { label: "Idle", color: "text-muted-foreground", bgColor: "bg-muted", icon: Eye },
   MONITORING: { label: "Monitoring", color: "text-green-500", bgColor: "bg-green-500/10", icon: Shield },
-  ALERT_LEVE: { label: "Low Alert", color: "text-green-400", bgColor: "bg-green-400/10", icon: Shield },
-  ALERT_MODERADO: {
+  ALERT_LOW: { label: "Low Alert", color: "text-green-400", bgColor: "bg-green-400/10", icon: Shield },
+  ALERT_MODERATE: {
     label: "Moderate",
     color: "text-yellow-500",
     bgColor: "bg-yellow-500/10",
     icon: AlertTriangle,
   },
-  ALERT_CRITICO: {
+  ALERT_CRITICAL: {
     label: "Critical",
     color: "text-red-500",
     bgColor: "bg-red-500/10",
