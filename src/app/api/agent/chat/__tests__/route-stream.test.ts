@@ -6,11 +6,11 @@ const { ensureDbInitialized, streamMock } = vi.hoisted(() => ({
   streamMock: vi.fn(),
 }));
 
-vi.mock("@/lib/db/init", () => ({
+vi.mock("@backend/db/postgres", () => ({
   ensureDbInitialized,
 }));
 
-vi.mock("@/lib/agent", () => ({
+vi.mock("@backend/agent", () => ({
   createOmniMindAgent: vi.fn(() => ({
     stream: streamMock,
   })),

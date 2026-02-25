@@ -7,14 +7,14 @@ beforeAll(() => {
 });
 
 // Mock ScrollArea to just render children
-vi.mock("@/components/ui/scroll-area", () => ({
+vi.mock("@frontend/components/ui/scroll-area", () => ({
   ScrollArea: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
 }));
 
 // Mock the useAgentChat hook
-vi.mock("@/hooks/use-agent-chat", () => ({
+vi.mock("@frontend/hooks/use-agent-chat", () => ({
   useAgentChat: () => ({
     messages: [
       {
