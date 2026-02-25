@@ -25,9 +25,9 @@ import { createAnalystNode } from "./live-analyst";
 import { createReviewerNode } from "./reviewer";
 import { createSandboxRendererNode } from "./sandbox-renderer";
 import type { PromptContext } from "./prompts/router";
-import type { LLMProvider } from "@/types/agent";
-import { getCheckpointer } from "@/lib/db/postgres";
-import { createLogger } from "@/utils/logger";
+import type { LLMProvider } from "@shared/types/agent";
+import { getCheckpointer } from "@backend/db/postgres";
+import { createLogger } from "@backend/utils/logger";
 
 const logger = createLogger("swarm:graph");
 

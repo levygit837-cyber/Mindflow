@@ -1,7 +1,7 @@
 import { createOmniMindDeepAgent } from "./deep-agent-config";
 import { getModelForProvider, DEFAULT_PROVIDER, DEFAULT_MODEL } from "./providers";
 import { buildStaticSystemPrompt } from "./prompts/dynamic-prompt";
-import type { LLMProvider } from "@/types/agent";
+import type { LLMProvider } from "@shared/types/agent";
 
 export function createOmniMindAgent(
   provider: LLMProvider = DEFAULT_PROVIDER,

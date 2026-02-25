@@ -16,7 +16,7 @@ import type {
   InterruptionRequest,
   ReviewImprovement,
   NotificationEvent,
-} from "@/types/swarm";
+} from "@shared/types/swarm";
 
 const TOKEN_STREAM_CAP = 10_000;
 const NOTIFICATION_CAP = 500;

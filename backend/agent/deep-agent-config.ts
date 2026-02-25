@@ -6,7 +6,7 @@ import {
 } from "deepagents";
 import { SafeBackend } from "./safe-backend";
 import type { BaseLanguageModel } from "@langchain/core/language_models/base";
-import { getCheckpointer } from "@/lib/db/postgres";
+import { getCheckpointer } from "@backend/db/postgres";
 import { searchWebTool } from "./tools/search-web";
 
 export interface DeepAgentOptions {

@@ -15,20 +15,20 @@
 
 import { createDeepAgent } from "deepagents";
 import { HumanMessage } from "@langchain/core/messages";
-import { getModelForProvider } from "@/lib/agent/providers";
+import { getModelForProvider } from "@backend/agent/providers";
 import { reviewerTools } from "./tools/reviewer-tools";
 import { deduplicateTools } from "./utils/deduplicate-tools";
 import { composeSystemPrompt } from "./prompts/router";
 import type { PromptContext } from "./prompts/router";
-import { createLogger } from "@/utils/logger";
+import { createLogger } from "@backend/utils/logger";
 import type { NotifierService } from "./notifier";
 import type { SwarmState, SwarmStateUpdate } from "./state";
-import type { LLMProvider } from "@/types/agent";
+import type { LLMProvider } from "@shared/types/agent";
 import type {
   ReviewImprovement,
   ReviewAssessment,
   NotificationEvent,
-} from "@/types/swarm";
+} from "@shared/types/swarm";
 
 const logger = createLogger("swarm:reviewer");
 

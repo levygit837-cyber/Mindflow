@@ -17,20 +17,20 @@
 
 import { createDeepAgent } from "deepagents";
 import { HumanMessage } from "@langchain/core/messages";
-import { getModelForProvider } from "@/lib/agent/providers";
+import { getModelForProvider } from "@backend/agent/providers";
 import { analystTools } from "./tools/analyst-tools";
 import { deduplicateTools } from "./utils/deduplicate-tools";
 import { composeSystemPrompt } from "./prompts/router";
 import type { PromptContext } from "./prompts/router";
-import { createLogger } from "@/utils/logger";
+import { createLogger } from "@backend/utils/logger";
 import type { NotifierService } from "./notifier";
 import type { SwarmState, SwarmStateUpdate } from "./state";
-import type { LLMProvider } from "@/types/agent";
+import type { LLMProvider } from "@shared/types/agent";
 import type {
   AnalystAlertLevel,
   InterruptionRequest,
   NotificationEvent,
-} from "@/types/swarm";
+} from "@shared/types/swarm";
 
 const logger = createLogger("swarm:live-analyst");
 
@@ -102,9 +102,9 @@ function summariseCoderBuffers(state: SwarmState): string {
 const ALERT_LEVELS: AnalystAlertLevel[] = [
   "IDLE",
   "MONITORING",
-  "ALERT_LEVE",
-  "ALERT_MODERADO",
-  "ALERT_CRITICO",
+  "ALERT_LOW",
+  "ALERT_MODERATE",
+  "ALERT_CRITICAL",
 ];
 
 /**
@@ -116,7 +116,7 @@ const ALERT_LEVELS: AnalystAlertLevel[] = [
 function parseAlertLevel(report: string): AnalystAlertLevel {
   // 1. Look for explicit Status line
   const statusMatch = report.match(
-    /\*\*Status:\*\*\s*(MONITORING|ALERT_LEVE|ALERT_MODERADO|ALERT_CRITICO|IDLE)/i,
+    /\*\*Status:\*\*\s*(MONITORING|ALERT_LOW|ALERT_MODERATE|ALERT_CRITICAL|IDLE)/i,
   );
   if (statusMatch) {
     const raw = statusMatch[1].toUpperCase() as AnalystAlertLevel;
@@ -125,13 +125,13 @@ function parseAlertLevel(report: string): AnalystAlertLevel {
 
   // 2. Fallback: scan for severity indicators in the report body
   if (/### CRITICAL[\s\S]*?\|\s*\d+\s*\|/.test(report)) {
-    return "ALERT_CRITICO";
+    return "ALERT_CRITICAL";
   }
   if (/### MODERATE[\s\S]*?\|\s*\d+\s*\|/.test(report)) {
-    return "ALERT_MODERADO";
+    return "ALERT_MODERATE";
   }
   if (/### LOW[\s\S]*?\|\s*\d+\s*\|/.test(report)) {
-    return "ALERT_LEVE";
+    return "ALERT_LOW";
   }
 
   return "MONITORING";
@@ -362,7 +362,7 @@ export function createAnalystNode(
 
       // 8. Parse interruption request if CRITICAL
       let interruptionRequest: InterruptionRequest | null = null;
-      if (alertLevel === "ALERT_CRITICO") {
+      if (alertLevel === "ALERT_CRITICAL") {
         interruptionRequest = parseInterruptionRequest(analysisReport);
       }
 

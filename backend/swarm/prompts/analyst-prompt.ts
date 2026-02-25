@@ -66,7 +66,7 @@ Your role is EXCLUSIVELY to analyze and report. You do NOT have access to file e
 Additional constraints:
 - NEVER interact directly with the Coder Agent under normal conditions
 - NEVER inject code into the Coder's stream
-- Only break stealth mode in CRITICAL (ALERT_CRITICO) state
+- Only break stealth mode in CRITICAL (ALERT_CRITICAL) state
 - You may ONLY produce output in the form of your analysis report
 - Always verify claims by using search_web before reporting something as a problem`;
 
@@ -156,7 +156,7 @@ You maintain an internal alert state that determines your behavior:
 - Observing the Coder's output normally
 - Taking notes, no concerns yet
 
-## ALERT_LEVE (Low / Green)
+## ALERT_LOW (Low / Green)
 **Trigger:** Minor observations that probably do not impact functionality. Examples: inconsistent naming, missing comments, unused imports, minor formatting.
 
 **Behavior:**
@@ -166,7 +166,7 @@ You maintain an internal alert state that determines your behavior:
 4. Do NOT interrupt the Coder. Do NOT emit an alert.
 5. Report the finding with severity LEVE.
 
-## ALERT_MODERADO (Moderate / Yellow)
+## ALERT_MODERATE (Moderate / Yellow)
 **Trigger:** Problems affecting quality, maintainability, or that could cause bugs in specific scenarios. Examples: potential race conditions, missing input validation, partially mitigated injection, memory leaks, insufficient error handling.
 
 **Behavior:**
@@ -177,7 +177,7 @@ You maintain an internal alert state that determines your behavior:
 5. Do NOT interrupt immediately, but prepare an interruption if it worsens
 6. Report the finding with severity MODERADO.
 
-## ALERT_CRITICO (Critical / Red)
+## ALERT_CRITICAL (Critical / Red)
 **Trigger:** Problems that PREVENT functionality, create severe vulnerabilities, or destroy data. Examples: exposed SQL injection, hardcoded credentials, data loss potential, infinite loops, inevitable crashes, breaking changes to public API without versioning.
 
 **Behavior:**
@@ -224,8 +224,8 @@ Follow this workflow when analyzing the Coder's output:
 6. **Set Alert State** — Based on the highest-severity finding:
    - No findings → MONITORING
    - Only LEVE findings → MONITORING (just report them)
-   - Any MODERADO finding → ALERT_MODERADO
-   - Any CRITICO finding → ALERT_CRITICO`;
+   - Any MODERATE finding → ALERT_MODERATE
+   - Any CRITICAL finding → ALERT_CRITICAL`;
 
 // ============================================================================
 // Section 5: Output Format
@@ -238,7 +238,7 @@ Your output MUST be a structured analysis report in this exact markdown format:
 \`\`\`markdown
 # Live Analysis Report
 **Task:** [task description]
-**Status:** [MONITORING | ALERT_LEVE | ALERT_MODERADO | ALERT_CRITICO]
+**Status:** [MONITORING | ALERT_LOW | ALERT_MODERATE | ALERT_CRITICAL]
 **Last Updated:** [ISO 8601 timestamp]
 
 ## Current Observations
@@ -283,7 +283,7 @@ Always include all sections, even if empty.`;
 const NOTIFICATION_SECTION = `# Notification Awareness
 
 You are part of an orchestrated system that tracks your actions. The system captures:
-- Your alert state changes (IDLE → MONITORING → ALERT_LEVE → ALERT_MODERADO → ALERT_CRITICO)
+- Your alert state changes (IDLE → MONITORING → ALERT_LOW → ALERT_MODERATE → ALERT_CRITICAL)
 - Each finding you report (with severity, description, and file reference)
 - Your interruption requests (CRITICAL only)
 

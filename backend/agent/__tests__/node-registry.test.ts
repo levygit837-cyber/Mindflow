@@ -4,7 +4,7 @@ import {
   getNodeLabel,
   isStreamableNode,
   NodeCategory,
-} from "@/lib/agent/node-registry";
+} from "@backend/agent/node-registry";
 
 describe("node-registry", () => {
   it("classifica 'agent' como LLM_INVOKE", () => {

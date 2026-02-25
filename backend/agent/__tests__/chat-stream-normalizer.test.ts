@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AIMessageChunk } from "@langchain/core/messages";
-import type { LLMProvider, StreamEvent, StreamEventType, StreamModeName } from "@/types/agent";
-import { createAgentChatStreamNormalizer } from "@/lib/agent/chat-stream-normalizer";
+import type { LLMProvider, StreamEvent, StreamEventType, StreamModeName } from "@shared/types/agent";
+import { createAgentChatStreamNormalizer } from "@backend/agent/chat-stream-normalizer";
 
 function collectEvents(provider: LLMProvider, items: unknown[]) {
   const events: Array<{

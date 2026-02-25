@@ -7,7 +7,7 @@
  * renders a parameterized visualization for the sandbox panel.
  */
 
-import { createLogger } from "@/utils/logger";
+import { createLogger } from "@backend/utils/logger";
 import type { NotifierService } from "./notifier";
 import type { SwarmState, SwarmStateUpdate } from "./state";
 import { selectTemplate } from "./templates/index";

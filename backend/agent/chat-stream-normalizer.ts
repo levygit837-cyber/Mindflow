@@ -4,7 +4,7 @@ import type {
   StreamEvent,
   StreamEventType,
   StreamModeName,
-} from "@/types/agent";
+} from "@shared/types/agent";
 import { classifyNode, getNodeLabel, isStreamableNode, NodeCategory } from "./node-registry";
 import { categorizeOutput } from "./output-categorizer";
 import { StreamEventQueue } from "./stream-event-queue";
