@@ -25,6 +25,15 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@frontend/*": [
+        "./frontend/*"
+      ],
+      "@backend/*": [
+        "./backend/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
       ]
     }
   },
@@ -37,8 +46,6 @@
   ],
   "exclude": [
     "node_modules",
-    "node_modules_old",
-    "backend",
-    "frontend"
+    "node_modules_old"
   ]
 }
