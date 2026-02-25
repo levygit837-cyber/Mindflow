@@ -1,29 +1,65 @@
+// backend/config/index.ts
+import "server-only";
 import { z } from "zod";
 
 const configSchema = z.object({
+  // Server
   nodeEnv: z.enum(["development", "production", "test"]).default("development"),
-  databaseUrl: z.string().optional(),
+  port: z.coerce.number().int().min(1).max(65535).default(3000),
+
+  // Database
+  databaseUrl: z.string().url().optional(),
+
+  // Default LLM
+  defaultProvider: z
+    .enum(["anthropic", "openai", "ollama", "google", "vertexai"])
+    .default("vertexai"),
   defaultModel: z.string().default("gemini-3-flash-preview"),
-  defaultTemperature: z.number().min(0).max(2).default(0.7),
-  maxTokens: z.number().int().positive().default(8192),
+  defaultTemperature: z.coerce.number().min(0).max(2).default(0.7),
+  maxTokens: z.coerce.number().int().positive().default(8192),
   enableStreaming: z.boolean().default(true),
+
+  // LLM API Keys (optional — user can provide via Settings UI)
+  anthropicApiKey: z.string().optional(),
+  openaiApiKey: z.string().optional(),
+  googleApiKey: z.string().optional(),
+  ollamaBaseUrl: z.string().url().default("http://localhost:11434"),
+
+  // Vertex AI
+  vertexCredentialsPath: z.string().optional(),
+  googleCloudProject: z.string().optional(),
+
+  // Logging
   logLevel: z.enum(["error", "warn", "info", "debug"]).default("info"),
+
+  // Search
+  tavilyApiKey: z.string().optional(),
+  searxngUrl: z.string().url().optional(),
 });
 
 function buildConfig() {
   try {
     return configSchema.parse({
-      nodeEnv: process.env.NODE_ENV || "development",
+      nodeEnv: process.env.NODE_ENV,
+      port: process.env.PORT,
       databaseUrl: process.env.DATABASE_URL,
-      defaultModel: process.env.DEFAULT_MODEL || "gemini-3-flash-preview",
-      defaultTemperature: process.env.DEFAULT_TEMPERATURE
-        ? parseFloat(process.env.DEFAULT_TEMPERATURE)
-        : 0.7,
-      maxTokens: process.env.MAX_TOKENS
-        ? parseInt(process.env.MAX_TOKENS, 10)
-        : 8192,
+      defaultProvider: process.env.DEFAULT_PROVIDER,
+      defaultModel: process.env.DEFAULT_MODEL,
+      defaultTemperature: process.env.DEFAULT_TEMPERATURE,
+      maxTokens: process.env.MAX_TOKENS,
       enableStreaming: process.env.ENABLE_STREAMING !== "false",
-      logLevel: process.env.LOG_LEVEL || "info",
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+      openaiApiKey: process.env.OPENAI_API_KEY,
+      googleApiKey: process.env.GOOGLE_API_KEY,
+      ollamaBaseUrl: process.env.OLLAMA_BASE_URL,
+      vertexCredentialsPath:
+        process.env.VERTEXAI_CREDENTIALS_PATH ||
+        process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      googleCloudProject:
+        process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT,
+      logLevel: process.env.LOG_LEVEL,
+      tavilyApiKey: process.env.TAVILY_API_KEY,
+      searxngUrl: process.env.SEARXNG_URL,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
