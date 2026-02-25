@@ -1,5 +1,5 @@
-import { logBus } from "@/lib/agent/log-bus";
-import type { LogEntry } from "@/lib/agent/log-bus";
+import { logBus } from "@backend/agent/log-bus";
+import type { LogEntry } from "@backend/agent/log-bus";
 
 export const dynamic = "force-dynamic";
 

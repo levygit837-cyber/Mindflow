@@ -8,9 +8,9 @@
  */
 
 import { NextRequest } from "next/server";
-import { getSession } from "@/lib/swarm/registry";
-import type { NotificationEvent } from "@/types/swarm";
-import { createLogger } from "@/utils/logger";
+import { getSession } from "@backend/swarm/registry";
+import type { NotificationEvent } from "@shared/types/swarm";
+import { createLogger } from "@backend/utils/logger";
 
 const logger = createLogger("api:swarm:stream");
 

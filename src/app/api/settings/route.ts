@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEFAULT_SETTINGS, type AppSettings } from "@/types/settings";
+import { DEFAULT_SETTINGS, type AppSettings } from "@shared/types/settings";
+import { settingsUpdateSchema } from "@backend/schemas/settings.schema";
 
 /**
  * In-memory settings store.
@@ -26,9 +27,17 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   const body = await request.json();
 
-  for (const [key, value] of Object.entries(body)) {
-    if (typeof value === "string") {
-      settingsStore.set(key, value);
+  const parsed = settingsUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid settings", details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
+
+  for (const [key, value] of Object.entries(parsed.data)) {
+    if (value !== undefined) {
+      settingsStore.set(key, String(value));
     }
   }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMessages } from "@/lib/agent/conversations";
+import { getMessages } from "@backend/agent/conversations";
 
 export async function GET(
   _request: NextRequest,
