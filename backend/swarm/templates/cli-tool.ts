@@ -57,7 +57,7 @@ function extractCliName(filePaths: string[]): string | null {
   return null;
 }
 
-function renderCliCommands(fileChanges: import("@/types/swarm").FileChangeEntry[]): string[] {
+function renderCliCommands(fileChanges: import("@shared/types/swarm").FileChangeEntry[]): string[] {
   const commands: string[] = [];
 
   for (const fc of fileChanges) {

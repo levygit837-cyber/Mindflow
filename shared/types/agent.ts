@@ -118,12 +118,24 @@ export type OutputCategory =
 
 export type StreamModeName = "updates" | "messages" | "custom" | "values" | "debug";
 
-export type { NodeCategory } from "@/lib/agent/node-registry";
+/** Classifica o tipo de node do LangGraph */
+export enum NodeCategory {
+  /** Invocação direta do LLM (agent, model) */
+  LLM_INVOKE = "LLM_INVOKE",
+  /** Execução de tools (tools, tool_executor) */
+  TOOL_EXECUTION = "TOOL_EXECUTION",
+  /** Subgraph de outro agente (formato "agentName:nodeName") */
+  SUBGRAPH = "SUBGRAPH",
+  /** Nó interno/middleware — não deve aparecer no frontend */
+  INTERNAL = "INTERNAL",
+  /** Nó customizado desconhecido */
+  UNKNOWN = "UNKNOWN",
+}
 
 /** Metadados de um node do LangGraph */
 export interface NodeMeta {
   name: string;
-  category: import("@/lib/agent/node-registry").NodeCategory;
+  category: NodeCategory;
   label: string;
   isStreamable: boolean;
   subgraphPath?: string[];

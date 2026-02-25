@@ -5,18 +5,8 @@
  * a lógica de categorização para que o normalizer e o frontend saibam o que exibir.
  */
 
-export enum NodeCategory {
-  /** Invocação direta do LLM (agent, model) */
-  LLM_INVOKE = "LLM_INVOKE",
-  /** Execução de tools (tools, tool_executor) */
-  TOOL_EXECUTION = "TOOL_EXECUTION",
-  /** Subgraph de outro agente (formato "agentName:nodeName") */
-  SUBGRAPH = "SUBGRAPH",
-  /** Nó interno/middleware — não deve aparecer no frontend */
-  INTERNAL = "INTERNAL",
-  /** Nó customizado desconhecido */
-  UNKNOWN = "UNKNOWN",
-}
+import { NodeCategory } from "@shared/types/agent";
+export { NodeCategory } from "@shared/types/agent";
 
 /** Nomes de nós internos que nunca devem ser exibidos */
 const INTERNAL_NODE_PATTERNS: RegExp[] = [
