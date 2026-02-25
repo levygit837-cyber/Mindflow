@@ -7,14 +7,12 @@ import type { BaseChatModel } from "@langchain/core/language_models/chat_models"
 import type { LLMProvider } from "@shared/types/agent";
 import fs from "fs";
 
-const DEFAULT_VERTEX_CREDENTIALS_PATH =
-  "/home/levybonito/Downloads/serviceAccount/serviceAccountVertex.json";
-
 function getVertexProjectId(): string | undefined {
   const credentialsPath =
     process.env.VERTEXAI_CREDENTIALS_PATH ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-    DEFAULT_VERTEX_CREDENTIALS_PATH;
+    process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+  if (!credentialsPath) return undefined;
 
   try {
     const raw = fs.readFileSync(credentialsPath, "utf8");
@@ -33,17 +31,18 @@ function getVertexLocation(model: string): string {
 function ensureVertexEnv(): void {
   const credentialsPath =
     process.env.VERTEXAI_CREDENTIALS_PATH ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-    DEFAULT_VERTEX_CREDENTIALS_PATH;
+    process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(credentialsPath)) {
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+  if (credentialsPath && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    if (fs.existsSync(credentialsPath)) {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+    }
   }
 
   const projectId = getVertexProjectId();
   if (projectId) {
-    process.env.GOOGLE_CLOUD_PROJECT ||= projectId;
-    process.env.GCLOUD_PROJECT ||= projectId;
+    process.env.GOOGLE_CLOUD_PROJECT ??= projectId;
+    process.env.GCLOUD_PROJECT ??= projectId;
   }
 }
 
