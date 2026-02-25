@@ -1,3 +1,4 @@
+import "server-only";
 import pg from "pg";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 

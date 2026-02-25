@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Reviewer Agent Node — isolated, read-only LLM agent that performs
  * multi-pass code review on the Coder's output.

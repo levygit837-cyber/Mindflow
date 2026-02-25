@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Swarm StateGraph — wires all agent and pure-function nodes into a
  * compiled LangGraph StateGraph with conditional routing edges.

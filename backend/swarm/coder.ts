@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Coder Agent Node — LLM-based graph node that plans and implements code.
  *
