@@ -2,20 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@frontend/components/ui/button";
+import { Input } from "@frontend/components/ui/input";
+import { Label } from "@frontend/components/ui/label";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@frontend/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { AppSettings } from "@/types/settings";
-import { DEFAULT_SETTINGS, PROVIDER_MODELS } from "@/types/settings";
-import type { LLMProvider } from "@/types/agent";
+} from "@frontend/components/ui/select";
+import type { AppSettings } from "@shared/types/settings";
+import { DEFAULT_SETTINGS, PROVIDER_MODELS } from "@shared/types/settings";
+import type { LLMProvider } from "@shared/types/agent";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
