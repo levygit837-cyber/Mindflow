@@ -490,6 +490,24 @@ export function createAgentChatStreamNormalizer({
   let hasMessageThoughtOutput = false;
   const emittedUpdateAIMessages = new Set<string>();
 
+  const thoughtStateByRunId = new Map<string, string>();
+  const textStateByRunId = new Map<string, string>();
+
+  function getDelta(runId: string | undefined, map: Map<string, string>, value: string): string {
+    if (!runId || !value) return value;
+    const prev = map.get(runId) || "";
+
+    // Check if the current value is an accumulating string that includes the previous string
+    if (prev && value.length >= prev.length && value.startsWith(prev)) {
+      map.set(runId, value);
+      return value.slice(prev.length);
+    } else {
+      // It's likely a pure delta chunk
+      map.set(runId, prev + value);
+      return value;
+    }
+  }
+
   const seenToolCalls = new Set<string>();
   const seenToolResults = new Set<string>();
   const pendingTools = new Map<string, { name: string; args: Record<string, unknown> }>();
@@ -747,7 +765,10 @@ export function createAgentChatStreamNormalizer({
         turnRunId: currentTurnRunId ?? undefined,
         path,
       };
-      emitText(rawMessage, "messages", meta);
+      const textDelta = getDelta(eventRunId, textStateByRunId, rawMessage);
+      if (textDelta) {
+        emitText(textDelta, "messages", meta);
+      }
       return;
     }
 
@@ -769,11 +790,26 @@ export function createAgentChatStreamNormalizer({
       const { text, thought } = extractMessageTextAndThought(message);
       const kwargs = extractAdditionalKwargs(message);
 
-      if (thought) emitEvent("thought", thought, "messages", meta);
+      let combinedThought = thought || "";
       for (const t of collectKwThoughts(kwargs)) {
-        emitEvent("thought", t, "messages", meta);
+        if (t) {
+          combinedThought = combinedThought ? combinedThought + "\n" + t : t;
+        }
       }
-      if (text) emitText(text, "messages", meta);
+
+      if (combinedThought) {
+        const thoughtDelta = getDelta(eventRunId, thoughtStateByRunId, combinedThought);
+        if (thoughtDelta) {
+          emitEvent("thought", thoughtDelta, "messages", meta);
+        }
+      }
+
+      if (text) {
+        const textDelta = getDelta(eventRunId, textStateByRunId, text);
+        if (textDelta) {
+          emitText(textDelta, "messages", meta);
+        }
+      }
 
       emitToolCallsFromAIMessage(message, "messages", node, path);
       return;

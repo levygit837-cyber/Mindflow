@@ -58,12 +58,20 @@ export function getModelForProvider(
   switch (provider) {
     case "vertexai": {
       ensureVertexEnv();
-      return new ChatVertexAI({
+
+      const config: ConstructorParameters<typeof ChatVertexAI>[0] = {
         model,
         location: getVertexLocation(model),
         reasoningEffort: "high",
-        apiKey: options.apiKey || process.env.API_KEY || process.env.GOOGLE_API_KEY,
-      });
+      };
+
+      // By default, prefer Service Account if the env var is set.
+      // Otherwise fallback to API key.
+      if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        config.apiKey = options.apiKey || process.env.API_KEY || process.env.GOOGLE_API_KEY;
+      }
+
+      return new ChatVertexAI(config);
     }
 
     case "google":
