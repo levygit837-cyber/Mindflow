@@ -1,7 +1,7 @@
 # PromptGuide
 
 > Camada: 3 — Qualidade | Depende de: ContextoDoc, MemoryDoc | Referenciado por: SystemPromptDoc
-> Stack: deepagents · LangGraph · LangChain · Python
+> Stack: deepagents · LangGraph · LangChain · TypeScript
 
 ---
 
@@ -62,7 +62,7 @@
 
 ```
 [ROLE]       → Quem o modelo é: "Você é um revisor de segurança sênior..."
-[CONTEXTO]   → O que ele tem disponível: "Você receberá trechos de código Python..."
+[CONTEXTO]   → O que ele tem disponível: "Você receberá trechos de código TypeScript..."
 [INSTRUÇÃO]  → O que ele deve fazer: "Identifique vulnerabilidades OWASP Top 10..."
 [FORMATO]    → Como deve responder: "Retorne JSON: [{issue, severity, line, fix}]"
 [EXEMPLO]    → Demonstração concreta (few-shot): Input X → Output Y esperado
@@ -93,10 +93,10 @@ Structured   → Qualquer output que será parseado por código
 
 ### Exemplo 1 — Prompt zero-shot bem estruturado
 
-```python
-ANALYZER_PROMPT = """Você é um especialista em segurança de software.
+```typescript
+const ANALYZER_PROMPT = `Você é um especialista em segurança de software.
 
-Analise o código Python fornecido e identifique vulnerabilidades de segurança.
+Analise o código TypeScript fornecido e identifique vulnerabilidades de segurança.
 
 Retorne EXATAMENTE este JSON, sem markdown, sem texto adicional:
 {
@@ -104,7 +104,7 @@ Retorne EXATAMENTE este JSON, sem markdown, sem texto adicional:
     {
       "issue": "nome do problema",
       "severity": "HIGH|MEDIUM|LOW",
-      "line": número_da_linha_ou_null,
+      "line": numero_da_linha_ou_null,
       "description": "explicação em 1 frase",
       "fix": "como corrigir em 1 frase"
     }
@@ -113,15 +113,15 @@ Retorne EXATAMENTE este JSON, sem markdown, sem texto adicional:
 }
 
 Se não houver vulnerabilidades, retorne {"vulnerabilities": [], "overall_risk": "SAFE"}.
-Se o código não for Python ou estiver vazio, retorne {"error": "Código inválido ou vazio"}."""
+Se o código não for TypeScript ou estiver vazio, retorne {"error": "Código inválido ou vazio"}.`;
 ```
 
 ---
 
 ### Exemplo 2 — Prompt few-shot para classificação de tarefa
 
-```python
-TASK_ROUTER_PROMPT = """Você é um roteador de tarefas. Classifique a tarefa do usuário em uma das categorias.
+```typescript
+const TASK_ROUTER_PROMPT = `Você é um roteador de tarefas. Classifique a tarefa do usuário em uma das categorias.
 
 Categorias disponíveis:
 - "bugfix": corrigir um bug existente
@@ -144,15 +144,15 @@ Input: "Melhore a performance do endpoint /api/users"
 Output: {"category": "refactor", "confidence": "MEDIUM"}
 
 Retorne apenas JSON: {"category": "...", "confidence": "HIGH|MEDIUM|LOW"}
-Sem markdown. Sem texto adicional."""
+Sem markdown. Sem texto adicional.`;
 ```
 
 ---
 
 ### Exemplo 3 — Prompt com chain-of-thought para debugging
 
-```python
-DEBUGGER_PROMPT = """Você é um engenheiro sênior de debugging.
+```typescript
+const DEBUGGER_PROMPT = `Você é um engenheiro sênior de debugging.
 
 Ao receber um erro e trecho de código, siga ESTE PROCESSO:
 
@@ -169,7 +169,7 @@ Passo 4 — Proponha a correção:
 Mostre o código corrigido. Explique em 1 frase o que mudou.
 
 Formato de saída:
-```
+\`\`\`
 ANÁLISE:
 [resultado dos passos 1 e 2]
 
@@ -177,27 +177,27 @@ CAUSA RAIZ:
 [resultado do passo 3]
 
 CORREÇÃO:
-```python
+\`\`\`typescript
 [código corrigido]
-```
+\`\`\`
 EXPLICAÇÃO: [1 frase]
-```
+\`\`\`
 
 Se não tiver informação suficiente para diagnosticar, diga:
 "Preciso de mais contexto: [o que está faltando]"
-"""
+`;
 ```
 
 ---
 
 ### Exemplo 4 (RUIM → CORRIGIDO)
 
-```python
-# ❌ RUIM — prompt vago, sem formato, sem instrução de fallback
+```typescript
+// ❌ RUIM — prompt vago, sem formato, sem instrução de fallback
 
-VAGUE_PROMPT = """Você é um assistente útil.
+const VAGUE_PROMPT = `Você é um assistente útil.
 Ajude o usuário com o que ele precisar.
-Seja legal."""
+Seja legal.`;
 ```
 
 **Problemas:**
@@ -206,10 +206,10 @@ Seja legal."""
 3. Sem instrução sobre o que fazer quando não souber
 4. Sem contexto sobre o domínio (coding? suporte? escrita?)
 
-```python
-# ✅ CORRIGIDO — prompt específico, com formato e fallback
+```typescript
+// ✅ CORRIGIDO — prompt específico, com formato e fallback
 
-SPECIFIC_PROMPT = """Você é um assistente de engenharia de software especializado em Python e TypeScript.
+const SPECIFIC_PROMPT = `Você é um assistente de engenharia de software especializado em TypeScript e Python.
 
 Seu trabalho é ajudar desenvolvedores a:
 - Debuggar problemas de código
@@ -226,7 +226,7 @@ REGRAS:
 FORMATO:
 - Para análise de código: use seções com cabeçalhos
 - Para correções: mostre diff (❌ Antes / ✅ Depois)
-- Para explicações: use bullet points e exemplos concretos"""
+- Para explicações: use bullet points e exemplos concretos`;
 ```
 
 ---
@@ -237,39 +237,51 @@ FORMATO:
 
 - **Grounding explícito**: "Baseie sua resposta APENAS nas informações fornecidas no contexto. Se a informação não estiver lá, diga que não sabe."
 - **Instrução de incerteza**: "Se não tiver certeza, escreva '(incerto)' ao lado da informação."
-- **Validação de formato**: para outputs JSON, sempre valide com `json.loads()` — se falhar, reprompt com o erro.
+- **Validação de formato**: para outputs JSON, sempre valide com `JSON.parse()` — se falhar, reprompt com o erro.
 
-```python
-import json
+```typescript
+import type { BaseLanguageModel } from "@langchain/core/language_models/base";
 
-def call_with_json_validation(prompt: str, user_input: str, model, max_retries: int = 2) -> dict:
-    """Chama o modelo e valida que o output é JSON válido. Reprompta se inválido."""
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": user_input},
-    ]
+async function callWithJsonValidation(
+  prompt: string,
+  userInput: string,
+  model: BaseLanguageModel,
+  maxRetries = 2
+): Promise<Record<string, unknown>> {
+  /** Chama o modelo e valida que o output é JSON válido. Reprompta se inválido. */
+  const messages: { role: string; content: string }[] = [
+    { role: "system", content: prompt },
+    { role: "user", content: userInput },
+  ];
 
-    for attempt in range(max_retries + 1):
-        response = model.invoke(messages)
-        raw = response.content.strip()
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await model.invoke(messages);
+    let raw = (response as { content: string }).content.trim();
 
-        # Remove markdown code blocks se presentes
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+    // Remove markdown code blocks se presentes
+    if (raw.startsWith("```")) {
+      raw = raw.split("```")[1];
+      if (raw.startsWith("json")) {
+        raw = raw.slice(4);
+      }
+    }
 
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError as e:
-            if attempt < max_retries:
-                messages.append({"role": "assistant", "content": raw})
-                messages.append({
-                    "role": "user",
-                    "content": f"Erro de JSON: {e}. Retorne APENAS JSON válido, sem texto adicional."
-                })
-            else:
-                return {"error": f"Falha após {max_retries + 1} tentativas: {e}", "raw": raw}
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch (err) {
+      if (attempt < maxRetries) {
+        messages.push({ role: "assistant", content: raw });
+        messages.push({
+          role: "user",
+          content: `Erro de JSON: ${String(err)}. Retorne APENAS JSON válido, sem texto adicional.`,
+        });
+      } else {
+        return { error: `Falha após ${maxRetries + 1} tentativas: ${String(err)}`, raw };
+      }
+    }
+  }
+  return { error: "Falha desconhecida" };
+}
 ```
 
 ### Quando o modelo não tem informação
@@ -310,54 +322,71 @@ O estagiário não precisa de mais inteligência — precisa de mais contexto e 
 
 ## I) Mini-Template Pronto
 
-```python
-# ============================================================
-# TEMPLATE: Prompt estruturado padrão OmniMind
-# ============================================================
+```typescript
+// ============================================================
+// TEMPLATE: Prompt estruturado padrão OmniMind
+// ============================================================
 
-def build_prompt(
-    role: str,
-    domain_context: str,
-    task_instruction: str,
-    output_format: str,
-    examples: list[dict] | None = None,  # [{"input": "...", "output": "..."}]
-    fallback_instruction: str = "Se não tiver informação suficiente, diga o que está faltando.",
-) -> str:
-    """Monta um prompt estruturado com todas as seções essenciais."""
+interface PromptExample {
+  input: string;
+  output: string;
+}
 
-    sections = [
-        f"[ROLE]\n{role}",
-        f"[CONTEXTO]\n{domain_context}",
-        f"[TAREFA]\n{task_instruction}",
-        f"[FORMATO DE SAÍDA]\n{output_format}",
-        f"[QUANDO NÃO SOUBER]\n{fallback_instruction}",
-    ]
+function buildPrompt(params: {
+  role: string;
+  domainContext: string;
+  taskInstruction: string;
+  outputFormat: string;
+  examples?: PromptExample[];
+  fallbackInstruction?: string;
+}): string {
+  /** Monta um prompt estruturado com todas as seções essenciais. */
+  const {
+    role,
+    domainContext,
+    taskInstruction,
+    outputFormat,
+    examples,
+    fallbackInstruction = "Se não tiver informação suficiente, diga o que está faltando.",
+  } = params;
 
-    if examples:
-        example_text = "\n\n".join(
-            f"Input: {ex['input']}\nOutput: {ex['output']}"
-            for ex in examples
-        )
-        sections.append(f"[EXEMPLOS]\n{example_text}")
+  const sections = [
+    `[ROLE]\n${role}`,
+    `[CONTEXTO]\n${domainContext}`,
+    `[TAREFA]\n${taskInstruction}`,
+    `[FORMATO DE SAÍDA]\n${outputFormat}`,
+    `[QUANDO NÃO SOUBER]\n${fallbackInstruction}`,
+  ];
 
-    return "\n\n".join(sections)
+  if (examples?.length) {
+    const exampleText = examples
+      .map((ex) => `Input: ${ex.input}\nOutput: ${ex.output}`)
+      .join("\n\n");
+    sections.push(`[EXEMPLOS]\n${exampleText}`);
+  }
+
+  return sections.join("\n\n");
+}
 
 
-# Uso:
-SECURITY_PROMPT = build_prompt(
-    role="Você é um especialista em segurança de software com 10 anos de experiência.",
-    domain_context="Você analisa código Python e TypeScript para encontrar vulnerabilidades.",
-    task_instruction=(
-        "Analise o código fornecido e identifique vulnerabilidades de segurança. "
-        "Foque em: injeção SQL, XSS, autenticação fraca, dados sensíveis expostos."
-    ),
-    output_format='JSON: {"vulnerabilities": [{"issue": str, "severity": "HIGH|MEDIUM|LOW", "line": int|null, "fix": str}]}',
-    examples=[
-        {
-            "input": "password = request.args.get('password')\nif password == 'admin123':",
-            "output": '{"vulnerabilities": [{"issue": "Senha hardcoded", "severity": "HIGH", "line": 2, "fix": "Use variável de ambiente e hash seguro"}]}',
-        }
-    ],
-    fallback_instruction="Se o código não tiver vulnerabilidades óbvias, retorne {\"vulnerabilities\": [], \"note\": \"Nenhum problema encontrado\"}.",
-)
+// Uso:
+const SECURITY_PROMPT = buildPrompt({
+  role: "Você é um especialista em segurança de software com 10 anos de experiência.",
+  domainContext: "Você analisa código TypeScript e Python para encontrar vulnerabilidades.",
+  taskInstruction:
+    "Analise o código fornecido e identifique vulnerabilidades de segurança. " +
+    "Foque em: injeção SQL, XSS, autenticação fraca, dados sensíveis expostos.",
+  outputFormat:
+    'JSON: {"vulnerabilities": [{"issue": string, "severity": "HIGH|MEDIUM|LOW", "line": number|null, "fix": string}]}',
+  examples: [
+    {
+      input:
+        "const password = req.query.password;\nif (password === 'admin123') {",
+      output:
+        '{"vulnerabilities": [{"issue": "Senha hardcoded", "severity": "HIGH", "line": 2, "fix": "Use variável de ambiente e hash seguro"}]}',
+    },
+  ],
+  fallbackInstruction:
+    'Se o código não tiver vulnerabilidades óbvias, retorne {"vulnerabilities": [], "note": "Nenhum problema encontrado"}.',
+});
 ```
