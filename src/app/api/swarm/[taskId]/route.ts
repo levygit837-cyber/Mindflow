@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@backend/swarm/registry";
+import { getSession } from "@server/swarm/registry";
 import type { SwarmTaskStatus } from "@shared/types/swarm";
 
 export async function GET(

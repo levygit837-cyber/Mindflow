@@ -1,14 +1,14 @@
 "use client";
 
-import { useSwarmStore } from "@frontend/stores/swarm.store";
-import { useSwarmStream } from "@frontend/hooks/use-swarm-stream";
-import { TaskInput } from "@frontend/components/swarm/task-input";
-import { TokenStreamPanel } from "@frontend/components/swarm/token-stream-panel";
-import { AnalystPanel } from "@frontend/components/swarm/analyst-panel";
-import { ReviewerPanel } from "@frontend/components/swarm/reviewer-panel";
-import { SandboxPanel } from "@frontend/components/swarm/sandbox-panel";
-import { NotificationFeed } from "@frontend/components/swarm/notification-feed";
-import { Badge } from "@frontend/components/ui/badge";
+import { useSwarmStore } from "@client/stores/swarm.store";
+import { useSwarmStream } from "@client/hooks/use-swarm-stream";
+import { TaskInput } from "@client/components/swarm/task-input";
+import { TokenStreamPanel } from "@client/components/swarm/token-stream-panel";
+import { AnalystPanel } from "@client/components/swarm/analyst-panel";
+import { ReviewerPanel } from "@client/components/swarm/reviewer-panel";
+import { SandboxPanel } from "@client/components/swarm/sandbox-panel";
+import { NotificationFeed } from "@client/components/swarm/notification-feed";
+import { Badge } from "@client/components/ui/badge";
 
 const statusLabels: Record<string, { label: string; className: string }> = {
   pending: { label: "Pending", className: "bg-muted text-muted-foreground" },
