@@ -3,7 +3,7 @@ import {
   listConversations,
   createConversation,
   deleteConversation,
-} from "@backend/agent/conversations";
+} from "@server/agent/conversations";
 
 export async function GET() {
   const convs = listConversations();

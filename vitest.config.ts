@@ -5,8 +5,6 @@ export default defineConfig({
   test: {
     include: [
       "src/**/*.test.{ts,tsx}",
-      "frontend/**/*.test.{ts,tsx}",
-      "backend/**/*.test.{ts,tsx}",
     ],
     exclude: ["node_modules", "node_modules_old", ".next"],
     environment: "jsdom",
@@ -14,9 +12,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@frontend": path.resolve(__dirname, "./frontend"),
-      "@backend": path.resolve(__dirname, "./backend"),
-      "@shared": path.resolve(__dirname, "./shared"),
+      "@client": path.resolve(__dirname, "./src/client"),
+      "@server": path.resolve(__dirname, "./src/server"),
+      "@shared": path.resolve(__dirname, "./src/shared"),
       // Mock server-only for Vitest (it throws in client environments)
       "server-only": path.resolve(__dirname, "./vitest-server-only-mock.ts"),
     },

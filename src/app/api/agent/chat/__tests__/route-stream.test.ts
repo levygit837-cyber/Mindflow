@@ -1,29 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AIMessageChunk } from "@langchain/core/messages";
+import { EventEmitter } from "node:events";
 
-const { ensureDbInitialized, streamMock } = vi.hoisted(() => ({
-  ensureDbInitialized: vi.fn(),
-  streamMock: vi.fn(),
+const { spawnMock } = vi.hoisted(() => ({
+  spawnMock: vi.fn(),
 }));
 
-vi.mock("@backend/db/postgres", () => ({
-  ensureDbInitialized,
-}));
-
-vi.mock("@backend/agent", () => ({
-  createOmniMindAgent: vi.fn(() => ({
-    stream: streamMock,
-  })),
+vi.mock("node:child_process", () => ({
+  spawn: spawnMock,
+  default: {
+    spawn: spawnMock,
+  },
 }));
 
 import { POST } from "@/app/api/agent/chat/route";
 
-function makeStream(items: unknown[]) {
-  return (async function* generate() {
-    for (const item of items) {
-      yield item;
-    }
-  })();
+function makeChildProcessMock() {
+  const child = new EventEmitter() as EventEmitter & {
+    stdout: EventEmitter;
+    stderr: EventEmitter;
+    stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
+  };
+
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  child.stdin = {
+    write: vi.fn(),
+    end: vi.fn(),
+  };
+
+  return child;
 }
 
 async function readSSEEvents(response: Response) {
@@ -53,36 +58,12 @@ async function readSSEEvents(response: Response) {
 
 describe("POST /api/agent/chat", () => {
   beforeEach(() => {
-    ensureDbInitialized.mockReset();
-    streamMock.mockReset();
+    spawnMock.mockReset();
   });
 
-  it("streams thought/response/tool events with done", async () => {
-    streamMock.mockResolvedValue(
-      makeStream([
-        [
-          {
-            id: "ai-1",
-            type: "ai",
-            content: [
-              { type: "thinking", thinking: "analisando" },
-              { type: "text", text: "resposta" },
-            ],
-            tool_calls: [{ id: "tc-9", name: "read_note", args: { noteId: "n1" } }],
-          },
-          { langgraph_node: "agent", run_id: "run-1" },
-        ],
-        [
-          {
-            id: "tool-2",
-            type: "tool",
-            tool_call_id: "tc-9",
-            content: "OK",
-          },
-          { langgraph_node: "tools", run_id: "run-2" },
-        ],
-      ])
-    );
+  it("streams events produced by python runtime", async () => {
+    const child = makeChildProcessMock();
+    spawnMock.mockReturnValue(child);
 
     const request = new Request("http://localhost/api/agent/chat", {
       method: "POST",
@@ -91,216 +72,52 @@ describe("POST /api/agent/chat", () => {
     });
 
     const response = await POST(request as never);
-    const events = await readSSEEvents(response);
 
+    child.stdout.emit(
+      "data",
+      Buffer.from(
+        [
+          JSON.stringify({ type: "thought", data: "analisando", mode: "messages" }),
+          JSON.stringify({ type: "response", data: "resposta", mode: "messages" }),
+          JSON.stringify({ type: "done", data: "", mode: "messages" }),
+        ].join("\n") + "\n"
+      )
+    );
+    child.emit("close", 0);
+
+    const events = await readSSEEvents(response);
     const types = events.map((e) => e.type);
+
     expect(types).toContain("thought");
     expect(types).toContain("response");
-    expect(types).toContain("tool_call");
-    expect(types).toContain("tool_result");
     expect(types).toContain("done");
-    expect(types).not.toContain("step");
-
-    const seqs = events
-      .map((e) => e.seq)
-      .filter((x): x is number => typeof x === "number");
-    expect(seqs.length).toBeGreaterThan(0);
-    expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
-
-    const hasUnknownTool = events.some(
-      (e) => e.type === "tool_result" && typeof e.data === "string" && e.data.includes("unknown")
+    expect(spawnMock).toHaveBeenCalledWith(
+      expect.any(String),
+      ["-m", "omnimind_agents.runtime.chat_runner"],
+      expect.objectContaining({
+        cwd: expect.any(String),
+      })
     );
-    expect(hasUnknownTool).toBe(false);
-    expect(streamMock.mock.calls[0]?.[1]?.streamMode).toEqual(["messages", "updates"]);
+    expect(child.stdin.write).toHaveBeenCalled();
+    expect(child.stdin.end).toHaveBeenCalled();
   });
 
-  it("supports debugSteps mode with updates stream when requested", async () => {
-    streamMock.mockResolvedValue(
-      makeStream([
-        [
-          ["root", "agent"],
-          "updates",
-          {
-            agent: {
-              messages: [{ id: "ai-only-updates", type: "ai", content: "texto via updates" }],
-            },
-          },
-        ],
-      ])
-    );
+  it("emits error event when python runtime exits with non-zero code", async () => {
+    const child = makeChildProcessMock();
+    spawnMock.mockReturnValue(child);
 
     const request = new Request("http://localhost/api/agent/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "teste",
-        provider: "openai",
-        model: "gpt-4o",
-        debugSteps: true,
-      }),
+      body: JSON.stringify({ message: "oi" }),
     });
 
     const response = await POST(request as never);
+
+    child.stderr.emit("data", Buffer.from("python error"));
+    child.emit("close", 1);
+
     const events = await readSSEEvents(response);
-
-    expect(events.some((e) => e.type === "response" && String(e.data).includes("texto via updates"))).toBe(true);
-    expect(events.some((e) => e.type === "done")).toBe(true);
-    expect(streamMock.mock.calls[0]?.[1]?.streamMode).toEqual(["messages", "updates"]);
-  });
-
-  it("supports wrappers that yield ['messages', [chunk, metadata]]", async () => {
-    streamMock.mockResolvedValue(
-      makeStream([
-        [
-          "messages",
-          [
-            {
-              id: "ai-wrapper-1",
-              type: "ai",
-              content: [{ type: "reasoning_text", text: "pensando wrapper" }, { type: "text", text: "ok" }],
-            },
-            { langgraph_node: "agent", run_id: "run-wrapper-1" },
-          ],
-        ],
-      ])
-    );
-
-    const request = new Request("http://localhost/api/agent/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "teste", provider: "openai", model: "gpt-4o" }),
-    });
-
-    const response = await POST(request as never);
-    const events = await readSSEEvents(response);
-
-    expect(events.some((e) => e.type === "thought" && String(e.data).includes("pensando wrapper"))).toBe(true);
-    expect(events.some((e) => e.type === "response" && String(e.data).includes("ok"))).toBe(true);
-  });
-
-  it("does not enable updates when debugSteps comes as string 'false'", async () => {
-    streamMock.mockResolvedValue(
-      makeStream([
-        [
-          {
-            id: "vertex-msg-1",
-            type: "ai",
-            content: "ok",
-          },
-          { langgraph_node: "agent", run_id: "run-vertex-1" },
-        ],
-      ])
-    );
-
-    const request = new Request("http://localhost/api/agent/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "teste",
-        provider: "vertexai",
-        model: "gemini-2.5-pro",
-        debugSteps: "false",
-      }),
-    });
-
-    const response = await POST(request as never);
-    const events = await readSSEEvents(response);
-
-    expect(events.some((e) => e.type === "response" && String(e.data).includes("ok"))).toBe(true);
-    expect(streamMock.mock.calls[0]?.[1]?.streamMode).toEqual(["messages", "updates"]);
-  });
-
-  it("streams vertex reasoning from real AIMessageChunk in messages mode", async () => {
-    streamMock.mockResolvedValue(
-      makeStream([
-        [
-          new AIMessageChunk({
-            id: "ai-vertex-real",
-            content: [
-              { type: "reasoning", reasoning: "planejando com vertex" },
-              { type: "text", text: "resposta final vertex" },
-            ],
-          }),
-          { langgraph_node: "agent", run_id: "run-vertex-real" },
-        ],
-      ])
-    );
-
-    const request = new Request("http://localhost/api/agent/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "teste",
-        provider: "vertexai",
-        model: "gemini-2.5-pro",
-      }),
-    });
-
-    const response = await POST(request as never);
-    const events = await readSSEEvents(response);
-    const fullResponse = events
-      .filter((e) => e.type === "response")
-      .map((e) => String(e.data))
-      .join("");
-
-    expect(events.some((e) => e.type === "thought" && String(e.data).includes("planejando com vertex"))).toBe(true);
-    expect(fullResponse.includes("resposta final vertex")).toBe(true);
-    expect(events.some((e) => e.type === "step")).toBe(false);
-    expect(streamMock.mock.calls[0]?.[1]?.streamMode).toEqual(["messages", "updates"]);
-  });
-
-  it("emits thought from updates fallback without showing node steps in normal mode", async () => {
-    streamMock.mockResolvedValue(
-      makeStream([
-        [
-          "messages",
-          [
-            {
-              id: "ai-fallback-route-1",
-              type: "ai",
-              content: "resposta principal",
-            },
-            { langgraph_node: "agent", run_id: "run-fallback-route-1" },
-          ],
-        ],
-        [
-          "updates",
-          {
-            agent: {
-              messages: [
-                {
-                  id: "ai-fallback-route-1",
-                  type: "ai",
-                  content: [{ type: "reasoning", reasoning: "pensamento vindo de updates" }],
-                },
-              ],
-            },
-          },
-        ],
-      ])
-    );
-
-    const request = new Request("http://localhost/api/agent/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "teste fallback",
-        provider: "vertexai",
-        model: "gemini-2.5-pro",
-      }),
-    });
-
-    const response = await POST(request as never);
-    const events = await readSSEEvents(response);
-    const fullResponse = events
-      .filter((e) => e.type === "response")
-      .map((e) => String(e.data))
-      .join("");
-
-    expect(fullResponse.includes("resposta principal")).toBe(true);
-    expect(events.some((e) => e.type === "thought" && String(e.data).includes("pensamento vindo de updates"))).toBe(
-      true
-    );
-    expect(events.some((e) => e.type === "step")).toBe(false);
+    expect(events.some((e) => e.type === "error" && String(e.data).includes("python error"))).toBe(true);
   });
 });

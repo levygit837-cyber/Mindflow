@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEFAULT_SETTINGS, type AppSettings } from "@shared/types/settings";
-import { settingsUpdateSchema } from "@backend/schemas/settings.schema";
+import { settingsUpdateSchema } from "@server/schemas/settings.schema";
 
 /**
  * In-memory settings store.

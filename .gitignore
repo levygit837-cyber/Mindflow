@@ -51,8 +51,8 @@ next-env.d.ts
 # searxng docker volume (permission-restricted)
 backend/searxng/searxng/
 
-# codesearch index
-.coa/
+# codesearch index and other AI tools
+.tools/
 
 # Git worktrees
 .worktrees/

@@ -26,14 +26,14 @@
       "@/*": [
         "./src/*"
       ],
-      "@frontend/*": [
-        "./frontend/*"
+      "@client/*": [
+        "./src/client/*"
       ],
-      "@backend/*": [
-        "./backend/*"
+      "@server/*": [
+        "./src/server/*"
       ],
       "@shared/*": [
-        "./shared/*"
+        "./src/shared/*"
       ]
     }
   },
@@ -42,10 +42,13 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".tools/.next/types/**/*.ts",
+    ".tools/.next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "node_modules_old"
+    "node_modules_old",
+    "Reference"
   ]
 }

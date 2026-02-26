@@ -2,12 +2,13 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  distDir: '.tools/.next',
   turbopack: {
     root: path.resolve(__dirname),
     resolveAlias: {
-      "@frontend": path.resolve(__dirname, "frontend"),
-      "@backend": path.resolve(__dirname, "backend"),
-      "@shared": path.resolve(__dirname, "shared"),
+      "@client": path.resolve(__dirname, "src/client"),
+      "@server": path.resolve(__dirname, "src/server"),
+      "@shared": path.resolve(__dirname, "src/shared"),
     },
   },
 };

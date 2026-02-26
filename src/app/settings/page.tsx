@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@frontend/components/ui/button";
-import { Input } from "@frontend/components/ui/input";
-import { Label } from "@frontend/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@frontend/components/ui/card";
+import { Button } from "@client/components/ui/button";
+import { Input } from "@client/components/ui/input";
+import { Label } from "@client/components/ui/label";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@client/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@frontend/components/ui/select";
+} from "@client/components/ui/select";
 import type { AppSettings } from "@shared/types/settings";
 import { DEFAULT_SETTINGS, PROVIDER_MODELS } from "@shared/types/settings";
 import type { LLMProvider } from "@shared/types/agent";
