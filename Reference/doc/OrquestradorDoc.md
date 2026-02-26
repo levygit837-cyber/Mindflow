@@ -1,14 +1,14 @@
 # OrquestradorDoc
 
 > Camada: 2 — Arquitetura | Depende de: SubAgentsDoc, AgentsDoc | Referenciado por: SkillsDoc, Backends
-> Stack: deepagents · LangGraph · LangChain · Python
+> Stack: deepagents · LangGraph · LangChain · TypeScript
 
 ---
 
 ## A) Visão Geral
 
 - O **orquestrador** é o agente responsável por decidir **quem faz o quê** — ele coordena outros agentes/sub-agentes sem executar as tarefas diretamente.
-- No OmniMind, o orquestrador vive em `python/omnimind_agents/runtime/swarm_runner.py` — é o ponto de entrada do sistema swarm.
+- No OmniMind, o orquestrador vive em `src/server/swarm/orchestrator.ts` — é o ponto de entrada do sistema swarm.
 - Existem três padrões principais: **supervisor** (um coordena vários), **pipeline** (sequência fixa de passos) e **reactive** (eventos disparam agentes).
 - O orquestrador recebe uma tarefa de alto nível, a decompõe, distribui para especialistas, monitora o progresso e consolida o resultado final.
 - Roteamento de tarefas pode ser estático (regras fixas) ou dinâmico (o próprio LLM decide para onde rotear).
@@ -28,8 +28,8 @@
 | **Dead letter** | Tarefa que falhou em todos os agentes disponíveis — precisa de intervenção humana |
 | **Retry** | Tentar novamente a mesma tarefa com o mesmo ou diferente agente |
 | **Fallback** | Agente substituto quando o agente principal falha |
-| **AGENT_STATE_CHANGE** | Tipo de evento emitido pelo swarm quando um agente muda de estado (ver swarm_runner.py) |
-| **PLAN_UPDATE** | Tipo de evento emitido quando o plano de execução avança (ver swarm_runner.py) |
+| **AGENT_STATE_CHANGE** | Tipo de evento emitido pelo swarm quando um agente muda de estado (ver orchestrator.ts) |
+| **PLAN_UPDATE** | Tipo de evento emitido quando o plano de execução avança (ver orchestrator.ts) |
 
 ---
 
@@ -51,7 +51,7 @@
 - **Não crie orquestradores com lógica de negócio** — regras de domínio ficam nos sub-agentes ou tools
 - **Não ignore falhas de sub-agentes** — erros silenciosos levam a resultados incompletos sem aviso
 - **Não crie pipeline fixo para tarefas variáveis** — use supervisor pattern com LLM router para flexibilidade
-- **Não emita eventos sem estrutura** — o frontend depende de formato consistente (ver swarm_runner.py)
+- **Não emita eventos sem estrutura** — o frontend depende de formato consistente (ver orchestrator.ts)
 
 ---
 
@@ -90,30 +90,39 @@ Mistura de tudo?
 
 ### Exemplo 1 — Supervisor com LLM router (LangGraph)
 
-```python
-from typing import Annotated, Literal, TypedDict
-from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
-from langchain_anthropic import ChatAnthropic
-from pydantic import BaseModel
+```typescript
+import { Annotation, StateGraph, END } from "@langchain/langgraph";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { z } from "zod";
 
-# Sub-agentes disponíveis
-AGENTS = ["coder", "analyst", "reviewer", "researcher"]
+// Sub-agentes disponíveis
+const AGENTS = ["coder", "analyst", "reviewer", "researcher"] as const;
+type AgentName = typeof AGENTS[number] | "FINISH";
 
-# Schema de decisão do supervisor
-class RouterDecision(BaseModel):
-    next_agent: Literal["coder", "analyst", "reviewer", "researcher", "FINISH"]
-    reason: str
+// Schema de decisão do supervisor (Zod em vez de Pydantic)
+const RouterDecisionSchema = z.object({
+  next_agent: z.enum(["coder", "analyst", "reviewer", "researcher", "FINISH"]),
+  reason: z.string(),
+});
 
-class OrchestratorState(TypedDict):
-    messages: Annotated[list, add_messages]
-    task: str
-    results: dict
-    next_agent: str
+// Estado do orquestrador via Annotation.Root (padrão do projeto)
+const OrchestratorAnnotation = Annotation.Root({
+  messages: Annotation<{ role: string; content: string }[]>({
+    reducer: (a, b) => [...a, ...b],
+    default: () => [],
+  }),
+  task: Annotation<string>({ default: () => "" }),
+  results: Annotation<Record<string, unknown>>({ default: () => ({}) }),
+  next_agent: Annotation<string>({ default: () => "" }),
+});
 
-supervisor_model = ChatAnthropic(model="claude-sonnet-4-6").with_structured_output(RouterDecision)
+type OrchestratorState = typeof OrchestratorAnnotation.State;
 
-SUPERVISOR_PROMPT = """Você é um orquestrador. Dado o estado atual da tarefa,
+const supervisorModel = new ChatAnthropic({ model: "claude-sonnet-4-6" }).withStructuredOutput(
+  RouterDecisionSchema
+);
+
+const SUPERVISOR_PROMPT = `Você é um orquestrador. Dado o estado atual da tarefa,
 decida qual agente especialista deve agir a seguir.
 
 Agentes disponíveis:
@@ -122,188 +131,210 @@ Agentes disponíveis:
 - reviewer: revisa código e qualidade
 - researcher: busca informações externas
 
-Se a tarefa estiver completa, responda FINISH."""
+Se a tarefa estiver completa, responda FINISH.`;
 
-def supervisor_node(state: OrchestratorState) -> OrchestratorState:
-    context = f"Tarefa: {state['task']}\nResultados até agora: {state['results']}"
-    decision = supervisor_model.invoke([
-        {"role": "system", "content": SUPERVISOR_PROMPT},
-        {"role": "user", "content": context},
-    ])
-    return {"next_agent": decision.next_agent}
+async function supervisorNode(state: OrchestratorState): Promise<Partial<OrchestratorState>> {
+  const context = `Tarefa: ${state.task}\nResultados até agora: ${JSON.stringify(state.results)}`;
+  const decision = await supervisorModel.invoke([
+    { role: "system", content: SUPERVISOR_PROMPT },
+    { role: "user", content: context },
+  ]);
+  return { next_agent: decision.next_agent };
+}
 
-def route_to_agent(state: OrchestratorState) -> str:
-    return state["next_agent"]
+function routeToAgent(state: OrchestratorState): string {
+  return state.next_agent;
+}
 
-def coder_node(state: OrchestratorState) -> OrchestratorState:
-    # sub-agente de coding...
-    result = run_coder_subagent(state["task"])
-    return {"results": {**state.get("results", {}), "coder": result}}
+async function coderNode(state: OrchestratorState): Promise<Partial<OrchestratorState>> {
+  // sub-agente de coding...
+  const result = await runCoderSubagent(state.task);
+  return { results: { ...state.results, coder: result } };
+}
 
-# Grafo
-builder = StateGraph(OrchestratorState)
-builder.add_node("supervisor", supervisor_node)
-builder.add_node("coder", coder_node)
-# ... outros nodes ...
-builder.set_entry_point("supervisor")
-builder.add_conditional_edges(
-    "supervisor",
-    route_to_agent,
-    {"coder": "coder", "analyst": "analyst", "FINISH": END},
-)
-builder.add_edge("coder", "supervisor")  # volta pro supervisor após execução
+// Grafo
+const builder = new StateGraph(OrchestratorAnnotation);
+builder.addNode("supervisor", supervisorNode);
+builder.addNode("coder", coderNode);
+// ... outros nodes ...
+builder.setEntryPoint("supervisor");
+builder.addConditionalEdges("supervisor", routeToAgent, {
+  coder: "coder",
+  analyst: "analyst",
+  FINISH: END,
+});
+builder.addEdge("coder", "supervisor"); // volta pro supervisor após execução
 
-orchestrator = builder.compile()
+const orchestrator = builder.compile();
 ```
 
 ---
 
 ### Exemplo 2 — Pipeline sequencial simples
 
-```python
-# Para tarefas que sempre seguem a mesma ordem:
-# análise → implementação → revisão → entrega
+```typescript
+// Para tarefas que sempre seguem a mesma ordem:
+// análise → implementação → revisão → entrega
 
-from langgraph.graph import StateGraph, END
-from typing import TypedDict
+import { Annotation, StateGraph, END } from "@langchain/langgraph";
 
-class PipelineState(TypedDict):
-    task: str
-    analysis: str
-    code: str
-    review: str
-    final_output: str
+const PipelineAnnotation = Annotation.Root({
+  task: Annotation<string>({ default: () => "" }),
+  analysis: Annotation<string>({ default: () => "" }),
+  code: Annotation<string>({ default: () => "" }),
+  review: Annotation<string>({ default: () => "" }),
+  final_output: Annotation<string>({ default: () => "" }),
+});
 
-async def analyze(state: PipelineState) -> PipelineState:
-    result = await analyst_agent.ainvoke(
-        {"messages": [{"role": "user", "content": f"Analise: {state['task']}"}]},
-        config={"recursion_limit": 10},
-    )
-    return {"analysis": result["messages"][-1].content}
+type PipelineState = typeof PipelineAnnotation.State;
 
-async def implement(state: PipelineState) -> PipelineState:
-    prompt = f"Tarefa: {state['task']}\nAnálise: {state['analysis']}\nImplemente."
-    result = await coder_agent.ainvoke(
-        {"messages": [{"role": "user", "content": prompt}]},
-        config={"recursion_limit": 15},
-    )
-    return {"code": result["messages"][-1].content}
+async function analyze(state: PipelineState): Promise<Partial<PipelineState>> {
+  const result = await analystAgent.invoke(
+    { messages: [{ role: "user", content: `Analise: ${state.task}` }] },
+    { recursionLimit: 10 }
+  );
+  return { analysis: result.messages.at(-1)?.content as string };
+}
 
-async def review(state: PipelineState) -> PipelineState:
-    result = await reviewer_agent.ainvoke(
-        {"messages": [{"role": "user", "content": f"Revise:\n{state['code']}"}]},
-        config={"recursion_limit": 10},
-    )
-    return {"review": result["messages"][-1].content, "final_output": state["code"]}
+async function implement(state: PipelineState): Promise<Partial<PipelineState>> {
+  const prompt = `Tarefa: ${state.task}\nAnálise: ${state.analysis}\nImplemente.`;
+  const result = await coderAgent.invoke(
+    { messages: [{ role: "user", content: prompt }] },
+    { recursionLimit: 15 }
+  );
+  return { code: result.messages.at(-1)?.content as string };
+}
 
-builder = StateGraph(PipelineState)
-builder.add_node("analyze", analyze)
-builder.add_node("implement", implement)
-builder.add_node("review", review)
-builder.set_entry_point("analyze")
-builder.add_edge("analyze", "implement")
-builder.add_edge("implement", "review")
-builder.add_edge("review", END)
+async function review(state: PipelineState): Promise<Partial<PipelineState>> {
+  const result = await reviewerAgent.invoke(
+    { messages: [{ role: "user", content: `Revise:\n${state.code}` }] },
+    { recursionLimit: 10 }
+  );
+  return {
+    review: result.messages.at(-1)?.content as string,
+    final_output: state.code,
+  };
+}
 
-pipeline = builder.compile()
+const builder = new StateGraph(PipelineAnnotation);
+builder.addNode("analyze", analyze);
+builder.addNode("implement", implement);
+builder.addNode("review", review);
+builder.setEntryPoint("analyze");
+builder.addEdge("analyze", "implement");
+builder.addEdge("implement", "review");
+builder.addEdge("review", END);
+
+const pipeline = builder.compile();
 ```
 
 ---
 
-### Exemplo 3 — Como o swarm_runner.py do OmniMind emite eventos
+### Exemplo 3 — Como o orchestrator.ts do OmniMind emite eventos
 
-```python
-# Padrão real do projeto — ver python/omnimind_agents/runtime/swarm_runner.py
-import json, sys
+```typescript
+// Padrão real do projeto — ver src/server/swarm/orchestrator.ts
 
-def emit(payload: dict) -> None:
-    sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    sys.stdout.flush()
+function emit(payload: Record<string, unknown>): void {
+  process.stdout.write(JSON.stringify(payload) + "\n");
+}
 
-# 1. Orquestrador muda de estado
+// 1. Orquestrador muda de estado
 emit({
-    "kind": "event",
-    "event_type": "AGENT_STATE_CHANGE",
-    "agent_id": "orchestrator",
-    "payload": {
-        "old_state": "pending",
-        "new_state": "planning",
-        "detail": "Decompondo tarefa em sub-tarefas",
-    },
-})
+  kind: "event",
+  event_type: "AGENT_STATE_CHANGE",
+  agent_id: "orchestrator",
+  payload: {
+    old_state: "pending",
+    new_state: "planning",
+    detail: "Decompondo tarefa em sub-tarefas",
+  },
+});
 
-# 2. Plano atualizado
+// 2. Plano atualizado
 emit({
-    "kind": "event",
-    "event_type": "PLAN_UPDATE",
-    "agent_id": "orchestrator",
-    "payload": {
-        "plan_step": "coding",
-        "status": "started",
-        "detail": "Agente coder iniciou implementação",
-    },
-})
+  kind: "event",
+  event_type: "PLAN_UPDATE",
+  agent_id: "orchestrator",
+  payload: {
+    plan_step: "coding",
+    status: "started",
+    detail: "Agente coder iniciou implementação",
+  },
+});
 
-# 3. Status geral
-emit({"kind": "status", "status": "coding"})
+// 3. Status geral
+emit({ kind: "status", status: "coding" });
 ```
 
 ---
 
 ### Exemplo 4 (RUIM → CORRIGIDO)
 
-```python
-# ❌ RUIM — orquestrador que também executa tarefas
+```typescript
+// ❌ RUIM — orquestrador que também executa tarefas
 
-async def orchestrate_and_code(task: str) -> str:
-    # Decide E implementa — mistura responsabilidades
-    if "bug" in task:
-        return await fix_bug_directly(task)   # orquestrador executando
-    elif "feature" in task:
-        return await add_feature(task)         # orquestrador executando
-    # Sem tratamento de falha
-    # Sem emissão de eventos
-    # Sem timeout
+async function orchestrateAndCode(task: string): Promise<string> {
+  // Decide E implementa — mistura responsabilidades
+  if (task.includes("bug")) {
+    return fixBugDirectly(task);   // orquestrador executando
+  } else if (task.includes("feature")) {
+    return addFeature(task);       // orquestrador executando
+  }
+  // Sem tratamento de falha
+  // Sem emissão de eventos
+  // Sem timeout
+  return "";
+}
 ```
 
-```python
-# ✅ CORRIGIDO — orquestrador puro + sub-agentes especializados
+```typescript
+// ✅ CORRIGIDO — orquestrador puro + sub-agentes especializados
 
-import asyncio
+async function orchestrate(
+  task: string,
+  emitFn: (payload: Record<string, unknown>) => void
+): Promise<string> {
+  emitFn({ kind: "status", status: "planning" });
 
-async def orchestrate(task: str, emit_fn) -> str:
-    emit_fn({"kind": "status", "status": "planning"})
+  // Decide quem executa (não executa ele mesmo)
+  const agentType = classifyTask(task); // "bugfix" ou "feature"
 
-    # Decide quem executa (não executa ele mesmo)
-    agent_type = classify_task(task)  # "bugfix" ou "feature"
+  emitFn({
+    kind: "event",
+    event_type: "AGENT_STATE_CHANGE",
+    agent_id: "orchestrator",
+    payload: { new_state: "dispatching", detail: `Enviando para ${agentType}` },
+  });
 
-    emit_fn({
-        "kind": "event",
-        "event_type": "AGENT_STATE_CHANGE",
-        "agent_id": "orchestrator",
-        "payload": {"new_state": "dispatching", "detail": f"Enviando para {agent_type}"},
-    })
+  try {
+    // Timeout explícito com Promise.race
+    const result = await Promise.race([
+      dispatchToAgent(agentType, task),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 120_000)
+      ),
+    ]);
+    emitFn({ kind: "status", status: "done" });
+    return result;
+  } catch (err) {
+    if (err instanceof Error && err.message === "Timeout") {
+      emitFn({ kind: "error", message: `Timeout: agente ${agentType} não respondeu em 120s` });
+      // Fallback
+      return dispatchToAgent("fallback_agent", task);
+    }
+    emitFn({ kind: "error", message: `Falha no orquestrador: ${String(err)}` });
+    throw err;
+  }
+}
 
-    try:
-        # Timeout explícito
-        result = await asyncio.wait_for(
-            dispatch_to_agent(agent_type, task),
-            timeout=120.0,
-        )
-        emit_fn({"kind": "status", "status": "done"})
-        return result
-    except asyncio.TimeoutError:
-        emit_fn({"kind": "error", "message": f"Timeout: agente {agent_type} não respondeu em 120s"})
-        # Fallback
-        return await dispatch_to_agent("fallback_agent", task)
-    except Exception as e:
-        emit_fn({"kind": "error", "message": f"Falha no orquestrador: {e}"})
-        raise
-
-def classify_task(task: str) -> str:
-    if any(word in task.lower() for word in ["bug", "erro", "fix", "corrigir"]):
-        return "bugfix"
-    return "feature"
+function classifyTask(task: string): string {
+  const lower = task.toLowerCase();
+  if (["bug", "erro", "fix", "corrigir"].some((w) => lower.includes(w))) {
+    return "bugfix";
+  }
+  return "feature";
+}
 ```
 
 ---
@@ -319,8 +350,8 @@ def classify_task(task: str) -> str:
 
 ### Incertezas desta documentação
 
-- LangGraph supervisor pattern pode ter atualizações na API `langgraph-supervisor` (pacote separado). **(incerto)** — confirme disponibilidade e API atual.
-- `asyncio.wait_for` + LangGraph async pode ter comportamento específico por versão. **(incerto)** — teste em seu ambiente.
+- LangGraph supervisor pattern pode ter atualizações na API `@langchain/langgraph` (pacote ativo). **(incerto)** — confirme disponibilidade e API atual.
+- `Promise.race` com timeout + LangGraph async pode ter comportamento específico por versão. **(incerto)** — teste em seu ambiente.
 
 ---
 
@@ -337,7 +368,7 @@ Se um músico erra uma nota (sub-agente falha), o maestro não substitui o músi
 | Erro | Causa | Como evitar |
 |---|---|---|
 | Orquestrador executa tarefas | Mistura responsabilidades | Orquestrador só coordena; sub-agentes executam |
-| Sub-agente trava o sistema | Sem timeout | Use `asyncio.wait_for` com timeout explícito |
+| Sub-agente trava o sistema | Sem timeout | Use `Promise.race` com timeout explícito |
 | Frontend não sabe o que acontece | Sem eventos de estado | Emita AGENT_STATE_CHANGE e PLAN_UPDATE |
 | Falha silenciosa | Exceção não propagada | Sempre emita evento de erro antes de fazer fallback |
 | Roteamento errado | LLM router sem exemplos | Adicione exemplos no prompt do supervisor (few-shot) |
@@ -348,73 +379,99 @@ Se um músico erra uma nota (sub-agente falha), o maestro não substitui o músi
 
 ## I) Mini-Template Pronto
 
-```python
-# ============================================================
-# TEMPLATE: Orquestrador supervisor (LangGraph)
-# ============================================================
+```typescript
+// ============================================================
+// TEMPLATE: Orquestrador supervisor (LangGraph TypeScript)
+// ============================================================
 
-import asyncio
-import json
-import sys
-from typing import Annotated, Literal, TypedDict
-from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
-from pydantic import BaseModel
+import { Annotation, StateGraph, END } from "@langchain/langgraph";
+import { z } from "zod";
 
-# --- Tipos de agentes disponíveis ---
-AgentName = Literal["agent_a", "agent_b", "FINISH"]
+// --- Tipos de agentes disponíveis ---
+const AgentNameSchema = z.enum(["agent_a", "agent_b", "FINISH"]);
+type AgentName = z.infer<typeof AgentNameSchema>;
 
-class RouterDecision(BaseModel):
-    next: AgentName
-    reason: str
+const RouterDecisionSchema = z.object({
+  next: AgentNameSchema,
+  reason: z.string(),
+});
 
-class OrchestratorState(TypedDict):
-    messages: Annotated[list, add_messages]
-    task: str
-    results: dict
+// --- Estado via Annotation.Root ---
+const OrchestratorAnnotation = Annotation.Root({
+  messages: Annotation<{ role: string; content: string }[]>({
+    reducer: (a, b) => [...a, ...b],
+    default: () => [],
+  }),
+  task: Annotation<string>({ default: () => "" }),
+  results: Annotation<Record<string, unknown>>({ default: () => ({}) }),
+});
 
-# --- Emit helper ---
-def emit(payload: dict) -> None:
-    sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    sys.stdout.flush()
+type OrchestratorState = typeof OrchestratorAnnotation.State;
 
-# --- Supervisor node ---
-def supervisor(state: OrchestratorState) -> OrchestratorState:
-    decision = router_model.invoke([
-        {"role": "system", "content": "Decida qual agente age a seguir ou FINISH."},
-        {"role": "user", "content": f"Tarefa: {state['task']}\nResultados: {state['results']}"},
-    ])
-    emit({"kind": "event", "event_type": "PLAN_UPDATE", "agent_id": "supervisor",
-          "payload": {"next": decision.next, "reason": decision.reason}})
-    return {"messages": [{"role": "assistant", "content": f"→ {decision.next}: {decision.reason}"}]}
+// --- Emit helper ---
+function emit(payload: Record<string, unknown>): void {
+  process.stdout.write(JSON.stringify(payload) + "\n");
+}
 
-# --- Sub-agente placeholder ---
-async def agent_a(state: OrchestratorState) -> OrchestratorState:
-    try:
-        result = await asyncio.wait_for(
-            run_subagent_a(state["task"]),
-            timeout=60.0,
-        )
-        return {"results": {**state.get("results", {}), "agent_a": result}}
-    except asyncio.TimeoutError:
-        emit({"kind": "error", "message": "agent_a timeout"})
-        return {"results": {**state.get("results", {}), "agent_a": "[TIMEOUT]"}}
+// --- Supervisor node ---
+async function supervisor(
+  state: OrchestratorState
+): Promise<Partial<OrchestratorState>> {
+  const decision = await routerModel.invoke([
+    { role: "system", content: "Decida qual agente age a seguir ou FINISH." },
+    {
+      role: "user",
+      content: `Tarefa: ${state.task}\nResultados: ${JSON.stringify(state.results)}`,
+    },
+  ]);
+  emit({
+    kind: "event",
+    event_type: "PLAN_UPDATE",
+    agent_id: "supervisor",
+    payload: { next: decision.next, reason: decision.reason },
+  });
+  return {
+    messages: [{ role: "assistant", content: `→ ${decision.next}: ${decision.reason}` }],
+  };
+}
 
-# --- Grafo ---
-def build_orchestrator():
-    builder = StateGraph(OrchestratorState)
-    builder.add_node("supervisor", supervisor)
-    builder.add_node("agent_a", agent_a)
-    # builder.add_node("agent_b", agent_b)
-    builder.set_entry_point("supervisor")
-    builder.add_conditional_edges(
-        "supervisor",
-        lambda s: s["messages"][-1].content.split("→")[1].split(":")[0].strip()
-            if "→" in str(s["messages"][-1].content) else "FINISH",
-        {"agent_a": "agent_a", "FINISH": END},
-    )
-    builder.add_edge("agent_a", "supervisor")
-    return builder.compile()
+// --- Sub-agente placeholder ---
+async function agentA(
+  state: OrchestratorState
+): Promise<Partial<OrchestratorState>> {
+  try {
+    const result = await Promise.race([
+      runSubagentA(state.task),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 60_000)
+      ),
+    ]);
+    return { results: { ...state.results, agent_a: result } };
+  } catch {
+    emit({ kind: "error", message: "agent_a timeout" });
+    return { results: { ...state.results, agent_a: "[TIMEOUT]" } };
+  }
+}
 
-orchestrator = build_orchestrator()
+// --- Grafo ---
+function buildOrchestrator() {
+  const builder = new StateGraph(OrchestratorAnnotation);
+  builder.addNode("supervisor", supervisor);
+  builder.addNode("agent_a", agentA);
+  // builder.addNode("agent_b", agentB);
+  builder.setEntryPoint("supervisor");
+  builder.addConditionalEdges(
+    "supervisor",
+    (s) => {
+      const last = s.messages.at(-1)?.content ?? "";
+      const match = last.match(/→ (\w+):/);
+      return match ? match[1] : "FINISH";
+    },
+    { agent_a: "agent_a", FINISH: END }
+  );
+  builder.addEdge("agent_a", "supervisor");
+  return builder.compile();
+}
+
+const orchestrator = buildOrchestrator();
 ```

@@ -1,35 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EventEmitter } from "node:events";
 
-const { spawnMock } = vi.hoisted(() => ({
-  spawnMock: vi.fn(),
+const { streamMock, createOmniMindAgentMock } = vi.hoisted(() => ({
+  streamMock: vi.fn(),
+  createOmniMindAgentMock: vi.fn(),
 }));
 
-vi.mock("node:child_process", () => ({
-  spawn: spawnMock,
-  default: {
-    spawn: spawnMock,
-  },
+vi.mock("@server/agent", () => ({
+  createOmniMindAgent: createOmniMindAgentMock,
 }));
 
 import { POST } from "@/app/api/agent/chat/route";
-
-function makeChildProcessMock() {
-  const child = new EventEmitter() as EventEmitter & {
-    stdout: EventEmitter;
-    stderr: EventEmitter;
-    stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
-  };
-
-  child.stdout = new EventEmitter();
-  child.stderr = new EventEmitter();
-  child.stdin = {
-    write: vi.fn(),
-    end: vi.fn(),
-  };
-
-  return child;
-}
 
 async function readSSEEvents(response: Response) {
   const reader = response.body?.getReader();
@@ -58,12 +38,19 @@ async function readSSEEvents(response: Response) {
 
 describe("POST /api/agent/chat", () => {
   beforeEach(() => {
-    spawnMock.mockReset();
+    streamMock.mockReset();
+    createOmniMindAgentMock.mockReset();
+    createOmniMindAgentMock.mockReturnValue({
+      stream: streamMock
+    });
   });
 
-  it("streams events produced by python runtime", async () => {
-    const child = makeChildProcessMock();
-    spawnMock.mockReturnValue(child);
+  it("streams events produced by the TS deepagents runtime", async () => {
+    async function* mockStreamGenerator() {
+      yield ["messages", ["analisando", { langgraph_node: "agent" }]];
+      yield ["messages", ["resposta", { langgraph_node: "agent" }]];
+    }
+    streamMock.mockReturnValue(mockStreamGenerator());
 
     const request = new Request("http://localhost/api/agent/chat", {
       method: "POST",
@@ -72,39 +59,19 @@ describe("POST /api/agent/chat", () => {
     });
 
     const response = await POST(request as never);
-
-    child.stdout.emit(
-      "data",
-      Buffer.from(
-        [
-          JSON.stringify({ type: "thought", data: "analisando", mode: "messages" }),
-          JSON.stringify({ type: "response", data: "resposta", mode: "messages" }),
-          JSON.stringify({ type: "done", data: "", mode: "messages" }),
-        ].join("\n") + "\n"
-      )
-    );
-    child.emit("close", 0);
-
     const events = await readSSEEvents(response);
     const types = events.map((e) => e.type);
 
-    expect(types).toContain("thought");
     expect(types).toContain("response");
     expect(types).toContain("done");
-    expect(spawnMock).toHaveBeenCalledWith(
-      expect.any(String),
-      ["-m", "omnimind_agents.runtime.chat_runner"],
-      expect.objectContaining({
-        cwd: expect.any(String),
-      })
-    );
-    expect(child.stdin.write).toHaveBeenCalled();
-    expect(child.stdin.end).toHaveBeenCalled();
+    expect(createOmniMindAgentMock).toHaveBeenCalled();
+    expect(streamMock).toHaveBeenCalled();
   });
 
-  it("emits error event when python runtime exits with non-zero code", async () => {
-    const child = makeChildProcessMock();
-    spawnMock.mockReturnValue(child);
+  it("emits error event when the TS runtime throws an error", async () => {
+    streamMock.mockImplementation(() => {
+      throw new Error("ts error");
+    });
 
     const request = new Request("http://localhost/api/agent/chat", {
       method: "POST",
@@ -113,11 +80,8 @@ describe("POST /api/agent/chat", () => {
     });
 
     const response = await POST(request as never);
-
-    child.stderr.emit("data", Buffer.from("python error"));
-    child.emit("close", 1);
-
     const events = await readSSEEvents(response);
-    expect(events.some((e) => e.type === "error" && String(e.data).includes("python error"))).toBe(true);
+
+    expect(events.some((e) => e.type === "error" && String(e.data).includes("ts error"))).toBe(true);
   });
 });

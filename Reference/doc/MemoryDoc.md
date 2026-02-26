@@ -1,7 +1,7 @@
 # MemoryDoc
 
 > Camada: 2 — Arquitetura | Depende de: AgentsDoc, ContextoDoc | Referenciado por: PromptGuide
-> Stack: deepagents · LangGraph · LangChain · Python
+> Stack: deepagents · LangGraph · LangChain · TypeScript
 
 ---
 
@@ -10,7 +10,7 @@
 - **Memória** é o mecanismo que permite ao agente lembrar informações além da janela de contexto atual.
 - Existem quatro tipos: **working** (curto prazo, dentro da sessão), **episodic** (histórico de conversas), **semantic** (conhecimento factual persistente) e **procedural** (como executar tarefas — skills).
 - LangGraph gerencia memória via **checkpointers** — componentes que salvam e restauram o estado do grafo entre execuções.
-- deepagents usa `StateBackend` (memória de estado) e `FilesystemBackend` (persistência em arquivo) — ambos configurados em `deep_agent_config.py`.
+- deepagents usa `StateBackend` (memória de estado) e `FilesystemBackend` (persistência em arquivo) — ambos configurados em `src/server/agent/deep-agent-config.ts`.
 - O `thread_id` é a chave de isolamento — cada conversa/usuário deve ter seu próprio `thread_id`.
 - Saber **quando persistir vs quando descartar** é tão importante quanto saber como persistir.
 
@@ -24,10 +24,10 @@
 | **Episodic memory** | Histórico de conversas anteriores — o que foi dito em sessões passadas |
 | **Semantic memory** | Conhecimento factual persistido — fatos, preferências, dados do usuário |
 | **Procedural memory** | Como executar tarefas — skills, padrões, workflows aprendidos |
-| **Checkpointer** | Componente LangGraph que salva/restaura o estado do grafo (MemorySaver, SqliteSaver) |
+| **Checkpointer** | Componente LangGraph que salva/restaura o estado do grafo (MemorySaver) |
 | **Thread ID** | Identificador único de uma conversa/sessão — isola memória entre usuários |
-| **MemorySaver** | Checkpointer in-memory do LangGraph — dados somem ao reiniciar o processo |
-| **SqliteSaver** | Checkpointer SQLite do LangGraph — persiste em arquivo local |
+| **MemorySaver** | Checkpointer in-memory do `@langchain/langgraph` — dados somem ao reiniciar o processo |
+| **SqliteSaver** | Checkpointer SQLite (Python) — sem equivalente direto em TS; use `MemorySaver` para dev **(incerto)** |
 | **StateBackend** | Backend deepagents para armazenar estado estruturado em memória |
 | **FilesystemBackend** | Backend deepagents para ler/escrever arquivos como memória persistente |
 
@@ -38,7 +38,7 @@
 ### DO ✅
 
 - **Sempre use `thread_id` por usuário/sessão** — sem isso, toda conversa compartilha o mesmo estado
-- **Use `MemorySaver` em desenvolvimento, `SqliteSaver` em produção leve** — fácil de trocar
+- **Use `MemorySaver` em desenvolvimento** — fácil de configurar; para produção, avalie alternativas persistentes **(incerto)**
 - **Persista só o que é realmente necessário** — memória grande aumenta latência de recuperação
 - **Defina TTL (tempo de vida) para memórias episódicas** — conversas de 6 meses atrás raramente são relevantes
 - **Separe memória por tipo** — histórico de conversa num lugar, preferências do usuário em outro
@@ -59,7 +59,7 @@
 ### Checklist para configurar memória
 
 - [ ] Tipo de memória definido (working / episodic / semantic / procedural)
-- [ ] Backend escolhido (MemorySaver / SqliteSaver / PostgreSQL / Redis / vector store)
+- [ ] Backend escolhido (MemorySaver / PostgreSQL / Redis / vector store)
 - [ ] `thread_id` configurado e único por usuário/sessão
 - [ ] TTL definido para dados episódicos
 - [ ] Política de compressão definida (summarizar após N mensagens)
@@ -70,13 +70,14 @@
 
 ```
 Desenvolvimento / teste rápido
-  └── MemorySaver (in-memory, sem dependências)
+  └── MemorySaver (in-memory, sem dependências — @langchain/langgraph)
 
 Produção leve / single-server
-  └── SqliteSaver (arquivo local, persistente)
+  └── (incerto) — SqliteSaver não tem equivalente direto em TS;
+      verifique @langchain/langgraph-checkpoint-sqlite ou implemente via better-sqlite3
 
 Produção com múltiplos servidores
-  └── PostgreSQL (incerto — verifique langgraph-checkpoint-postgres)
+  └── PostgreSQL (incerto — verifique @langchain/langgraph-checkpoint-postgres)
       ou Redis (incerto — verifique disponibilidade)
 
 Memória semântica (busca por similaridade)
@@ -89,134 +90,139 @@ Memória semântica (busca por similaridade)
 
 ### Exemplo 1 — Checkpointing com MemorySaver (desenvolvimento)
 
-```python
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import StateGraph
+```typescript
+import { MemorySaver } from "@langchain/langgraph";
 
-checkpointer = MemorySaver()
-graph = build_agent_graph()  # seu grafo aqui
-agent = graph.compile(checkpointer=checkpointer)
+const checkpointer = new MemorySaver();
+const graph = buildAgentGraph(); // seu grafo aqui
+const agent = graph.compile({ checkpointer });
 
-# Conversa 1 — thread isolado por usuário
-config_user_a = {"configurable": {"thread_id": "user-001-session-1"}}
-result1 = agent.invoke(
-    {"messages": [{"role": "user", "content": "Meu nome é Alice"}]},
-    config=config_user_a,
-)
+// Conversa 1 — thread isolado por usuário
+const configUserA = { configurable: { thread_id: "user-001-session-1" } };
+const result1 = await agent.invoke(
+  { messages: [{ role: "user", content: "Meu nome é Alice" }] },
+  configUserA
+);
 
-# Conversa 2 — mesmo usuário, agente lembra
-result2 = agent.invoke(
-    {"messages": [{"role": "user", "content": "Qual é meu nome?"}]},
-    config=config_user_a,  # mesmo thread_id = lembra Alice
-)
-print(result2["messages"][-1].content)  # "Seu nome é Alice"
+// Conversa 2 — mesmo usuário, agente lembra
+const result2 = await agent.invoke(
+  { messages: [{ role: "user", content: "Qual é meu nome?" }] },
+  configUserA // mesmo thread_id = lembra Alice
+);
+console.log(result2.messages.at(-1)?.content); // "Seu nome é Alice"
 
-# Conversa 3 — thread diferente, agente NÃO lembra
-config_user_b = {"configurable": {"thread_id": "user-002-session-1"}}
-result3 = agent.invoke(
-    {"messages": [{"role": "user", "content": "Qual é meu nome?"}]},
-    config=config_user_b,  # thread diferente = sem memória do usuário A
-)
+// Conversa 3 — thread diferente, agente NÃO lembra
+const configUserB = { configurable: { thread_id: "user-002-session-1" } };
+const result3 = await agent.invoke(
+  { messages: [{ role: "user", content: "Qual é meu nome?" }] },
+  configUserB // thread diferente = sem memória do usuário A
+);
 ```
 
 ---
 
-### Exemplo 2 — SqliteSaver (produção leve)
+### Exemplo 2 — Backend persistente (produção leve)
 
-```python
-# SqliteSaver persiste em arquivo — sobrevive a reinicializações
-from langgraph.checkpoint.sqlite import SqliteSaver
-import sqlite3
+```typescript
+// (incerto) — SqliteSaver não tem equivalente direto em @langchain/langgraph para TypeScript.
+// Sugestão: use MemorySaver para desenvolvimento e avalie
+// @langchain/langgraph-checkpoint-postgres ou uma solução customizada para produção.
 
-# Cria/abre o banco
-conn = sqlite3.connect("memory/agent_checkpoints.db", check_same_thread=False)
-checkpointer = SqliteSaver(conn)
+// Exemplo conceitual com MemorySaver (funcional hoje):
+import { MemorySaver } from "@langchain/langgraph";
 
-graph = build_agent_graph()
-agent = graph.compile(checkpointer=checkpointer)
+const checkpointer = new MemorySaver();
+const graph = buildAgentGraph();
+const agent = graph.compile({ checkpointer });
 
-# Uso idêntico ao MemorySaver — só muda o backend
-config = {"configurable": {"thread_id": "user-001"}}
-result = agent.invoke({"messages": [...]}, config=config)
+// Uso idêntico independente do backend
+const config = { configurable: { thread_id: "user-001" } };
+const result = await agent.invoke({ messages: [{ role: "user", content: "Olá" }] }, config);
 ```
 
 ---
 
 ### Exemplo 3 — Como deepagents usa StateBackend e FilesystemBackend
 
-```python
-# Padrão real do projeto — ver python/omnimind_agents/deep_agent_config.py
+```typescript
+// Padrão real do projeto — ver src/server/agent/deep-agent-config.ts
 
-from deepagents import CompositeBackend, FilesystemBackend, StateBackend, create_deep_agent
-import os
+import { CompositeBackend, FilesystemBackend, StateBackend, createDeepAgent } from "deepagents";
 
-# FilesystemBackend: agente pode ler/escrever arquivos como memória
-# StateBackend: estado em memória, acessível via path /memories/
-backend = CompositeBackend(
-    FilesystemBackend(root_dir=os.getcwd()),
-    {
-        "/memories/": StateBackend(state={}, store=None),
-    },
-)
+// FilesystemBackend: agente pode ler/escrever arquivos como memória
+// StateBackend: estado em memória, acessível via path /memories/
+const backend = new CompositeBackend(
+  new FilesystemBackend({ rootDir: process.cwd() }),
+  {
+    "/memories/": new StateBackend({ state: {}, store: null }),
+  }
+);
 
-agent = create_deep_agent(
-    model=model,
-    system_prompt=system_prompt,
-    name="omnimind-agent",
-    tools=[],
-    backend=backend,
-)
+const agent = createDeepAgent({
+  model,
+  systemPrompt,
+  name: "omnimind-agent",
+  tools: [],
+  backend,
+});
 
-# O agente pode:
-# - Ler arquivos do filesystem (FilesystemBackend)
-# - Guardar/recuperar estado em /memories/ (StateBackend)
-# Ex: agent pode salvar {"user_preference": "dark_mode"} em /memories/prefs
+// O agente pode:
+// - Ler arquivos do filesystem (FilesystemBackend)
+// - Guardar/recuperar estado em /memories/ (StateBackend)
+// Ex: agent pode salvar { user_preference: "dark_mode" } em /memories/prefs
 ```
 
 ---
 
 ### Exemplo 4 (RUIM → CORRIGIDO)
 
-```python
-# ❌ RUIM — sem thread_id, sem persistência, memória vaza entre usuários
+```typescript
+// ❌ RUIM — sem thread_id, sem persistência, memória vaza entre usuários
 
-from langgraph.checkpoint.memory import MemorySaver
+import { MemorySaver } from "@langchain/langgraph";
 
-checkpointer = MemorySaver()
-agent = graph.compile(checkpointer=checkpointer)
+const checkpointer = new MemorySaver();
+const agent = graph.compile({ checkpointer });
 
-# Todos os usuários usam o mesmo thread — memória vaza!
-def handle_request(message: str) -> str:
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": message}]},
-        config={"configurable": {"thread_id": "global"}},  # ❌ thread único global
-    )
-    return result["messages"][-1].content
+// Todos os usuários usam o mesmo thread — memória vaza!
+async function handleRequest(message: string): Promise<string> {
+  const result = await agent.invoke(
+    { messages: [{ role: "user", content: message }] },
+    { configurable: { thread_id: "global" } } // ❌ thread único global
+  );
+  return result.messages.at(-1)?.content as string;
+}
 ```
 
-```python
-# ✅ CORRIGIDO — thread_id por usuário, SqliteSaver para persistência
+```typescript
+// ✅ CORRIGIDO — thread_id por usuário, MemorySaver por ora (trocar por backend persistente em produção)
 
-from langgraph.checkpoint.sqlite import SqliteSaver
-import sqlite3
-import uuid
+import { MemorySaver } from "@langchain/langgraph";
+import { randomUUID } from "crypto";
 
-conn = sqlite3.connect("memory/checkpoints.db", check_same_thread=False)
-checkpointer = SqliteSaver(conn)
-agent = graph.compile(checkpointer=checkpointer)
+const checkpointer = new MemorySaver();
+const agent = graph.compile({ checkpointer });
 
-def handle_request(message: str, user_id: str, session_id: str | None = None) -> str:
-    # thread_id = user_id + session_id = isolamento por usuário por sessão
-    thread_id = f"{user_id}-{session_id or uuid.uuid4().hex}"
+async function handleRequest(
+  message: string,
+  userId: string,
+  sessionId?: string
+): Promise<{ content: string; threadId: string }> {
+  // thread_id = userId + sessionId = isolamento por usuário por sessão
+  const threadId = `${userId}-${sessionId ?? randomUUID().replace(/-/g, "")}`;
 
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": message}]},
-        config={
-            "configurable": {"thread_id": thread_id},
-            "recursion_limit": 25,
-        },
-    )
-    return result["messages"][-1].content, thread_id  # retorna thread_id para o cliente manter
+  const result = await agent.invoke(
+    { messages: [{ role: "user", content: message }] },
+    {
+      configurable: { thread_id: threadId },
+      recursionLimit: 25,
+    }
+  );
+  return {
+    content: result.messages.at(-1)?.content as string,
+    threadId, // retorna threadId para o cliente manter
+  };
+}
 ```
 
 ---
@@ -226,8 +232,8 @@ def handle_request(message: str, user_id: str, session_id: str | None = None) ->
 ### Como validar memória
 
 - **Teste de isolamento** — crie duas threads, verifique que informação de uma não aparece na outra
-- **Teste de persistência** — reinicie o processo, verifique que SqliteSaver recupera o estado correto
-- **Inspecione o checkpoint** — LangGraph permite `checkpointer.get(config)` para ver o estado salvo
+- **Teste de persistência** — reinicie o processo, verifique que o backend persistente recupera o estado correto
+- **Inspecione o checkpoint** — LangGraph permite `checkpointer.get(config)` para ver o estado salvo **(incerto — confirme API da versão instalada)**
 - **Monitore tamanho da memória** — threads muito longas aumentam latência; defina limite
 
 ### Quando perguntar vs assumir
@@ -237,9 +243,9 @@ def handle_request(message: str, user_id: str, session_id: str | None = None) ->
 
 ### Incertezas desta documentação
 
-- `PostgresSaver` para produção multi-servidor — **(incerto)** verifique pacote `langgraph-checkpoint-postgres` e sua API atual.
-- `StateBackend` do deepagents pode ter API diferente entre versões — **(incerto)** confirme em `python/omnimind_agents/deep_agent_config.py`.
-- TTL automático no SqliteSaver não é nativo — **(incerto)** verifique se há extensão ou implemente manualmente.
+- Equivalente TypeScript ao `PostgresSaver` para produção multi-servidor — **(incerto)** verifique pacote `@langchain/langgraph-checkpoint-postgres` e sua API atual.
+- `StateBackend` do deepagents pode ter API diferente entre versões — **(incerto)** confirme em `src/server/agent/deep-agent-config.ts`.
+- TTL automático no checkpointer TypeScript não é nativo — **(incerto)** verifique se há extensão ou implemente manualmente.
 
 ---
 
@@ -262,7 +268,7 @@ A diferença é que, diferente de um humano, o agente só "vê" o que está na m
 | Erro | Causa | Como evitar |
 |---|---|---|
 | Memória vaza entre usuários | `thread_id` global ou ausente | Sempre use `thread_id` único por usuário/sessão |
-| Dados somem ao reiniciar | MemorySaver em produção | Use SqliteSaver ou PostgreSQL em produção |
+| Dados somem ao reiniciar | MemorySaver em produção | Use backend persistente (PostgreSQL ou similar) em produção |
 | Memória cresce sem limite | Sem TTL ou compressão | Defina limite de mensagens e comprima episodic memory |
 | Agente "lembra" coisas erradas | Thread corrompido | Implemente reset de thread quando usuário pedir |
 | Performance degradada | Thread com 1000+ mensagens | Aplique summarização após N mensagens |
@@ -272,62 +278,72 @@ A diferença é que, diferente de um humano, o agente só "vê" o que está na m
 
 ## I) Mini-Template Pronto
 
-```python
-# ============================================================
-# TEMPLATE: Agente com memória persistente por usuário
-# ============================================================
+```typescript
+// ============================================================
+// TEMPLATE: Agente com memória persistente por usuário
+// ============================================================
 
-import sqlite3
-from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.graph import StateGraph
+import { MemorySaver } from "@langchain/langgraph";
+import { randomUUID } from "crypto";
 
-# --- Setup do checkpointer (faça uma vez na inicialização) ---
-def create_checkpointer(db_path: str = "memory/agent_memory.db") -> SqliteSaver:
-    import os
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    return SqliteSaver(conn)
+// --- Setup do checkpointer (faça uma vez na inicialização) ---
+// Para desenvolvimento: MemorySaver
+// Para produção: substitua por backend persistente (incerto — verifique disponibilidade)
+function createCheckpointer(): MemorySaver {
+  return new MemorySaver();
+}
 
-checkpointer = create_checkpointer()
+const checkpointer = createCheckpointer();
 
-# --- Compilação do agente com memória ---
-graph = build_agent_graph()  # seu StateGraph aqui
-agent = graph.compile(checkpointer=checkpointer)
+// --- Compilação do agente com memória ---
+const graph = buildAgentGraph(); // seu StateGraph aqui
+const agent = graph.compile({ checkpointer });
 
-# --- Invocação com isolamento por usuário ---
-def get_thread_id(user_id: str, session_id: str) -> str:
-    """Thread ID único por usuário + sessão."""
-    return f"{user_id}::{session_id}"
+// --- Invocação com isolamento por usuário ---
+function getThreadId(userId: string, sessionId: string): string {
+  /** Thread ID único por usuário + sessão. */
+  return `${userId}::${sessionId}`;
+}
 
-async def chat_with_memory(
-    message: str,
-    user_id: str,
-    session_id: str,
-) -> str:
-    thread_id = get_thread_id(user_id, session_id)
-    config = {
-        "configurable": {"thread_id": thread_id},
-        "recursion_limit": 25,
-    }
-    result = await agent.ainvoke(
-        {"messages": [{"role": "user", "content": message}]},
-        config=config,
-    )
-    return result["messages"][-1].content
+async function chatWithMemory(
+  message: string,
+  userId: string,
+  sessionId: string
+): Promise<string> {
+  const threadId = getThreadId(userId, sessionId);
+  const config = {
+    configurable: { thread_id: threadId },
+    recursionLimit: 25,
+  };
+  const result = await agent.invoke(
+    { messages: [{ role: "user", content: message }] },
+    config
+  );
+  return result.messages.at(-1)?.content as string;
+}
 
-# --- Recuperar histórico da thread ---
-def get_conversation_history(user_id: str, session_id: str) -> list:
-    thread_id = get_thread_id(user_id, session_id)
-    config = {"configurable": {"thread_id": thread_id}}
-    state = checkpointer.get(config)  # recupera último checkpoint
-    if state:
-        return state.values.get("messages", [])
-    return []
+// --- Recuperar histórico da thread ---
+async function getConversationHistory(
+  userId: string,
+  sessionId: string
+): Promise<{ role: string; content: string }[]> {
+  const threadId = getThreadId(userId, sessionId);
+  const config = { configurable: { thread_id: threadId } };
+  // (incerto) — confirme API exata do checkpointer na versão instalada
+  const state = await checkpointer.get(config);
+  if (state) {
+    return (state.values as Record<string, unknown>)?.messages as { role: string; content: string }[] ?? [];
+  }
+  return [];
+}
 
-# --- Resetar memória de um usuário ---
-def reset_session(user_id: str, session_id: str) -> None:
-    """Remove o checkpoint de uma sessão específica."""
-    # SqliteSaver não tem delete nativo — implemente via SQL direto
-    # (incerto) verifique API da versão instalada
-    pass
+// --- Resetar memória de um usuário ---
+function resetSession(userId: string, sessionId: string): void {
+  /**
+   * Remove o checkpoint de uma sessão específica.
+   * MemorySaver não expõe delete nativo — inicie nova instância ou
+   * use um novo thread_id para a próxima sessão.
+   * (incerto) verifique API da versão instalada para backends persistentes.
+   */
+}
 ```

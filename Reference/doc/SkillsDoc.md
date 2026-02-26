@@ -1,7 +1,7 @@
 # SkillsDoc
 
 > Camada: 3 — Qualidade | Depende de: AgentsDoc, ToolsDoc | Referenciado por: OrquestradorDoc
-> Stack: deepagents · LangGraph · LangChain · Python
+> Stack: deepagents · LangGraph · LangChain · TypeScript
 
 ---
 
@@ -11,8 +11,8 @@
 - Skills são invocáveis por agentes, por humanos (via slash command `/skill-name`), ou por outros agentes como se fossem tools especializadas.
 - A diferença prática: uma **tool** faz uma ação atômica (ler arquivo), uma **skill** orquestra múltiplas ações para atingir um objetivo (fazer um commit bem formado = verificar diff + escrever mensagem + executar git).
 - Skills são **compostas** — uma skill pode usar tools e outras skills.
-- O sistema de skills do OmniMind (Claude Code) usa arquivos Markdown com instruções para o LLM — não são código Python puro, são prompts estruturados.
-- Para o OmniMind em Python, skills podem ser implementadas como **funções de alto nível**, **grafos LangGraph**, ou **prompts estruturados** que o agente segue.
+- O sistema de skills do OmniMind (Claude Code) usa arquivos Markdown com instruções para o LLM — não são código puro, são prompts estruturados.
+- Para o OmniMind em TypeScript, skills podem ser implementadas como **funções async de alto nível**, **grafos LangGraph**, ou **prompts estruturados** que o agente segue.
 
 ---
 
@@ -97,11 +97,11 @@ Rigid | Flexible
 
 ### Exemplo 1 — Skill de commit (rigid)
 
-```python
-# Implementação Python de uma skill rigid
-# O agente SEMPRE segue esses passos — sem adaptação
+```typescript
+// Implementação TypeScript de uma skill rigid
+// O agente SEMPRE segue esses passos — sem adaptação
 
-COMMIT_SKILL_PROMPT = """
+const COMMIT_SKILL_PROMPT = `
 # Skill: commit
 
 ## Quando usar
@@ -111,33 +111,33 @@ Quando o usuário pede para fazer commit das mudanças.
 RIGID — siga exatamente estes passos, sem pular nenhum.
 
 ## Checklist obrigatório
-- [ ] Passo 1: Execute `git status` — liste arquivos modificados
-- [ ] Passo 2: Execute `git diff --staged` — veja o que já está staged
-- [ ] Passo 3: Se nada staged, execute `git diff` — veja mudanças unstaged
+- [ ] Passo 1: Execute \`git status\` — liste arquivos modificados
+- [ ] Passo 2: Execute \`git diff --staged\` — veja o que já está staged
+- [ ] Passo 3: Se nada staged, execute \`git diff\` — veja mudanças unstaged
 - [ ] Passo 4: Analise as mudanças e escreva a mensagem de commit
-  - Formato: `tipo: descrição curta`
+  - Formato: \`tipo: descrição curta\`
   - Tipos: feat, fix, docs, refactor, test, chore
   - Máximo 72 chars na primeira linha
-- [ ] Passo 5: Execute `git add [arquivos relevantes]` — NUNCA `git add .` sem revisão
-- [ ] Passo 6: Execute `git commit -m "mensagem"`
-- [ ] Passo 7: Confirme com `git status` — working tree deve estar clean
+- [ ] Passo 5: Execute \`git add [arquivos relevantes]\` — NUNCA \`git add .\` sem revisão
+- [ ] Passo 6: Execute \`git commit -m "mensagem"\`
+- [ ] Passo 7: Confirme com \`git status\` — working tree deve estar clean
 
 ## Output
 Retorne: "Commit realizado: [hash] — [mensagem]"
 
 ## Em caso de falha
-- Se `git commit` falhar por hook: analise o erro, corrija o problema, tente novamente
-- Nunca use `--no-verify` sem aprovação explícita do usuário
+- Se \`git commit\` falhar por hook: analise o erro, corrija o problema, tente novamente
+- Nunca use \`--no-verify\` sem aprovação explícita do usuário
 - Se não souber corrigir o erro, reporte ao usuário e aguarde instrução
-"""
+`;
 ```
 
 ---
 
 ### Exemplo 2 — Skill de debug (flexible)
 
-```python
-DEBUGGING_SKILL_PROMPT = """
+```typescript
+const DEBUGGING_SKILL_PROMPT = `
 # Skill: systematic-debugging
 
 ## Quando usar
@@ -161,78 +161,102 @@ FLEXIBLE — adapte ao contexto, mas siga a estrutura geral.
 
 ## Quando escalar
 Se após 3 hipóteses investigadas não encontrou a causa: reportar ao usuário com evidências coletadas.
-"""
+`;
 ```
 
 ---
 
-### Exemplo 3 — Skill como função Python (composite)
+### Exemplo 3 — Skill como função TypeScript (composite)
 
-```python
-# Skill de code review composta — usa múltiplas ferramentas
+```typescript
+// Skill de code review composta — usa múltiplas ferramentas
+// src/server/agent/skills/code-review.ts
 
-import asyncio
-from langchain_core.tools import tool
-from omnimind_agents import get_model_for_provider
-from omnimind_agents.deep_agent_config import create_omnimind_deep_agent
+import { getModelForProvider } from "@/server/agent/providers";
+import { createOmniMindDeepAgent } from "@/server/agent/deep-agent-config";
 
-async def code_review_skill(code: str, context: str = "") -> dict:
-    """
-    Skill: code-review
-    Tipo: Flexible
-    Passos: análise de segurança + análise de qualidade + sugestões de melhoria
-    Output: dict com issues categorizados e score
-    """
-    model = get_model_for_provider("anthropic", "claude-haiku-4-5-20251001")
+interface CodeReviewResult {
+  security: string;
+  quality: string;
+  approved: boolean;
+}
 
-    # Passo 1: análise de segurança
-    security_agent = create_omnimind_deep_agent(
-        model=model,
-        system_prompt="Analise vulnerabilidades de segurança. Retorne bullets com [SEVERITY]: issue.",
-    )
+export async function codeReviewSkill(
+  code: string,
+  context: string = ""
+): Promise<CodeReviewResult> {
+  /**
+   * Skill: code-review
+   * Tipo: Flexible
+   * Passos: análise de segurança + análise de qualidade + sugestões de melhoria
+   * Output: objeto com issues categorizados e decisão de aprovação
+   */
+  const model = getModelForProvider("anthropic", "claude-haiku-4-5-20251001");
 
-    # Passo 2: análise de qualidade
-    quality_agent = create_omnimind_deep_agent(
-        model=model,
-        system_prompt="Analise qualidade de código (legibilidade, SOLID, DRY). Retorne bullets.",
-    )
+  // Passo 1: análise de segurança
+  const securityAgent = createOmniMindDeepAgent({
+    model,
+    systemPrompt:
+      "Analise vulnerabilidades de segurança. Retorne bullets com [SEVERITY]: issue.",
+  });
 
-    # Executa em paralelo (fan-out)
-    input_msg = {"messages": [{"role": "user", "content": f"```\n{code}\n```\nContexto: {context}"}]}
-    config = {"recursion_limit": 8}
+  // Passo 2: análise de qualidade
+  const qualityAgent = createOmniMindDeepAgent({
+    model,
+    systemPrompt:
+      "Analise qualidade de código (legibilidade, SOLID, DRY). Retorne bullets.",
+  });
 
-    security_result, quality_result = await asyncio.gather(
-        security_agent.ainvoke(input_msg, config=config),
-        quality_agent.ainvoke(input_msg, config=config),
-        return_exceptions=True,
-    )
+  // Executa em paralelo (fan-out)
+  const inputMsg = {
+    messages: [
+      { role: "user", content: `\`\`\`\n${code}\n\`\`\`\nContexto: ${context}` },
+    ],
+  };
+  const config = { recursionLimit: 8 };
 
-    def extract(r) -> str:
-        if isinstance(r, Exception):
-            return f"[ERRO] {r}"
-        return r["messages"][-1].content
+  const [securityResult, qualityResult] = await Promise.all([
+    securityAgent.invoke(inputMsg, config).catch((e: unknown) => e),
+    qualityAgent.invoke(inputMsg, config).catch((e: unknown) => e),
+  ]);
 
-    # Passo 3: consolida (fan-in)
-    return {
-        "security": extract(security_result),
-        "quality": extract(quality_result),
-        "approved": "HIGH" not in extract(security_result),
-    }
+  const extract = (r: unknown): string => {
+    if (r instanceof Error) return `[ERRO] ${r.message}`;
+    const result = r as { messages: Array<{ content: string }> };
+    return result.messages[result.messages.length - 1].content;
+  };
+
+  // Passo 3: consolida (fan-in)
+  return {
+    security: extract(securityResult),
+    quality: extract(qualityResult),
+    approved: !extract(securityResult).includes("HIGH"),
+  };
+}
 ```
 
 ---
 
 ### Exemplo 4 (RUIM → CORRIGIDO)
 
-```python
-# ❌ RUIM — "skill" que é só uma tool com nome fancy
+```typescript
+// ❌ RUIM — "skill" que é só uma tool com nome fancy
 
-@tool
-def do_code_review(code: str) -> str:
-    """Faz code review."""
-    # Chama LLM direto sem processo definido
-    result = model.invoke(f"Review this: {code}")
-    return result.content
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+
+const doCodeReview = tool(
+  async ({ code }) => {
+    // Chama LLM direto sem processo definido
+    const result = await model.invoke(`Review this: ${code}`);
+    return result.content as string;
+  },
+  {
+    name: "do_code_review",
+    description: "Faz code review.",
+    schema: z.object({ code: z.string() }),
+  }
+);
 ```
 
 **Problemas:**
@@ -241,33 +265,41 @@ def do_code_review(code: str) -> str:
 3. Sem critérios claros — o que é "aprovado"?
 4. Deveria ser skill (múltiplos passos), não tool (ação atômica)
 
-```python
-# ✅ CORRIGIDO — skill com processo claro e output estruturado
+```typescript
+// ✅ CORRIGIDO — skill com processo claro e output estruturado
 
-async def code_review_skill(code: str) -> dict:
-    """
-    Skill: code-review (Flexible)
+interface CodeReviewOutput {
+  securityIssues: string[];
+  qualityIssues: string[];
+  score: number;
+  approved: boolean;
+}
 
-    Processo:
-    1. Análise de segurança (vulnerabilidades OWASP)
-    2. Análise de qualidade (legibilidade, manutenibilidade)
-    3. Consolidação com score e decisão
+async function codeReviewSkill(code: string): Promise<CodeReviewOutput> {
+  /**
+   * Skill: code-review (Flexible)
+   *
+   * Processo:
+   * 1. Análise de segurança (vulnerabilidades OWASP)
+   * 2. Análise de qualidade (legibilidade, manutenibilidade)
+   * 3. Consolidação com score e decisão
+   *
+   * Output: { securityIssues, qualityIssues, score: 1-5, approved }
+   */
+  const securityIssues = await analyzeSecurity(code);  // step 1
+  const qualityIssues = await analyzeQuality(code);    // step 2
 
-    Output: {"security_issues": list, "quality_issues": list, "score": 1-5, "approved": bool}
-    """
-    security_issues = await analyze_security(code)    # step 1
-    quality_issues = await analyze_quality(code)      # step 2
+  const highSeverity = securityIssues.some((i) => i.includes("HIGH"));
+  let score = 5 - securityIssues.length - Math.floor(qualityIssues.length / 2);
+  score = Math.max(1, Math.min(5, score));
 
-    high_severity = any("HIGH" in i for i in security_issues)
-    score = 5 - len(security_issues) - (len(quality_issues) // 2)
-    score = max(1, min(5, score))
-
-    return {
-        "security_issues": security_issues,
-        "quality_issues": quality_issues,
-        "score": score,
-        "approved": not high_severity and score >= 3,
-    }
+  return {
+    securityIssues,
+    qualityIssues,
+    score,
+    approved: !highSeverity && score >= 3,
+  };
+}
 ```
 
 ---
@@ -302,7 +334,7 @@ Uma skill rigid é como o checklist de decolagem de um avião — nenhum passo p
 
 | Erro | Causa | Como evitar |
 |---|---|---|
-| Skill sem output definido | Foco só no processo, não no resultado | Defina o schema de output antes de implementar |
+| Skill sem output definido | Foco só no processo, não no resultado | Defina a interface de output antes de implementar |
 | Skill muito genérica | Escopo não definido | "O que exatamente esta skill faz e não faz?" |
 | Checklist não seguido | Skill não marcada como rigid/flexible | Marque explicitamente e instrua o agente |
 | Skill duplica lógica de tool | Falta de clareza entre skill e tool | Skill = workflow multi-passo; tool = ação atômica |
@@ -313,71 +345,76 @@ Uma skill rigid é como o checklist de decolagem de um avião — nenhum passo p
 
 ## I) Mini-Template Pronto
 
-```python
-# ============================================================
-# TEMPLATE: Skill como função Python
-# ============================================================
+```typescript
+// ============================================================
+// TEMPLATE: Skill como função TypeScript
+// ============================================================
 
-from typing import TypedDict
+interface MinhaSkillOutput {
+  /** Schema de output da skill — sempre retornar este formato. */
+  resultado: string;
+  sucesso: boolean;
+  detalhes: string[];
+  proximoPasso: string | undefined;
+}
 
-class MinhaSkillOutput(TypedDict):
-    """Schema de output da skill — sempre retornar este formato."""
-    resultado: str
-    sucesso: bool
-    detalhes: list[str]
-    proximo_passo: str | None
+async function minhaSkill(
+  inputPrincipal: string,
+  contexto: string = ""
+): Promise<MinhaSkillOutput> {
+  /**
+   * Skill: [NOME DA SKILL]
+   * Tipo: Rigid | Flexible
+   * Trigger: [quando invocar]
+   *
+   * Processo:
+   * 1. [Passo 1 — o que faz]
+   * 2. [Passo 2 — o que faz]
+   * 3. [Passo 3 — consolida]
+   */
 
+  const detalhes: string[] = [];
 
-async def minha_skill(
-    input_principal: str,
-    contexto: str = "",
-) -> MinhaSkillOutput:
-    """
-    Skill: [NOME DA SKILL]
-    Tipo: Rigid | Flexible
-    Trigger: [quando invocar]
+  // Passo 1
+  let resultadoPasso1: string;
+  try {
+    resultadoPasso1 = await executarPasso1(inputPrincipal);
+    detalhes.push(`Passo 1 concluído: ${resultadoPasso1.slice(0, 50)}...`);
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e);
+    return {
+      resultado: "",
+      sucesso: false,
+      detalhes: [`Falha no passo 1: ${err}`],
+      proximoPasso: "Verificar [o que verificar] e tentar novamente",
+    };
+  }
 
-    Processo:
-    1. [Passo 1 — o que faz]
-    2. [Passo 2 — o que faz]
-    3. [Passo 3 — consolida]
-    """
+  // Passo 2
+  let resultadoPasso2: string;
+  try {
+    resultadoPasso2 = await executarPasso2(resultadoPasso1, contexto);
+    detalhes.push(`Passo 2 concluído: ${resultadoPasso2.slice(0, 50)}...`);
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e);
+    return {
+      resultado: resultadoPasso1,
+      sucesso: false,
+      detalhes: [...detalhes, `Falha no passo 2: ${err}`],
+      proximoPasso: "Passo 1 OK. Verificar passo 2.",
+    };
+  }
 
-    detalhes = []
+  // Passo 3 — consolida
+  const resultadoFinal = `${resultadoPasso1}\n${resultadoPasso2}`;
 
-    # Passo 1
-    try:
-        resultado_passo1 = await _executar_passo1(input_principal)
-        detalhes.append(f"Passo 1 concluído: {resultado_passo1[:50]}...")
-    except Exception as e:
-        return MinhaSkillOutput(
-            resultado="",
-            sucesso=False,
-            detalhes=[f"Falha no passo 1: {e}"],
-            proximo_passo="Verificar [o que verificar] e tentar novamente",
-        )
-
-    # Passo 2
-    try:
-        resultado_passo2 = await _executar_passo2(resultado_passo1, contexto)
-        detalhes.append(f"Passo 2 concluído: {resultado_passo2[:50]}...")
-    except Exception as e:
-        return MinhaSkillOutput(
-            resultado=resultado_passo1,
-            sucesso=False,
-            detalhes=detalhes + [f"Falha no passo 2: {e}"],
-            proximo_passo="Passo 1 OK. Verificar passo 2.",
-        )
-
-    # Passo 3 — consolida
-    resultado_final = f"{resultado_passo1}\n{resultado_passo2}"
-
-    return MinhaSkillOutput(
-        resultado=resultado_final,
-        sucesso=True,
-        detalhes=detalhes,
-        proximo_passo=None,
-    )
+  return {
+    resultado: resultadoFinal,
+    sucesso: true,
+    detalhes,
+    proximoPasso: undefined,
+  };
+}
 ```
 
 ```markdown

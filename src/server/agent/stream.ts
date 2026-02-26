@@ -18,12 +18,20 @@ export function createSSEStream() {
     stream,
     send(event: StreamEvent) {
       if (controller) {
-        controller.enqueue(encoder.encode(encodeSSE(event)));
+        try {
+          controller.enqueue(encoder.encode(encodeSSE(event)));
+        } catch (e) {
+          // Ignore if stream is already closed
+        }
       }
     },
     close() {
       if (controller) {
-        controller.close();
+        try {
+          controller.close();
+        } catch (e) {
+          // Ignore if stream is already closed
+        }
       }
     },
   };

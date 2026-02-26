@@ -1,7 +1,7 @@
 # Evaluation
 
 > Camada: 4 — Operacional | Depende de: ToolsDoc, AgentsDoc, PromptGuide | Referenciado por: —
-> Stack: deepagents · LangGraph · LangChain · Python
+> Stack: deepagents · LangGraph · LangChain · TypeScript
 
 ---
 
@@ -11,7 +11,7 @@
 - Avaliação em agentes cobre três níveis: **unitário** (cada tool isolada), **integração** (fluxo de agente completo) e **end-to-end** (task real do usuário).
 - Métricas principais: **fidelidade** (resposta correta?), **grounding** (baseada em fatos reais?), **latência** (tempo aceitável?), **custo** (tokens gastos justificam o resultado?).
 - **LLM-as-judge** é uma técnica onde um modelo avalia as respostas de outro — útil quando não há ground truth fixo.
-- Avaliação não precisa de framework pesado — testes Python simples com `assert` cobrem a maioria dos casos.
+- Avaliação não precisa de framework pesado — testes Vitest simples com `expect` cobrem a maioria dos casos.
 
 ---
 
@@ -65,41 +65,49 @@
 
 ### Exemplo 1 — Teste unitário de tool
 
-```python
-# python/tests/test_tools.py
-import pytest
-from omnimind_agents.prompts.tools.filesystem import read_file_tool  # ajuste o import real
+```typescript
+// src/server/agent/__tests__/tools.test.ts
+import { describe, it, expect } from "vitest";
+import { readFileTool } from "@/server/agent/prompts/tools/filesystem";
+import { writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 
-def test_read_file_success(tmp_path):
-    """Tool retorna conteúdo do arquivo."""
-    f = tmp_path / "test.txt"
-    f.write_text("conteudo de teste")
-    result = read_file_tool.invoke({"path": str(f)})
-    assert "conteudo de teste" in result
+describe("readFileTool", () => {
+  it("retorna conteúdo do arquivo", async () => {
+    const tmpPath = join(tmpdir(), `test-${Date.now()}.txt`);
+    await writeFile(tmpPath, "conteudo de teste", "utf-8");
 
-def test_read_file_not_found():
-    """Tool retorna erro legível quando arquivo não existe."""
-    result = read_file_tool.invoke({"path": "/caminho/que/nao/existe.txt"})
-    assert "[ERRO]" in result
-    assert "nao encontrado" in result.lower() or "not found" in result.lower()
+    const result = await readFileTool.invoke({ path: tmpPath });
+    expect(result).toContain("conteudo de teste");
+  });
 
-def test_read_file_empty(tmp_path):
-    """Tool lida com arquivo vazio sem travar."""
-    f = tmp_path / "empty.txt"
-    f.write_text("")
-    result = read_file_tool.invoke({"path": str(f)})
-    assert result is not None
+  it("retorna erro legível quando arquivo não existe", async () => {
+    const result = await readFileTool.invoke({
+      path: "/caminho/que/nao/existe.txt",
+    });
+    expect(result).toContain("[ERRO]");
+    expect(result.toLowerCase()).toMatch(/nao encontrado|not found/);
+  });
+
+  it("lida com arquivo vazio sem travar", async () => {
+    const tmpPath = join(tmpdir(), `empty-${Date.now()}.txt`);
+    await writeFile(tmpPath, "", "utf-8");
+
+    const result = await readFileTool.invoke({ path: tmpPath });
+    expect(result).not.toBeNull();
+  });
+});
 ```
 
 ---
 
 ### Exemplo 2 — Avaliação de agente com LLM-as-judge
 
-```python
-import json
-from langchain_anthropic import ChatAnthropic
+```typescript
+import { ChatAnthropic } from "@langchain/anthropic";
 
-JUDGE_PROMPT = """Avalie se a resposta do agente está correta e completa.
+const JUDGE_PROMPT = `Avalie se a resposta do agente está correta e completa.
 
 Pergunta: {question}
 Resposta do agente: {answer}
@@ -111,86 +119,112 @@ Critérios:
 - GROUNDED: a resposta se baseia no contexto, não inventa?
 
 Retorne JSON:
-{{"correto": true, "completo": true, "grounded": true, "score": 1, "justificativa": "frase"}}
+{"correto": true, "completo": true, "grounded": true, "score": 1, "justificativa": "frase"}
 
-Onde score vai de 1 (péssimo) a 5 (excelente)."""
+Onde score vai de 1 (péssimo) a 5 (excelente).`;
 
-judge = ChatAnthropic(model="claude-haiku-4-5-20251001")
+const judge = new ChatAnthropic({ model: "claude-haiku-4-5-20251001" });
 
-def check_response_quality(question: str, answer: str, context: str) -> dict:
-    response = judge.invoke([{
-        "role": "user",
-        "content": JUDGE_PROMPT.format(
-            question=question,
-            answer=answer,
-            context=context,
-        )
-    }])
-    raw = response.content.strip()
-    # Remove markdown code fences se presentes
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        raw = "\n".join(lines[1:-1])
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {"error": "Judge retornou formato invalido", "raw": raw[:200]}
+interface JudgeVerdict {
+  correto?: boolean;
+  completo?: boolean;
+  grounded?: boolean;
+  score?: number;
+  justificativa?: string;
+  error?: string;
+  raw?: string;
+}
 
-# Uso em suite de testes:
-def test_agent_response_quality(agent):
-    question = "Qual e a funcao da classe StateBackend?"
-    context = "StateBackend armazena estado em memoria acessivel via path /memories/."
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": question}]},
-        config={"recursion_limit": 10},
-    )
-    answer = result["messages"][-1].content
+async function checkResponseQuality(
+  question: string,
+  answer: string,
+  context: string
+): Promise<JudgeVerdict> {
+  const prompt = JUDGE_PROMPT.replace("{question}", question)
+    .replace("{answer}", answer)
+    .replace("{context}", context);
 
-    verdict = check_response_quality(question, answer, context)
-    assert verdict.get("score", 0) >= 3, f"Score baixo: {verdict}"
-    assert verdict.get("grounded", False), "Resposta nao ancorada no contexto"
+  const response = await judge.invoke([{ role: "user", content: prompt }]);
+  let raw = (response.content as string).trim();
+
+  // Remove markdown code fences se presentes
+  if (raw.startsWith("```")) {
+    const lines = raw.split("\n");
+    raw = lines.slice(1, -1).join("\n");
+  }
+
+  try {
+    return JSON.parse(raw) as JudgeVerdict;
+  } catch {
+    return { error: "Judge retornou formato invalido", raw: raw.slice(0, 200) };
+  }
+}
+
+// Uso em suite de testes:
+it("avalia qualidade da resposta do agente", async () => {
+  const question = "Qual e a funcao da classe StateBackend?";
+  const context = "StateBackend armazena estado em memoria acessivel via path /memories/.";
+  const result = await agent.invoke(
+    { messages: [{ role: "user", content: question }] },
+    { recursionLimit: 10 }
+  );
+  const answer = result.messages[result.messages.length - 1].content as string;
+
+  const verdict = await checkResponseQuality(question, answer, context);
+  expect(verdict.score ?? 0).toBeGreaterThanOrEqual(3);
+  expect(verdict.grounded).toBe(true);
+});
 ```
 
 ---
 
 ### Exemplo 3 (RUIM → CORRIGIDO)
 
-```python
-# RUIM — "teste" que so verifica que nao explodiu, sem medir qualidade
+```typescript
+// RUIM — "teste" que so verifica que nao explodiu, sem medir qualidade
 
-def test_agent_works():
-    result = agent.invoke({"messages": [{"role": "user", "content": "Ola"}]})
-    assert result is not None  # sempre passa, nao mede nada
+it("agent works", async () => {
+  const result = await agent.invoke({ messages: [{ role: "user", content: "Ola" }] });
+  expect(result).not.toBeNull(); // sempre passa, nao mede nada
+});
 ```
 
-```python
-# CORRIGIDO — testa comportamento real com casos parametrizados
+```typescript
+// CORRIGIDO — testa comportamento real com casos parametrizados
 
-import pytest
+import { describe, it, expect } from "vitest";
 
-EVAL_CASES = [
-    {
-        "id": "resposta_esperada",
-        "input": "O que e StateBackend?",
-        "expect_contains": "estado",
-    },
-    {
-        "id": "admite_desconhecimento",
-        "input": "Qual e o preco do Bitcoin agora?",
-        "expect_contains": "nao tenho",
-    },
-]
+interface EvalCase {
+  id: string;
+  input: string;
+  expectContains: string;
+}
 
-@pytest.mark.parametrize("case", EVAL_CASES, ids=[c["id"] for c in EVAL_CASES])
-def test_agent_behavior(case, agent):
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": case["input"]}]},
-        config={"recursion_limit": 10},
-    )
-    answer = result["messages"][-1].content.lower()
-    assert case["expect_contains"].lower() in answer, (
-        f"Esperava '{case['expect_contains']}' em: {answer[:200]}"
-    )
+const EVAL_CASES: EvalCase[] = [
+  {
+    id: "resposta_esperada",
+    input: "O que e StateBackend?",
+    expectContains: "estado",
+  },
+  {
+    id: "admite_desconhecimento",
+    input: "Qual e o preco do Bitcoin agora?",
+    expectContains: "nao tenho",
+  },
+];
+
+describe("agent behavior", () => {
+  it.each(EVAL_CASES)("$id", async ({ input, expectContains }) => {
+    const result = await agent.invoke(
+      { messages: [{ role: "user", content: input }] },
+      { recursionLimit: 10 }
+    );
+    const answer = (
+      result.messages[result.messages.length - 1].content as string
+    ).toLowerCase();
+    expect(answer).toContain(expectContains.toLowerCase());
+  });
+});
 ```
 
 ---
@@ -201,15 +235,21 @@ def test_agent_behavior(case, agent):
 - **Use thresholds explícitos** — "score >= 3.5 = aprovado" é melhor que "parece bom"
 - **Monitore degradacao** — um agente que funcionava pode piorar após mudança de modelo ou prompt
 
-```python
-# Monitoramento simples de tokens por request
-def log_request_metrics(response, request_id: str) -> None:
-    usage = getattr(response, "usage", None) or getattr(response, "response_metadata", {})
-    print(json.dumps({
-        "request_id": request_id,
-        "input_tokens": getattr(usage, "input_tokens", None),
-        "output_tokens": getattr(usage, "output_tokens", None),
-    }))
+```typescript
+// Monitoramento simples de tokens por request
+function logRequestMetrics(
+  response: { usage_metadata?: Record<string, unknown> },
+  requestId: string
+): void {
+  const usage = response.usage_metadata ?? {};
+  console.log(
+    JSON.stringify({
+      requestId,
+      inputTokens: usage["input_tokens"] ?? null,
+      outputTokens: usage["output_tokens"] ?? null,
+    })
+  );
+}
 ```
 
 ---
@@ -233,49 +273,64 @@ Avaliar um agente é como fazer **controle de qualidade em linha de producao**. 
 
 ## I) Mini-Template Pronto
 
-```python
-# ============================================================
-# TEMPLATE: Eval suite minimo
-# ============================================================
+```typescript
+// ============================================================
+// TEMPLATE: Eval suite minimo
+// src/server/agent/__tests__/eval-suite.test.ts
+// Rodar com: pnpm test  ou  vitest run
+// ============================================================
 
-import pytest
-import json
-from langchain_anthropic import ChatAnthropic
+import { describe, it, expect, beforeEach } from "vitest";
+import { ChatAnthropic } from "@langchain/anthropic";
 
-# --- Casos de teste ---
-EVAL_CASES = [
-    {
-        "id": "happy_path",
-        "input": "Pergunta valida e clara",
-        "expect_contains": "palavra_chave_esperada",
-    },
-    {
-        "id": "admite_desconhecimento",
-        "input": "Pergunta sobre algo fora do contexto",
-        "expect_contains": "nao tenho",
-    },
-    {
-        "id": "edge_comprimento",
-        "input": "x" * 5000,  # input muito longo
-        "expect_no_crash": True,
-    },
-]
+// --- Casos de teste ---
+interface EvalCase {
+  id: string;
+  input: string;
+  expectContains?: string;
+  expectNoCrash?: boolean;
+}
 
-@pytest.mark.parametrize("case", EVAL_CASES, ids=[c["id"] for c in EVAL_CASES])
-def test_agent_suite(case, agent):
-    try:
-        result = agent.invoke(
-            {"messages": [{"role": "user", "content": case["input"]}]},
-            config={"recursion_limit": 10},
-        )
-        answer = result["messages"][-1].content.lower()
-    except Exception as e:
-        if case.get("expect_no_crash"):
-            pytest.fail(f"Agente explodiu com input longo: {e}")
-        return
+const EVAL_CASES: EvalCase[] = [
+  {
+    id: "happy_path",
+    input: "Pergunta valida e clara",
+    expectContains: "palavra_chave_esperada",
+  },
+  {
+    id: "admite_desconhecimento",
+    input: "Pergunta sobre algo fora do contexto",
+    expectContains: "nao tenho",
+  },
+  {
+    id: "edge_comprimento",
+    input: "x".repeat(5000), // input muito longo
+    expectNoCrash: true,
+  },
+];
 
-    if "expect_contains" in case:
-        assert case["expect_contains"].lower() in answer, (
-            f"[{case['id']}] Esperava '{case['expect_contains']}', recebeu: {answer[:200]}"
-        )
+describe("agent eval suite", () => {
+  it.each(EVAL_CASES)("$id", async ({ input, expectContains, expectNoCrash }) => {
+    let answer: string;
+
+    try {
+      const result = await agent.invoke(
+        { messages: [{ role: "user", content: input }] },
+        { recursionLimit: 10 }
+      );
+      answer = (
+        result.messages[result.messages.length - 1].content as string
+      ).toLowerCase();
+    } catch (e) {
+      if (expectNoCrash) {
+        throw new Error(`Agente explodiu com input longo: ${e}`);
+      }
+      return;
+    }
+
+    if (expectContains !== undefined) {
+      expect(answer).toContain(expectContains.toLowerCase());
+    }
+  });
+});
 ```
