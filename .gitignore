@@ -36,17 +36,30 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+python/.env
+
 # local data
 /data/
 /src/data/
 
 # backup files
 *.bak
+python/backups/
 
 
 # IDE
 .vscode/
 .idea/
+
+# desktop runtime artifacts
+python/.qt/
+python/omnimind_desktop/.cache/
 
 # searxng docker volume (permission-restricted)
 backend/searxng/searxng/

@@ -1,0 +1,90 @@
+Metadata-Version: 2.4
+Name: omnimind-backend
+Version: 0.1.0
+Summary: OmniMind backend Python (FastAPI + gRPC + RQ/Redis + Postgres)
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: alembic>=1.14.0
+Requires-Dist: deepagents>=0.1.0
+Requires-Dist: fastapi>=0.116.0
+Requires-Dist: grpcio>=1.74.0
+Requires-Dist: grpcio-tools>=1.74.0
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: langchain>=0.3.27
+Requires-Dist: langchain-anthropic>=0.3.0
+Requires-Dist: langchain-google-genai>=2.0.0
+Requires-Dist: langchain-google-vertexai>=2.0.0
+Requires-Dist: langchain-ollama>=0.3.0
+Requires-Dist: langchain-openai>=0.3.0
+Requires-Dist: langgraph>=0.2.67
+Requires-Dist: langgraph-checkpoint-postgres>=2.0.15
+Requires-Dist: orjson>=3.11.3
+Requires-Dist: psycopg[binary]>=3.2.9
+Requires-Dist: pydantic>=2.11.7
+Requires-Dist: pydantic-settings>=2.10.1
+Requires-Dist: python-dateutil>=2.9.0.post0
+Requires-Dist: redis>=6.4.0
+Requires-Dist: rq>=2.4.1
+Requires-Dist: sqlalchemy>=2.0.43
+Requires-Dist: sse-starlette>=2.2.1
+Requires-Dist: PySide6>=6.9.0
+Requires-Dist: uvicorn[standard]>=0.35.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.17.1; extra == "dev"
+Requires-Dist: pytest>=8.4.1; extra == "dev"
+Requires-Dist: pytest-asyncio>=1.1.0; extra == "dev"
+Requires-Dist: ruff>=0.12.11; extra == "dev"
+
+# OmniMind Python Runtime (v1)
+
+Agent-only backend + PySide6/QML desktop frontend.
+
+## Stack
+- FastAPI (`/v1/*`)
+- PostgreSQL + SQLAlchemy + Alembic
+- Redis + RQ (optional background worker)
+- LangChain provider adapters
+- PySide6/QML desktop (`omnimind_desktop`)
+
+## API Surface (v1)
+- `POST /v1/agent/chat/stream`
+- `GET /v1/agent/sessions`
+- `POST /v1/agent/sessions`
+- `PATCH /v1/agent/sessions/{session_id}`
+- `DELETE /v1/agent/sessions/{session_id}`
+- `GET /v1/agent/sessions/{session_id}/messages`
+- `GET /v1/agent/sessions/{session_id}/runs`
+- `GET /v1/agent/mind/allowlist`
+- `GET /v1/agent/mind/projects`
+- `POST /v1/agent/mind/projects`
+- `GET /v1/agent/mind/sessions?folderPath=...`
+- `GET /v1/agent/mind/links?folderPath=...`
+- `POST /v1/agent/mind/links`
+- `DELETE /v1/agent/mind/links/{id}`
+- `POST /v1/agent/mind/jobs`
+- `GET /v1/agent/mind/jobs/{job_id}`
+- `POST /v1/agent/mind/sandbox/query`
+
+## Run
+```bash
+cd python
+uv sync
+uv run alembic upgrade head
+uv run omnimind-api
+```
+
+Desktop app:
+```bash
+cd python
+uv run omnimind-desktop
+```
+
+## Local Swarm Backup (before removal)
+```bash
+cd python
+uv run python/scripts/backup_swarm_data.py
+# or
+./scripts/backup_swarm_data.sh
+```
+
+Artifacts are generated in `python/backups/swarm/<timestamp>/`.

@@ -1,0 +1,71 @@
+[project]
+name = "omnimind-backend"
+version = "0.1.0"
+description = "OmniMind backend Python (FastAPI + gRPC + RQ/Redis + Postgres)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.14.0",
+  "deepagents>=0.1.0",
+  "fastapi>=0.116.0",
+  "grpcio>=1.74.0",
+  "grpcio-tools>=1.74.0",
+  "httpx>=0.28.1",
+  "langchain>=0.3.27",
+  "langchain-anthropic>=0.3.0",
+  "langchain-google-genai>=2.0.0",
+  "langchain-google-vertexai>=2.0.0",
+  "langchain-ollama>=0.3.0",
+  "langchain-openai>=0.3.0",
+  "langgraph>=0.2.67",
+  "langgraph-checkpoint-postgres>=2.0.15",
+  "orjson>=3.11.3",
+  "psycopg[binary]>=3.2.9",
+  "pydantic>=2.11.7",
+  "pydantic-settings>=2.10.1",
+  "python-dateutil>=2.9.0.post0",
+  "redis>=6.4.0",
+  "rq>=2.4.1",
+  "sqlalchemy>=2.0.43",
+  "sse-starlette>=2.2.1",
+  "PySide6>=6.9.0",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.17.1",
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.1.0",
+  "ruff>=0.12.11",
+]
+
+[project.scripts]
+omnimind-api = "omnimind_backend.main:run"
+omnimind-worker = "omnimind_backend.workers.worker:run"
+omnimind-grpc = "omnimind_backend.grpc.server:run"
+omnimind-desktop = "omnimind_desktop.main:run"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+[tool.setuptools.packages.find]
+include = ["omnimind_backend*", "omnimind_desktop*"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
