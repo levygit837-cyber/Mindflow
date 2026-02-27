@@ -10,6 +10,10 @@ OmniMind backend is now defined as a Python-first architecture with the followin
 5. Agent runtime: LangChain/LangGraph/DeepAgents integration (`python/omnimind_backend/agents`).
 6. Swarm runtime: real orchestrator service in Python (`python/omnimind_backend/swarm`).
 
+## Engineering Governance
+- Architecture and coding conventions: `docs/architecture/python-engineering-standards.md`
+- Architecture Decision Records: `docs/adr/`
+
 ## API Contracts
 ### Agent
 - `POST /v1/agent/chat/stream` (SSE)
