@@ -1,0 +1,5 @@
+[console_scripts]
+omnimind-api = omnimind_backend.main:run
+omnimind-desktop = omnimind_desktop.main:run
+omnimind-grpc = omnimind_backend.grpc.server:run
+omnimind-worker = omnimind_backend.workers.worker:run

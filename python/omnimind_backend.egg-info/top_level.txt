@@ -1,0 +1,2 @@
+omnimind_backend
+omnimind_desktop

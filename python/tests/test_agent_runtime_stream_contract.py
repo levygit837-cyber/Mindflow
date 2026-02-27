@@ -1,0 +1,67 @@
+import json
+
+import pytest
+
+from omnimind_backend.agents.runtime import AgentRuntime
+from omnimind_backend.schemas.agent import AgentChatRequest
+
+
+class _DummyResponse:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+
+class _DummyModel:
+    async def ainvoke(self, _messages):
+        return _DummyResponse("Here is a deterministic response payload for streaming validation.")
+
+
+@pytest.mark.asyncio
+async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "omnimind_backend.agents.runtime.get_model_for_provider",
+        lambda _provider, _model: _DummyModel(),
+    )
+
+    runtime = AgentRuntime()
+    payload = AgentChatRequest(message="summarize this", provider="openai", model="stub")
+
+    events = [event async for event in runtime.stream_chat(payload, session_id="session-1", run_id="run-1")]
+
+    assert events
+    assert [evt.seq for evt in events] == list(range(1, len(events) + 1))
+    assert events[-1].type == "done"
+
+    assert all(evt.meta is not None for evt in events)
+    assert all(evt.meta and evt.meta.runId == "run-1" for evt in events)
+    assert all(evt.meta and evt.meta.turnRunId == "session-1" for evt in events)
+
+    response_events = [evt for evt in events if evt.type == "response"]
+    assert response_events
+    assert all(evt.meta and evt.meta.category is not None for evt in response_events)
+
+    step_events = [evt for evt in events if evt.type == "agent_step"]
+    assert step_events
+    payload_data = json.loads(step_events[0].data)
+    assert {"stepName", "detail", "action"}.issubset(set(payload_data.keys()))
+
+
+@pytest.mark.asyncio
+async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "omnimind_backend.agents.runtime.get_model_for_provider",
+        lambda _provider, _model: _DummyModel(),
+    )
+
+    async def _fake_search(_query: str) -> str:
+        return "fresh web context"
+
+    monkeypatch.setattr("omnimind_backend.agents.runtime.search_web", _fake_search)
+
+    runtime = AgentRuntime()
+    payload = AgentChatRequest(message="search latest docs", provider="openai", model="stub")
+
+    events = [event async for event in runtime.stream_chat(payload, session_id="session-2", run_id="run-2")]
+
+    assert any(evt.type == "tool_call" for evt in events)
+    assert any(evt.type == "tool_result" for evt in events)
