@@ -44,24 +44,56 @@ dev = [
 omnimind-api = "omnimind_backend.main:run"
 omnimind-worker = "omnimind_backend.workers.worker:run"
 omnimind-grpc = "omnimind_backend.grpc.server:run"
-omnimind-desktop = "omnimind_desktop.main:run"
+omnimind-desktop = "omnimind_desktop.launcher:run"
+omnimind-desktop-ui = "omnimind_desktop.main:run_ui"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "-ra"
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+src = ["omnimind_backend", "omnimind_desktop", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["omnimind_backend", "omnimind_desktop"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
 [tool.mypy]
 python_version = "3.11"
 strict = false
 ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+check_untyped_defs = true
+no_implicit_optional = true
+exclude = [
+  "omnimind_backend/grpc/generated",
+  "omnimind_backend/storage/migrations",
+]
+
+[[tool.mypy.overrides]]
+module = [
+  "omnimind_backend.grpc.generated.*",
+  "alembic.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
 
 [tool.setuptools.packages.find]
 include = ["omnimind_backend*", "omnimind_desktop*"]
