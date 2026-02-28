@@ -1,21 +1,26 @@
 services:
   postgres:
-    image: postgres:16
-    container_name: omnimind-postgres
+    image: postgres:${POSTGRES_IMAGE_TAG:-16-alpine}
+    container_name: ${POSTGRES_CONTAINER_NAME:-omnimind-postgres-v1}
     environment:
-      POSTGRES_DB: omnimind
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-omnimind_v1}
+      POSTGRES_USER: ${POSTGRES_USER:-omnimind_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnimind_dev_local_2026}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
-      - omnimind_pg_data:/var/lib/postgresql/data
+      - omnimind_pg_data_v1:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omnimind_app} -d ${POSTGRES_DB:-omnimind_v1}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
-    container_name: omnimind-redis
+    container_name: ${REDIS_CONTAINER_NAME:-omnimind-redis-v1}
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6380}:6379"
 
 volumes:
-  omnimind_pg_data:
+  omnimind_pg_data_v1:

@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     )
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
     app_port: int = Field(default=8000, alias="APP_PORT")
+    cors_allow_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+        alias="CORS_ALLOW_ORIGINS",
+    )
+    cors_allow_methods: str = Field(default="*", alias="CORS_ALLOW_METHODS")
+    cors_allow_headers: str = Field(default="*", alias="CORS_ALLOW_HEADERS")
+    cors_allow_credentials: bool = Field(default=False, alias="CORS_ALLOW_CREDENTIALS")
 
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/omnimind",
@@ -38,9 +45,6 @@ class Settings(BaseSettings):
 
     grpc_host: str = Field(default="0.0.0.0", alias="GRPC_HOST")
     grpc_port: int = Field(default=50051, alias="GRPC_PORT")
-
-    # Comma-separated absolute paths bootstrapped into allowed_paths table.
-    allowed_paths: str | None = Field(default=None, alias="OMNIMIND_ALLOWED_PATHS")
 
 
 @lru_cache(maxsize=1)

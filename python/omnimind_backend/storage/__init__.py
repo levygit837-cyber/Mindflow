@@ -1,1 +1,1 @@
-"""Storage layer (DB models, sessions and repositories)."""
+"""Storage layer (DB models and repositories)."""

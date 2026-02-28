@@ -1,5 +1,7 @@
 [console_scripts]
 omnimind-api = omnimind_backend.main:run
-omnimind-desktop = omnimind_desktop.main:run
+omnimind-cli = omnimind_cli.app:run
+omnimind-desktop = omnimind_desktop.launcher:run
+omnimind-desktop-ui = omnimind_desktop.main:run_ui
 omnimind-grpc = omnimind_backend.grpc.server:run
 omnimind-worker = omnimind_backend.workers.worker:run

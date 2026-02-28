@@ -25,9 +25,11 @@ dependencies = [
   "pydantic-settings>=2.10.1",
   "python-dateutil>=2.9.0.post0",
   "redis>=6.4.0",
+  "rich>=13.9.0",
   "rq>=2.4.1",
   "sqlalchemy>=2.0.43",
   "sse-starlette>=2.2.1",
+  "typer>=0.16.0",
   "PySide6>=6.9.0",
   "uvicorn[standard]>=0.35.0",
 ]
@@ -46,6 +48,7 @@ omnimind-worker = "omnimind_backend.workers.worker:run"
 omnimind-grpc = "omnimind_backend.grpc.server:run"
 omnimind-desktop = "omnimind_desktop.launcher:run"
 omnimind-desktop-ui = "omnimind_desktop.main:run_ui"
+omnimind-cli = "omnimind_cli.app:run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -55,14 +58,14 @@ addopts = "-ra"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["omnimind_backend", "omnimind_desktop", "tests"]
+src = ["omnimind_backend", "omnimind_cli", "omnimind_desktop", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["omnimind_backend", "omnimind_desktop"]
+known-first-party = ["omnimind_backend", "omnimind_cli", "omnimind_desktop"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -96,7 +99,7 @@ module = ["tests.*"]
 disallow_untyped_defs = false
 
 [tool.setuptools.packages.find]
-include = ["omnimind_backend*", "omnimind_desktop*"]
+include = ["omnimind_backend*", "omnimind_cli*", "omnimind_desktop*"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
