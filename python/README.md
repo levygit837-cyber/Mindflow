@@ -1,12 +1,13 @@
 # OmniMind Python Runtime (v1)
 
-Agent-only backend + PySide6/QML desktop frontend.
+Agent-only backend + terminal-first CLI + PySide6/QML desktop frontend (legacy).
 
 ## Stack
 - FastAPI (`/v1/*`)
 - PostgreSQL + SQLAlchemy + Alembic
 - Redis + RQ (optional background worker)
 - LangChain provider adapters
+- Typer + Rich CLI (`omnimind_cli`)
 - PySide6/QML desktop (`omnimind_desktop`)
 
 ## Engineering Standards
@@ -33,22 +34,6 @@ Padronização de commit:
 
 ## API Surface (v1)
 - `POST /v1/agent/chat/stream`
-- `GET /v1/agent/sessions`
-- `POST /v1/agent/sessions`
-- `PATCH /v1/agent/sessions/{session_id}`
-- `DELETE /v1/agent/sessions/{session_id}`
-- `GET /v1/agent/sessions/{session_id}/messages`
-- `GET /v1/agent/sessions/{session_id}/runs`
-- `GET /v1/agent/mind/allowlist`
-- `GET /v1/agent/mind/projects`
-- `POST /v1/agent/mind/projects`
-- `GET /v1/agent/mind/sessions?folderPath=...`
-- `GET /v1/agent/mind/links?folderPath=...`
-- `POST /v1/agent/mind/links`
-- `DELETE /v1/agent/mind/links/{id}`
-- `POST /v1/agent/mind/jobs`
-- `GET /v1/agent/mind/jobs/{job_id}`
-- `POST /v1/agent/mind/sandbox/query`
 
 ## Run
 ```bash
@@ -56,6 +41,19 @@ cd python
 uv sync
 uv run alembic upgrade head
 uv run omnimind-api
+```
+
+Terminal-first CLI:
+```bash
+cd python
+uv run omnimind-cli health
+uv run omnimind-cli chat -m "Explique o estado atual do runtime"
+# chat interativo com conexao inicial e loop de conversa
+uv run omnimind-cli connect --provider vertexai --model gemini-3-flash-preview
+# com override de provider/model
+uv run omnimind-cli chat -m "hello" --provider vertexai --model gemini-3-flash-preview
+# workflow (atalho para execução com stream)
+uv run omnimind-cli workflow run -m "planeje os próximos passos"
 ```
 
 Desktop app:

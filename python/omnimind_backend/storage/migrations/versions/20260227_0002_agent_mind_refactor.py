@@ -7,6 +7,7 @@ Create Date: 2026-02-27 03:30:00
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision = "20260227_0002"
@@ -23,7 +24,13 @@ def upgrade() -> None:
     op.execute("DROP TABLE IF EXISTS conversations CASCADE")
     op.execute("DROP TYPE IF EXISTS topic_type CASCADE")
 
-    topic_type = sa.Enum("project_main", "project_topic", "standalone", name="topic_type")
+    topic_type = postgresql.ENUM(
+        "project_main",
+        "project_topic",
+        "standalone",
+        name="topic_type",
+        create_type=False,
+    )
     topic_type.create(op.get_bind(), checkfirst=True)
 
     op.create_table(

@@ -8,7 +8,7 @@ lint:
 	uv run --extra dev ruff check .
 
 typecheck:
-	uv run --extra dev mypy omnimind_backend omnimind_desktop
+	uv run --extra dev mypy omnimind_backend omnimind_cli omnimind_desktop
 
 test:
 	uv run --extra dev pytest
@@ -16,7 +16,7 @@ test:
 check:
 	uv run --extra dev ruff check .
 	uv run --extra dev ruff format --check .
-	uv run --extra dev mypy omnimind_backend omnimind_desktop
+	uv run --extra dev mypy omnimind_backend omnimind_cli omnimind_desktop
 	uv run --extra dev pytest
 
 precommit-install:

@@ -60,6 +60,7 @@ python/backups/
 # desktop runtime artifacts
 python/.qt/
 python/omnimind_desktop/.cache/
+python/.logs/
 
 # searxng docker volume (permission-restricted)
 backend/searxng/searxng/

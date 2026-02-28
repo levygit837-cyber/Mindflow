@@ -21,7 +21,6 @@ class AgentRuntimeServiceImpl:
             message=message,
             provider=provider,
             model=model,
-            sessionId=session_id,
         )
         async for event in self.runtime.stream_chat(payload, session_id, run_id=run_id):
             yield event

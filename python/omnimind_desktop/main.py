@@ -8,20 +8,18 @@ from PySide6.QtCore import QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
-from omnimind_desktop.viewmodels import ChatViewModel, MindViewModel
+from omnimind_desktop.viewmodels import ChatViewModel
 
 
-def run() -> None:
+def run_ui() -> None:
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Fusion")
 
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
 
     chat_vm = ChatViewModel()
-    mind_vm = MindViewModel()
 
     engine.rootContext().setContextProperty("chatVM", chat_vm)
-    engine.rootContext().setContextProperty("mindVM", mind_vm)
 
     qml_file = Path(__file__).resolve().parent / "qml" / "Main.qml"
     engine.load(QUrl.fromLocalFile(str(qml_file)))
@@ -30,6 +28,10 @@ def run() -> None:
         raise SystemExit(1)
 
     raise SystemExit(app.exec())
+
+
+def run() -> None:
+    run_ui()
 
 
 if __name__ == "__main__":

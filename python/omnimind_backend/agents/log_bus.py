@@ -9,11 +9,11 @@ from omnimind_backend.schemas.agent import LogEntry, StreamEvent
 class AgentLogBus:
     HISTORY_STREAM_KEY = "omnimind:agent:logs"
 
-    async def publish(self, event: StreamEvent, session_id: str) -> None:
+    async def publish(self, event: StreamEvent, turn_id: str) -> None:
         redis = get_async_redis()
         entry = LogEntry(
             **event.model_dump(),
-            sessionId=session_id,
+            turnId=turn_id,
             wallTime=datetime.now(timezone.utc).isoformat(),
         )
         payload = orjson.dumps(entry.model_dump()).decode("utf-8")
