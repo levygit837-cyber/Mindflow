@@ -1,4 +1,4 @@
-from omnimind_backend.agents.output_categorizer import categorize_output
+from omnimind_backend.runtime.output_categorizer import categorize_output
 
 
 def test_decision_prefix() -> None:

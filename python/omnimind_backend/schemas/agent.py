@@ -10,6 +10,7 @@ class AgentChatRequest(BaseModel):
     provider: LLMProvider | None = None
     model: str | None = None
     debugSteps: bool = False
+    orchestrate: bool = False
 
 
 StreamModeName = Literal["updates", "messages", "custom", "values", "debug"]

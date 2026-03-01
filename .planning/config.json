@@ -1,0 +1,18 @@
+{
+  "project_name": "OmniMind",
+  "workflow": {
+    "prefer_parallel": true,
+    "automatic_validation": true,
+    "strict_dependency_check": true
+  },
+  "tech_stack": {
+    "backend": "Python 3.11+ (FastAPI, LangGraph, DeepAgents)",
+    "database": "PostgreSQL (Alembic)",
+    "infrastructure": "Redis (rq/rate limiting)"
+  },
+  "conventions": {
+    "naming": "snake_case",
+    "structure": "Modular (runtime, agents, orchestrator)",
+    "logging": "Structured JSON (Phase 1.5)"
+  }
+}

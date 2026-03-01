@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from omnimind_backend.agents.runtime import AgentRuntime
+from omnimind_backend.runtime.stream import AgentRuntime
 from omnimind_backend.schemas.agent import AgentChatRequest
 
 
@@ -19,7 +19,7 @@ class _DummyModel:
 @pytest.mark.asyncio
 async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
     monkeypatch.setattr(
-        "omnimind_backend.agents.runtime.get_model_for_provider",
+        "omnimind_backend.runtime.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
     )
 
@@ -49,14 +49,14 @@ async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None:
     monkeypatch.setattr(
-        "omnimind_backend.agents.runtime.get_model_for_provider",
+        "omnimind_backend.runtime.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
     )
 
     async def _fake_search(_query: str) -> str:
         return "fresh web context"
 
-    monkeypatch.setattr("omnimind_backend.agents.runtime.search_web", _fake_search)
+    monkeypatch.setattr("omnimind_backend.runtime.stream.search_web", _fake_search)
 
     runtime = AgentRuntime()
     payload = AgentChatRequest(message="search latest docs", provider="openai", model="stub")

@@ -31,6 +31,8 @@ Requires-Dist: sse-starlette>=2.2.1
 Requires-Dist: typer>=0.16.0
 Requires-Dist: PySide6>=6.9.0
 Requires-Dist: uvicorn[standard]>=0.35.0
+Requires-Dist: structlog>=25.5.0
+Requires-Dist: tenacity>=9.1.4
 Provides-Extra: dev
 Requires-Dist: mypy>=1.17.1; extra == "dev"
 Requires-Dist: pytest>=8.4.1; extra == "dev"
@@ -39,13 +41,14 @@ Requires-Dist: ruff>=0.12.11; extra == "dev"
 
 # OmniMind Python Runtime (v1)
 
-Agent-only backend + PySide6/QML desktop frontend.
+Agent-only backend + terminal-first CLI + PySide6/QML desktop frontend (legacy).
 
 ## Stack
 - FastAPI (`/v1/*`)
 - PostgreSQL + SQLAlchemy + Alembic
 - Redis + RQ (optional background worker)
 - LangChain provider adapters
+- Typer + Rich CLI (`omnimind_cli`)
 - PySide6/QML desktop (`omnimind_desktop`)
 
 ## Engineering Standards
@@ -79,6 +82,19 @@ cd python
 uv sync
 uv run alembic upgrade head
 uv run omnimind-api
+```
+
+Terminal-first CLI:
+```bash
+cd python
+uv run omnimind-cli health
+uv run omnimind-cli chat -m "Explique o estado atual do runtime"
+# chat interativo com conexao inicial e loop de conversa
+uv run omnimind-cli connect --provider vertexai --model gemini-3-flash-preview
+# com override de provider/model
+uv run omnimind-cli chat -m "hello" --provider vertexai --model gemini-3-flash-preview
+# workflow (atalho para execução com stream)
+uv run omnimind-cli workflow run -m "planeje os próximos passos"
 ```
 
 Desktop app:

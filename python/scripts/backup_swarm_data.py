@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +23,7 @@ from omnimind_backend.infra.config import get_settings
 
 
 def _iso_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def _json_default(value: Any) -> Any:
@@ -102,7 +102,7 @@ def _write_sql(path: Path, tasks: list[dict[str, Any]], events: list[dict[str, A
 
         if tasks:
             columns = list(tasks[0].keys())
-            fh.write(f"TRUNCATE TABLE swarm_tasks;\n")
+            fh.write("TRUNCATE TABLE swarm_tasks;\n")
             for row in tasks:
                 values = ", ".join(_to_sql_literal(row.get(col)) for col in columns)
                 fh.write(
@@ -112,7 +112,7 @@ def _write_sql(path: Path, tasks: list[dict[str, Any]], events: list[dict[str, A
 
         if events:
             columns = list(events[0].keys())
-            fh.write(f"TRUNCATE TABLE swarm_events;\n")
+            fh.write("TRUNCATE TABLE swarm_events;\n")
             for row in events:
                 values = ", ".join(_to_sql_literal(row.get(col)) for col in columns)
                 fh.write(
@@ -166,7 +166,7 @@ def main() -> int:
     _write_sql(sql_path, tasks_rows, events_rows)
 
     manifest = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": datetime.now(UTC).isoformat(),
         "databaseUrl": "<redacted>",
         "tables": {
             "swarm_tasks": {"rows": len(tasks_rows)},
