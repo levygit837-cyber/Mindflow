@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     )
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
     app_port: int = Field(default=8000, alias="APP_PORT")
+    log_format: Literal["json", "console"] = Field(default="console", alias="LOG_FORMAT")
     cors_allow_origins: str = Field(
         default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
         alias="CORS_ALLOW_ORIGINS",
@@ -21,12 +22,23 @@ class Settings(BaseSettings):
     cors_allow_methods: str = Field(default="*", alias="CORS_ALLOW_METHODS")
     cors_allow_headers: str = Field(default="*", alias="CORS_ALLOW_HEADERS")
     cors_allow_credentials: bool = Field(default=False, alias="CORS_ALLOW_CREDENTIALS")
+    cors_expose_headers: str = Field(default="", alias="CORS_EXPOSE_HEADERS")
 
     database_url: str = Field(
         default="postgresql+psycopg://postgres:postgres@localhost:5432/omnimind",
         alias="DATABASE_URL",
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
+
+    # Rate limiting (feature-flagged)
+    rate_limit_enabled: bool = Field(default=False, alias="RATE_LIMIT_ENABLED")
+    rate_limit_global: int = Field(default=100, alias="RATE_LIMIT_GLOBAL")
+    rate_limit_chat_stream: int = Field(default=20, alias="RATE_LIMIT_CHAT_STREAM")
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
+
+    # Authentication (feature-flagged)
+    auth_enabled: bool = Field(default=False, alias="AUTH_ENABLED")
+    auth_master_key: str | None = Field(default=None, alias="AUTH_MASTER_KEY")
 
     default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")
@@ -45,6 +57,8 @@ class Settings(BaseSettings):
 
     grpc_host: str = Field(default="0.0.0.0", alias="GRPC_HOST")
     grpc_port: int = Field(default=50051, alias="GRPC_PORT")
+    grpc_tls_cert_path: str | None = Field(default=None, alias="GRPC_TLS_CERT_PATH")
+    grpc_tls_key_path: str | None = Field(default=None, alias="GRPC_TLS_KEY_PATH")
 
 
 @lru_cache(maxsize=1)

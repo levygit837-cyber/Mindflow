@@ -1,4 +1,4 @@
-from omnimind_backend.agents.stream_event_queue import StreamEventQueue
+from omnimind_backend.runtime.stream_event_queue import StreamEventQueue
 from omnimind_backend.schemas.agent import StreamEventMeta
 
 

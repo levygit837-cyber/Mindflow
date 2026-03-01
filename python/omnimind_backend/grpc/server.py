@@ -1,7 +1,6 @@
 import asyncio
 
 import grpc
-
 from omnimind_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
 from omnimind_backend.infra.config import get_settings
 
@@ -24,7 +23,24 @@ async def serve() -> None:
 
     pb2_grpc.add_AgentRuntimeServiceServicer_to_server(AgentRuntimeServiceImpl(), server)
 
-    server.add_insecure_port(f"{settings.grpc_host}:{settings.grpc_port}")
+    host = settings.grpc_host
+    port = settings.grpc_port
+
+    # Conditional TLS: use secure port in production if certs are available.
+    if (
+        settings.app_env == "production"
+        and settings.grpc_tls_cert_path
+        and settings.grpc_tls_key_path
+    ):
+        import pathlib
+
+        cert = pathlib.Path(settings.grpc_tls_cert_path).read_bytes()
+        key = pathlib.Path(settings.grpc_tls_key_path).read_bytes()
+        credentials = grpc.ssl_server_credentials([(key, cert)])
+        server.add_secure_port(f"{host}:{port}", credentials)
+    else:
+        server.add_insecure_port(f"{host}:{port}")
+
     await server.start()
     await server.wait_for_termination()
 

@@ -1,4 +1,9 @@
-from omnimind_backend.agents.node_registry import NodeCategory, classify_node, get_node_label, is_streamable_node
+from omnimind_backend.runtime.node_registry import (
+    NodeCategory,
+    classify_node,
+    get_node_label,
+    is_streamable_node,
+)
 
 
 def test_classify_llm_node() -> None:
