@@ -161,7 +161,7 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
         messages.append(
             SystemMessage(
                 content=(
-                    "Memory Context (RAG do histórico do agente):\n"
+                    "Memory Context (RAG from agent history):\n"
                     f"{memory_context}"
                 )
             )

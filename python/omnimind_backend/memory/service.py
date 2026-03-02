@@ -344,13 +344,13 @@ class AgentMemoryService:
             key_points = [line[11:] for line in timeline[:3]]
 
         summary_lines = [
-            "Resumo consolidado da janela de contexto do agente:",
-            f"- Total de eventos: {len(events)}",
-            "- Linha do tempo principal:",
+            "Consolidated summary of the agent context window:",
+            f"- Total events: {len(events)}",
+            "- Main timeline:",
             *timeline,
         ]
         if key_points:
-            summary_lines.append("- Pontos importantes:")
+            summary_lines.append("- Key points:")
             summary_lines.extend(f"  - {item}" for item in key_points[:8])
 
         return "\n".join(summary_lines), key_points
