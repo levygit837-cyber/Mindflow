@@ -1,30 +1,27 @@
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from omnimind_backend.agents.runtime import AgentRuntime
+from omnimind_backend.grpc.generated import omnimind_backend_pb2_grpc as pb2_grpc
 from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent
 
 
-class AgentRuntimeServiceImpl:
+class AgentRuntimeServiceImpl(pb2_grpc.AgentRuntimeServiceServicer):
     def __init__(self) -> None:
         self.runtime = AgentRuntime()
 
-    async def stream_chat(
+    async def StreamChat(
         self,
-        *,
-        session_id: str,
-        message: str,
-        provider: str | None,
-        model: str | None,
-        run_id: str | None = None,
-        orchestrate: bool = False,
-        agent_type: str | None = None,
-    ) -> AsyncGenerator[StreamEvent, None]:
+        request: Any,
+        context: Any,
+    ) -> AsyncGenerator[Any, None]:
         payload = AgentChatRequest(
-            message=message,
-            provider=provider,
-            model=model,
-            orchestrate=orchestrate,
-            agent_type=agent_type,
+            message=request.message,
+            provider=request.provider or None,
+            model=request.model or None,
+            orchestrate=request.orchestrate,
+            agent_type=getattr(request, "agent_type", None) or None,
+
         )
-        async for event in self.runtime.stream_chat(payload, session_id, run_id=run_id):
+        async for event in self.runtime.stream_chat(payload, request.session_id, run_id=request.run_id):
             yield event

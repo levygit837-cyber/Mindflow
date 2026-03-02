@@ -9,9 +9,26 @@ class AgentChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=100000)
     provider: LLMProvider | None = None
     model: str | None = None
+    sessionId: str | None = Field(default=None, alias="session_id")
     debugSteps: bool = False
     orchestrate: bool = False
-    agent_type: str | None = None
+    agent_type: str | None = Field(default=None, alias="agent")
+
+class ChatMessageSchema(BaseModel):
+    id: int | None = None
+    role: str
+    content: str
+    provider: str | None = None
+    model: str | None = None
+    created_at: str | None = None
+
+
+class ChatSessionSchema(BaseModel):
+    id: str
+    title: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    messages: list[ChatMessageSchema] | None = None
 
 
 StreamModeName = Literal["updates", "messages", "custom", "values", "debug"]

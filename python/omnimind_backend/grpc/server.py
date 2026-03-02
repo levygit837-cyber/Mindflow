@@ -42,6 +42,7 @@ async def serve() -> None:
         server.add_insecure_port(f"{host}:{port}")
 
     await server.start()
+    print(f"gRPC Server started on {host}:{port}", flush=True)
     await server.wait_for_termination()
 
 

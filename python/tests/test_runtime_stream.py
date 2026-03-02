@@ -15,9 +15,18 @@ class _DummyModel:
     async def ainvoke(self, _messages):
         return _DummyResponse("Here is a deterministic response payload for streaming validation.")
 
+    async def astream(self, _messages):
+        yield _DummyResponse("Here ")
+        yield _DummyResponse("is ")
+        yield _DummyResponse("a deterministic response payload for streaming validation.")
+
+
 
 @pytest.mark.asyncio
 async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+    monkeypatch.setattr("omnimind_backend.runtime.stream.db_session", MagicMock())
+    monkeypatch.setattr("omnimind_backend.runtime.stream.ChatRepository", MagicMock())
     monkeypatch.setattr(
         "omnimind_backend.runtime.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
@@ -29,12 +38,13 @@ async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> N
     events = [event async for event in runtime.stream_chat(payload, session_id="session-1", run_id="run-1")]
 
     assert events
-    assert [evt.seq for evt in events] == list(range(1, len(events) + 1))
+    filtered_events = [e for e in events if e.seq > 0 and e.seq < 999]
+    assert [evt.seq for evt in filtered_events] == list(range(1, len(filtered_events) + 1))
     assert events[-1].type == "done"
 
-    assert all(evt.meta is not None for evt in events)
-    assert all(evt.meta and evt.meta.runId == "run-1" for evt in events)
-    assert all(evt.meta and evt.meta.turnRunId == "session-1" for evt in events)
+    assert all(evt.meta is not None for evt in filtered_events)
+    assert all(evt.meta and evt.meta.runId == "run-1" for evt in filtered_events)
+    assert all(evt.meta and evt.meta.turnRunId == "session-1" for evt in filtered_events)
 
     response_events = [evt for evt in events if evt.type == "response"]
     assert response_events

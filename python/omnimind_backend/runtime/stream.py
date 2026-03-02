@@ -11,6 +11,8 @@ from omnimind_backend.orchestrator.graph import build_orchestrator_graph
 from omnimind_backend.runtime.normalizer import AgentChatStreamNormalizer
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent, StreamEventMeta
+from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.repositories import ChatRepository
 
 _logger = get_logger(__name__)
 
@@ -20,10 +22,10 @@ SYSTEM_PROMPT = (
     "Always keep outputs clear and useful for software engineering context."
 )
 
-
 class AgentRuntime:
     def __init__(self) -> None:
         self._orchestrator_graph = build_orchestrator_graph()
+        self._chat_repo = ChatRepository()
 
     async def stream_chat(
         self,
@@ -31,15 +33,84 @@ class AgentRuntime:
         session_id: str,
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
+        settings = get_settings()
+        provider = payload.provider or settings.default_provider
+        model = payload.model or settings.default_model
+
+        # 1. Save user message to database
+        try:
+            with db_session() as db:
+                self._chat_repo.add_message(
+                    db, 
+                    session_id=session_id, 
+                    role="user", 
+                    content=payload.message
+                )
+        except Exception as exc:
+            _logger.error("failed_to_save_user_message", error=str(exc))
+            yield StreamEvent(
+                id=f"evt-0",
+                seq=0,
+                type="error",
+                mode="custom",
+                data=f"Database error: {str(exc)}",
+                meta=StreamEventMeta(
+                    runId=run_id or str(uuid.uuid4()),
+                    turnRunId=session_id,
+                    node="runtime",
+                    nodeCategory="RUNTIME",
+                    userVisible=True,
+                ),
+            )
+
+        # 2. Track assistant response to save it at the end
+        assistant_content = []
+
         if payload.orchestrate:
             async for event in self._stream_chat_orchestrated(payload, session_id, run_id):
+                if event.type == "response":
+                    assistant_content.append(event.data)
                 yield event
         elif getattr(payload, "agent_type", None):
             async for event in self._stream_chat_direct_agent(payload, session_id, run_id):
+                if event.type == "response":
+                    assistant_content.append(event.data)
                 yield event
         else:
             async for event in self._stream_chat_legacy(payload, session_id, run_id):
+                if event.type == "response":
+                    assistant_content.append(event.data)
                 yield event
+
+        # 3. Save full assistant response to database
+        full_response = "".join(assistant_content)
+        if full_response:
+            try:
+                with db_session() as db:
+                    self._chat_repo.add_message(
+                        db, 
+                        session_id=session_id, 
+                        role="assistant", 
+                        content=full_response,
+                        provider=provider,
+                        model=model
+                    )
+            except Exception as exc:
+                _logger.error("failed_to_save_assistant_message", error=str(exc))
+                yield StreamEvent(
+                    id=f"evt-err-{str(uuid.uuid4())[:8]}",
+                    seq=999,
+                    type="error",
+                    mode="custom",
+                    data=f"Database error saving response: {str(exc)}",
+                    meta=StreamEventMeta(
+                        runId=run_id or str(uuid.uuid4()),
+                        turnRunId=session_id,
+                        node="runtime",
+                        nodeCategory="RUNTIME",
+                        userVisible=True,
+                    ),
+                )
 
     async def _stream_chat_direct_agent(
         self,
@@ -139,7 +210,6 @@ class AgentRuntime:
         session_id: str,
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
-        """Original monolithic execution flow (Phase 1)."""
         settings = get_settings()
         provider = payload.provider or settings.default_provider
         model = payload.model or settings.default_model
@@ -234,23 +304,28 @@ class AgentRuntime:
         if web_context:
             messages.append(HumanMessage(content=f"Web context:\n{web_context}"))
 
-        assistant_text = ""
         try:
             llm = get_model_for_provider(provider, model)
-            ai_message = await llm.ainvoke(messages)
-            content = ai_message.content
-            if isinstance(content, str):
-                assistant_text = content
-            elif isinstance(content, list):
-                chunks: list[str] = []
-                for item in content:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        chunks.append(str(item.get("text", "")))
-                    else:
-                        chunks.append(str(item))
-                assistant_text = "".join(chunks)
-            else:
-                assistant_text = str(content)
+            async for chunk in llm.astream(messages):
+                content = chunk.content
+                thought = ""
+                if hasattr(chunk, "response_metadata"):
+                    metadata = chunk.response_metadata
+                    if "thought" in metadata:
+                        thought = metadata["thought"]
+                elif hasattr(chunk, "additional_kwargs"):
+                    thought = chunk.additional_kwargs.get("thought", "")
+
+                if thought:
+                    yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
+
+                if content:
+                    if isinstance(content, str):
+                        yield normalizer.response_event(next_seq(), content, run_id=run_id)
+                    elif isinstance(content, list):
+                        for item in content:
+                            if isinstance(item, dict) and item.get("type") == "text":
+                                yield normalizer.response_event(next_seq(), item.get("text", ""), run_id=run_id)
 
         except Exception as exc:
             yield StreamEvent(
@@ -279,15 +354,6 @@ class AgentRuntime:
             )
             return
 
-        if not assistant_text.strip():
-            assistant_text = "No response generated."
-
-        chunk_size = 64
-        for index in range(0, len(assistant_text), chunk_size):
-            piece = assistant_text[index : index + chunk_size]
-            yield normalizer.response_event(next_seq(), piece, run_id=run_id)
-            await asyncio.sleep(0)
-
         yield normalizer.step_event(
             next_seq(),
             run_id=run_id,
@@ -314,7 +380,6 @@ class AgentRuntime:
         session_id: str,
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
-        """New Phase 2 orchestrated flow using LangGraph."""
         settings = get_settings()
         provider = payload.provider or settings.default_provider
         model = payload.model or settings.default_model
@@ -340,24 +405,60 @@ class AgentRuntime:
         )
 
         try:
-            # Invoke the LangGraph pipeline
-            graph_input = {"message": payload.message, "provider": provider, "model": model}
-            result_state = await self._orchestrator_graph.ainvoke(graph_input)
+            graph_input = {
+                "message": payload.message, 
+                "provider": provider, 
+                "model": model,
+                "session_id": session_id
+            }
             
-            decision = result_state.get("decision")
-            if decision:
-                yield normalizer.thought_event(
-                    next_seq(),
-                    f"Orchestrator decision: {decision.rationale}. Executing as {decision.agent.value.upper()}.",
-                    run_id=run_id,
-                )
+            async for event in self._orchestrator_graph.astream_events(graph_input, version="v2"):
+                event_type = event["event"]
+                
+                if event_type == "on_custom_event":
+                    name = event["name"]
+                    data = event["data"]
+                    
+                    if name == "agent_thought":
+                        yield normalizer.thought_event(next_seq(), data["thought"], run_id=run_id)
+                    
+                    elif name == "agent_response":
+                        yield normalizer.response_event(next_seq(), data["chunk"], run_id=run_id)
+                    
+                    elif name == "dt_step":
+                        yield normalizer.step_event(
+                            next_seq(),
+                            run_id=run_id,
+                            step_name=f"DT: {data[task]}",
+                            detail=f"Status: {data[status]}",
+                            action="start" if data["status"] == "resolving" else "complete",
+                            node="decomposition_thinker",
+                            node_category="RUNTIME",
+                            user_visible=True,
+                        )
+                    
+                    elif name == "agent_tool_call":
+                        chunk = data["chunk"]
+                        if chunk.get("name"):
+                            yield normalizer.thought_event(
+                                next_seq(), 
+                                f"Calling tool: {chunk[name]}", 
+                                run_id=run_id
+                            )
 
-            # Check for errors in state
-            error = result_state.get("error")
-            if error:
-                raise RuntimeError(error)
-
-            assistant_text = result_state.get("response", "No response generated.")
+                elif event_type == "on_chain_start" and event.get("name") == "route":
+                     yield normalizer.thought_event(next_seq(), "Routing request...", run_id=run_id)
+                
+                elif event_type == "on_chain_end" and event.get("name") == "route":
+                    output = event.get("data", {}).get("output")
+                    if output:
+                        decision = output.get("decision")
+                        if decision:
+                            yield normalizer.thought_event(
+                                next_seq(),
+                                f"Decision: {decision.rationale}. Agent: {decision.agent.value.upper()}.",
+                                run_id=run_id,
+                            )
 
             yield normalizer.step_event(
                 next_seq(),
@@ -369,13 +470,6 @@ class AgentRuntime:
                 node_category="RUNTIME",
                 user_visible=True,
             )
-
-            # Stream the final response
-            chunk_size = 64
-            for index in range(0, len(assistant_text), chunk_size):
-                piece = assistant_text[index : index + chunk_size]
-                yield normalizer.response_event(next_seq(), piece, run_id=run_id)
-                await asyncio.sleep(0)
 
         except Exception as exc:
             _logger.error("orchestrator_graph_error", error=str(exc))
@@ -404,4 +498,3 @@ class AgentRuntime:
             data="",
             meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
         )
-
