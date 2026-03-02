@@ -6,6 +6,14 @@ execution parameters.
 
 Phase 2 uses heuristic keyword matching.  Phase 3 will add LLM-powered
 intent classification for higher accuracy.
+
+TODO (Phase 3): Replace keyword-based routing with an LLM-powered intent
+classifier. Current approach is fragile — it relies on fixed keyword lists
+that miss synonyms, context, and multi-intent messages. The replacement
+should call an LLM with a structured prompt (e.g. function-calling or
+constrained output) to classify the user message into an AgentType, and
+should fall back to CODER on low-confidence or ambiguous responses.
+See ``route_message()`` below for the current implementation.
 """
 
 from __future__ import annotations

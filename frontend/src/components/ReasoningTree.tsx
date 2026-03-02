@@ -1,3 +1,7 @@
+// TODO: Add Markdown rendering for agent response content.
+// Currently displayed as raw text. Replace with react-markdown +
+// react-syntax-highlighter for code blocks, so LLM output renders
+// properly formatted with syntax highlighting.
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
