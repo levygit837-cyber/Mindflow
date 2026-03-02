@@ -39,6 +39,8 @@ def _stream_chat_once(
     provider: str | None,
     model: str | None,
     debug_steps: bool,
+    agent_type: str | None = None,
+    orchestrate: bool = False,
 ) -> str:
     response_chunks: list[str] = []
     for event in client.stream_chat(
@@ -46,6 +48,8 @@ def _stream_chat_once(
         provider=provider,
         model=model,
         debug_steps=debug_steps,
+        agent_type=agent_type,
+        orchestrate=orchestrate,
     ):
         renderer.render(event)
         if event.type == "response":
@@ -105,8 +109,9 @@ def register_chat_commands(app: typer.Typer) -> None:
 
     @app.command("connect")
     def connect(
-        provider: str | None = typer.Option(None, "--provider", help="Provider override"),
-        model: str | None = typer.Option(None, "--model", help="Model override"),
+        agent: str = typer.Option("coder", "--agent", "-a", help="Personalidade do agente (coder, analyst, researcher, etc)"),
+        provider: str = typer.Option("vertexai", "--provider", help="Provider override"),
+        model: str = typer.Option("gemini-3-flash-preview", "--model", help="Model override"),
         debug_steps: bool = typer.Option(False, "--debug-steps", help="Enable debug-oriented stream flags"),
         base_url: str | None = typer.Option(
             None,
@@ -124,6 +129,7 @@ def register_chat_commands(app: typer.Typer) -> None:
 
         status = str(health_payload.get("status", "unknown"))
         console.print(f"[green]Conexao estabelecida[/] (backend status: {status})")
+        console.print(f"Modo: [bold]Agente Direto ({agent})[/] via {provider} / {model}")
         console.print("Comandos: /sair para encerrar, /reset para limpar contexto local.")
 
         renderer = ChatStreamRenderer(console)
@@ -153,6 +159,8 @@ def register_chat_commands(app: typer.Typer) -> None:
                     provider=provider,
                     model=model,
                     debug_steps=debug_steps,
+                    agent_type=agent,
+                    orchestrate=False,
                 )
             except Exception as exc:
                 console.print(f"[bold red]Chat failed:[/] {exc}")
