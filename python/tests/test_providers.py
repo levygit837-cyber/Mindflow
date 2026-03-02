@@ -88,3 +88,5 @@ def test_vertex_provider_uses_google_genai_vertex_mode(monkeypatch) -> None:
 
     assert captured["vertexai"] is True
     assert captured["model"] == "gemini-3-flash-preview"
+    assert captured["include_thoughts"] is True
+    assert captured["thinking_level"] == "high"

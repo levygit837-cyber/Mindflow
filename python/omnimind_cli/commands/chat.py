@@ -5,8 +5,9 @@ from rich.console import Console
 
 from omnimind_cli.client import OmniMindCliClient
 from omnimind_cli.render.chat_stream import ChatStreamRenderer
+from omnimind_cli.render.theme import OMNIMIND_THEME
 
-console = Console()
+console = Console(theme=OMNIMIND_THEME)
 EXIT_COMMANDS = {"/exit", "/quit", "/q", "/sair"}
 RESET_COMMANDS = {"/reset", "/clear", "/limpar"}
 
