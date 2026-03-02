@@ -42,10 +42,13 @@ omnimind_backend/api/router.py
 omnimind_backend/api/sse.py
 omnimind_backend/api/v1/__init__.py
 omnimind_backend/api/v1/agent.py
+omnimind_backend/api/v1/chat.py
 omnimind_backend/grpc/__init__.py
 omnimind_backend/grpc/client.py
 omnimind_backend/grpc/server.py
 omnimind_backend/grpc/generated/__init__.py
+omnimind_backend/grpc/generated/omnimind_backend_pb2.py
+omnimind_backend/grpc/generated/omnimind_backend_pb2_grpc.py
 omnimind_backend/grpc/services/__init__.py
 omnimind_backend/grpc/services/agent_runtime_service.py
 omnimind_backend/infra/__init__.py
@@ -68,6 +71,7 @@ omnimind_backend/orchestrator/decomposition/resolver.py
 omnimind_backend/orchestrator/decomposition/scheduler.py
 omnimind_backend/orchestrator/decomposition/synthesizer.py
 omnimind_backend/runtime/__init__.py
+omnimind_backend/runtime/chunk_extract.py
 omnimind_backend/runtime/deep_agent_factory.py
 omnimind_backend/runtime/log_bus.py
 omnimind_backend/runtime/node_registry.py
@@ -119,10 +123,14 @@ omnimind_desktop/viewmodels/__init__.py
 omnimind_desktop/viewmodels/chat_vm.py
 tests/test_agent_personalities.py
 tests/test_agent_registry.py
+tests/test_agent_request_schema.py
+tests/test_agent_stream_route.py
 tests/test_auth.py
+tests/test_chunk_extract.py
 tests/test_cli_commands.py
 tests/test_complexity_scorer.py
 tests/test_cors_production.py
+tests/test_grpc_agent_runtime_service.py
 tests/test_node_registry.py
 tests/test_orchestrator_decision.py
 tests/test_orchestrator_graph.py
@@ -132,6 +140,7 @@ tests/test_providers.py
 tests/test_rate_limiter.py
 tests/test_request_context.py
 tests/test_resilience.py
+tests/test_runtime_orchestrated_events.py
 tests/test_runtime_stream.py
 tests/test_safe_backend.py
 tests/test_sanitizer.py

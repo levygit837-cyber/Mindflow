@@ -115,7 +115,7 @@ class ChatStreamRenderer:
             (f": {compact}", "info")
         ))
 
-    def _render_response(self, chunk: str) -> None:
+    def _render_response(self, event: StreamEvent) -> None:
         if not self._response_open:
             # First response chunk, close any open thoughts
             if self._live_thought:
@@ -123,12 +123,19 @@ class ChatStreamRenderer:
                 self._live_thought = None
             
             agent_style = self._get_agent_style(self._current_agent or "coder")
+            
+            sender_name = self._current_agent or "OmniMind"
+            if event.meta and event.meta.model:
+                provider = event.meta.provider or "AI"
+                sender_name = f"{sender_name.capitalize()} ({provider}/{event.meta.model})"
+                
             self.console.print(Text.assemble(
-                (f"{self._current_agent or 'OmniMind'} ", f"bold {agent_style}"),
+                (f"{sender_name} ", f"bold {agent_style}"),
                 ("› ", "panel.border")
             ), end="")
             self._response_open = True
-        self.console.print(Text(chunk, style="response.text"), end="")
+            
+        self.console.print(Text(event.data, style="response.text"), end="")
 
     def _render_thought(self, thought: str) -> None:
         # Instead of a static line, we can use a Live spinner for thoughts
@@ -146,7 +153,7 @@ class ChatStreamRenderer:
             self._render_agent_header(event.meta["agent"])
 
         if event.type == "response":
-            self._render_response(event.data)
+            self._render_response(event)
             return
 
         self._ensure_response_line_closed()

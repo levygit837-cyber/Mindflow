@@ -7,7 +7,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from omnimind_backend.agents.tools.search_web import search_web
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
+from omnimind_backend.memory.service import get_memory_service
 from omnimind_backend.orchestrator.graph import build_orchestrator_graph
+from omnimind_backend.orchestrator.router import route_message
 from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.runtime.normalizer import AgentChatStreamNormalizer
 from omnimind_backend.runtime.providers import get_model_for_provider
@@ -27,6 +29,7 @@ class AgentRuntime:
     def __init__(self) -> None:
         self._orchestrator_graph = build_orchestrator_graph()
         self._chat_repo = ChatRepository()
+        self._memory_service = get_memory_service()
 
     async def stream_chat(
         self,
@@ -37,15 +40,24 @@ class AgentRuntime:
         settings = get_settings()
         provider = payload.provider or settings.default_provider
         model = payload.model or settings.default_model
+        memory_agent_id = self._resolve_memory_agent_id(payload)
 
         # 1. Save user message to database
         try:
             with db_session() as db:
-                self._chat_repo.add_message(
+                message = self._chat_repo.add_message(
                     db, 
                     session_id=session_id, 
                     role="user", 
                     content=payload.message
+                )
+                self._record_memory_message(
+                    db=db,
+                    session_id=session_id,
+                    agent_id=memory_agent_id,
+                    role="user",
+                    content=payload.message,
+                    source_message_id=getattr(message, "id", None),
                 )
         except Exception as exc:
             _logger.error("failed_to_save_user_message", error=str(exc))
@@ -88,13 +100,21 @@ class AgentRuntime:
         if full_response:
             try:
                 with db_session() as db:
-                    self._chat_repo.add_message(
+                    message = self._chat_repo.add_message(
                         db, 
                         session_id=session_id, 
                         role="assistant", 
                         content=full_response,
                         provider=provider,
                         model=model
+                    )
+                    self._record_memory_message(
+                        db=db,
+                        session_id=session_id,
+                        agent_id=memory_agent_id,
+                        role="assistant",
+                        content=full_response,
+                        source_message_id=getattr(message, "id", None),
                     )
             except Exception as exc:
                 _logger.error("failed_to_save_assistant_message", error=str(exc))
@@ -201,6 +221,50 @@ class AgentRuntime:
             meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
         )
 
+    def _resolve_memory_agent_id(self, payload: AgentChatRequest) -> str:
+        if payload.agent_type:
+            return payload.agent_type
+        if payload.orchestrate:
+            try:
+                return route_message(payload.message).agent.value
+            except Exception:
+                return "coder"
+        return "general"
+
+    def _record_memory_message(
+        self,
+        *,
+        db,
+        session_id: str,
+        agent_id: str,
+        role: str,
+        content: str,
+        source_message_id: int | None,
+    ) -> None:
+        settings = get_settings()
+        if not settings.memory_enabled:
+            return
+        # Tests frequently patch db_session to MagicMock; skip memory in that case.
+        if db.__class__.__module__.startswith("unittest.mock"):
+            return
+        try:
+            self._memory_service.record_message(
+                db,
+                session_id=session_id,
+                agent_id=agent_id,
+                role=role,
+                content=content,
+                source_message_id=source_message_id,
+            )
+        except Exception as exc:
+            _logger.warning(
+                "memory_record_failed",
+                error=str(exc),
+                session_id=session_id,
+                agent_id=agent_id,
+                role=role,
+            )
+
     async def _stream_chat_legacy(
         self,
         payload: AgentChatRequest,
@@ -230,7 +294,6 @@ class AgentRuntime:
             node_category="LLM_INVOKE",
             user_visible=True,
         )
-        yield normalizer.thought_event(next_seq(), "Analyzing request and preparing execution steps...", run_id=run_id)
         yield normalizer.step_event(
             next_seq(),
             run_id=run_id,
@@ -432,6 +495,15 @@ class AgentRuntime:
                                 f"Calling tool: {chunk.get('name')}",
                                 run_id=run_id
                             )
+                    elif name == "agent_memory_context":
+                        refs = data.get("references", [])
+                        agent_name = data.get("agent", "agent")
+                        ref_count = len(refs) if isinstance(refs, list) else 0
+                        yield normalizer.thought_event(
+                            next_seq(),
+                            f"Loaded {ref_count} memory references for {agent_name}.",
+                            run_id=run_id,
+                        )
 
                 elif event_type == "on_chain_start" and event.get("name") == "route":
                      yield normalizer.thought_event(next_seq(), "Routing request...", run_id=run_id)

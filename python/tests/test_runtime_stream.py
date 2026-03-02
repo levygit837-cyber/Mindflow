@@ -16,9 +16,15 @@ class _DummyModel:
         return _DummyResponse("Here is a deterministic response payload for streaming validation.")
 
     async def astream(self, _messages):
-        yield _DummyResponse("Here ")
-        yield _DummyResponse("is ")
-        yield _DummyResponse("a deterministic response payload for streaming validation.")
+        class ChunkWithMetadata:
+            def __init__(self, content, metadata=None):
+                self.content = content
+                self.response_metadata = metadata or {}
+
+        yield ChunkWithMetadata("", {"thought": "I am thinking about this"})
+        yield ChunkWithMetadata("Here ")
+        yield ChunkWithMetadata("is ")
+        yield ChunkWithMetadata("a deterministic response payload for streaming validation.")
 
 
 class _ChunkWithThinkingList:
@@ -62,6 +68,10 @@ async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> N
     response_events = [evt for evt in events if evt.type == "response"]
     assert response_events
     assert all(evt.meta and evt.meta.category is not None for evt in response_events)
+    
+    thought_events = [evt for evt in events if evt.type == "thought"]
+    assert thought_events
+    assert "I am thinking about this" in thought_events[0].data
 
     step_events = [evt for evt in events if evt.type == "agent_step"]
     assert step_events

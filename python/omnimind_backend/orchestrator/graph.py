@@ -18,11 +18,15 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
 from omnimind_backend.agents._registry import get_agent
+from omnimind_backend.agents.tools import create_default_registry
+from omnimind_backend.agents.tools.sandbox import OmniMindSandbox
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
+from omnimind_backend.memory.service import MemoryRetrievalResult, get_memory_service
 from omnimind_backend.orchestrator.router import route_message
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.orchestrator import OrchestratorDecision
+from omnimind_backend.storage.db import db_session
 
 _logger = get_logger(__name__)
 
@@ -44,6 +48,7 @@ class OrchestratorState(TypedDict, total=False):
     complexity_score: float
     dt_session: Any  # DTSession
     session_id: str
+    memory_context: str
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +87,13 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     settings = get_settings()
     provider = state.get("provider") or settings.default_provider
     model = decision.model or state.get("model") or settings.default_model
+    session_id = str(state.get("session_id", ""))
+    memory_result = _retrieve_memory_context(
+        query=state["message"],
+        session_id=session_id,
+        agent_id=decision.agent.value,
+    )
+    memory_context = memory_result.context
 
     from omnimind_backend.schemas.orchestrator import ThinkingMode
     
@@ -102,7 +114,8 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
                 session_id=str(state.get("session_id", "unknown")),
                 complexity_score=state.get("complexity_score", 1.0),
                 provider=provider,
-                model=model
+                model=model,
+                memory_context=memory_context,
             )
             
             # Step B: Schedule
@@ -118,7 +131,13 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
                     "dt_step", 
                     {"task": task.title, "status": "resolving", "session_id": dt_session.session_id}
                 )
-                await resolver.resolve_task(task, dt_session, provider=provider, model=model)
+                await resolver.resolve_task(
+                    task,
+                    dt_session,
+                    provider=provider,
+                    model=model,
+                    memory_context=memory_context,
+                )
                 await adispatch_custom_event(
                     "dt_step", 
                     {"task": task.title, "status": "done", "session_id": dt_session.session_id}
@@ -136,15 +155,32 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
 
     # 2. Standard Execution Mode
     agent = get_agent(decision.agent)
-    messages = [
-        SystemMessage(content=agent.system_prompt),
-        HumanMessage(content=state["message"]),
-    ]
+    messages = [SystemMessage(content=agent.system_prompt)]
+
+    if memory_context.strip():
+        messages.append(
+            SystemMessage(
+                content=(
+                    "Memory Context (RAG do histórico do agente):\n"
+                    f"{memory_context}"
+                )
+            )
+        )
+        try:
+            await adispatch_custom_event(
+                "agent_memory_context",
+                {
+                    "agent": decision.agent.value,
+                    "references": memory_result.references,
+                },
+            )
+        except RuntimeError:
+            # execute_node can be tested/invoked outside LangChain callback context.
+            pass
+
+    messages.append(HumanMessage(content=state["message"]))
 
     try:
-        from omnimind_backend.agents.tools import create_default_registry
-        from omnimind_backend.agents.tools.sandbox import OmniMindSandbox
-        
         # Initialize registry with a secure sandbox backend
         sandbox = OmniMindSandbox(root_dir=settings.working_path if hasattr(settings, "working_path") else None)
         registry = create_default_registry(sandbox)
@@ -201,6 +237,26 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     except Exception as exc:
         _logger.error("execute_node_error", error=str(exc))
         return {"response": "", "error": str(exc)}
+
+
+def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> MemoryRetrievalResult:
+    settings = get_settings()
+    if not settings.memory_enabled:
+        return MemoryRetrievalResult(context="", references=[])
+    if not session_id:
+        return MemoryRetrievalResult(context="", references=[])
+
+    try:
+        with db_session() as db:
+            return get_memory_service().retrieve_context_for_query(
+                db=db,
+                session_id=session_id,
+                agent_id=agent_id,
+                query=query,
+            )
+    except Exception as exc:
+        _logger.warning("memory_retrieval_failed", error=str(exc), session_id=session_id, agent=agent_id)
+        return MemoryRetrievalResult(context="", references=[])
 
 
 def respond_node(state: OrchestratorState) -> dict[str, Any]:

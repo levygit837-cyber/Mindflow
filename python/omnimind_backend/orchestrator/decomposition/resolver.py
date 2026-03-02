@@ -22,7 +22,8 @@ class Resolver:
         task: DTTask, 
         session: DTSession,
         provider: str | None = None,
-        model: str | None = None
+        model: str | None = None,
+        memory_context: str = "",
     ) -> str:
         """Invoke the appropriate agent for a single sub-task."""
         settings = get_settings()
@@ -45,21 +46,18 @@ class Resolver:
         context = ""
         completed_tasks = [t for t in session.tasks if t.status == DTStatus.COMPLETED and t.result]
         if completed_tasks:
-            context = "Context from previous steps:
-"
+            context = "Context from previous steps:\n"
             for t in completed_tasks:
-                context += f"### {t.title}
-{t.result}
+                context += f"### {t.title}\n{t.result}\n\n"
 
-"
+        user_prompt = f"{context}\n\nCurrent Task: {task.title}\nDescription: {task.description}"
+        if memory_context.strip():
+            user_prompt = (
+                f"Memory Context (RAG):\n{memory_context}\n\n"
+                f"{user_prompt}"
+            )
 
-        messages = [
-            SystemMessage(content=agent.system_prompt),
-            HumanMessage(content=f"{context}
-
-Current Task: {task.title}
-Description: {task.description}")
-        ]
+        messages = [SystemMessage(content=agent.system_prompt), HumanMessage(content=user_prompt)]
 
         try:
             llm = get_model_for_provider(p, m)
