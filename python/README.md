@@ -56,6 +56,13 @@ uv run omnimind-cli chat -m "hello" --provider vertexai --model gemini-3-flash-p
 uv run omnimind-cli workflow run -m "planeje os próximos passos"
 ```
 
+Live validation (Vertex stream reliability):
+```bash
+cd python
+RUN_LIVE_VERTEX_TESTS=1 uv run pytest tests/live/test_vertex_agent_stream_live.py -v -s
+uv run python scripts/verify_vertex_stream.py
+```
+
 Desktop app:
 ```bash
 cd python

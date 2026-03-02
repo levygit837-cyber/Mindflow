@@ -56,6 +56,9 @@ omnimind-cli = "omnimind_cli.app:run"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+markers = [
+  "live: marks tests that require live external services/credentials",
+]
 
 [tool.ruff]
 line-length = 100
