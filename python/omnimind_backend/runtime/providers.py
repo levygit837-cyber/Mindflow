@@ -76,7 +76,7 @@ def _build_vertex_service_account_model(*, model: str, project_id: str | None):
     }
     if project_id:
         kwargs["project"] = project_id
-if _is_thinking_supported(model):
+    if _is_thinking_supported(model):
         # Move to model_kwargs to avoid LangChain validation warnings 
         # while still passing it to the Google API
         kwargs["model_kwargs"] = {
@@ -94,10 +94,10 @@ def _build_vertex_api_key_model(*, model: str, api_key: str, project_id: str | N
         "vertexai": True,
         "location": _vertex_location(model),
     }
-    
+
     if project_id:
         kwargs["project"] = project_id
-if _is_thinking_supported(model):
+    if _is_thinking_supported(model):
         kwargs["model_kwargs"] = {
             "thinking_config": {"include_thoughts": True, "thinking_level": "HIGH"}
         }
