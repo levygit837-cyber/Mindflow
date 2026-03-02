@@ -74,6 +74,8 @@ def test_chat_command_streams_response(monkeypatch) -> None:
             provider: str | None,
             model: str | None,
             debug_steps: bool = False,
+            agent_type: str | None = None,
+            orchestrate: bool = False,
         ):
             assert message == "hello"
             assert provider == "vertexai"
@@ -119,6 +121,8 @@ def test_connect_command_runs_interactive_chat_until_exit(monkeypatch) -> None:
             provider: str | None,
             model: str | None,
             debug_steps: bool = False,
+            agent_type: str | None = None,
+            orchestrate: bool = False,
         ):
             seen_messages.append(message)
             assert provider == "vertexai"
@@ -165,6 +169,8 @@ def test_connect_command_reset_clears_local_history(monkeypatch) -> None:
             provider: str | None,
             model: str | None,
             debug_steps: bool = False,
+            agent_type: str | None = None,
+            orchestrate: bool = False,
         ):
             seen_messages.append(message)
             yield _event("response", "ok", seq=1)
