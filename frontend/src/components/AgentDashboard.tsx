@@ -1,3 +1,7 @@
+// TODO: Extract all inline style objects to CSS modules or Tailwind classes.
+// Current inline styles make it hard to maintain consistent theming and
+// prevent static analysis of design-token usage. Target: zero inline style
+// props on structural elements; keep only dynamic values (e.g. agent colors).
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

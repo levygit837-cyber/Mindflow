@@ -140,23 +140,12 @@ class AgentRuntime:
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         from omnimind_backend.agents._registry import get_agent
-        
-        settings = get_settings()
-        provider = payload.provider or settings.default_provider
-        model = payload.model or settings.default_model
-        run_id = run_id or str(uuid.uuid4())
+
+        provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
         agent_type = getattr(payload, "agent_type", "coder")
 
-        normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
-        seq = 0
-
-        def next_seq() -> int:
-            nonlocal seq
-            seq += 1
-            return seq
-
         yield normalizer.step_event(
-            next_seq(),
+            self._next_seq(counter),
             run_id=run_id,
             step_name=f"Direct Agent: {agent_type}",
             detail=f"Executing directly with {agent_type} personality.",
@@ -175,13 +164,13 @@ class AgentRuntime:
             async for chunk in llm.astream(messages):
                 thought, texts = extract_chunk_parts(chunk)
                 if thought:
-                    yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
+                    yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
                 for text in texts:
                     emitted_response = True
-                    yield normalizer.response_event(next_seq(), text, run_id=run_id)
+                    yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
 
             yield normalizer.step_event(
-                next_seq(),
+                self._next_seq(counter),
                 run_id=run_id,
                 step_name=f"Direct Agent: {agent_type}",
                 detail="Agent execution complete.",
@@ -191,34 +180,17 @@ class AgentRuntime:
                 user_visible=True,
             )
             if not emitted_response:
-                yield normalizer.response_event(next_seq(), "No response generated.", run_id=run_id)
+                yield normalizer.response_event(self._next_seq(counter), "No response generated.", run_id=run_id)
 
         except Exception as exc:
             _logger.error("direct_agent_graph_error", error=str(exc))
-            yield StreamEvent(
-                id=f"evt-{next_seq()}",
-                seq=seq,
-                type="error",
-                mode="custom",
-                data=str(exc),
-                meta=StreamEventMeta(
-                    provider=provider,
-                    model=model,
-                    runId=run_id,
-                    turnRunId=session_id,
-                    node="direct",
-                    nodeCategory="RUNTIME",
-                    userVisible=True,
-                ),
+            yield self._error_event(
+                exc=exc, counter=counter, provider=provider, model=model,
+                run_id=run_id, session_id=session_id, node="direct", node_category="RUNTIME",
             )
 
-        yield StreamEvent(
-            id=f"evt-{next_seq()}",
-            seq=seq,
-            type="done",
-            mode="messages",
-            data="",
-            meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+        yield self._done_event(
+            counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
 
     def _resolve_memory_agent_id(self, payload: AgentChatRequest) -> str:
@@ -265,27 +237,91 @@ class AgentRuntime:
                 role=role,
             )
 
+    # ------------------------------------------------------------------
+    # Private helpers — shared by all three streaming methods
+    # ------------------------------------------------------------------
+
+    def _create_stream_context(
+        self,
+        payload: AgentChatRequest,
+        session_id: str,
+        run_id: str | None,
+    ) -> tuple[str, str, str, AgentChatStreamNormalizer, list[int]]:
+        """Resolve provider, model, run_id and create a normalizer + seq counter."""
+        settings = get_settings()
+        provider = payload.provider or settings.default_provider
+        model = payload.model or settings.default_model
+        run_id = run_id or str(uuid.uuid4())
+        normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
+        return provider, model, run_id, normalizer, [0]
+
+    @staticmethod
+    def _next_seq(counter: list[int]) -> int:
+        """Increment and return the mutable sequence counter."""
+        counter[0] += 1
+        return counter[0]
+
+    def _error_event(
+        self,
+        *,
+        exc: Exception,
+        counter: list[int],
+        provider: str,
+        model: str,
+        run_id: str,
+        session_id: str,
+        node: str,
+        node_category: str,
+    ) -> StreamEvent:
+        """Build a typed error StreamEvent."""
+        seq = self._next_seq(counter)
+        return StreamEvent(
+            id=f"evt-{seq}",
+            seq=seq,
+            type="error",
+            mode="custom",
+            data=str(exc),
+            meta=StreamEventMeta(
+                provider=provider,
+                model=model,
+                runId=run_id,
+                turnRunId=session_id,
+                node=node,
+                nodeCategory=node_category,
+                userVisible=True,
+            ),
+        )
+
+    def _done_event(
+        self,
+        *,
+        counter: list[int],
+        provider: str,
+        model: str,
+        run_id: str,
+        session_id: str,
+    ) -> StreamEvent:
+        """Build the terminal done StreamEvent."""
+        seq = self._next_seq(counter)
+        return StreamEvent(
+            id=f"evt-{seq}",
+            seq=seq,
+            type="done",
+            mode="messages",
+            data="",
+            meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+        )
+
     async def _stream_chat_legacy(
         self,
         payload: AgentChatRequest,
         session_id: str,
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
-        settings = get_settings()
-        provider = payload.provider or settings.default_provider
-        model = payload.model or settings.default_model
-        run_id = run_id or str(uuid.uuid4())
-
-        normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
-        seq = 0
-
-        def next_seq() -> int:
-            nonlocal seq
-            seq += 1
-            return seq
+        provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
 
         yield normalizer.step_event(
-            next_seq(),
+            self._next_seq(counter),
             run_id=run_id,
             step_name="Analyze Request",
             detail="Parsing user intent and selecting execution strategy.",
@@ -295,7 +331,7 @@ class AgentRuntime:
             user_visible=True,
         )
         yield normalizer.step_event(
-            next_seq(),
+            self._next_seq(counter),
             run_id=run_id,
             step_name="Analyze Request",
             detail="Request analysis complete.",
@@ -311,7 +347,7 @@ class AgentRuntime:
 
         if should_search:
             yield normalizer.step_event(
-                next_seq(),
+                self._next_seq(counter),
                 run_id=run_id,
                 step_name="Retrieve Context",
                 detail="Running web retrieval for fresh context.",
@@ -323,7 +359,7 @@ class AgentRuntime:
 
             tool_call_id = str(uuid.uuid4())
             yield normalizer.tool_call_event(
-                next_seq(),
+                self._next_seq(counter),
                 tool_call_id=tool_call_id,
                 name="search_web",
                 args={"query": payload.message},
@@ -331,7 +367,7 @@ class AgentRuntime:
             )
             web_context = await search_web(payload.message)
             yield normalizer.tool_result_event(
-                next_seq(),
+                self._next_seq(counter),
                 tool_call_id=tool_call_id,
                 name="search_web",
                 result=web_context,
@@ -339,7 +375,7 @@ class AgentRuntime:
             )
 
             yield normalizer.step_event(
-                next_seq(),
+                self._next_seq(counter),
                 run_id=run_id,
                 step_name="Retrieve Context",
                 detail="Context retrieval complete.",
@@ -350,7 +386,7 @@ class AgentRuntime:
             )
 
         yield normalizer.step_event(
-            next_seq(),
+            self._next_seq(counter),
             run_id=run_id,
             step_name="Synthesize Response",
             detail="Generating final answer.",
@@ -368,42 +404,23 @@ class AgentRuntime:
             llm = get_model_for_provider(provider, model)
             async for chunk in llm.astream(messages):
                 thought, texts = extract_chunk_parts(chunk)
-
                 if thought:
-                    yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
-
+                    yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
                 for text in texts:
-                    yield normalizer.response_event(next_seq(), text, run_id=run_id)
+                    yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
 
         except Exception as exc:
-            yield StreamEvent(
-                id=f"evt-{next_seq()}",
-                seq=seq,
-                type="error",
-                mode="custom",
-                data=str(exc),
-                meta=StreamEventMeta(
-                    provider=provider,
-                    model=model,
-                    runId=run_id,
-                    turnRunId=session_id,
-                    node="response",
-                    nodeCategory="LLM_INVOKE",
-                    userVisible=True,
-                ),
+            yield self._error_event(
+                exc=exc, counter=counter, provider=provider, model=model,
+                run_id=run_id, session_id=session_id, node="response", node_category="LLM_INVOKE",
             )
-            yield StreamEvent(
-                id=f"evt-{next_seq()}",
-                seq=seq,
-                type="done",
-                mode="messages",
-                data="",
-                meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+            yield self._done_event(
+                counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
             )
             return
 
         yield normalizer.step_event(
-            next_seq(),
+            self._next_seq(counter),
             run_id=run_id,
             step_name="Synthesize Response",
             detail="Final response delivered.",
@@ -413,13 +430,8 @@ class AgentRuntime:
             user_visible=True,
         )
 
-        yield StreamEvent(
-            id=f"evt-{next_seq()}",
-            seq=seq,
-            type="done",
-            mode="messages",
-            data="",
-            meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+        yield self._done_event(
+            counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
 
     async def _stream_chat_orchestrated(
@@ -428,21 +440,10 @@ class AgentRuntime:
         session_id: str,
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
-        settings = get_settings()
-        provider = payload.provider or settings.default_provider
-        model = payload.model or settings.default_model
-        run_id = run_id or str(uuid.uuid4())
-
-        normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
-        seq = 0
-
-        def next_seq() -> int:
-            nonlocal seq
-            seq += 1
-            return seq
+        provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
 
         yield normalizer.step_event(
-            next_seq(),
+            self._next_seq(counter),
             run_id=run_id,
             step_name="Orchestrating Request",
             detail="Delegating request to specialized agent personality.",
@@ -454,30 +455,30 @@ class AgentRuntime:
 
         try:
             graph_input = {
-                "message": payload.message, 
-                "provider": provider, 
+                "message": payload.message,
+                "provider": provider,
                 "model": model,
-                "session_id": session_id
+                "session_id": session_id,
             }
-            
+
             async for event in self._orchestrator_graph.astream_events(graph_input, version="v2"):
                 event_type = event["event"]
-                
+
                 if event_type == "on_custom_event":
                     name = event["name"]
                     data = event["data"]
-                    
+
                     if name == "agent_thought":
-                        yield normalizer.thought_event(next_seq(), data["thought"], run_id=run_id)
-                    
+                        yield normalizer.thought_event(self._next_seq(counter), data["thought"], run_id=run_id)
+
                     elif name == "agent_response":
-                        yield normalizer.response_event(next_seq(), data["chunk"], run_id=run_id)
-                    
+                        yield normalizer.response_event(self._next_seq(counter), data["chunk"], run_id=run_id)
+
                     elif name == "dt_step":
                         task_name = data.get("task", "unknown")
                         status = data.get("status", "unknown")
                         yield normalizer.step_event(
-                            next_seq(),
+                            self._next_seq(counter),
                             run_id=run_id,
                             step_name=f"DT: {task_name}",
                             detail=f"Status: {status}",
@@ -486,41 +487,42 @@ class AgentRuntime:
                             node_category="RUNTIME",
                             user_visible=True,
                         )
-                    
+
                     elif name == "agent_tool_call":
                         chunk = data.get("chunk", {})
                         if chunk.get("name"):
                             yield normalizer.thought_event(
-                                next_seq(), 
+                                self._next_seq(counter),
                                 f"Calling tool: {chunk.get('name')}",
-                                run_id=run_id
+                                run_id=run_id,
                             )
+
                     elif name == "agent_memory_context":
                         refs = data.get("references", [])
                         agent_name = data.get("agent", "agent")
                         ref_count = len(refs) if isinstance(refs, list) else 0
                         yield normalizer.thought_event(
-                            next_seq(),
+                            self._next_seq(counter),
                             f"Loaded {ref_count} memory references for {agent_name}.",
                             run_id=run_id,
                         )
 
                 elif event_type == "on_chain_start" and event.get("name") == "route":
-                     yield normalizer.thought_event(next_seq(), "Routing request...", run_id=run_id)
-                
+                    yield normalizer.thought_event(self._next_seq(counter), "Routing request...", run_id=run_id)
+
                 elif event_type == "on_chain_end" and event.get("name") == "route":
                     output = event.get("data", {}).get("output")
                     if output:
                         decision = output.get("decision")
                         if decision:
                             yield normalizer.thought_event(
-                                next_seq(),
+                                self._next_seq(counter),
                                 f"Decision: {decision.rationale}. Agent: {decision.agent.value.upper()}.",
                                 run_id=run_id,
                             )
 
             yield normalizer.step_event(
-                next_seq(),
+                self._next_seq(counter),
                 run_id=run_id,
                 step_name="Orchestrating Request",
                 detail="Agent execution complete.",
@@ -532,28 +534,11 @@ class AgentRuntime:
 
         except Exception as exc:
             _logger.error("orchestrator_graph_error", error=str(exc))
-            yield StreamEvent(
-                id=f"evt-{next_seq()}",
-                seq=seq,
-                type="error",
-                mode="custom",
-                data=str(exc),
-                meta=StreamEventMeta(
-                    provider=provider,
-                    model=model,
-                    runId=run_id,
-                    turnRunId=session_id,
-                    node="orchestrator",
-                    nodeCategory="RUNTIME",
-                    userVisible=True,
-                ),
+            yield self._error_event(
+                exc=exc, counter=counter, provider=provider, model=model,
+                run_id=run_id, session_id=session_id, node="orchestrator", node_category="RUNTIME",
             )
 
-        yield StreamEvent(
-            id=f"evt-{next_seq()}",
-            seq=seq,
-            type="done",
-            mode="messages",
-            data="",
-            meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+        yield self._done_event(
+            counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
