@@ -66,6 +66,22 @@ class Settings(BaseSettings):
 
     searxng_url: str = Field(default="http://localhost:8080", alias="SEARXNG_URL")
 
+    # Phase 1 - Agent Contract Parity
+    enable_creative_agent: bool = Field(default=False, alias="ENABLE_CREATIVE_AGENT")
+    enable_security_guard_agent: bool = Field(default=False, alias="ENABLE_SECURITY_GUARD_AGENT")
+
+    # Phase 2 - Context Governance and Input Normalization
+    enable_input_normalization: bool = Field(default=False, alias="ENABLE_INPUT_NORMALIZATION")
+    enable_context_governance: bool = Field(default=False, alias="ENABLE_CONTEXT_GOVERNANCE")
+    enable_session_chunks: bool = Field(default=False, alias="ENABLE_SESSION_CHUNKS")
+
+    # Phase 3 - Async Workflow Caller
+    enable_async_workflows: bool = Field(default=False, alias="ENABLE_ASYNC_WORKFLOWS")
+    enable_workflow_registry: bool = Field(default=False, alias="ENABLE_WORKFLOW_REGISTRY")
+
+    # Phase 4 - DT v2
+    enable_dt_v2: bool = Field(default=False, alias="ENABLE_DT_V2")
+
     grpc_host: str = Field(default="0.0.0.0", alias="GRPC_HOST")
     grpc_port: int = Field(default=50051, alias="GRPC_PORT")
     grpc_tls_cert_path: str | None = Field(default=None, alias="GRPC_TLS_CERT_PATH")
