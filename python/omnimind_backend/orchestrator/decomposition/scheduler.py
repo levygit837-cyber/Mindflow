@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import logging
 from collections import deque
 from omnimind_backend.schemas.decomposition import DTSession, DTTask
+from omnimind_backend.infra.logging import get_logger
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 class Scheduler:
@@ -24,7 +24,7 @@ class Scheduler:
                     adj[dep].append(t.id)
                     in_degree[t.id] += 1
                 else:
-                    logger.warning(f"Task {t.id} has unknown dependency: {dep}")
+                    _logger.warning("unknown_dependency", task_id=t.id, dependency=dep)
 
         # Kahn's algorithm for topological sort
         queue = deque([t_id for t_id, deg in in_degree.items() if deg == 0])
@@ -41,6 +41,6 @@ class Scheduler:
                     
         # Check for cycles
         if len(ordered_task_ids) != len(session.tasks):
-            logger.error(f"Cycle detected in task dependencies for session {session.id}. Returning partial order.")
+            _logger.error("cycle_detected_in_dependencies", session_id=session.id)
             
         return [tasks_dict[t_id] for t_id in ordered_task_ids]

@@ -1,93 +1,81 @@
-# omnimind
+# 🧠 OmniMind
 
+Multi-agent AI engineering assistant with specialized personalities.
 
+## Overview
 
-## Getting started
+OmniMind is a multi-agent AI system built for software engineering assistance. It features 7 specialized agent personalities (Coder, Analyst, Researcher, ArchTech, Critic, Creative, SecurityGuard), each with unique system prompts, tool access, and reasoning depth.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Architecture
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+| Component | Stack | Location |
+|---|---|---|
+| **Backend** | Python 3.11+ / FastAPI / gRPC / Redis+RQ / PostgreSQL | `python/omnimind_backend/` |
+| **Frontend** | React 19 / Vite / TypeScript / Framer Motion | `frontend/` |
+| **CLI** | Typer | `python/omnimind_cli/` |
+| **Desktop** | PySide6 / QML | `python/omnimind_desktop/` |
 
-## Add your files
+## LLM Providers
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+- **Google/VertexAI** (Gemini) — default
+- **Anthropic** (Claude)
+- **OpenAI** (GPT)
+- **Ollama** (local models)
 
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL
+- Redis (optional, for background workers)
+
+### Backend Setup
+
+```bash
+cd python
+pip install -e ".[dev]"
+cp ../.env.example ../.env  # Configure your API keys
+python -m omnimind_backend.main
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/levy-group/omnimind.git
-git branch -M main
-git push -uf origin main
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-## Integrate with your tools
+### Environment Variables
 
-* [Set up project integrations](https://gitlab.com/levy-group/omnimind/-/settings/integrations)
+Copy `.env.example` to `.env` and configure:
 
-## Collaborate with your team
+- `GOOGLE_API_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` — for Gemini/VertexAI
+- `ANTHROPIC_API_KEY` — for Claude
+- `OPENAI_API_KEY` — for GPT
+- `DATABASE_URL` — PostgreSQL connection string
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## Agent Personalities
 
-## Test and Deploy
+| Agent | Focus | Tools | Sandbox |
+|---|---|---|---|
+| **Coder** | Implementation | Filesystem, Shell | Full |
+| **Analyst** | Data & Metrics | Code Analysis, Filesystem | None |
+| **Researcher** | Information Synthesis | Web Search | None |
+| **ArchTech** | System Design | Filesystem, Code Analysis | None |
+| **Critic** | Code Review | Code Analysis | None |
+| **Creative** | Divergent Thinking | Code Analysis, Filesystem | None |
+| **SecurityGuard** | Security Analysis | Code Analysis, Filesystem | Read-Only |
 
-Use the built-in continuous integration in GitLab.
+## Key Features
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+- **Decomposition Thinking** — Complex tasks are broken into a DAG of sub-tasks, scheduled via topological sort, and resolved by specialized agents
+- **Multi-Provider Fallback** — Automatic fallback between VertexAI API-key and Service Account auth
+- **Memory System** — Per-agent rolling memory with summary windows and RAG retrieval
+- **Feature Flags** — 10+ flags for incremental development
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Proprietary — Levy Group

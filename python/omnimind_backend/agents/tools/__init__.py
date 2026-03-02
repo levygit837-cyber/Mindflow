@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from typing import Any, TypeVar
 
 from deepagents.backends.protocol import BackendProtocol
+from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.schemas.orchestrator import AgentType
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 T = TypeVar("T")
 
@@ -34,7 +34,7 @@ class ToolRegistry:
         If scopes is None, the tool is available to all agents.
         """
         self._tools[name] = (func, scopes or list(AgentType))
-        logger.debug(f"Registered tool: {name} (scopes: {scopes})")
+        _logger.debug("tool_registered", name=name, scopes=str(scopes))
 
     def get_tools_for_agent(self, agent_type: AgentType) -> list[Callable]:
         """Return a list of tool functions authorized for the given agent type."""

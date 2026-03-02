@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import json
-import logging
 import uuid
 from typing import Any
 
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.decomposition import DTSession, DTStatus, DTTask
 from omnimind_backend.infra.config import get_settings
+from omnimind_backend.infra.logging import get_logger
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 class Decomposer:
@@ -92,7 +92,7 @@ Return ONLY a JSON array of objects with the following schema:
             )
             
         except Exception as e:
-            logger.error(f"Error during decomposition: {e}")
+            _logger.error("decomposition_error", error=str(e))
             # Fallback: create a single task session
             return DTSession(
                 id=str(uuid.uuid4()),

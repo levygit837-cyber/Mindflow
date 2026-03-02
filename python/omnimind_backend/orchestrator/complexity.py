@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import logging
 import re
 from typing import Any
 
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.infra.config import get_settings
+from omnimind_backend.infra.logging import get_logger
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 class ComplexityScorer:
@@ -83,7 +83,7 @@ class ComplexityScorer:
                 return round(final_score, 2)
                 
         except Exception as e:
-            logger.error(f"Error during LLM complexity scoring: {e}")
+            _logger.error("llm_complexity_scoring_error", error=str(e))
             
         return h_score
 
