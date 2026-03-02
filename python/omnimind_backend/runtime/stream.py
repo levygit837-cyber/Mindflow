@@ -8,6 +8,7 @@ from omnimind_backend.agents.tools.search_web import search_web
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.orchestrator.graph import build_orchestrator_graph
+from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.runtime.normalizer import AgentChatStreamNormalizer
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent, StreamEventMeta
@@ -147,16 +148,17 @@ class AgentRuntime:
 
         try:
             agent = get_agent(agent_type)
-            graph = agent.build_graph()
-            
-            graph_input = {"message": payload.message, "provider": provider, "model": model}
-            result_state = await graph.ainvoke(graph_input)
-            
-            error = result_state.get("error")
-            if error:
-                raise RuntimeError(error)
+            messages = [SystemMessage(content=agent.system_prompt), HumanMessage(content=payload.message)]
+            llm = get_model_for_provider(provider, model)
 
-            assistant_text = result_state.get("response", "No response generated.")
+            emitted_response = False
+            async for chunk in llm.astream(messages):
+                thought, texts = extract_chunk_parts(chunk)
+                if thought:
+                    yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
+                for text in texts:
+                    emitted_response = True
+                    yield normalizer.response_event(next_seq(), text, run_id=run_id)
 
             yield normalizer.step_event(
                 next_seq(),
@@ -168,13 +170,8 @@ class AgentRuntime:
                 node_category="RUNTIME",
                 user_visible=True,
             )
-
-            chunk_size = 64
-            for index in range(0, len(assistant_text), chunk_size):
-                piece = assistant_text[index : index + chunk_size]
-                yield normalizer.response_event(next_seq(), piece, run_id=run_id)
-                import asyncio
-                await asyncio.sleep(0)
+            if not emitted_response:
+                yield normalizer.response_event(next_seq(), "No response generated.", run_id=run_id)
 
         except Exception as exc:
             _logger.error("direct_agent_graph_error", error=str(exc))
@@ -307,25 +304,13 @@ class AgentRuntime:
         try:
             llm = get_model_for_provider(provider, model)
             async for chunk in llm.astream(messages):
-                content = chunk.content
-                thought = ""
-                if hasattr(chunk, "response_metadata"):
-                    metadata = chunk.response_metadata
-                    if "thought" in metadata:
-                        thought = metadata["thought"]
-                elif hasattr(chunk, "additional_kwargs"):
-                    thought = chunk.additional_kwargs.get("thought", "")
+                thought, texts = extract_chunk_parts(chunk)
 
                 if thought:
                     yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
 
-                if content:
-                    if isinstance(content, str):
-                        yield normalizer.response_event(next_seq(), content, run_id=run_id)
-                    elif isinstance(content, list):
-                        for item in content:
-                            if isinstance(item, dict) and item.get("type") == "text":
-                                yield normalizer.response_event(next_seq(), item.get("text", ""), run_id=run_id)
+                for text in texts:
+                    yield normalizer.response_event(next_seq(), text, run_id=run_id)
 
         except Exception as exc:
             yield StreamEvent(
@@ -426,23 +411,25 @@ class AgentRuntime:
                         yield normalizer.response_event(next_seq(), data["chunk"], run_id=run_id)
                     
                     elif name == "dt_step":
+                        task_name = data.get("task", "unknown")
+                        status = data.get("status", "unknown")
                         yield normalizer.step_event(
                             next_seq(),
                             run_id=run_id,
-                            step_name=f"DT: {data[task]}",
-                            detail=f"Status: {data[status]}",
-                            action="start" if data["status"] == "resolving" else "complete",
+                            step_name=f"DT: {task_name}",
+                            detail=f"Status: {status}",
+                            action="start" if status == "resolving" else "complete",
                             node="decomposition_thinker",
                             node_category="RUNTIME",
                             user_visible=True,
                         )
                     
                     elif name == "agent_tool_call":
-                        chunk = data["chunk"]
+                        chunk = data.get("chunk", {})
                         if chunk.get("name"):
                             yield normalizer.thought_event(
                                 next_seq(), 
-                                f"Calling tool: {chunk[name]}", 
+                                f"Calling tool: {chunk.get('name')}",
                                 run_id=run_id
                             )
 

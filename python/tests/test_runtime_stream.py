@@ -21,6 +21,19 @@ class _DummyModel:
         yield _DummyResponse("a deterministic response payload for streaming validation.")
 
 
+class _ChunkWithThinkingList:
+    def __init__(self) -> None:
+        self.content = [
+            {"type": "thinking", "thinking": "reasoning summary"},
+            {"type": "text", "text": "final answer"},
+        ]
+
+
+class _DummyModelWithThinkingList:
+    async def astream(self, _messages):
+        yield _ChunkWithThinkingList()
+
+
 
 @pytest.mark.asyncio
 async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
@@ -75,3 +88,25 @@ async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None
 
     assert any(evt.type == "tool_call" for evt in events)
     assert any(evt.type == "tool_result" for evt in events)
+
+
+@pytest.mark.asyncio
+async def test_stream_contract_extracts_thought_and_response_from_list_content(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr("omnimind_backend.runtime.stream.db_session", MagicMock())
+    monkeypatch.setattr("omnimind_backend.runtime.stream.ChatRepository", MagicMock())
+    monkeypatch.setattr(
+        "omnimind_backend.runtime.stream.get_model_for_provider",
+        lambda _provider, _model: _DummyModelWithThinkingList(),
+    )
+
+    runtime = AgentRuntime()
+    payload = AgentChatRequest(message="responda", provider="openai", model="stub")
+
+    events = [event async for event in runtime.stream_chat(payload, session_id="session-3", run_id="run-3")]
+    thought_events = [evt for evt in events if evt.type == "thought"]
+    response_events = [evt for evt in events if evt.type == "response"]
+
+    assert any("reasoning summary" in evt.data for evt in thought_events)
+    assert any("final answer" in evt.data for evt in response_events)

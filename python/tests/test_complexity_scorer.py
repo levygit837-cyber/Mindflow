@@ -26,3 +26,25 @@ def test_should_decompose():
     scorer = ComplexityScorer(threshold=0.65)
     assert scorer.should_decompose(0.7) is True
     assert scorer.should_decompose(0.4) is False
+
+
+@pytest.mark.asyncio
+async def test_get_complexity_score_handles_list_content_from_model(monkeypatch):
+    class _Response:
+        content = [{"type": "text", "text": "0.90"}]
+
+    class _Model:
+        async def ainvoke(self, _prompt):
+            return _Response()
+
+    monkeypatch.setattr(
+        "omnimind_backend.orchestrator.complexity.get_model_for_provider",
+        lambda _provider, _model: _Model(),
+    )
+
+    scorer = ComplexityScorer()
+    message = "implementar refactor com migration em multiple files"
+    h_score = scorer.calculate_heuristic_score(message)
+    score = await scorer.get_complexity_score(message, provider="openai", model="stub")
+
+    assert score > h_score

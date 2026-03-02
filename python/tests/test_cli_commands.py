@@ -188,3 +188,26 @@ def test_connect_command_reset_clears_local_history(monkeypatch) -> None:
     assert len(seen_messages) == 2
     assert seen_messages[0] == "Primeira"
     assert seen_messages[1] == "Segunda"
+
+
+def test_chat_command_fails_when_stream_has_no_done(monkeypatch) -> None:
+    class _DummyClient:
+        def stream_chat(
+            self,
+            *,
+            message: str,
+            provider: str | None,
+            model: str | None,
+            debug_steps: bool = False,
+            agent_type: str | None = None,
+            orchestrate: bool = False,
+        ):
+            if False:
+                yield
+
+    monkeypatch.setattr("omnimind_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
+
+    result = runner.invoke(app, ["chat", "--message", "oi"])
+
+    assert result.exit_code == 1
+    assert "no terminal done event" in result.output.lower()
