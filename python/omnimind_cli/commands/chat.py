@@ -5,8 +5,9 @@ from rich.console import Console
 
 from omnimind_cli.client import OmniMindCliClient
 from omnimind_cli.render.chat_stream import ChatStreamRenderer
+from omnimind_cli.render.theme import OMNIMIND_THEME
 
-console = Console()
+console = Console(theme=OMNIMIND_THEME)
 EXIT_COMMANDS = {"/exit", "/quit", "/q", "/sair"}
 RESET_COMMANDS = {"/reset", "/clear", "/limpar"}
 
@@ -43,6 +44,7 @@ def _stream_chat_once(
     orchestrate: bool = False,
 ) -> str:
     response_chunks: list[str] = []
+    seen_done = False
     for event in client.stream_chat(
         message=message,
         provider=provider,
@@ -55,7 +57,10 @@ def _stream_chat_once(
         if event.type == "response":
             response_chunks.append(event.data)
         if event.type == "done":
+            seen_done = True
             break
+    if not seen_done:
+        raise RuntimeError("No terminal done event in stream")
     return "".join(response_chunks).strip()
 
 

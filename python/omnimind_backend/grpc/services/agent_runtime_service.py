@@ -19,9 +19,11 @@ class AgentRuntimeServiceImpl(pb2_grpc.AgentRuntimeServiceServicer):
             message=request.message,
             provider=request.provider or None,
             model=request.model or None,
-            orchestrate=request.orchestrate,
+            orchestrate=getattr(request, "orchestrate", False),
+            debugSteps=getattr(request, "debug_steps", False),
             agent_type=getattr(request, "agent_type", None) or None,
-
         )
-        async for event in self.runtime.stream_chat(payload, request.session_id, run_id=request.run_id):
+        session_id = getattr(request, "session_id", "")
+        run_id = getattr(request, "run_id", "")
+        async for event in self.runtime.stream_chat(payload, session_id, run_id=run_id):
             yield event

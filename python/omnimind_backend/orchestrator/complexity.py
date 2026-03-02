@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from omnimind_backend.runtime.providers import get_model_for_provider
+from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.infra.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,12 @@ class ComplexityScorer:
             )
             
             response = await llm.ainvoke(prompt)
-            content = response.content if hasattr(response, "content") else str(response)
+            thought, text_parts = extract_chunk_parts(response)
+            content = " ".join(text_parts).strip()
+            if not content:
+                content = thought
+            if not content:
+                content = str(getattr(response, "content", response))
             
             # Extract number from response
             match = re.search(r"(\d+\.\d+|\d+)", content)

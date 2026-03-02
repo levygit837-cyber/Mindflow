@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")
+    enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
 
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
