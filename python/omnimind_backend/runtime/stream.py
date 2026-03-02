@@ -8,6 +8,7 @@ from omnimind_backend.agents.tools.search_web import search_web
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.orchestrator.graph import build_orchestrator_graph
+from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.runtime.normalizer import AgentChatStreamNormalizer
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent, StreamEventMeta
@@ -307,25 +308,13 @@ class AgentRuntime:
         try:
             llm = get_model_for_provider(provider, model)
             async for chunk in llm.astream(messages):
-                content = chunk.content
-                thought = ""
-                if hasattr(chunk, "response_metadata"):
-                    metadata = chunk.response_metadata
-                    if "thought" in metadata:
-                        thought = metadata["thought"]
-                elif hasattr(chunk, "additional_kwargs"):
-                    thought = chunk.additional_kwargs.get("thought", "")
+                thought, texts = extract_chunk_parts(chunk)
 
                 if thought:
                     yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
 
-                if content:
-                    if isinstance(content, str):
-                        yield normalizer.response_event(next_seq(), content, run_id=run_id)
-                    elif isinstance(content, list):
-                        for item in content:
-                            if isinstance(item, dict) and item.get("type") == "text":
-                                yield normalizer.response_event(next_seq(), item.get("text", ""), run_id=run_id)
+                for text in texts:
+                    yield normalizer.response_event(next_seq(), text, run_id=run_id)
 
         except Exception as exc:
             yield StreamEvent(
