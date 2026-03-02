@@ -1,0 +1,46 @@
+[0;34mStarting OmniMind Dev Stack...[0m
+[0;35m[1/3] Starting gRPC Server...[0m
+Traceback (most recent call last):
+  File "/home/levybonito/Projetos/OmniMind/python/omnimind_backend/grpc/server.py", line 18, in serve
+    from omnimind_backend.grpc.generated import omnimind_backend_pb2_grpc as pb2_grpc
+  File "/home/levybonito/Projetos/OmniMind/python/omnimind_backend/grpc/generated/__init__.py", line 2, in <module>
+    from . import omnimind_backend_pb2_grpc as pb2_grpc
+  File "/home/levybonito/Projetos/OmniMind/python/omnimind_backend/grpc/generated/omnimind_backend_pb2_grpc.py", line 6, in <module>
+    import omnimind_backend_pb2 as omnimind__backend__pb2
+ModuleNotFoundError: No module named 'omnimind_backend_pb2'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/levybonito/Projetos/OmniMind/python/omnimind_backend/grpc/server.py", line 53, in <module>
+    run()
+    ~~~^^
+  File "/home/levybonito/Projetos/OmniMind/python/omnimind_backend/grpc/server.py", line 49, in run
+    asyncio.run(serve())
+    ~~~~~~~~~~~^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/levybonito/Projetos/OmniMind/python/omnimind_backend/grpc/server.py", line 20, in serve
+    raise RuntimeError(
+        "Missing generated gRPC bindings. Run: python/scripts/gen_proto.sh"
+    ) from exc
+RuntimeError: Missing generated gRPC bindings. Run: python/scripts/gen_proto.sh
+[0;35m[2/3] Starting FastAPI Backend...[0m
+/home/levybonito/.venv/bin/python3: Error while finding module specification for 'omnimind_backend.main' (ModuleNotFoundError: No module named 'omnimind_backend')
+[0;35m[3/3] Starting Vite Frontend...[0m
+[0;32mStack is up and running![0m
+Backend:  http://localhost:8000
+Frontend: http://localhost:5173
+gRPC:     localhost:50051
+
+Press Ctrl+C to stop all services.
+./start_dev.sh: linha 31: cd: ../frontend: Arquivo ou diretório inexistente

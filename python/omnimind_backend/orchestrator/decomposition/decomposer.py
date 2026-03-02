@@ -42,7 +42,8 @@ Return ONLY a JSON array of objects with the following schema:
         session_id: str,
         complexity_score: float,
         provider: str | None = None,
-        model: str | None = None
+        model: str | None = None,
+        memory_context: str = "",
     ) -> DTSession:
         """Analyze message and return a DTSession with sub-tasks."""
         settings = get_settings()
@@ -53,9 +54,8 @@ Return ONLY a JSON array of objects with the following schema:
             llm = get_model_for_provider(p, m)
             
             prompt = (
-                f"{self.SYSTEM_PROMPT}
-
-"
+                f"{self.SYSTEM_PROMPT}\n\n"
+                f"Memory Context (if available):\n{memory_context}\n\n"
                 f"Request: {message}"
             )
             

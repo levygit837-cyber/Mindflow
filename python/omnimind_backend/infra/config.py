@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")
     enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
+    memory_enabled: bool = Field(default=True, alias="MEMORY_ENABLED")
+    memory_summary_window_tokens: int = Field(default=300000, alias="MEMORY_SUMMARY_WINDOW_TOKENS")
+    memory_retrieval_top_k: int = Field(default=4, alias="MEMORY_RETRIEVAL_TOP_K")
+    memory_embedding_dims: int = Field(default=256, alias="MEMORY_EMBEDDING_DIMS")
 
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
