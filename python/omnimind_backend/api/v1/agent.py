@@ -30,7 +30,7 @@ async def stream_chat(payload: AgentChatRequest, request: Request) -> StreamingR
     grpc_client = InternalGrpcClient()
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        async for event in grpc_client.agent.stream_chat(
+        async for event in grpc_client.stream_chat(
             session_id=session_id,  # Now passing the session_id for persistence
             message=payload.message,
             provider=payload.provider,
