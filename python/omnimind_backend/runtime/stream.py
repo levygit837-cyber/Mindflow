@@ -426,23 +426,25 @@ class AgentRuntime:
                         yield normalizer.response_event(next_seq(), data["chunk"], run_id=run_id)
                     
                     elif name == "dt_step":
+                        task_name = data.get("task", "unknown")
+                        status = data.get("status", "unknown")
                         yield normalizer.step_event(
                             next_seq(),
                             run_id=run_id,
-                            step_name=f"DT: {data[task]}",
-                            detail=f"Status: {data[status]}",
-                            action="start" if data["status"] == "resolving" else "complete",
+                            step_name=f"DT: {task_name}",
+                            detail=f"Status: {status}",
+                            action="start" if status == "resolving" else "complete",
                             node="decomposition_thinker",
                             node_category="RUNTIME",
                             user_visible=True,
                         )
                     
                     elif name == "agent_tool_call":
-                        chunk = data["chunk"]
+                        chunk = data.get("chunk", {})
                         if chunk.get("name"):
                             yield normalizer.thought_event(
                                 next_seq(), 
-                                f"Calling tool: {chunk[name]}", 
+                                f"Calling tool: {chunk.get('name')}",
                                 run_id=run_id
                             )
 
