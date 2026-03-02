@@ -43,43 +43,28 @@ Integrate all results into a single, comprehensive, and well-structured response
             results_summary = ""
             for t in session.tasks:
                 if t.status == DTStatus.COMPLETED:
-                    results_summary += f"### {t.title}
-{t.result or 'No result'}
-
-"
+                    results_summary += f"### {t.title}\n{t.result or 'No result'}\n\n"
                 elif t.status == DTStatus.FAILED:
-                    results_summary += f"### {t.title} (FAILED)
-{t.error or 'Unknown error'}
+                    results_summary += f"### {t.title} (FAILED)\n{t.error or 'Unknown error'}\n\n"
 
-"
-            
             prompt = (
-                f"{self.SYSTEM_PROMPT}
-
-"
-                f"Original Request: {session.original_task}
-
-"
-                f"Completed Work Summary:
-{results_summary}"
+                f"{self.SYSTEM_PROMPT}\n\n"
+                f"Original Request: {session.original_task}\n\n"
+                f"Completed Work Summary:\n{results_summary}"
             )
-            
+
             response = await llm.ainvoke(prompt)
             final_text = response.content if hasattr(response, "content") else str(response)
-            
+
             session.final_response = final_text
             session.status = DTStatus.COMPLETED
             return final_text
-            
+
         except Exception as e:
             _logger.error("synthesis_error", error=str(e))
             # Fallback: simple join of results
-            fallback = "I encountered an error during synthesis, but here are the results from the completed steps:
-
-"
+            fallback = "I encountered an error during synthesis, but here are the results from the completed steps:\n\n"
             for t in session.tasks:
                 if t.status == DTStatus.COMPLETED:
-                    fallback += f"--- {t.title} ---
-{t.result}
-"
+                    fallback += f"--- {t.title} ---\n{t.result}\n"
             return fallback
