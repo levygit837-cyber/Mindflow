@@ -31,15 +31,20 @@ class OmniMindCliClient:
         provider: str | None = None,
         model: str | None = None,
         debug_steps: bool = False,
+        agent_type: str | None = None,
+        orchestrate: bool = False,
     ) -> Iterator[StreamEvent]:
         payload: dict[str, Any] = {
             "message": message,
             "debugSteps": debug_steps,
+            "orchestrate": orchestrate,
         }
         if provider:
             payload["provider"] = provider
         if model:
             payload["model"] = model
+        if agent_type:
+            payload["agent_type"] = agent_type
 
         with (
             httpx.Client(timeout=None) as client,
