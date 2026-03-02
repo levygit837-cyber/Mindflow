@@ -68,6 +68,8 @@ def _build_vertex_service_account_model(*, model: str, project_id: str | None):
     }
     if project_id:
         kwargs["project"] = project_id
+    if "gemini-3" in model:
+        kwargs["model_kwargs"] = {"thinking_config": {"thinking_budget": 1024}}
     return ChatGoogleGenerativeAI(**kwargs)
 
 
@@ -84,6 +86,8 @@ def _build_vertex_api_key_model(*, model: str, api_key: str, project_id: str | N
         kwargs["vertexai"] = True
         kwargs["project"] = project_id
         kwargs["location"] = _vertex_location(model)
+    if "gemini-3" in model:
+        kwargs["model_kwargs"] = {"thinking_config": {"thinking_budget": 1024}}
     return ChatGoogleGenerativeAI(**kwargs)
 
 
