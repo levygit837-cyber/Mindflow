@@ -70,3 +70,6 @@ backend/searxng/searxng/
 
 # Git worktrees
 .worktrees/
+
+# documentation (never commit)
+/docs/
