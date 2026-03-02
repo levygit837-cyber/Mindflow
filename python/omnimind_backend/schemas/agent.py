@@ -1,18 +1,24 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from omnimind_backend.schemas.common import LLMProvider
 
 
 class AgentChatRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     message: str = Field(min_length=1, max_length=100000)
     provider: LLMProvider | None = None
     model: str | None = None
     sessionId: str | None = Field(default=None, alias="session_id")
     debugSteps: bool = False
     orchestrate: bool = False
-    agent_type: str | None = Field(default=None, alias="agent")
+    agent_type: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("agent_type", "agent"),
+        serialization_alias="agent_type",
+    )
 
 class ChatMessageSchema(BaseModel):
     id: int | None = None
