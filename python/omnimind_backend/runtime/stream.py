@@ -148,16 +148,17 @@ class AgentRuntime:
 
         try:
             agent = get_agent(agent_type)
-            graph = agent.build_graph()
-            
-            graph_input = {"message": payload.message, "provider": provider, "model": model}
-            result_state = await graph.ainvoke(graph_input)
-            
-            error = result_state.get("error")
-            if error:
-                raise RuntimeError(error)
+            messages = [SystemMessage(content=agent.system_prompt), HumanMessage(content=payload.message)]
+            llm = get_model_for_provider(provider, model)
 
-            assistant_text = result_state.get("response", "No response generated.")
+            emitted_response = False
+            async for chunk in llm.astream(messages):
+                thought, texts = extract_chunk_parts(chunk)
+                if thought:
+                    yield normalizer.thought_event(next_seq(), thought, run_id=run_id)
+                for text in texts:
+                    emitted_response = True
+                    yield normalizer.response_event(next_seq(), text, run_id=run_id)
 
             yield normalizer.step_event(
                 next_seq(),
@@ -169,13 +170,8 @@ class AgentRuntime:
                 node_category="RUNTIME",
                 user_visible=True,
             )
-
-            chunk_size = 64
-            for index in range(0, len(assistant_text), chunk_size):
-                piece = assistant_text[index : index + chunk_size]
-                yield normalizer.response_event(next_seq(), piece, run_id=run_id)
-                import asyncio
-                await asyncio.sleep(0)
+            if not emitted_response:
+                yield normalizer.response_event(next_seq(), "No response generated.", run_id=run_id)
 
         except Exception as exc:
             _logger.error("direct_agent_graph_error", error=str(exc))
