@@ -74,5 +74,9 @@ backend/searxng/searxng/
 # documentation (never commit)
 /docs/
 
-# serena configuration (local only)
+# local configuration and planning (never commit)
 .serena/
+.coa/
+.planning/
+design/
+.plugin-config/
