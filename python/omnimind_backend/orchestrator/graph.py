@@ -55,7 +55,7 @@ async def route_node(state: OrchestratorState) -> dict[str, Any]:
     """Analyze the message, produce a routing decision and complexity assessment."""
     from omnimind_backend.orchestrator.complexity import ComplexityScorer
     from omnimind_backend.schemas.orchestrator import ThinkingMode
-    
+    settings = get_settings()
     message = state["message"]
     decision = route_message(message)
     
@@ -66,9 +66,11 @@ async def route_node(state: OrchestratorState) -> dict[str, Any]:
         model=state.get("model")
     )
 
-    if scorer.should_decompose(score):
+    if settings.enable_decomposition_thinking and scorer.should_decompose(score):
         decision.thinking_mode = ThinkingMode.DECOMPOSITION
         _logger.info("route_node_triggering_dt", score=score)
+    elif scorer.should_decompose(score):
+        _logger.info("route_node_dt_disabled", score=score)
     
     _logger.info("route_node_completed", agent=decision.agent.value, score=score)
     return {"decision": decision, "complexity_score": score}
@@ -84,7 +86,7 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     from omnimind_backend.schemas.orchestrator import ThinkingMode
     
     # 1. Check for Decomposition Thinking Mode
-    if decision.thinking_mode == ThinkingMode.DECOMPOSITION:
+    if decision.thinking_mode == ThinkingMode.DECOMPOSITION and settings.enable_decomposition_thinking:
         try:
             from omnimind_backend.orchestrator.decomposition.decomposer import Decomposer
             from omnimind_backend.orchestrator.decomposition.scheduler import Scheduler
