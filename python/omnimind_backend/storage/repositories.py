@@ -12,7 +12,7 @@ class ChatRepository:
         session = db.get(ChatSession, session_id)
         if not session:
             # Create session if it doesn't exist
-            session = ChatSession(id=session_id, title=title or "Nova Conversa")
+            session = ChatSession(id=session_id, title=title or "New Conversation")
             db.add(session)
             db.flush()
         return session
