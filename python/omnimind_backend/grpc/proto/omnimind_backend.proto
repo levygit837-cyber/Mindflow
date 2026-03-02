@@ -8,6 +8,9 @@ message ChatStreamRequest {
   string provider = 3;
   string model = 4;
   string run_id = 5;
+  bool orchestrate = 6;
+  string agent_type = 7;
+  bool debug_steps = 8;
 }
 
 message StreamEvent {
