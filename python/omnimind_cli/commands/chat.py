@@ -43,6 +43,7 @@ def _stream_chat_once(
     orchestrate: bool = False,
 ) -> str:
     response_chunks: list[str] = []
+    seen_done = False
     for event in client.stream_chat(
         message=message,
         provider=provider,
@@ -55,7 +56,10 @@ def _stream_chat_once(
         if event.type == "response":
             response_chunks.append(event.data)
         if event.type == "done":
+            seen_done = True
             break
+    if not seen_done:
+        raise RuntimeError("No terminal done event in stream")
     return "".join(response_chunks).strip()
 
 
