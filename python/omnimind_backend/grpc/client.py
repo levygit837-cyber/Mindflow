@@ -5,11 +5,15 @@ from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent
 from omnimind_backend.schemas.common import LLMProvider
 
 
-class InternalGrpcClient:
-    """Local fallback client for internal services.
+class LocalAgentClient:
+    """In-process client that calls service implementations directly (not real gRPC).
 
-    This client calls service implementations directly until generated gRPC
-    stubs are wired in runtime environments.
+    Calls AgentRuntimeServiceImpl methods in-process instead of over a real gRPC
+    channel. This avoids the need for generated stubs and a running gRPC server
+    during development and testing.
+
+    TODO: Replace with a real gRPC channel client (using generated stubs) when the
+    service is deployed as a separate process or in a distributed environment.
     """
 
     def __init__(self) -> None:
