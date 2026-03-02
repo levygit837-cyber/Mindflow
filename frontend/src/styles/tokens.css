@@ -26,6 +26,8 @@
   --agent-researcher: #7c4dff;
   --agent-arch-tech: #b0bec5;
   --agent-critic: #ff7043;
+  --agent-creative: #ffab40;
+  --agent-security-guard: #ef5350;
 
   /* Typography */
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;

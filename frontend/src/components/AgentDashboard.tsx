@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Terminal, 
-  BarChart3, 
-  Search, 
-  Layers, 
-  ShieldCheck, 
-  Settings, 
+import {
+  Terminal,
+  BarChart3,
+  Search,
+  Layers,
+  ShieldCheck,
+  Settings,
   Cpu,
   Send,
   Plus,
   MessageSquare,
-  Clock
+  Clock,
+  Lightbulb,
+  Shield
 } from 'lucide-react';
 import { useOmniStream } from '../hooks/useOmniStream';
 import type { StreamEvent } from '../hooks/useOmniStream';
@@ -23,8 +25,10 @@ const AGENTS = [
   { id: 'coder', name: 'Coder', icon: Terminal, color: 'var(--agent-coder)' },
   { id: 'analyst', name: 'Analyst', icon: BarChart3, color: 'var(--agent-analyst)' },
   { id: 'researcher', name: 'Researcher', icon: Search, color: 'var(--agent-researcher)' },
-  { id: 'arch_tech', name: 'ArchTech', icon: Layers, color: 'var(--agent-arch_tech)' },
+  { id: 'arch_tech', name: 'ArchTech', icon: Layers, color: 'var(--agent-arch-tech)' },
   { id: 'critic', name: 'Critic', icon: ShieldCheck, color: 'var(--agent-critic)' },
+  { id: 'creative', name: 'Creative', icon: Lightbulb, color: 'var(--agent-creative)' },
+  { id: 'security_guard', name: 'SecurityGuard', icon: Shield, color: 'var(--agent-security-guard)' },
 ];
 
 const BASE_URL = 'http://localhost:8000';
@@ -360,13 +364,6 @@ const AgentDashboard: React.FC = () => {
         </div>
       </main>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}} />
     </div>
   );
 };
