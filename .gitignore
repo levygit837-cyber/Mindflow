@@ -73,3 +73,6 @@ backend/searxng/searxng/
 
 # documentation (never commit)
 /docs/
+
+# serena configuration (local only)
+.serena/
