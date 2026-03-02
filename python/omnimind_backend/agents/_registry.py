@@ -76,8 +76,10 @@ def register_all_personalities() -> None:
         create_analyst_agent,
         create_arch_tech_agent,
         create_coder_agent,
+        create_creative_agent,
         create_critic_agent,
         create_researcher_agent,
+        create_security_guard_agent,
     )
 
     for factory in (
@@ -86,6 +88,8 @@ def register_all_personalities() -> None:
         create_researcher_agent,
         create_arch_tech_agent,
         create_critic_agent,
+        create_creative_agent,
+        create_security_guard_agent,
     ):
         _registry.register(factory())
 

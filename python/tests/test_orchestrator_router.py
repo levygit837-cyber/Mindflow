@@ -64,3 +64,23 @@ def test_mixed_keywords_highest_score_wins() -> None:
     # "code" → CODER, but "review", "evaluate", "quality", "improve" → CRITIC (more hits)
     decision = route_message("Review and evaluate the code quality and improve readability")
     assert decision.agent == AgentType.CRITIC
+
+
+def test_route_creative_keywords() -> None:
+    decision = route_message("brainstorm new approaches for the caching layer")
+    assert decision.agent == AgentType.CREATIVE
+
+
+def test_route_security_keywords() -> None:
+    decision = route_message("scan this code for security vulnerabilities")
+    assert decision.agent == AgentType.SECURITY_GUARD
+
+
+def test_route_creative_innovation() -> None:
+    decision = route_message("innovate on the user onboarding experience")
+    assert decision.agent == AgentType.CREATIVE
+
+
+def test_route_security_owasp() -> None:
+    decision = route_message("check for OWASP top 10 vulnerabilities")
+    assert decision.agent == AgentType.SECURITY_GUARD
