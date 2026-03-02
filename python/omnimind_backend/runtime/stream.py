@@ -34,9 +34,104 @@ class AgentRuntime:
         if payload.orchestrate:
             async for event in self._stream_chat_orchestrated(payload, session_id, run_id):
                 yield event
+        elif getattr(payload, "agent_type", None):
+            async for event in self._stream_chat_direct_agent(payload, session_id, run_id):
+                yield event
         else:
             async for event in self._stream_chat_legacy(payload, session_id, run_id):
                 yield event
+
+    async def _stream_chat_direct_agent(
+        self,
+        payload: AgentChatRequest,
+        session_id: str,
+        run_id: str | None = None,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        from omnimind_backend.agents._registry import get_agent
+        
+        settings = get_settings()
+        provider = payload.provider or settings.default_provider
+        model = payload.model or settings.default_model
+        run_id = run_id or str(uuid.uuid4())
+        agent_type = getattr(payload, "agent_type", "coder")
+
+        normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
+        seq = 0
+
+        def next_seq() -> int:
+            nonlocal seq
+            seq += 1
+            return seq
+
+        yield normalizer.step_event(
+            next_seq(),
+            run_id=run_id,
+            step_name=f"Direct Agent: {agent_type}",
+            detail=f"Executing directly with {agent_type} personality.",
+            action="start",
+            node="direct",
+            node_category="RUNTIME",
+            user_visible=True,
+        )
+
+        try:
+            agent = get_agent(agent_type)
+            graph = agent.build_graph()
+            
+            graph_input = {"message": payload.message, "provider": provider, "model": model}
+            result_state = await graph.ainvoke(graph_input)
+            
+            error = result_state.get("error")
+            if error:
+                raise RuntimeError(error)
+
+            assistant_text = result_state.get("response", "No response generated.")
+
+            yield normalizer.step_event(
+                next_seq(),
+                run_id=run_id,
+                step_name=f"Direct Agent: {agent_type}",
+                detail="Agent execution complete.",
+                action="complete",
+                node="direct",
+                node_category="RUNTIME",
+                user_visible=True,
+            )
+
+            chunk_size = 64
+            for index in range(0, len(assistant_text), chunk_size):
+                piece = assistant_text[index : index + chunk_size]
+                yield normalizer.response_event(next_seq(), piece, run_id=run_id)
+                import asyncio
+                await asyncio.sleep(0)
+
+        except Exception as exc:
+            _logger.error("direct_agent_graph_error", error=str(exc))
+            yield StreamEvent(
+                id=f"evt-{next_seq()}",
+                seq=seq,
+                type="error",
+                mode="custom",
+                data=str(exc),
+                meta=StreamEventMeta(
+                    provider=provider,
+                    model=model,
+                    runId=run_id,
+                    turnRunId=session_id,
+                    node="direct",
+                    nodeCategory="RUNTIME",
+                    userVisible=True,
+                ),
+            )
+
+        yield StreamEvent(
+            id=f"evt-{next_seq()}",
+            seq=seq,
+            type="done",
+            mode="messages",
+            data="",
+            meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+        )
 
     async def _stream_chat_legacy(
         self,
