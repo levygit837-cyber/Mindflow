@@ -23,13 +23,15 @@ async def stream_chat(payload: AgentChatRequest, request: Request) -> StreamingR
 
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
+    # Use session_id from payload if provided (from frontend), otherwise create new
+    session_id = payload.sessionId or f"sess-{uuid.uuid4()}"
     turn_id = f"turn-{uuid.uuid4()}"
     run_id = str(uuid.uuid4())
     grpc_client = InternalGrpcClient()
 
     async def event_generator() -> AsyncGenerator[str, None]:
         async for event in grpc_client.agent.stream_chat(
-            session_id=turn_id,
+            session_id=session_id,  # Now passing the session_id for persistence
             message=payload.message,
             provider=payload.provider,
             model=payload.model,

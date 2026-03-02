@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +34,13 @@ def _load_vertex_project_id(credentials_path: str | None) -> str | None:
 
 
 def _vertex_location(model: str) -> str:
-    return "global" if model.startswith("gemini-3") else "us-central1"
+    # Most thinking models are currently global or in specific US regions
+    return "global" if "gemini-3" in model.lower() or "thinking" in model.lower() else "us-central1"
+
+
+def _is_thinking_supported(model: str) -> bool:
+    m = model.lower()
+    return "thinking" in m or "gemini-2.0" in m or "gemini-3" in m
 
 
 def _ensure_vertex_env() -> tuple[str | None, str | None]:
@@ -68,8 +76,12 @@ def _build_vertex_service_account_model(*, model: str, project_id: str | None):
     }
     if project_id:
         kwargs["project"] = project_id
-    if "gemini-3" in model:
-        kwargs["model_kwargs"] = {"thinking_config": {"thinking_budget": 1024}}
+if _is_thinking_supported(model):
+        # Move to model_kwargs to avoid LangChain validation warnings 
+        # while still passing it to the Google API
+        kwargs["model_kwargs"] = {
+            "thinking_config": {"include_thoughts": True, "thinking_level": "HIGH"}
+        }
     return ChatGoogleGenerativeAI(**kwargs)
 
 
@@ -79,15 +91,16 @@ def _build_vertex_api_key_model(*, model: str, api_key: str, project_id: str | N
     kwargs: dict[str, Any] = {
         "model": model,
         "google_api_key": api_key,
+        "vertexai": True,
+        "location": _vertex_location(model),
     }
-    # Best-effort Vertex route using API key; if the upstream rejects this path,
-    # runtime fallback can still use service account credentials.
+    
     if project_id:
-        kwargs["vertexai"] = True
         kwargs["project"] = project_id
-        kwargs["location"] = _vertex_location(model)
-    if "gemini-3" in model:
-        kwargs["model_kwargs"] = {"thinking_config": {"thinking_budget": 1024}}
+if _is_thinking_supported(model):
+        kwargs["model_kwargs"] = {
+            "thinking_config": {"include_thoughts": True, "thinking_level": "HIGH"}
+        }
     return ChatGoogleGenerativeAI(**kwargs)
 
 
@@ -98,24 +111,65 @@ class _AinvokeFallbackModel:
         self._fallback_model: Any | None = None
         self._using_fallback = False
 
-    async def ainvoke(self, messages: Any) -> Any:
-        if not self._using_fallback:
-            try:
-                return await self._primary_model.ainvoke(messages)
-            except Exception as exc:
+    def _get_active_model(self) -> Any:
+        if self._using_fallback:
+            if self._fallback_model is None:
                 if self._fallback_factory is None:
-                    raise
-                logger.warning(
-                    "Vertex API-key path failed, falling back to service account credentials: %s",
-                    exc,
-                )
-                self._using_fallback = True
+                    raise RuntimeError("Fallback model factory not configured")
+                self._fallback_model = self._fallback_factory()
+            return self._fallback_model
+        return self._primary_model
 
-        if self._fallback_model is None:
-            if self._fallback_factory is None:
-                raise RuntimeError("Fallback model factory not configured")
-            self._fallback_model = self._fallback_factory()
-        return await self._fallback_model.ainvoke(messages)
+    async def ainvoke(self, messages: Any, **kwargs: Any) -> Any:
+        try:
+            return await self._get_active_model().ainvoke(messages, **kwargs)
+        except Exception as exc:
+            if not self._using_fallback and self._fallback_factory:
+                logger.warning("Vertex API-key path failed, falling back to service account: %s", exc)
+                self._using_fallback = True
+                return await self.ainvoke(messages, **kwargs)
+            raise
+
+    async def astream(self, messages: Any, **kwargs: Any) -> AsyncGenerator[Any, None]:
+        try:
+            async for chunk in self._get_active_model().astream(messages, **kwargs):
+                yield chunk
+        except Exception as exc:
+            if not self._using_fallback and self._fallback_factory:
+                logger.warning("Vertex API-key stream failed, falling back to service account: %s", exc)
+                self._using_fallback = True
+                async for chunk in self.astream(messages, **kwargs):
+                    yield chunk
+            else:
+                raise
+
+    async def astream_events(self, *args: Any, **kwargs: Any) -> AsyncGenerator[Any, None]:
+        try:
+            async for event in self._get_active_model().astream_events(*args, **kwargs):
+                yield event
+        except Exception as exc:
+            if not self._using_fallback and self._fallback_factory:
+                logger.warning("Vertex API-key astream_events failed, falling back to service account: %s", exc)
+                self._using_fallback = True
+                async for event in self.astream_events(*args, **kwargs):
+                    yield event
+            else:
+                raise
+
+    def bind_tools(self, tools: Any, **kwargs: Any) -> _AinvokeFallbackModel:
+        # Wrap the models with tools bound
+        primary_with_tools = self._primary_model.bind_tools(tools, **kwargs)
+        
+        fallback_factory_with_tools: Callable[[], Any] | None = None
+        if self._fallback_factory:
+            def _factory():
+                return self._fallback_factory().bind_tools(tools, **kwargs)
+            fallback_factory_with_tools = _factory
+            
+        return _AinvokeFallbackModel(
+            primary_model=primary_with_tools,
+            fallback_factory=fallback_factory_with_tools
+        )
 
 
 def get_model_for_provider(
@@ -128,7 +182,8 @@ def get_model_for_provider(
 
     if provider == "vertexai":
         credentials_path, project_id = _ensure_vertex_env()
-        google_api_key = _normalized(api_key) or _normalized(settings.google_api_key)
+        # Final effort to find API key
+        google_api_key = api_key or settings.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GOOGLE_CLOUD_API_KEY")
 
         def _fallback_factory() -> Any:
             return _build_vertex_service_account_model(
@@ -155,18 +210,25 @@ def get_model_for_provider(
             return fallback_factory()
 
         raise ValueError(
-            "Vertex AI auth missing: set GOOGLE_API_KEY, or configure "
+            "Vertex AI auth missing: set GOOGLE_API_KEY/GOOGLE_CLOUD_API_KEY, or configure "
             "GOOGLE_APPLICATION_CREDENTIALS/VERTEXAI_CREDENTIALS_PATH."
         )
 
     if provider == "google":
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        return ChatGoogleGenerativeAI(
-            model=model,
-            google_api_key=api_key or settings.google_api_key,
-            thinking_config={"include_thoughts": True, "thinking_level": "HIGH"},
-        )
+        # Final effort to find API key
+        google_api_key = api_key or settings.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+        kwargs = {
+            "model": model,
+            "google_api_key": google_api_key,
+        }
+        
+        if _is_thinking_supported(model):
+            kwargs["thinking_config"] = {"include_thoughts": True, "thinking_level": "HIGH"}
+            
+        return ChatGoogleGenerativeAI(**kwargs)
 
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic

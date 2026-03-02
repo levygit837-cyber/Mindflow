@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from langchain_core.callbacks.manager import adispatch_custom_event
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
@@ -42,6 +43,7 @@ class OrchestratorState(TypedDict, total=False):
     error: str | None
     complexity_score: float
     dt_session: Any  # DTSession
+    session_id: str
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +111,16 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
             resolver = Resolver()
             for task in ordered_tasks:
                 _logger.info("dt_task_resolving", task=task.title)
+                # In DT mode, we also want to emit progress events for each task
+                await adispatch_custom_event(
+                    "dt_step", 
+                    {"task": task.title, "status": "resolving", "session_id": dt_session.session_id}
+                )
                 await resolver.resolve_task(task, dt_session, provider=provider, model=model)
+                await adispatch_custom_event(
+                    "dt_step", 
+                    {"task": task.title, "status": "done", "session_id": dt_session.session_id}
+                )
                 
             # Step D: Synthesize
             synthesizer = Synthesizer()
@@ -143,31 +154,43 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
         
         # Bind tools if available
         if tools:
-            llm_with_tools = llm.bind_tools(tools)
-            ai_message = await llm_with_tools.ainvoke(messages)
-        else:
-            ai_message = await llm.ainvoke(messages)
+            llm = llm.bind_tools(tools)
             
-        content = ai_message.content
+        # Use streaming even if returning a full response at the end
+        full_response = []
+        async for chunk in llm.astream(messages):
+            # Capture content
+            content = chunk.content
+            
+            # Capture thoughts (Gemini)
+            thought = ""
+            if hasattr(chunk, "response_metadata"):
+                metadata = chunk.response_metadata
+                if "thought" in metadata:
+                    thought = metadata["thought"]
+            elif hasattr(chunk, "additional_kwargs"):
+                thought = chunk.additional_kwargs.get("thought", "")
 
-        # Phase 3: Add tool execution loop if needed (LangGraph tools pattern)
-        # For now, we return the direct output (LLM may request tools)
-        if isinstance(content, str):
-            response_text = content
-        elif isinstance(content, list):
-            chunks: list[str] = []
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "text":
-                    chunks.append(str(item.get("text", "")))
-                elif isinstance(item, dict) and item.get("type") == "tool_use":
-                    # Tool use metadata is captured in LangGraph trace
-                    chunks.append(f"[Tool Use: {item.get('name')}]")
-                else:
-                    chunks.append(str(item))
-            response_text = "".join(chunks)
-        else:
-            response_text = str(content)
+            if thought:
+                await adispatch_custom_event("agent_thought", {"thought": thought})
 
+            if content:
+                if isinstance(content, str):
+                    full_response.append(content)
+                    await adispatch_custom_event("agent_response", {"chunk": content})
+                elif isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            txt = item.get("text", "")
+                            full_response.append(txt)
+                            await adispatch_custom_event("agent_response", {"chunk": txt})
+            
+            # Capture tool calls
+            if hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks:
+                for tc in chunk.tool_call_chunks:
+                    await adispatch_custom_event("agent_tool_call", {"chunk": tc})
+
+        response_text = "".join(full_response)
         if not response_text.strip():
             response_text = "No response generated."
 

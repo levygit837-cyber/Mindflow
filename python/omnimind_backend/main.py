@@ -57,7 +57,7 @@ app.add_middleware(RequestContextMiddleware)
 @app.on_event("startup")
 def startup() -> None:
     # Convenience bootstrap for local environments.
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
     # Phase 2: Boot agent registry.
     register_all_personalities()
 
@@ -77,4 +77,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
+    print(f"FastAPI Backend starting on {settings.app_host}:{settings.app_port}...", flush=True)
     run()

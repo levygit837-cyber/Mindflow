@@ -23,8 +23,9 @@ class AgentChatStreamNormalizer:
         user_visible: bool | None = None,
         tool_call_id: str | None = None,
         status: str | None = None,
+        extra_meta: dict[str, Any] | None = None,
     ) -> StreamEventMeta:
-        return StreamEventMeta(
+        meta = StreamEventMeta(
             runId=run_id,
             turnRunId=self.turn_run_id,
             node=node,
@@ -36,6 +37,11 @@ class AgentChatStreamNormalizer:
             model=self.model,
             status=status,  # type: ignore[arg-type]
         )
+        if extra_meta:
+            for key, value in extra_meta.items():
+                if hasattr(meta, key):
+                    setattr(meta, key, value)
+        return meta
 
     def response_event(
         self,
@@ -44,8 +50,16 @@ class AgentChatStreamNormalizer:
         *,
         run_id: str | None = None,
         node: str | None = "agent_response",
+        extra_meta: dict[str, Any] | None = None,
     ) -> StreamEvent:
-        meta = self._meta(run_id=run_id, node=node, node_label="Response", node_category="LLM_INVOKE", user_visible=True)
+        meta = self._meta(
+            run_id=run_id, 
+            node=node, 
+            node_label="Response", 
+            node_category="LLM_INVOKE", 
+            user_visible=True,
+            extra_meta=extra_meta
+        )
         meta.category = categorize_output(data)
 
         if self.turn_run_id and not self.event_queue.has_first_response_marker():
@@ -61,7 +75,14 @@ class AgentChatStreamNormalizer:
             meta=meta,
         )
 
-    def thought_event(self, seq: int, data: str, *, run_id: str | None = None) -> StreamEvent:
+    def thought_event(
+        self, 
+        seq: int, 
+        data: str, 
+        *, 
+        run_id: str | None = None,
+        extra_meta: dict[str, Any] | None = None,
+    ) -> StreamEvent:
         return StreamEvent(
             id=f"evt-{seq}",
             seq=seq,
@@ -74,6 +95,7 @@ class AgentChatStreamNormalizer:
                 node_label="Thinking",
                 node_category="LLM_INVOKE",
                 user_visible=True,
+                extra_meta=extra_meta,
             ),
         )
 
@@ -88,6 +110,7 @@ class AgentChatStreamNormalizer:
         node: str,
         node_category: str,
         user_visible: bool,
+        extra_meta: dict[str, Any] | None = None,
     ) -> StreamEvent:
         return StreamEvent(
             id=f"evt-{seq}",
@@ -108,6 +131,7 @@ class AgentChatStreamNormalizer:
                 node_category=node_category,
                 user_visible=user_visible,
                 status="update",
+                extra_meta=extra_meta,
             ),
         )
 
