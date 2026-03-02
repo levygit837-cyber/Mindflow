@@ -38,7 +38,7 @@ def test_stream_route_emits_response_and_done(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "omnimind_backend.grpc.client.InternalGrpcClient.stream_chat",
+        "omnimind_backend.grpc.client.LocalAgentClient.stream_chat",
         _fake_stream_chat,
         raising=False,
     )

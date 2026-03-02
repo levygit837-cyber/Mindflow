@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from omnimind_backend.agents.runtime import AgentRuntime
+from omnimind_backend.runtime.stream import AgentRuntime
 from omnimind_backend.grpc.generated import omnimind_backend_pb2_grpc as pb2_grpc
 from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent
 
