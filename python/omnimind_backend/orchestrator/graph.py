@@ -25,7 +25,7 @@ from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.memory.service import MemoryRetrievalResult, get_memory_service
 from omnimind_backend.orchestrator.router import route_message
 from omnimind_backend.runtime.providers import get_model_for_provider
-from omnimind_backend.schemas.orchestrator import OrchestratorDecision
+from omnimind_backend.schemas.orchestrator import OrchestratorDecision, SandboxMode
 from omnimind_backend.storage.db import db_session
 
 _logger = get_logger(__name__)
@@ -181,12 +181,19 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     messages.append(HumanMessage(content=state["message"]))
 
     try:
-        # Initialize registry with a secure sandbox backend
-        sandbox = OmniMindSandbox(root_dir=settings.working_path if hasattr(settings, "working_path") else None)
+        # Enforce sandbox mode based on agent personality
+        sandbox_root = settings.working_path if hasattr(settings, "working_path") else None
+        sandbox = OmniMindSandbox(
+            root_dir=sandbox_root,
+            read_only=(agent.sandbox == SandboxMode.READ_ONLY),
+        )
         registry = create_default_registry(sandbox)
-        
-        # Get authorized tools for this agent
-        tools = registry.get_tools_for_agent(agent.agent_type)
+
+        # Get authorized tools for this agent (no tools for NONE sandbox agents)
+        if agent.sandbox == SandboxMode.NONE:
+            tools = []
+        else:
+            tools = registry.get_tools_for_agent(agent.agent_type)
         
         llm = get_model_for_provider(provider, model)
         

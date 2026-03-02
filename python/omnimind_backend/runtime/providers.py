@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from typing import Any
 
 from omnimind_backend.infra.config import get_settings
+from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.schemas.common import LLMProvider
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 def _normalized(value: str | None) -> str | None:
@@ -121,7 +121,7 @@ class _AinvokeFallbackModel:
             return await self._get_active_model().ainvoke(messages, **kwargs)
         except Exception as exc:
             if not self._using_fallback and self._fallback_factory:
-                logger.warning("Vertex API-key path failed, falling back to service account: %s", exc)
+                _logger.warning("vertex_api_key_fallback", error=str(exc))
                 self._using_fallback = True
                 return await self.ainvoke(messages, **kwargs)
             raise
@@ -132,7 +132,7 @@ class _AinvokeFallbackModel:
                 yield chunk
         except Exception as exc:
             if not self._using_fallback and self._fallback_factory:
-                logger.warning("Vertex API-key stream failed, falling back to service account: %s", exc)
+                _logger.warning("vertex_api_key_stream_fallback", error=str(exc))
                 self._using_fallback = True
                 async for chunk in self.astream(messages, **kwargs):
                     yield chunk
@@ -145,7 +145,7 @@ class _AinvokeFallbackModel:
                 yield event
         except Exception as exc:
             if not self._using_fallback and self._fallback_factory:
-                logger.warning("Vertex API-key astream_events failed, falling back to service account: %s", exc)
+                _logger.warning("vertex_api_key_astream_events_fallback", error=str(exc))
                 self._using_fallback = True
                 async for event in self.astream_events(*args, **kwargs):
                     yield event

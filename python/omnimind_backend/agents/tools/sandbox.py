@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import subprocess
 import uuid
@@ -9,10 +8,12 @@ from typing import TYPE_CHECKING
 from deepagents.backends.protocol import ExecuteResponse
 from deepagents.backends.sandbox import BaseSandbox
 
+from omnimind_backend.infra.logging import get_logger
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 class OmniMindSandbox(BaseSandbox):
@@ -28,6 +29,7 @@ class OmniMindSandbox(BaseSandbox):
         timeout: int = 60,
         max_output_bytes: int = 100_000,
         env: dict[str, str] | None = None,
+        read_only: bool = False,
     ):
         """Initialize the sandbox with a specific working directory."""
         from pathlib import Path
@@ -36,6 +38,7 @@ class OmniMindSandbox(BaseSandbox):
         self._max_output_bytes = max_output_bytes
         self._env = env if env is not None else {}
         self._id = f"omnimind-{uuid.uuid4().hex[:8]}"
+        self._read_only = read_only
 
     @property
     def id(self) -> str:
@@ -51,10 +54,24 @@ class OmniMindSandbox(BaseSandbox):
         if not command:
             return ExecuteResponse(output="Error: Empty command", exit_code=1, truncated=False)
 
+        # Enforce read-only mode
+        if self._read_only:
+            _WRITE_PATTERNS = [
+                "rm ", "mv ", "cp ", "mkdir ", "touch ", "chmod ", "chown ",
+                ">", ">>", "tee ", "dd ", "write", "delete", "truncate",
+            ]
+            cmd_lower = command.lower().strip()
+            if any(pat in cmd_lower for pat in _WRITE_PATTERNS):
+                return ExecuteResponse(
+                    output="Error: Write operation blocked — agent is in READ_ONLY sandbox mode.",
+                    exit_code=1,
+                    truncated=False,
+                )
+
         effective_timeout = timeout if timeout is not None else self._default_timeout
         
         try:
-            logger.info(f"Sandbox[{self.id}] executing: {command}")
+            _logger.info("sandbox_executing", sandbox_id=self.id, command=command)
             
             # Execute in a shell-like environment but with limited context
             result = subprocess.run(

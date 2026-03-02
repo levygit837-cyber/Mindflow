@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -17,7 +18,17 @@ from omnimind_backend.storage.models import Base
 settings = get_settings()
 configure_logging(logging.DEBUG if settings.app_env == "development" else logging.INFO)
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Convenience bootstrap for local environments.
+    # Base.metadata.create_all(bind=engine)
+    # Phase 2: Boot agent registry.
+    register_all_personalities()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 
 def _parse_csv(value: str) -> list[str]:
@@ -52,14 +63,6 @@ app.include_router(router)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(RequestContextMiddleware)
-
-
-@app.on_event("startup")
-def startup() -> None:
-    # Convenience bootstrap for local environments.
-    # Base.metadata.create_all(bind=engine)
-    # Phase 2: Boot agent registry.
-    register_all_personalities()
 
 
 @app.get("/health")

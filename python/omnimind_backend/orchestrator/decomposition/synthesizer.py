@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.decomposition import DTSession, DTStatus
 from omnimind_backend.infra.config import get_settings
+from omnimind_backend.infra.logging import get_logger
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 class Synthesizer:
@@ -72,7 +72,7 @@ Integrate all results into a single, comprehensive, and well-structured response
             return final_text
             
         except Exception as e:
-            logger.error(f"Error during synthesis: {e}")
+            _logger.error("synthesis_error", error=str(e))
             # Fallback: simple join of results
             fallback = "I encountered an error during synthesis, but here are the results from the completed steps:
 

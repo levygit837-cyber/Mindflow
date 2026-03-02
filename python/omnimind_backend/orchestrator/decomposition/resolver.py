@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -10,8 +9,9 @@ from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.decomposition import DTSession, DTStatus, DTTask
 from omnimind_backend.schemas.orchestrator import AgentType
 from omnimind_backend.infra.config import get_settings
+from omnimind_backend.infra.logging import get_logger
 
-logger = logging.getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 class Resolver:
@@ -36,11 +36,11 @@ class Resolver:
             try:
                 a_type = AgentType(task.agent_type.lower())
             except ValueError:
-                logger.warning(f"Unknown agent type {task.agent_type}, defaulting to CODER.")
+                _logger.warning("unknown_agent_type_defaulting", agent_type=task.agent_type, default="CODER")
         
         agent = get_agent(a_type)
         task.status = DTStatus.IN_PROGRESS
-        task.started_at = datetime.utcnow()
+        task.started_at = datetime.now(UTC)
         
         # Build context from previous tasks
         context = ""
@@ -69,11 +69,11 @@ class Resolver:
             
             task.result = result
             task.status = DTStatus.COMPLETED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(UTC)
             return result
             
         except Exception as e:
-            logger.error(f"Error resolving task {task.id}: {e}")
+            _logger.error("task_resolution_error", task_id=task.id, error=str(e))
             task.status = DTStatus.FAILED
             task.error = str(e)
             raise e

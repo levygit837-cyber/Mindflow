@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -10,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from omnimind_backend.infra.config import get_settings
+from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
@@ -17,6 +19,8 @@ from omnimind_backend.storage.models import (
     AgentMemoryFact,
     AgentMemoryWindow,
 )
+
+_logger = get_logger(__name__)
 
 
 def estimate_token_count(text: str) -> int:
@@ -30,7 +34,39 @@ def _tokenize(text: str) -> list[str]:
     return re.findall(r"[a-zA-Z0-9_]+", text.lower())
 
 
-def _embed_text(text: str, dims: int) -> list[float]:
+def _embed_text_llm(text: str, dims: int) -> list[float]:
+    """Generate real semantic embeddings using the configured LLM provider.
+
+    Falls back to hash-based embeddings if the embedding model is unavailable.
+    """
+    settings = get_settings()
+    try:
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+        api_key = settings.google_api_key
+        if not api_key:
+            api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+        if api_key:
+            embeddings_model = GoogleGenerativeAIEmbeddings(
+                model="models/text-embedding-004",
+                google_api_key=api_key,
+            )
+            vector = embeddings_model.embed_query(text)
+            # Truncate or pad to match expected dims
+            if len(vector) > dims:
+                vector = vector[:dims]
+            elif len(vector) < dims:
+                vector.extend([0.0] * (dims - len(vector)))
+            return vector
+    except Exception as exc:
+        _logger.warning("embedding_llm_failed_falling_back_to_hash", error=str(exc))
+
+    return _embed_text_hash_fallback(text, dims)
+
+
+def _embed_text_hash_fallback(text: str, dims: int) -> list[float]:
+    """Hash-based fallback embedding (low quality, for offline/testing only)."""
     vector = [0.0] * dims
     tokens = _tokenize(text)
     if not tokens:
@@ -131,7 +167,7 @@ class AgentMemoryService:
         agent_id: str,
         query: str,
     ) -> MemoryRetrievalResult:
-        query_vec = _embed_text(query, self.embedding_dims)
+        query_vec = _embed_text_llm(query, self.embedding_dims)
 
         embeddings = list(
             db.scalars(
@@ -335,7 +371,7 @@ class AgentMemoryService:
             source_type=source_type,
             source_id=source_id,
             content_excerpt=content_excerpt[:1500],
-            vector=_embed_text(content_excerpt, self.embedding_dims),
+            vector=_embed_text_llm(content_excerpt, self.embedding_dims),
         )
         db.add(embedding)
 
