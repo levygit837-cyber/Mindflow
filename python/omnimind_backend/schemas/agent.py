@@ -11,6 +11,7 @@ class AgentChatRequest(BaseModel):
     model: str | None = None
     debugSteps: bool = False
     orchestrate: bool = False
+    agent_type: str | None = None
 
 
 StreamModeName = Literal["updates", "messages", "custom", "values", "debug"]

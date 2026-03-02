@@ -17,12 +17,14 @@ class AgentRuntimeServiceImpl:
         model: str | None,
         run_id: str | None = None,
         orchestrate: bool = False,
+        agent_type: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         payload = AgentChatRequest(
             message=message,
             provider=provider,
             model=model,
             orchestrate=orchestrate,
+            agent_type=agent_type,
         )
         async for event in self.runtime.stream_chat(payload, session_id, run_id=run_id):
             yield event
