@@ -35,6 +35,7 @@ async def stream_chat(payload: AgentChatRequest, request: Request) -> StreamingR
             model=payload.model,
             run_id=run_id,
             orchestrate=payload.orchestrate,
+            agent_type=payload.agent_type,
         ):
             if await request.is_disconnected():
                 break
