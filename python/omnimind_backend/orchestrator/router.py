@@ -60,6 +60,19 @@ _AGENT_KEYWORDS: dict[AgentType, list[str]] = {
         "readability", "maintainability", "coverage", "lint",
         "revisar", "avaliar", "melhorar",
     ],
+    AgentType.CREATIVE: [
+        "brainstorm", "creative", "innovate", "ideate", "explore options",
+        "alternative", "diverge", "converge", "solution paths", "design options",
+        "prototype", "experiment", "what if", "possibilities",
+        "criativo", "inovar", "explorar opcoes",
+    ],
+    AgentType.SECURITY_GUARD: [
+        "security", "vulnerability", "vulnerabilities", "cve", "owasp",
+        "exploit", "injection", "xss", "csrf", "authentication flaw",
+        "secret", "credential", "penetration", "threat", "attack",
+        "scan", "audit security", "hardening", "compliance",
+        "seguranca", "vulnerabilidade",
+    ],
 }
 
 # Pre-compile a single regex per agent for efficient matching.
@@ -78,6 +91,8 @@ _AGENT_TOOLS: dict[AgentType, list[ToolScope]] = {
     AgentType.RESEARCHER: [ToolScope.WEB_SEARCH],
     AgentType.ARCH_TECH: [ToolScope.FILESYSTEM, ToolScope.CODE_ANALYSIS],
     AgentType.CRITIC: [ToolScope.CODE_ANALYSIS],
+    AgentType.CREATIVE: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+    AgentType.SECURITY_GUARD: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
 }
 
 # Default thinking level per agent type.
@@ -87,6 +102,8 @@ _AGENT_THINKING: dict[AgentType, ThinkingLevel] = {
     AgentType.RESEARCHER: ThinkingLevel.MEDIUM,
     AgentType.ARCH_TECH: ThinkingLevel.HIGH,
     AgentType.CRITIC: ThinkingLevel.MEDIUM,
+    AgentType.CREATIVE: ThinkingLevel.HIGH,
+    AgentType.SECURITY_GUARD: ThinkingLevel.HIGH,
 }
 
 

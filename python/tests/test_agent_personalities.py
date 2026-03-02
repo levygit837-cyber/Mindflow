@@ -8,6 +8,8 @@ from omnimind_backend.agents.personalities import (
     create_critic_agent,
     create_researcher_agent,
 )
+from omnimind_backend.agents.personalities.creative import create_creative_agent
+from omnimind_backend.agents.personalities.security_guard import create_security_guard_agent
 from omnimind_backend.schemas.orchestrator import (
     AgentType,
     SandboxMode,
@@ -62,6 +64,28 @@ def test_critic_agent_creation() -> None:
     assert "Critic" in agent.system_prompt
 
 
+def test_creative_agent_creation() -> None:
+    agent = create_creative_agent()
+    assert isinstance(agent, BaseAgent)
+    assert agent.agent_type == AgentType.CREATIVE
+    assert ToolScope.CODE_ANALYSIS in agent.tools
+    assert ToolScope.FILESYSTEM in agent.tools
+    assert agent.thinking_level == ThinkingLevel.HIGH
+    assert "Creative" in agent.system_prompt
+    assert "diverge" in agent.system_prompt.lower() or "converge" in agent.system_prompt.lower()
+
+
+def test_security_guard_agent_creation() -> None:
+    agent = create_security_guard_agent()
+    assert isinstance(agent, BaseAgent)
+    assert agent.agent_type == AgentType.SECURITY_GUARD
+    assert ToolScope.CODE_ANALYSIS in agent.tools
+    assert ToolScope.FILESYSTEM in agent.tools
+    assert agent.thinking_level == ThinkingLevel.HIGH
+    assert agent.sandbox == SandboxMode.READ_ONLY
+    assert "SecurityGuard" in agent.system_prompt or "Security" in agent.system_prompt
+
+
 def test_all_agents_satisfy_protocol() -> None:
     """Every factory must produce an object that satisfies AgentPersonality."""
     for factory in (
@@ -70,6 +94,8 @@ def test_all_agents_satisfy_protocol() -> None:
         create_researcher_agent,
         create_arch_tech_agent,
         create_critic_agent,
+        create_creative_agent,
+        create_security_guard_agent,
     ):
         agent = factory()
         assert isinstance(agent, AgentPersonality)

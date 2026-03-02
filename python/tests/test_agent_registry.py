@@ -58,7 +58,7 @@ def test_clear() -> None:
 def test_register_all_personalities() -> None:
     register_all_personalities()
     registry = get_registry()
-    assert registry.count == 5
+    assert registry.count == 7
     # Verify all types are present
     for agent_type in AgentType:
         agent = registry.get(agent_type)

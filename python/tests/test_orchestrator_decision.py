@@ -22,7 +22,7 @@ def test_agent_type_values() -> None:
     assert AgentType.RESEARCHER == "researcher"
     assert AgentType.ARCH_TECH == "arch_tech"
     assert AgentType.CRITIC == "critic"
-    assert len(AgentType) == 5
+    assert len(AgentType) == 7
 
 
 def test_thinking_level_values() -> None:

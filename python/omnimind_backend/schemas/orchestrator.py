@@ -24,6 +24,8 @@ class AgentType(StrEnum):
     RESEARCHER = "researcher"
     ARCH_TECH = "arch_tech"
     CRITIC = "critic"
+    CREATIVE = "creative"
+    SECURITY_GUARD = "security_guard"
 
 
 class ThinkingLevel(StrEnum):
