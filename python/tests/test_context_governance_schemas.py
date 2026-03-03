@@ -14,7 +14,7 @@ def test_budget_config_defaults() -> None:
     assert cfg.warning_threshold == 0.80
     assert cfg.enforcement_threshold == 0.90
     assert cfg.hard_limit_tokens == 1_000_000
-    assert cfg.max_payload_tokens == 1000
+    assert cfg.max_payload_tokens == 10_000
 
 
 def test_context_scopes() -> None:
