@@ -8,7 +8,7 @@ from omnimind_backend.schemas.orchestrator import AgentType, ThinkingLevel, Tool
 
 
 def create_analyst_agent() -> BaseAgent:
-    """Create the Analyst personality with code analysis and filesystem tools."""
+    """Create the Analyst personality — codebase context extractor with read-only access."""
     return BaseAgent(
         agent_type=AgentType.ANALYST,
         system_prompt=ANALYST_SYSTEM_PROMPT,
