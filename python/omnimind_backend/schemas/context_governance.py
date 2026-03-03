@@ -27,7 +27,7 @@ class ContextBudgetConfig(BaseModel):
     warning_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
     enforcement_threshold: float = Field(default=0.90, ge=0.0, le=1.0)
     hard_limit_tokens: int = 1_000_000
-    max_payload_tokens: int = 1000
+    max_payload_tokens: int = 10_000
     rollup_oldest_pct: float = Field(default=0.30, ge=0.0, le=1.0)
 
 
