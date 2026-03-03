@@ -84,3 +84,10 @@ design/
 # ADR-IA (local only)
 /ADR-IA
 /docs/ADR-IA
+
+# local-only explicit files
+*.log
+start_dev.sh
+CLAUDE.md
+.codesearchignore
+.gitnexus
