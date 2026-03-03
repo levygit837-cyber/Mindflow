@@ -80,3 +80,7 @@ backend/searxng/searxng/
 .planning/
 design/
 .plugin-config/
+
+# ADR-IA (local only)
+/ADR-IA
+/docs/ADR-IA
