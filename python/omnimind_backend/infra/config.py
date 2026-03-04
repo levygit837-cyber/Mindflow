@@ -66,21 +66,38 @@ class Settings(BaseSettings):
 
     searxng_url: str = Field(default="http://localhost:8080", alias="SEARXNG_URL")
 
-    # Phase 1 - Agent Contract Parity
-    enable_creative_agent: bool = Field(default=False, alias="ENABLE_CREATIVE_AGENT")
-    enable_security_guard_agent: bool = Field(default=False, alias="ENABLE_SECURITY_GUARD_AGENT")
-
     # Phase 2 - Context Governance and Input Normalization
     enable_input_normalization: bool = Field(default=False, alias="ENABLE_INPUT_NORMALIZATION")
     enable_context_governance: bool = Field(default=False, alias="ENABLE_CONTEXT_GOVERNANCE")
     enable_session_chunks: bool = Field(default=False, alias="ENABLE_SESSION_CHUNKS")
+    chunk_target_tokens: int = Field(default=3000, alias="CHUNK_TARGET_TOKENS")
 
-    # Phase 3 - Async Workflow Caller
-    enable_async_workflows: bool = Field(default=False, alias="ENABLE_ASYNC_WORKFLOWS")
-    enable_workflow_registry: bool = Field(default=False, alias="ENABLE_WORKFLOW_REGISTRY")
+    # Context Governance - Execution Window Control
+    execution_window_size: int = Field(default=10000, alias="EXECUTION_WINDOW_SIZE")
+    execution_window_tracking: bool = Field(default=True, alias="EXECUTION_WINDOW_TRACKING")
+
+    # Context Governance - Context Definition Window
+    context_analysis_window: int = Field(default=100000, alias="CONTEXT_ANALYSIS_WINDOW")
+    context_analysis_max_window: int = Field(default=200000, alias="CONTEXT_ANALYSIS_MAX_WINDOW")
+
+    # Vector Database Integration
+    vector_db_provider: Literal["pgvector", "qdrant", "chroma"] = Field(
+        default="pgvector", alias="VECTOR_DB_PROVIDER"
+    )
+    vector_db_url: str | None = Field(default=None, alias="VECTOR_DB_URL")
+    vector_db_dimensions: int = Field(default=256, alias="VECTOR_DB_DIMENSIONS")
+    vector_db_api_key: str | None = Field(default=None, alias="VECTOR_DB_API_KEY")
 
     # Phase 4 - DT v2
     enable_dt_v2: bool = Field(default=False, alias="ENABLE_DT_V2")
+
+    # Session Review System
+    enable_session_review_agent: bool = Field(default=False, alias="ENABLE_SESSION_REVIEW_AGENT")
+    session_review_window_size: int = Field(default=10000, alias="SESSION_REVIEW_WINDOW_SIZE")
+    session_review_trigger_threshold: int = Field(default=10000, alias="SESSION_REVIEW_TRIGGER_THRESHOLD")
+    session_review_max_reviews: int = Field(default=50, alias="SESSION_REVIEW_MAX_REVIEWS")
+    session_review_retention_days: int = Field(default=30, alias="SESSION_REVIEW_RETENTION_DAYS")
+    session_review_auto_advance: bool = Field(default=True, alias="SESSION_REVIEW_AUTO_ADVANCE")
 
     grpc_host: str = Field(default="0.0.0.0", alias="GRPC_HOST")
     grpc_port: int = Field(default=50051, alias="GRPC_PORT")

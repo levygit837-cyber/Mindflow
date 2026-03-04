@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from omnimind_backend.api.sse import format_sse
 from omnimind_backend.grpc.client import LocalAgentClient
 from omnimind_backend.infra.sanitizer import SanitizationError, sanitize_message
-from omnimind_backend.schemas.agent import AgentChatRequest, StreamEventMeta
+from omnimind_backend.schemas.chat.agent import AgentChatRequest, StreamEventMeta
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 

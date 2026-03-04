@@ -6,7 +6,7 @@ score = 0.4 * topic_relevance + 0.35 * freshness + 0.25 * confidence
 
 from __future__ import annotations
 
-from omnimind_backend.schemas.session_chunk import ChunkMetadata
+from omnimind_backend.schemas.session.chunk import ChunkMetadata
 
 W_TOPIC = 0.40
 W_FRESHNESS = 0.35

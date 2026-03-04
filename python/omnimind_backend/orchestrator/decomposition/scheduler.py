@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from omnimind_backend.schemas.decomposition import DTSession, DTTask
+from omnimind_backend.schemas.orchestration.decomposition.decomposition import DTSession, DTTask
 from omnimind_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)

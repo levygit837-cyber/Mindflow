@@ -5,8 +5,9 @@ from omnimind_backend.infra.config import Settings
 
 def test_phase1_flags_default_off() -> None:
     s = Settings()
-    assert s.enable_creative_agent is False
-    assert s.enable_security_guard_agent is False
+    # Note: enable_security_guard_agent was deprecated and removed
+    assert s.enable_input_normalization is False
+    assert s.enable_context_governance is False
 
 
 def test_phase2_flags_default_off() -> None:
@@ -14,13 +15,10 @@ def test_phase2_flags_default_off() -> None:
     assert s.enable_input_normalization is False
     assert s.enable_context_governance is False
     assert s.enable_session_chunks is False
+    assert s.chunk_target_tokens == 3000
 
 
-def test_phase3_flags_default_off() -> None:
-    s = Settings()
-    assert s.enable_async_workflows is False
-    assert s.enable_workflow_registry is False
-
+# Phase 3 flags (async workflows, workflow registry) were deprecated and removed
 
 def test_phase4_flags_default_off() -> None:
     s = Settings()
@@ -29,8 +27,6 @@ def test_phase4_flags_default_off() -> None:
 
 def test_flags_can_be_enabled() -> None:
     s = Settings(
-        ENABLE_CREATIVE_AGENT="true",
         ENABLE_CONTEXT_GOVERNANCE="true",
     )
-    assert s.enable_creative_agent is True
     assert s.enable_context_governance is True
