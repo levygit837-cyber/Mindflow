@@ -6,8 +6,8 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from omnimind_backend.agents._registry import get_agent
 from omnimind_backend.runtime.providers import get_model_for_provider
-from omnimind_backend.schemas.decomposition import DTSession, DTStatus, DTTask
-from omnimind_backend.schemas.orchestrator import AgentType
+from omnimind_backend.schemas.orchestration.decomposition.decomposition import DTSession, DTStatus, DTTask
+from omnimind_backend.schemas.orchestration.orchestrator import AgentType
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 

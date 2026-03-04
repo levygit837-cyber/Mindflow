@@ -8,7 +8,7 @@ from typing import Any
 
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
-from omnimind_backend.schemas.common import LLMProvider
+from omnimind_backend.schemas.core.common import LLMProvider
 
 _logger = get_logger(__name__)
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from omnimind_backend.schemas.normalization import NormalizationConfig
+from omnimind_backend.schemas.config.normalization import NormalizationConfig
 
 _DEFAULT_CONFIG = NormalizationConfig()
 

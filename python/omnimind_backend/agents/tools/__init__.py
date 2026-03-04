@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 
 from deepagents.backends.protocol import BackendProtocol
 from omnimind_backend.infra.logging import get_logger
-from omnimind_backend.schemas.orchestrator import AgentType
+from omnimind_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
 

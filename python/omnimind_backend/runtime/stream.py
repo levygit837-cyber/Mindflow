@@ -13,7 +13,7 @@ from omnimind_backend.orchestrator.router import route_message
 from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.runtime.normalizer import AgentChatStreamNormalizer
 from omnimind_backend.runtime.providers import get_model_for_provider
-from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent, StreamEventMeta
+from omnimind_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
 from omnimind_backend.storage.db import db_session
 from omnimind_backend.storage.repositories import ChatRepository
 

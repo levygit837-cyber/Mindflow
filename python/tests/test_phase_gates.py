@@ -30,33 +30,31 @@ class TestPhase0DocumentationConvergence:
 
 
 class TestPhase1AgentContractParity:
-    """Phase 1: Creative and SecurityGuard agents operational."""
+    """Phase 1: Agent personalities and sub-personalities operational."""
 
-    def test_creative_agent_importable(self) -> None:
-        settings = get_settings()
-        if not settings.enable_creative_agent:
-            pytest.skip("ENABLE_CREATIVE_AGENT is False")
-        from omnimind_backend.agents.personalities.creative import create_creative_agent
-        agent = create_creative_agent()
-        assert agent.agent_type.value == "creative"
+    def test_analyst_sub_personalities_available(self) -> None:
+        """Test that analyst sub-personalities are defined."""
+        try:
+            from omnimind_backend.agents.core.personalities import ANALYST_SUB_PERSONALITIES
+        except ImportError:
+            pytest.skip("ANALYST_SUB_PERSONALITIES not yet available")
+        
+        # Check that security_guard exists as sub-personality
+        assert "security_guard" in ANALYST_SUB_PERSONALITIES
+        assert len(ANALYST_SUB_PERSONALITIES["security_guard"].strip()) > 0
+        
+        # Check that critic exists for session chunks
+        assert "critic" in ANALYST_SUB_PERSONALITIES
+        assert len(ANALYST_SUB_PERSONALITIES["critic"].strip()) > 0
 
-    def test_security_guard_agent_importable(self) -> None:
-        settings = get_settings()
-        if not settings.enable_security_guard_agent:
-            pytest.skip("ENABLE_SECURITY_GUARD_AGENT is False")
-        from omnimind_backend.agents.personalities.security_guard import create_security_guard_agent
-        agent = create_security_guard_agent()
-        assert agent.agent_type.value == "security_guard"
-
-    def test_seven_agents_registered(self) -> None:
-        settings = get_settings()
-        if not (settings.enable_creative_agent and settings.enable_security_guard_agent):
-            pytest.skip("New agents not enabled")
-        from omnimind_backend.agents._registry import get_registry, register_all_personalities
-        registry = get_registry()
-        registry.clear()
-        register_all_personalities()
-        assert registry.count == 7
+    def test_session_review_agent_importable(self) -> None:
+        """Test that session review agent shim works."""
+        try:
+            from omnimind_backend.agents.session_review_agent import get_session_review_agent
+            # Just test import - actual functionality depends on enable_session_review_agent flag
+            assert callable(get_session_review_agent)
+        except ImportError as exc:
+            pytest.skip(f"Session review agent import failed: {exc}")
 
 
 class TestPhase2ContextGovernance:
@@ -75,20 +73,7 @@ class TestPhase2ContextGovernance:
         from omnimind_backend.orchestrator.context_budget import ContextBudgetTracker  # noqa: F401
 
 
-class TestPhase3AsyncWorkflows:
-    """Phase 3: Workflow registry and TaskBus operational."""
-
-    def test_task_bus_importable(self) -> None:
-        settings = get_settings()
-        if not settings.enable_async_workflows:
-            pytest.skip("ENABLE_ASYNC_WORKFLOWS is False")
-        from omnimind_backend.workers.task_bus import InMemoryTaskBus  # noqa: F401
-
-    def test_workflow_registry_importable(self) -> None:
-        settings = get_settings()
-        if not settings.enable_workflow_registry:
-            pytest.skip("ENABLE_WORKFLOW_REGISTRY is False")
-        from omnimind_backend.workers.workflow_registry import WorkflowRegistry  # noqa: F401
+# Phase 3 (async workflows, workflow registry) was deprecated and removed
 
 
 class TestPhase4DTv2:

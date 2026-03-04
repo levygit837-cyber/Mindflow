@@ -1,9 +1,8 @@
-import AgentDashboard from './components/AgentDashboard'
+import { AppRouter } from './router';
+import './index.css';
 
 function App() {
-  return (
-    <AgentDashboard />
-  )
+  return <AppRouter />;
 }
 
-export default App
+export default App;

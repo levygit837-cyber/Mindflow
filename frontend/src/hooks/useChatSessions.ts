@@ -51,7 +51,7 @@ export function useChatSessions(baseUrl: string) {
 
   useEffect(() => {
     fetchSessions();
-  }, [fetchSessions]);
+  }, []);
 
   return {
     sessions,

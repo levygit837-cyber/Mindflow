@@ -1,25 +1,73 @@
-"""Agent prompt definitions.
+"""System prompts for OmniMind agents.
 
-Re-exports all personality system prompts for convenient access.
+Organized by function and category for clarity and maintainability.
+Core personalities provide foundational behaviors, while specialized prompts
+add context-specific capabilities. Composite prompts maintain backward compatibility.
 """
 
-from omnimind_backend.agents.prompts.analyst import ANALYST_SYSTEM_PROMPT
-from omnimind_backend.agents.prompts.arch_tech import ARCH_TECH_SYSTEM_PROMPT
+from __future__ import annotations
+
+# Base utilities
 from omnimind_backend.agents.prompts.base import OMNIMIND_PREAMBLE, build_system_prompt
-from omnimind_backend.agents.prompts.coder import CODER_SYSTEM_PROMPT
-from omnimind_backend.agents.prompts.creative import CREATIVE_SYSTEM_PROMPT
-from omnimind_backend.agents.prompts.critic import CRITIC_SYSTEM_PROMPT
-from omnimind_backend.agents.prompts.researcher import RESEARCHER_SYSTEM_PROMPT
-from omnimind_backend.agents.prompts.security_guard import SECURITY_GUARD_SYSTEM_PROMPT
+
+# Composite prompts (pre-built combinations for backward compatibility)
+from omnimind_backend.agents.prompts.composite import (
+    FULL_ANALYST_PROMPT,
+    FULL_CODER_PROMPT,
+    FULL_ORCHESTRATOR_PROMPT,
+)
+
+# Core personalities (primary agent identities)
+from omnimind_backend.agents.prompts.core import (
+    ANALYST_SYSTEM_PROMPT,
+    CODER_SYSTEM_PROMPT,
+    ORCHESTRATOR_SYSTEM_PROMPT,
+    RESEARCHER_SYSTEM_PROMPT,
+)
+
+# Specialized functions (context-specific capabilities)
+from omnimind_backend.agents.prompts.specialized import (
+    AGENT_DELEGATION_PROMPT,
+    ARCHITECTURE_REVIEW_PROMPT,
+    BRAINSTORMING_PROMPT,
+    CODE_REVIEW_PROMPT,
+    CONTEXT_GOVERNANCE_PROMPT,
+    DEEP_ANALYSIS_PROMPT,
+    ORCHESTRATOR_REFLECTION_PROMPT,
+    PLANNING_PROMPT,
+    SECURITY_ANALYSIS_PROMPT,
+)
+
+# Legacy exports (maintain backward compatibility)
+ANALYST_SYSTEM_PROMPT_LEGACY = FULL_ANALYST_PROMPT
+CODER_SYSTEM_PROMPT_LEGACY = FULL_CODER_PROMPT
+ORCHESTRATOR_SYSTEM_PROMPT_LEGACY = FULL_ORCHESTRATOR_PROMPT
 
 __all__ = [
-    "ANALYST_SYSTEM_PROMPT",
-    "ARCH_TECH_SYSTEM_PROMPT",
-    "CODER_SYSTEM_PROMPT",
-    "CREATIVE_SYSTEM_PROMPT",
-    "CRITIC_SYSTEM_PROMPT",
-    "OMNIMIND_PREAMBLE",
-    "RESEARCHER_SYSTEM_PROMPT",
-    "SECURITY_GUARD_SYSTEM_PROMPT",
+    # Base utilities
     "build_system_prompt",
+    "OMNIMIND_PREAMBLE",
+    # Core personalities
+    "ANALYST_SYSTEM_PROMPT",
+    "CODER_SYSTEM_PROMPT",
+    "ORCHESTRATOR_SYSTEM_PROMPT",
+    "RESEARCHER_SYSTEM_PROMPT",
+    # Specialized functions
+    "SECURITY_ANALYSIS_PROMPT",
+    "ARCHITECTURE_REVIEW_PROMPT",
+    "CODE_REVIEW_PROMPT",
+    "BRAINSTORMING_PROMPT",
+    "DEEP_ANALYSIS_PROMPT",
+    "CONTEXT_GOVERNANCE_PROMPT",
+    "AGENT_DELEGATION_PROMPT",
+    "ORCHESTRATOR_REFLECTION_PROMPT",
+    "PLANNING_PROMPT",
+    # Composite prompts
+    "FULL_ANALYST_PROMPT",
+    "FULL_CODER_PROMPT",
+    "FULL_ORCHESTRATOR_PROMPT",
+    # Legacy exports
+    "ANALYST_SYSTEM_PROMPT_LEGACY",
+    "CODER_SYSTEM_PROMPT_LEGACY",
+    "ORCHESTRATOR_SYSTEM_PROMPT_LEGACY",
 ]
