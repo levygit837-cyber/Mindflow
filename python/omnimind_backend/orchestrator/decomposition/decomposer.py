@@ -5,7 +5,7 @@ import uuid
 from typing import Any
 
 from omnimind_backend.runtime.providers import get_model_for_provider
-from omnimind_backend.schemas.decomposition import DTSession, DTStatus, DTTask
+from omnimind_backend.schemas.orchestration.decomposition.decomposition import DTSession, DTStatus, DTTask
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 
@@ -25,7 +25,7 @@ Return ONLY a JSON array of objects with the following schema:
     "id": "task_1",
     "title": "Short title",
     "description": "Detailed implementation steps",
-    "agent_type": "coder|analyst|researcher|arch_tech|critic",
+    "agent_type": "coder|analyst|researcher|critic|security_guard",
     "dependencies": []
   }
 ]

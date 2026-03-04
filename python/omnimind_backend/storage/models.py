@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -63,6 +65,9 @@ class AgentMemoryCursor(Base):
     tokens_since_summary: Mapped[int] = mapped_column(Integer, default=0)
     window_index: Mapped[int] = mapped_column(Integer, default=0)
     last_summarized_event_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_since_chunk: Mapped[int] = mapped_column(Integer, default=0)
+    last_chunked_event_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    chunk_sequence: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
@@ -111,6 +116,26 @@ class AgentMemoryEmbedding(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class SessionChunk(Base):
+    __tablename__ = "session_chunks"
+    __table_args__ = (
+        UniqueConstraint("session_id", "agent_id", "sequence", name="uq_session_chunk"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    agent_id: Mapped[str] = mapped_column(String(64), index=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    chunk_type: Mapped[str] = mapped_column(String(32), default="discussion")
+    content_summary: Mapped[str] = mapped_column(Text)
+    topic_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    token_count: Mapped[int] = mapped_column(Integer)
+    event_start_id: Mapped[int] = mapped_column(Integer)
+    event_end_id: Mapped[int] = mapped_column(Integer)
+    confidence: Mapped[float] = mapped_column(Float, default=0.5)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Setting(Base):
     __tablename__ = "settings"
 
@@ -139,3 +164,211 @@ class ApiKey(Base):
     key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# Context Governance Models
+
+class SessionReview(Base):
+    __tablename__ = "session_reviews"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    main_session_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    token_range: Mapped[str] = mapped_column(String(20), nullable=False)
+    execution_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    execution_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    context_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    context_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    mode: Mapped[str] = mapped_column(String(10), default="normal")
+    parent_session_id: Mapped[UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    current_window_position: Mapped[int] = mapped_column(Integer, default=0)
+    total_tokens_processed: Mapped[int] = mapped_column(Integer, default=0)
+    session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    # Relationships
+    child_sessions: Mapped[list["SubSessionReview"]] = relationship(
+        "SubSessionReview", back_populates="parent_session", cascade="all, delete-orphan"
+    )
+
+
+class SubSessionReview(Base):
+    __tablename__ = "sub_session_reviews"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    parent_session_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("session_reviews.id"), nullable=False, index=True
+    )
+    main_session_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    token_sub_range: Mapped[str] = mapped_column(String(20), nullable=False)
+    execution_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    execution_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    relationship_type: Mapped[str] = mapped_column(String(20), default="sequential")
+    dependency_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    # Relationships
+    parent_session: Mapped["SessionReview"] = relationship("SessionReview", back_populates="child_sessions")
+
+
+class SessionRetriever(Base):
+    __tablename__ = "session_retrievers"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    context_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    context_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    retrieval_query: Mapped[str] = mapped_column(Text, default="")
+    retrieval_mode: Mapped[str] = mapped_column(String(10), default="range")
+    included_sessions: Mapped[list[UUID]] = mapped_column(JSON, default=list)
+    excluded_sessions: Mapped[list[UUID]] = mapped_column(JSON, default=list)
+    max_results: Mapped[int] = mapped_column(Integer, default=10)
+    min_relevance_score: Mapped[float] = mapped_column(Float, default=0.3)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    # Relationships
+    summarization_reviews: Mapped[list["SummarizationReview"]] = relationship(
+        "SummarizationReview", back_populates="session_retriever", cascade="all, delete-orphan"
+    )
+
+
+class SummarizationReview(Base):
+    __tablename__ = "summarization_reviews"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_retriever_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("session_retrievers.id"), nullable=False, index=True
+    )
+    context_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    files_analyzed: Mapped[list[str]] = mapped_column(JSON, default=list)
+    writes_detected: Mapped[list[str]] = mapped_column(JSON, default=list)
+    goal_achievement: Mapped[float] = mapped_column(Float, default=0.0)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    related_sessions: Mapped[list[UUID]] = mapped_column(JSON, default=list)
+    key_insights: Mapped[list[str]] = mapped_column(JSON, default=list)
+    action_items: Mapped[list[str]] = mapped_column(JSON, default=list)
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.5)
+    token_coverage: Mapped[float] = mapped_column(Float, default=1.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    # Relationships
+    session_retriever: Mapped["SessionRetriever"] = relationship("SessionRetriever", back_populates="summarization_reviews")
+
+
+# Vector Database Extensions (for pgvector)
+class SessionEmbedding(Base):
+    __tablename__ = "session_embeddings"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+    session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Research & Browser Automation Models
+# ---------------------------------------------------------------------------
+
+class BrowserActionTrail(Base):
+    """Track every browser action for audit and debugging."""
+    __tablename__ = "browser_action_trails"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    agent_id: Mapped[str] = mapped_column(String(64), index=True)
+    browser_id: Mapped[str] = mapped_column(String(64), index=True)
+    iteration_type: Mapped[str] = mapped_column(String(32), index=True)
+    action_data: Mapped[dict] = mapped_column(JSON, default=dict)
+    success: Mapped[bool] = mapped_column(default=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class ResearchSession(Base):
+    """Track overall research sessions and their state."""
+    __tablename__ = "research_sessions"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    agent_id: Mapped[str] = mapped_column(String(64), index=True)
+    original_query: Mapped[str] = mapped_column(Text, nullable=False)
+    question_type: Mapped[str] = mapped_column(String(32))
+    complexity_level: Mapped[str] = mapped_column(String(16))
+    browser_count: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    confidence_level: Mapped[str] = mapped_column(String(16), default="unknown")
+    synthesis_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    total_duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    actions_completed: Mapped[int] = mapped_column(Integer, default=0)
+    errors_encountered: Mapped[int] = mapped_column(Integer, default=0)
+    session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class ResearchFinding(Base):
+    """Store individual research findings with source classification."""
+    __tablename__ = "research_findings"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    research_session_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("research_sessions.id"), nullable=False, index=True
+    )
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(32), index=True)
+    trust_level: Mapped[str] = mapped_column(String(16))
+    domain_authority: Mapped[float] = mapped_column(Float, default=0.0)
+    content_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    key_points: Mapped[list[str]] = mapped_column(JSON, default=list)
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
+    relevance_score: Mapped[float] = mapped_column(Float, default=0.0)
+    extraction_method: Mapped[str] = mapped_column(String(32), default="text_extraction")
+    conflicts_with: Mapped[list[str]] = mapped_column(JSON, default=list)
+    browser_id: Mapped[str] = mapped_column(String(64), index=True)
+    extracted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    # Relationships
+    research_session: Mapped["ResearchSession"] = relationship("ResearchSession")
+
+
+class SourceClassification(Base):
+    """Cache source classifications to avoid re-classification."""
+    __tablename__ = "source_classifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    source_type: Mapped[str] = mapped_column(String(32))
+    trust_level: Mapped[str] = mapped_column(String(16))
+    domain_authority: Mapped[float] = mapped_column(Float, default=0.0)
+    content_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    classification_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    last_classified: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    verified_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class BrowserInstance(Base):
+    """Track browser instance lifecycle and state."""
+    __tablename__ = "browser_instances"
+
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    browser_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    instance_id: Mapped[str] = mapped_column(String(64))
+    tab_id: Mapped[str] = mapped_column(String(64))
+    research_session_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("research_sessions.id"), nullable=True, index=True
+    )
+    current_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    actions_completed: Mapped[int] = mapped_column(Integer, default=0)
+    error_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_activity: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    research_session: Mapped["ResearchSession"] = relationship("ResearchSession")

@@ -3,7 +3,7 @@
 // prevent static analysis of design-token usage. Target: zero inline style
 // props on structural elements; keep only dynamic values (e.g. agent colors).
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Terminal,
   BarChart3,
@@ -22,7 +22,7 @@ import {
 import { useOmniStream } from '../hooks/useOmniStream';
 import type { StreamEvent } from '../hooks/useOmniStream';
 import { useChatSessions } from '../hooks/useChatSessions';
-import type { ChatSession } from '../hooks/useChatSessions';
+import { useAppStore } from '../stores/appStore';
 import ReasoningTree from './ReasoningTree';
 
 const AGENTS = [
@@ -38,14 +38,13 @@ const AGENTS = [
 const BASE_URL = 'http://localhost:8000';
 
 const AgentDashboard: React.FC = () => {
-  const [activeAgent, setActiveAgent] = useState('coder');
   const [inputValue, setInputValue] = useState('');
+  const { setActiveAgent: setActiveAgentStore, activeAgent } = useAppStore();
   
   const { 
     sessions, 
     currentSessionId, 
     setCurrentSessionId, 
-    isLoading: sessionsLoading, 
     fetchSessions,
     getSessionHistory 
   } = useChatSessions(BASE_URL);
@@ -53,8 +52,8 @@ const AgentDashboard: React.FC = () => {
   const { 
     events, 
     isStreaming, 
-    startStream, 
-    clearEvents, 
+    startStream,
+    clearEvents,
     setInitialEvents 
   } = useOmniStream(`${BASE_URL}/v1/agent/chat/stream`);
 
@@ -62,7 +61,7 @@ const AgentDashboard: React.FC = () => {
   useEffect(() => {
     const lastEventWithAgent = [...events].reverse().find(e => e.meta?.agent);
     if (lastEventWithAgent && lastEventWithAgent.meta?.agent) {
-      setActiveAgent(lastEventWithAgent.meta.agent.toLowerCase());
+      setActiveAgentStore(lastEventWithAgent.meta.agent.toLowerCase());
     }
   }, [events]);
 
@@ -113,7 +112,7 @@ const AgentDashboard: React.FC = () => {
     startStream({
       message: inputValue,
       session_id: sessionId,
-      agent: activeAgent.toUpperCase(),
+      agent: (activeAgent || 'coder').toUpperCase(),
       orchestrate: true
     }).then(() => {
         fetchSessions(); // Refresh list to update titles/timestamps
@@ -212,7 +211,7 @@ const AgentDashboard: React.FC = () => {
           {AGENTS.map((agent) => (
             <button
               key={agent.id}
-              onClick={() => setActiveAgent(agent.id)}
+              onClick={() => setActiveAgentStore(agent.id as any)}
               style={{
                 background: 'none',
                 border: 'none',

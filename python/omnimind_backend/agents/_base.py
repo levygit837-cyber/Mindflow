@@ -8,13 +8,52 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
+from enum import StrEnum
 
-from omnimind_backend.schemas.orchestrator import (
-    AgentType,
-    SandboxMode,
-    ThinkingLevel,
-    ToolScope,
-)
+
+class AgentType(StrEnum):
+    """Available agent personalities."""
+
+    CODER = "coder"
+    ANALYST = "analyst"
+    RESEARCHER = "researcher"
+    ORCHESTRATOR = "orchestrator"
+
+
+class ThinkingLevel(StrEnum):
+    """Depth of reasoning the agent should apply."""
+
+    NONE = "NONE"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
+class ToolScope(StrEnum):
+    """Capability scopes available to agents."""
+
+    FILESYSTEM = "filesystem"
+    SHELL = "shell"
+    WEB_SEARCH = "web_search"
+    CODE_ANALYSIS = "code_analysis"
+    DATABASE = "database"
+
+
+class SandboxMode(StrEnum):
+    """Level of sandbox isolation for tool execution."""
+
+    NONE = "none"
+    READ_ONLY = "read_only"
+    FULL = "full"
+
+
+class Priority(StrEnum):
+    """Execution priority for the orchestrator."""
+
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 @runtime_checkable

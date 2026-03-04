@@ -5,7 +5,6 @@ from omnimind_backend.infra.config import Settings
 
 def test_phase1_flags_default_off() -> None:
     s = Settings()
-    assert s.enable_creative_agent is False
     assert s.enable_security_guard_agent is False
 
 
@@ -29,8 +28,6 @@ def test_phase4_flags_default_off() -> None:
 
 def test_flags_can_be_enabled() -> None:
     s = Settings(
-        ENABLE_CREATIVE_AGENT="true",
         ENABLE_CONTEXT_GOVERNANCE="true",
     )
-    assert s.enable_creative_agent is True
     assert s.enable_context_governance is True

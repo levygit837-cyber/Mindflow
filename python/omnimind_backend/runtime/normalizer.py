@@ -3,7 +3,7 @@ from typing import Any
 
 from omnimind_backend.runtime.output_categorizer import categorize_output
 from omnimind_backend.runtime.stream_event_queue import StreamEventQueue
-from omnimind_backend.schemas.agent import StreamEvent, StreamEventMeta
+from omnimind_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
 
 class AgentChatStreamNormalizer:

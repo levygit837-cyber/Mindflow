@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from omnimind_backend.runtime.providers import get_model_for_provider
-from omnimind_backend.schemas.decomposition import DTSession, DTStatus
+from omnimind_backend.schemas.orchestration.decomposition.decomposition import DTSession, DTStatus
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 

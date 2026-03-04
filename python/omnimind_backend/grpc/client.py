@@ -1,8 +1,8 @@
 from collections.abc import AsyncGenerator
 
 from omnimind_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
-from omnimind_backend.schemas.agent import AgentChatRequest, StreamEvent
-from omnimind_backend.schemas.common import LLMProvider
+from omnimind_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
+from omnimind_backend.schemas.core.common import LLMProvider
 
 
 class LocalAgentClient:
