@@ -30,15 +30,7 @@ class TestPhase0DocumentationConvergence:
 
 
 class TestPhase1AgentContractParity:
-    """Phase 1: Creative and SecurityGuard agents operational."""
-
-    def test_creative_agent_importable(self) -> None:
-        settings = get_settings()
-        if not settings.enable_creative_agent:
-            pytest.skip("ENABLE_CREATIVE_AGENT is False")
-        from omnimind_backend.agents.personalities.creative import create_creative_agent
-        agent = create_creative_agent()
-        assert agent.agent_type.value == "creative"
+    """Phase 1: SecurityGuard agent operational."""
 
     def test_security_guard_agent_importable(self) -> None:
         settings = get_settings()
@@ -48,15 +40,15 @@ class TestPhase1AgentContractParity:
         agent = create_security_guard_agent()
         assert agent.agent_type.value == "security_guard"
 
-    def test_seven_agents_registered(self) -> None:
+    def test_six_agents_registered(self) -> None:
         settings = get_settings()
-        if not (settings.enable_creative_agent and settings.enable_security_guard_agent):
-            pytest.skip("New agents not enabled")
+        if not settings.enable_security_guard_agent:
+            pytest.skip("SecurityGuard not enabled")
         from omnimind_backend.agents._registry import get_registry, register_all_personalities
         registry = get_registry()
         registry.clear()
         register_all_personalities()
-        assert registry.count == 7
+        assert registry.count == 6
 
 
 class TestPhase2ContextGovernance:

@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import orjson
 
 from omnimind_backend.infra.redis import get_async_redis
-from omnimind_backend.schemas.agent import LogEntry, StreamEvent
+from omnimind_backend.schemas.chat.agent import LogEntry, StreamEvent
 
 
 class AgentLogBus:

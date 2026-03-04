@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from omnimind_backend.schemas.agent import StreamEventMeta, StreamEventType, StreamModeName
+from omnimind_backend.schemas.chat.agent import StreamEventMeta, StreamEventType, StreamModeName
 
 
 @dataclass

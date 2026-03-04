@@ -12,12 +12,16 @@ from sqlalchemy.orm import Session
 
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
+from omnimind_backend.schemas.session.contracts import RetrievedContext
+from omnimind_backend.services.session_review_service import get_session_review_service
+from omnimind_backend.services.vector_manager import get_vector_manager
 from omnimind_backend.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
     AgentMemoryEvent,
     AgentMemoryFact,
     AgentMemoryWindow,
+    SessionEmbedding,
 )
 
 _logger = get_logger(__name__)
@@ -110,6 +114,7 @@ class AgentMemoryService:
         self.summary_window_tokens = summary_window_tokens or settings.memory_summary_window_tokens
         self.retrieval_top_k = retrieval_top_k or settings.memory_retrieval_top_k
         self.embedding_dims = embedding_dims or settings.memory_embedding_dims
+        self.session_review_service = get_session_review_service()
 
     def record_message(
         self,
@@ -139,6 +144,62 @@ class AgentMemoryService:
         cursor = self._get_or_create_cursor(db, session_id=session_id, agent_id=agent_id)
         cursor.token_total += token_count
         cursor.tokens_since_summary += token_count
+
+        # Update session review service if enabled
+        settings = get_settings()
+        if settings.enable_session_review_agent:
+            try:
+                # Schedule async update without blocking
+                import asyncio
+                from omnimind_backend.schemas.session.review import WindowSize
+                
+                # Initialize session review if not already done
+                if not self.session_review_service.get_active_tracker(session_id):
+                    # Schedule initialization for later if we're not in async context
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # We're in an async context, schedule for later
+                            loop.call_soon(
+                                lambda: asyncio.create_task(
+                                    self.session_review_service.initialize_session_review(
+                                        session_id,
+                                        window_size=WindowSize.MEDIUM,
+                                    )
+                                )
+                            )
+                        else:
+                            # No loop running, create one
+                            asyncio.run(
+                                self.session_review_service.initialize_session_review(
+                                    session_id,
+                                    window_size=WindowSize.MEDIUM,
+                                )
+                            )
+                    except RuntimeError:
+                        # No event loop, skip session review update
+                        pass
+                
+                # Schedule token count update
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        loop.call_soon(
+                            lambda: asyncio.create_task(
+                                self.session_review_service.update_token_count(session_id, token_count)
+                            )
+                        )
+                except RuntimeError:
+                    # No event loop, skip
+                    pass
+                
+            except Exception as exc:
+                _logger.warning(
+                    "session_review_update_failed",
+                    error=str(exc),
+                    session_id=session_id,
+                    agent_id=agent_id,
+                )
 
         if cursor.tokens_since_summary >= self.summary_window_tokens:
             self._summarize_pending_window(
@@ -374,6 +435,187 @@ class AgentMemoryService:
             vector=_embed_text_llm(content_excerpt, self.embedding_dims),
         )
         db.add(embedding)
+
+    async def retrieve_context_for_query(
+        self,
+        db: Session,
+        *,
+        session_id: str,
+        agent_id: str,
+        query: str,
+        top_k: int = 4,
+        min_score: float = 0.3,
+    ) -> RetrievedContext:
+        """
+        Retrieve relevant context for a query using vector search.
+        
+        Args:
+            db: Database session
+            session_id: Session identifier
+            agent_id: Agent identifier
+            query: Search query
+            top_k: Maximum number of results
+            min_score: Minimum relevance score
+            
+        Returns:
+            RetrievedContext with relevant information
+        """
+        _logger.info(
+            "vector_context_retrieval_started",
+            session_id=session_id,
+            agent_id=agent_id,
+            query=query,
+            top_k=top_k,
+        )
+        
+        try:
+            # Get vector manager
+            vector_manager = await get_vector_manager()
+            
+            # Generate query embedding
+            query_vector = _embed_text_llm(query, self.embedding_dims)
+            
+            # Search for similar vectors
+            search_results = await vector_manager.search_session_context(
+                session_id=session_id,
+                query_vector=query_vector,
+                limit=top_k,
+                score_threshold=min_score,
+            )
+            
+            # Format results into context
+            context_parts = [f"Context for query: {query}"]
+            source_sessions = []
+            
+            for result in search_results:
+                # TODO: Format actual search results
+                context_parts.append(f"- {result.get('content', 'No content available')}")
+                source_sessions.append(session_id)  # TODO: Extract from result metadata
+            
+            context_content = "\n\n".join(context_parts)
+            
+            retrieved_context = RetrievedContext(
+                context_id=self._generate_context_id(),
+                session_id=session_id,
+                query=query,
+                context_windows=[(0, 10000)],  # TODO: Extract from results
+                content=context_content,
+                relevance_score=0.8,  # TODO: Calculate from search results
+                source_sessions=source_sessions,
+                metadata={
+                    "agent_id": agent_id,
+                    "retrieval_method": "vector_search",
+                    "results_count": len(search_results),
+                },
+            )
+            
+            _logger.info(
+                "vector_context_retrieval_completed",
+                session_id=session_id,
+                agent_id=agent_id,
+                results_count=len(search_results),
+            )
+            
+            return retrieved_context
+            
+        except Exception as exc:
+            _logger.error(
+                "vector_context_retrieval_failed",
+                session_id=session_id,
+                agent_id=agent_id,
+                error=str(exc),
+            )
+            # Fallback to basic context
+            return RetrievedContext(
+                context_id=self._generate_context_id(),
+                session_id=session_id,
+                query=query,
+                context_windows=[(0, 10000)],
+                content=f"Unable to retrieve vector context for query: {query}",
+                relevance_score=0.0,
+                source_sessions=[session_id],
+                metadata={"agent_id": agent_id, "retrieval_method": "fallback"},
+            )
+    
+    async def store_session_embedding(
+        self,
+        db: Session,
+        *,
+        session_id: str,
+        content: str,
+        metadata: dict | None = None,
+    ) -> str:
+        """
+        Store content embedding for session context retrieval.
+        
+        Args:
+            db: Database session
+            session_id: Session identifier
+            content: Content to embed and store
+            metadata: Additional metadata
+            
+        Returns:
+            Embedding ID
+        """
+        _logger.info(
+            "session_embedding_storage_started",
+            session_id=session_id,
+            content_length=len(content),
+        )
+        
+        try:
+            # Get vector manager
+            vector_manager = await get_vector_manager()
+            
+            # Create collection for session if needed
+            await vector_manager.create_session_collection(session_id)
+            
+            # Generate embedding
+            embedding_vector = _embed_text_llm(content, self.embedding_dims)
+            
+            # Store in vector database
+            embedding_data = {
+                "content": content,
+                "vector": embedding_vector,
+                "metadata": metadata or {},
+            }
+            
+            vector_ids = await vector_manager.store_session_embeddings(
+                session_id=session_id,
+                embeddings=[embedding_data],
+            )
+            
+            # Also store in local database for backup
+            session_embedding = SessionEmbedding(
+                session_id=session_id,
+                content=content,
+                embedding=embedding_vector,
+                metadata=metadata or {},
+            )
+            db.add(session_embedding)
+            db.commit()
+            
+            embedding_id = vector_ids[0] if vector_ids else str(session_embedding.id)
+            
+            _logger.info(
+                "session_embedding_stored",
+                session_id=session_id,
+                embedding_id=embedding_id,
+            )
+            
+            return embedding_id
+            
+        except Exception as exc:
+            _logger.error(
+                "session_embedding_storage_failed",
+                session_id=session_id,
+                error=str(exc),
+            )
+            raise
+    
+    def _generate_context_id(self) -> str:
+        """Generate a unique context ID."""
+        return f"context_{hash(str(os.urandom(16)))}"
 
 
 @lru_cache(maxsize=1)

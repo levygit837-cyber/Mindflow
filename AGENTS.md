@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **OmniMind** (80410 symbols, 201434 relationships, 300 execution flows).
+This project is indexed by GitNexus as **OmniMind** (81345 symbols, 203717 relationships, 300 execution flows).
 
 ## Always Start Here
 

@@ -1,14 +1,15 @@
 """Agent registry — singleton that holds all registered personalities.
 
 Provides ``register_all_personalities()`` for startup bootstrapping and
-``get_agent()`` for runtime lookups.
+``get_agent()`` for runtime lookups. Updated to use new architecture.
 """
 
 from __future__ import annotations
 
 from omnimind_backend.agents._base import BaseAgent
 from omnimind_backend.infra.logging import get_logger
-from omnimind_backend.schemas.orchestrator import AgentType
+from omnimind_backend.schemas.orchestration.orchestrator import AgentType
+from omnimind_backend.agents.core.initialization import initialize_agent_system, validate_dependencies
 
 _logger = get_logger(__name__)
 
@@ -68,29 +69,37 @@ def get_registry() -> AgentRegistry:
 
 
 def register_all_personalities() -> None:
-    """Import and register every personality in the global registry.
+    """Import and register every personality in global registry.
 
     Call once during application startup (e.g. in ``main.py``).
+    Initializes the new dependency injection system.
     """
-    from omnimind_backend.agents.personalities import (
-        create_analyst_agent,
-        create_arch_tech_agent,
-        create_coder_agent,
-        create_creative_agent,
-        create_critic_agent,
-        create_researcher_agent,
-        create_security_guard_agent,
-    )
+    try:
+        # Initialize the agent system with DI
+        initialize_agent_system()
+        
+        # Validate dependencies
+        if not validate_dependencies():
+            raise RuntimeError("Agent system dependency validation failed")
+        
+        # Import and register personality factories
+        from omnimind_backend.agents.personalities import (
+            create_analyst_agent,
+            create_coder_agent,
+            create_orchestrator_agent,
+            create_researcher_agent,
+        )
 
-    for factory in (
-        create_coder_agent,
-        create_analyst_agent,
-        create_researcher_agent,
-        create_arch_tech_agent,
-        create_critic_agent,
-        create_creative_agent,
-        create_security_guard_agent,
-    ):
-        _registry.register(factory())
+        for factory in (
+            create_orchestrator_agent,
+            create_coder_agent,
+            create_analyst_agent,
+            create_researcher_agent,
+        ):
+            _registry.register(factory())
 
-    _logger.info("all_personalities_registered", count=_registry.count)
+        _logger.info("all_personalities_registered", count=_registry.count)
+    
+    except Exception as e:
+        _logger.error("personality_registration_failed", error=str(e))
+        raise
