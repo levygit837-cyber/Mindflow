@@ -30,11 +30,13 @@ This document maps all schemas to their corresponding interface contracts, ensur
 
 | Schema File | Contract | Status | Coverage |
 |-------------|----------|---------|----------|
-| `decomposition_v2.py` | `DecomposerProtocol` | ✅ Existing | Complete |
-| `decomposition_v2.py` | `SynthesizerProtocol` | ✅ Existing | Complete |
-| `decomposition_v2.py` | `SchedulerProtocol` | ✅ Existing | Complete |
-| `decomposition_v2.py` | `ResolverProtocol` | ✅ Existing | Complete |
-| `decomposition_v2.py` | `ScorerProtocol` | ✅ Existing | Complete |
+| `decomposition_v2.py` | `DecomposerProtocol` | ✅ Current Implementation | Complete |
+| `decomposition_v2.py` | `SynthesizerProtocol` | ✅ Current Implementation | Complete |
+| `decomposition_v2.py` | `SchedulerProtocol` | ✅ Current Implementation | Complete |
+| `decomposition_v2.py` | `ResolverProtocol` | ✅ Current Implementation | Complete |
+| `decomposition_v2.py` | `ScorerProtocol` | ✅ Current Implementation | Complete |
+
+**Note**: DT v1 has been deprecated and removed. All DT functionality now uses the v2 implementation with enhanced features including RAG integration, UUID-based dependencies, and immutable state management.
 
 ## Context & Session Contracts
 

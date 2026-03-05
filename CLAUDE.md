@@ -215,7 +215,7 @@ A task is complete only when:
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **OmniMind** (81345 symbols, 203717 relationships, 300 execution flows).
+This project is indexed by GitNexus as **OmniMind** (82326 symbols, 205344 relationships, 300 execution flows).
 
 ## Always Start Here
 

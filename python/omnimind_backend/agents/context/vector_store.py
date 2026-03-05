@@ -140,6 +140,262 @@ class InMemoryVectorStore(VectorStore):
                 session_id=session_id
             )
     
+    async def search_subtask_context(
+        self,
+        session_id: str,
+        task_id: str,
+        query_vector: List[float],
+        limit: int = 10,
+        score_threshold: float = 0.7,
+        include_dependencies: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """Search for context relevant to specific sub-task."""
+        try:
+            async with self._lock:
+                if session_id not in self.collections:
+                    return []
+                
+                collection = self.collections[session_id]
+                vectors = collection.get("vectors", [])
+                
+                if not vectors:
+                    return []
+                
+                # Filter vectors relevant to the task
+                relevant_vectors = []
+                for vector_data in vectors:
+                    metadata = vector_data.get("metadata", {})
+                    
+                    # Include if it's from the same task, a dependency, or general context
+                    vector_task_id = metadata.get("task_id")
+                    if (vector_task_id == task_id or 
+                        (include_dependencies and metadata.get("is_dependency", False)) or
+                        not vector_task_id):  # General context
+                        relevant_vectors.append(vector_data)
+                
+                # Calculate similarities
+                similarities = []
+                query_np = np.array(query_vector)
+                
+                for vector_data in relevant_vectors:
+                    stored_np = np.array(vector_data["vector"])
+                    
+                    # Cosine similarity
+                    similarity = np.dot(query_np, stored_np) / (
+                        np.linalg.norm(query_np) * np.linalg.norm(stored_np)
+                    )
+                    
+                    if similarity >= score_threshold:
+                        similarities.append({
+                            "id": vector_data["id"],
+                            "similarity": float(similarity),
+                            "metadata": vector_data.get("metadata", {}),
+                            "content": vector_data.get("content", ""),
+                            "task_id": vector_data.get("metadata", {}).get("task_id"),
+                            "agent_type": vector_data.get("metadata", {}).get("agent_type"),
+                        })
+                
+                # Sort by similarity and limit results
+                similarities.sort(key=lambda x: x["similarity"], reverse=True)
+                return similarities[:limit]
+        
+        except Exception as e:
+            _logger.error("subtask_search_failed", session_id=session_id, task_id=task_id, error=str(e))
+            raise VectorStoreError(
+                f"Subtask search failed: {e}",
+                operation="search_subtask",
+                session_id=session_id
+            )
+    
+    async def store_subtask_context(
+        self,
+        session_id: str,
+        task_id: str,
+        agent_type: str,
+        content: str,
+        embedding: List[float],
+        metadata: Dict[str, Any] | None = None,
+        dependencies: List[str] | None = None,
+    ) -> str:
+        """Store context for a specific sub-task with dependencies."""
+        try:
+            async with self._lock:
+                if session_id not in self.collections:
+                    await self.create_session_collection(session_id)
+                
+                collection = self.collections[session_id]
+                
+                # Prepare metadata
+                vector_metadata = {
+                    "task_id": task_id,
+                    "agent_type": agent_type,
+                    "content_type": "subtask_context",
+                    "dependencies": dependencies or [],
+                    "created_at": asyncio.get_event_loop().time(),
+                    **(metadata or {})
+                }
+                
+                # Create vector data
+                vector_data = {
+                    "id": str(uuid4()),
+                    "vector": embedding,
+                    "content": content,
+                    "metadata": vector_metadata,
+                    "stored_at": asyncio.get_event_loop().time(),
+                }
+                
+                collection["vectors"].append(vector_data)
+                
+                _logger.info(
+                    "subtask_context_stored",
+                    session_id=session_id,
+                    task_id=task_id,
+                    agent_type=agent_type,
+                    vector_id=vector_data["id"]
+                )
+                
+                return vector_data["id"]
+        
+        except Exception as e:
+            _logger.error("subtask_storage_failed", session_id=session_id, task_id=task_id, error=str(e))
+            raise VectorStoreError(
+                f"Subtask storage failed: {e}",
+                operation="store_subtask",
+                session_id=session_id
+            )
+    
+    async def get_task_dependencies_context(
+        self,
+        session_id: str,
+        task_id: str,
+        dependency_task_ids: List[str],
+    ) -> List[Dict[str, Any]]:
+        """Get context from specific dependency tasks."""
+        try:
+            async with self._lock:
+                if session_id not in self.collections:
+                    return []
+                
+                collection = self.collections[session_id]
+                vectors = collection.get("vectors", [])
+                
+                # Filter vectors from dependency tasks
+                dependency_contexts = []
+                for vector_data in vectors:
+                    metadata = vector_data.get("metadata", {})
+                    vector_task_id = metadata.get("task_id")
+                    
+                    if vector_task_id in dependency_task_ids:
+                        dependency_contexts.append({
+                            "id": vector_data["id"],
+                            "content": vector_data.get("content", ""),
+                            "metadata": metadata,
+                            "task_id": vector_task_id,
+                            "agent_type": metadata.get("agent_type"),
+                            "stored_at": vector_data.get("stored_at"),
+                        })
+                
+                # Sort by stored_at (most recent first)
+                dependency_contexts.sort(key=lambda x: x.get("stored_at", 0), reverse=True)
+                return dependency_contexts
+        
+        except Exception as e:
+            _logger.error("dependencies_context_failed", session_id=session_id, task_id=task_id, error=str(e))
+            raise VectorStoreError(
+                f"Dependencies context failed: {e}",
+                operation="get_dependencies",
+                session_id=session_id
+            )
+    
+    async def update_task_status(
+        self,
+        session_id: str,
+        task_id: str,
+        status: str,
+        completion_data: Dict[str, Any] | None = None,
+    ) -> None:
+        """Update the status of a task in the vector store."""
+        try:
+            async with self._lock:
+                if session_id not in self.collections:
+                    return
+                
+                collection = self.collections[session_id]
+                vectors = collection.get("vectors", [])
+                
+                # Update status for all vectors from this task
+                updated_count = 0
+                for vector_data in vectors:
+                    metadata = vector_data.get("metadata", {})
+                    if metadata.get("task_id") == task_id:
+                        metadata["task_status"] = status
+                        metadata["status_updated_at"] = asyncio.get_event_loop().time()
+                        if completion_data:
+                            metadata["completion_data"] = completion_data
+                        updated_count += 1
+                
+                _logger.info(
+                    "task_status_updated",
+                    session_id=session_id,
+                    task_id=task_id,
+                    status=status,
+                    updated_vectors=updated_count
+                )
+        
+        except Exception as e:
+            _logger.error("task_status_update_failed", session_id=session_id, task_id=task_id, error=str(e))
+            raise VectorStoreError(
+                f"Task status update failed: {e}",
+                operation="update_status",
+                session_id=session_id
+            )
+    
+    async def wait_for_task_context(
+        self,
+        session_id: str,
+        task_id: str,
+        required_task_ids: List[str],
+        timeout_seconds: int = 30,
+        poll_interval: float = 0.5,
+    ) -> Dict[str, Any]:
+        """Wait for required task contexts to become available."""
+        import time
+        
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout_seconds:
+            try:
+                # Check if all required tasks have context
+                dependency_contexts = await self.get_task_dependencies_context(
+                    session_id, task_id, required_task_ids
+                )
+                
+                # Check if we have context for all required tasks
+                available_tasks = {ctx["task_id"] for ctx in dependency_contexts}
+                missing_tasks = set(required_task_ids) - available_tasks
+                
+                if not missing_tasks:
+                    return {
+                        "status": "ready",
+                        "contexts": dependency_contexts,
+                        "wait_time": time.time() - start_time,
+                    }
+                
+                # Wait before next poll
+                await asyncio.sleep(poll_interval)
+                
+            except Exception as e:
+                _logger.warning("context_wait_error", task_id=task_id, error=str(e))
+                await asyncio.sleep(poll_interval)
+        
+        # Timeout reached
+        return {
+            "status": "timeout",
+            "missing_tasks": list(missing_tasks),
+            "available_contexts": dependency_contexts,
+            "wait_time": timeout_seconds,
+        }
+    
     async def get_collection_stats(self, session_id: str) -> Dict[str, Any]:
         """Get statistics for a session collection."""
         try:

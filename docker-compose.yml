@@ -1,17 +1,41 @@
 services:
-  searxng:
-    image: searxng/searxng:latest
-    container_name: omnimind-searxng
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./backend/searxng/searxng:/etc/searxng
+  postgres:
+    image: postgres:${POSTGRES_IMAGE_TAG:-16-alpine}
+    container_name: ${POSTGRES_CONTAINER_NAME:-omnimind-postgres-v1}
     environment:
-      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY:-omnimind-secret-key-change-in-production}
-      - SEARXNG_BASE_URL=http://localhost:8080
+      POSTGRES_DB: ${POSTGRES_DB:-omnimind_v1}
+      POSTGRES_USER: ${POSTGRES_USER:-omnimind_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnimind_dev_local_2026}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - omnimind_pg_data_v1:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omnimind_app} -d ${POSTGRES_DB:-omnimind_v1}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
     networks:
       - omnimind-network
+
+  kuzudb:
+    image: kuzudb/kuzu:latest
+    container_name: ${KUZUDB_CONTAINER_NAME:-omnimind-kuzudb-v1}
+    ports:
+      - "${KUZUDB_PORT:-8000}:8000"
+    volumes:
+      - omnimind_kuzudb_data:/data
+    environment:
+      - KUZU_DB_NAME=${KUZUDB_DATABASE:-omnimind_vectors}
+    command: ["kuzu", "/data/${KUZUDB_DATABASE:-omnimind_vectors}", "--browser-port", "8000"]
+    restart: unless-stopped
+    networks:
+      - omnimind-network
+
+volumes:
+  omnimind_pg_data_v1:
+  omnimind_kuzudb_data:
 
 networks:
   omnimind-network:

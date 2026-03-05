@@ -31,10 +31,17 @@ class Settings(BaseSettings):
     cors_expose_headers: str = Field(default="", alias="CORS_EXPOSE_HEADERS")
 
     database_url: str = Field(
-        default="postgresql+psycopg://postgres:postgres@localhost:5432/omnimind",
+        default="postgresql+psycopg://omnimind_app:omnimind_dev_local_2026@localhost:5433/omnimind_v1",
         alias="DATABASE_URL",
     )
-    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
+    kuzudb_url: str = Field(
+        default="http://localhost:8000",
+        alias="KUZUDB_URL",
+    )
+    kuzudb_database: str = Field(
+        default="omnimind_vectors",
+        alias="KUZUDB_DATABASE",
+    )
 
     # Rate limiting (feature-flagged)
     rate_limit_enabled: bool = Field(default=False, alias="RATE_LIMIT_ENABLED")
@@ -64,8 +71,6 @@ class Settings(BaseSettings):
     google_cloud_project: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
 
-    searxng_url: str = Field(default="http://localhost:8080", alias="SEARXNG_URL")
-
     # Phase 2 - Context Governance and Input Normalization
     enable_input_normalization: bool = Field(default=False, alias="ENABLE_INPUT_NORMALIZATION")
     enable_context_governance: bool = Field(default=False, alias="ENABLE_CONTEXT_GOVERNANCE")
@@ -88,8 +93,21 @@ class Settings(BaseSettings):
     vector_db_dimensions: int = Field(default=256, alias="VECTOR_DB_DIMENSIONS")
     vector_db_api_key: str | None = Field(default=None, alias="VECTOR_DB_API_KEY")
 
-    # Phase 4 - DT v2
-    enable_dt_v2: bool = Field(default=False, alias="ENABLE_DT_V2")
+    # Phase 4 - Task v2
+    enable_tasks_v2: bool = Field(default=False, alias="ENABLE_TASKS_V2")
+
+    # Semantic Context and Multilingual Embeddings
+    enable_semantic_search: bool = Field(default=True, alias="ENABLE_SEMANTIC_SEARCH")
+    multilingual_embedding_model: str = Field(
+        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", 
+        alias="MULTILINGUAL_EMBEDDING_MODEL"
+    )
+    context_similarity_threshold: float = Field(default=0.7, alias="CONTEXT_SIMILARITY_THRESHOLD")
+    max_context_wait_time: int = Field(default=30, alias="MAX_CONTEXT_WAIT_TIME")
+    enable_context_caching: bool = Field(default=True, alias="ENABLE_CONTEXT_CACHING")
+    context_cache_ttl: int = Field(default=3600, alias="CONTEXT_CACHE_TTL")
+    embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
+    semantic_context_limit: int = Field(default=10, alias="SEMANTIC_CONTEXT_LIMIT")
 
     # Session Review System
     enable_session_review_agent: bool = Field(default=False, alias="ENABLE_SESSION_REVIEW_AGENT")

@@ -145,11 +145,22 @@ def run() -> None:
         processes.append(grpc_process)
 
     if _truthy(os.getenv("OMNIMIND_START_WORKER")):
-        worker_process = _start_background_process(
-            [sys.executable, "-m", "omnimind_backend.workers.worker"],
-            cwd=python_root,
-            log_path=logs_dir / "worker.log",
-        )
+        # Use new RabbitMQ workers if enabled, otherwise fallback to legacy RQ workers
+        use_new_workers = _truthy(os.getenv("OMNIMIND_USE_NEW_WORKERS"))
+        
+        if use_new_workers:
+            worker_process = _start_background_process(
+                [sys.executable, "-m", "omnimind_backend.workers.main"],
+                cwd=python_root,
+                log_path=logs_dir / "new_worker.log",
+            )
+        else:
+            # Legacy RQ worker system
+            worker_process = _start_background_process(
+                [sys.executable, "-m", "omnimind_backend.workers.worker"],
+                cwd=python_root,
+                log_path=logs_dir / "legacy_worker.log",
+            )
         processes.append(worker_process)
 
     def _shutdown_background() -> None:

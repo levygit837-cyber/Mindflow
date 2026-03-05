@@ -19,6 +19,9 @@ from omnimind_backend.agents.core.exceptions import (
     DependencyInjectionError,
     SessionReviewError,
     AgentRegistrationError,
+    AgentExecutionError,
+    AgentTimeoutError,
+    AgentCommunicationError,
 )
 
 __all__ = [
@@ -34,4 +37,7 @@ __all__ = [
     "DependencyInjectionError",
     "SessionReviewError",
     "AgentRegistrationError",
+    "AgentExecutionError",
+    "AgentTimeoutError",
+    "AgentCommunicationError",
 ]

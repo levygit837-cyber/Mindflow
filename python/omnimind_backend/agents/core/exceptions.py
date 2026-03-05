@@ -104,3 +104,30 @@ class AgentRegistrationError(AgentSystemError):
     def __init__(self, message: str, agent_type: str | None = None):
         super().__init__(message)
         self.agent_type = agent_type
+
+
+class AgentExecutionError(AgentSystemError):
+    """Raised when agent execution fails."""
+    
+    def __init__(self, message: str, agent_type: str | None = None, task_id: str | None = None):
+        super().__init__(message)
+        self.agent_type = agent_type
+        self.task_id = task_id
+
+
+class AgentTimeoutError(AgentSystemError):
+    """Raised when agent execution times out."""
+    
+    def __init__(self, message: str, agent_type: str | None = None, timeout_seconds: float | None = None):
+        super().__init__(message)
+        self.agent_type = agent_type
+        self.timeout_seconds = timeout_seconds
+
+
+class AgentCommunicationError(AgentSystemError):
+    """Raised when agent communication fails."""
+    
+    def __init__(self, message: str, source_agent: str | None = None, target_agent: str | None = None):
+        super().__init__(message)
+        self.source_agent = source_agent
+        self.target_agent = target_agent

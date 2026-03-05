@@ -48,8 +48,8 @@ __all__ = [
     "PersonalityManagerContract",
     "DelegationManagerContract",
     
-    # Orchestrator DT interfaces
-    "DecomposerProtocol",
+    # Orchestrator Task interfaces
+    "TaskerProtocol",
     "SchedulerProtocol",
     "ResolverProtocol",
     "SynthesizerProtocol",

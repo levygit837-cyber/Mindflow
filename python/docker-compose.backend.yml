@@ -15,12 +15,40 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
-  redis:
-    image: redis:7
-    container_name: ${REDIS_CONTAINER_NAME:-omnimind-redis-v1}
+  kuzudb:
+    image: kuzudb/kuzu:latest
+    container_name: ${KUZUDB_CONTAINER_NAME:-omnimind-kuzudb-v1}
     ports:
-      - "${REDIS_PORT:-6380}:6379"
+      - "${KUZUDB_PORT:-8000}:8000"
+    volumes:
+      - omnimind_kuzudb_data:/data
+    environment:
+      - KUZU_DB_NAME=${KUZUDB_DATABASE:-omnimind_vectors}
+    command: ["kuzu", "/data/${KUZUDB_DATABASE:-omnimind_vectors}", "--browser-port", "8000"]
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: ${RABBITMQ_CONTAINER_NAME:-omnimind-rabbitmq-v1}
+    ports:
+      - "${RABBITMQ_PORT:-5673}:5672"
+      - "15673:15672"  # Management interface
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VIRTUAL_HOST:-/}
+    volumes:
+      - omnimind_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
 volumes:
   omnimind_pg_data_v1:
+  omnimind_kuzudb_data:
+  omnimind_rabbitmq_data:

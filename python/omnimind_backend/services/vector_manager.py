@@ -515,6 +515,133 @@ class VectorManager:
         )
         return results
     
+    async def create_dt_collection(self, component_id: str, component_type: str = "component") -> None:
+        """Create a collection for a DT component or sub-component."""
+        if not self._db:
+            await self.initialize()
+        
+        collection_name = f"dt_{component_type}_{component_id}"
+        await self._db.create_collection(collection_name, self._db.dimensions)
+        _logger.info(
+            "dt_collection_created", 
+            component_id=component_id, 
+            component_type=component_type
+        )
+    
+    async def update_component_context(
+        self,
+        component_id: str,
+        context_data: dict[str, Any],
+        component_type: str = "component",
+    ) -> str:
+        """Update or insert context for a specific component."""
+        if not self._db:
+            await self.initialize()
+        
+        collection_name = f"dt_{component_type}_{component_id}"
+        
+        # Prepare vector with metadata
+        vector_data = {
+            "id": str(UUID()),
+            "vector": context_data.get("vector", []),
+            "metadata": {
+                "component_id": component_id,
+                "component_type": component_type,
+                "state": context_data.get("state", "unknown"),
+                "timestamp": context_data.get("timestamp", ""),
+                "content": context_data.get("content", ""),
+                "dependencies": context_data.get("dependencies", []),
+                "artifacts": context_data.get("artifacts", []),
+            }
+        }
+        
+        # Check if vector already exists for this component
+        existing_vectors = await self._db.search_vectors(
+            collection_name, 
+            context_data.get("vector", []), 
+            limit=1,
+            filter_dict={"component_id": component_id}
+        )
+        
+        if existing_vectors:
+            # Update existing vector
+            await self._db.update_vector(
+                collection_name, 
+                existing_vectors[0]["id"], 
+                context_data.get("vector", []),
+                vector_data["metadata"]
+            )
+            vector_id = existing_vectors[0]["id"]
+        else:
+            # Insert new vector
+            vector_ids = await self._db.insert_vectors(collection_name, [vector_data])
+            vector_id = vector_ids[0]
+        
+        _logger.info(
+            "component_context_updated",
+            component_id=component_id,
+            component_type=component_type,
+            vector_id=vector_id,
+        )
+        return vector_id
+    
+    async def cross_component_search(
+        self,
+        query_component_id: str,
+        query_vector: list[float],
+        component_types: list[str] | None = None,
+        exclude_component_id: str | None = None,
+        limit: int = 10,
+        score_threshold: float = 0.7,
+    ) -> list[dict[str, Any]]:
+        """Search across all DT component collections for semantic matches."""
+        if not self._db:
+            await self.initialize()
+        
+        if component_types is None:
+            component_types = ["component", "sub_component"]
+        
+        all_results = []
+        
+        for component_type in component_types:
+            # Search in collections of this type
+            collection_pattern = f"dt_{component_type}_"
+            
+            # This would require listing collections - for now, we'll search
+            # in a way that assumes we can filter by collection pattern
+            filter_dict = {}
+            if exclude_component_id:
+                filter_dict["component_id"] = {"$ne": exclude_component_id}
+            
+            # Note: This is a simplified implementation
+            # In practice, you'd need to iterate over actual collections
+            results = await self._db.search_vectors(
+                f"dt_{component_type}_*",  # This would need proper pattern matching
+                query_vector,
+                limit,
+                score_threshold,
+                filter_dict
+            )
+            
+            # Add component type info to results
+            for result in results:
+                result["component_type"] = component_type
+            
+            all_results.extend(results)
+        
+        # Sort by score and return top results
+        all_results.sort(key=lambda x: x.get("score", 0), reverse=True)
+        final_results = all_results[:limit]
+        
+        _logger.info(
+            "cross_component_search_completed",
+            query_component_id=query_component_id,
+            component_types=component_types,
+            results_count=len(final_results),
+        )
+        
+        return final_results
+    
     async def close(self) -> None:
         """Close the vector database connection."""
         if self._db:

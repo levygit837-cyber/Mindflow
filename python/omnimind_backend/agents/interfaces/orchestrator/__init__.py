@@ -1,12 +1,12 @@
 """Orchestrator pipeline interfaces.
 
-Provides contracts for Decomposition Thinking components:
-decomposer, scheduler, resolver, synthesizer, scorer,
+Provides contracts for Task Thinking components:
+tasker, scheduler, resolver, synthesizer, scorer,
 plus core orchestrator, personality management, and delegation contracts.
 """
 
 from omnimind_backend.agents.interfaces.orchestrator.core import OrchestratorCoreContract
-from omnimind_backend.agents.interfaces.orchestrator.decomposer import DecomposerProtocol
+from omnimind_backend.agents.interfaces.orchestrator.tasker import TaskerProtocol
 from omnimind_backend.agents.interfaces.orchestrator.resolver import ResolverProtocol
 from omnimind_backend.agents.interfaces.orchestrator.scheduler import SchedulerProtocol
 from omnimind_backend.agents.interfaces.orchestrator.scorer import ScorerProtocol
@@ -18,7 +18,7 @@ __all__ = [
     "OrchestratorCoreContract",
     "PersonalityManagerContract",
     "DelegationManagerContract",
-    "DecomposerProtocol",
+    "TaskerProtocol",
     "SchedulerProtocol",
     "ResolverProtocol",
     "SynthesizerProtocol",

@@ -7,11 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from omnimind_backend.agents._registry import register_all_personalities
 from omnimind_backend.api.router import router
+from omnimind_backend.api.docs import custom_openapi, setup_documentation_routes, add_operation_examples
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import configure_logging
 from omnimind_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
 from omnimind_backend.infra.middleware.request_context import RequestContextMiddleware
 from omnimind_backend.infra.middleware.security_headers import SecurityHeadersMiddleware
+from omnimind_backend.api.middleware.validation import ValidationMiddleware
+from omnimind_backend.api.middleware.performance import PerformanceMiddleware
+from omnimind_backend.api.middleware.caching import AdvancedCacheMiddleware, MemoryCacheBackend
 from omnimind_backend.storage.db import engine
 from omnimind_backend.storage.models import Base
 
@@ -28,7 +32,23 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app = FastAPI(
+    title="OmniMind API",
+    description="Advanced AI agent orchestration and management platform",
+    version="2.0.0",
+    docs_url=None,  # We'll set up custom docs
+    redoc_url=None,  # We'll set up custom docs
+    openapi_url="/openapi.json"
+)
+
+# Set up custom OpenAPI schema
+app.openapi = lambda: custom_openapi(app)
+
+# Set up documentation routes
+setup_documentation_routes(app)
+
+# Add operation examples
+add_operation_examples(app)
 
 
 def _parse_csv(value: str) -> list[str]:
@@ -60,6 +80,14 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+# Performance and caching middleware (add first for maximum effect)
+cache_backend = MemoryCacheBackend(max_size=1000)
+app.add_middleware(AdvancedCacheMiddleware, cache_backend=cache_backend, default_ttl=300)
+app.add_middleware(PerformanceMiddleware, cache_ttl=300, max_cache_size=1000)
+
+# Security and validation middleware
+app.add_middleware(ValidationMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(RequestContextMiddleware)
@@ -68,6 +96,13 @@ app.add_middleware(RequestContextMiddleware)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api-info")
+def api_info():
+    """Get comprehensive API information."""
+    from omnimind_backend.api.docs import create_api_info
+    return create_api_info()
 
 
 def run() -> None:

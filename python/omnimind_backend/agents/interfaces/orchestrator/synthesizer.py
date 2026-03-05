@@ -1,6 +1,6 @@
 """Synthesizer interface.
 
-Defines the contract for combining validated sub-component
+Defines the contract for combining validated sub-task
 results into a final SynthesisContract.
 """
 
@@ -10,9 +10,9 @@ from typing import Protocol, runtime_checkable
 from uuid import UUID
 
 from omnimind_backend.schemas.orchestration.decomposition.decomposition_v2 import (
-    MainComponentContract,
+    MainTaskContract,
     SynthesisContract,
-    ValidatedComponent,
+    ValidatedTask,
 )
 
 
@@ -23,17 +23,17 @@ class SynthesizerProtocol(Protocol):
     async def synthesize(
         self,
         session_id: UUID,
-        main_contract: MainComponentContract,
-        validated_components: list[ValidatedComponent],
+        main_contract: MainTaskContract,
+        validated_components: list[ValidatedTask],
         provider: str | None = None,
         model: str | None = None,
     ) -> SynthesisContract:
-        """Combine validated components into a final synthesis.
+        """Combine validated tasks into a final synthesis.
 
         Args:
-            session_id: DT session identifier.
+            session_id: Task session identifier.
             main_contract: The top-level goal and constraints.
-            validated_components: Components that passed scoring.
+            validated_components: Tasks that passed scoring.
             provider: LLM provider override.
             model: LLM model override.
 
