@@ -1,10 +1,11 @@
 Metadata-Version: 2.4
 Name: omnimind-backend
 Version: 0.1.0
-Summary: OmniMind backend Python (FastAPI + gRPC + RQ/Redis + Postgres)
+Summary: OmniMind backend Python (FastAPI + gRPC + PostgreSQL + KuzuDB)
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: alembic>=1.14.0
+Requires-Dist: kuzu>=0.5.0
 Requires-Dist: deepagents>=0.1.0
 Requires-Dist: fastapi>=0.116.0
 Requires-Dist: grpcio>=1.74.0
@@ -18,15 +19,13 @@ Requires-Dist: langchain-ollama>=0.3.0
 Requires-Dist: langchain-openai>=0.3.0
 Requires-Dist: langgraph>=0.2.67
 Requires-Dist: langgraph-checkpoint-postgres>=2.0.15
+Requires-Dist: numpy>=2.0.0
 Requires-Dist: orjson>=3.11.3
 Requires-Dist: psycopg[binary]>=3.2.9
 Requires-Dist: pydantic>=2.11.7
 Requires-Dist: pydantic-settings>=2.10.1
 Requires-Dist: python-dateutil>=2.9.0.post0
-Requires-Dist: redis>=6.4.0
 Requires-Dist: rich>=13.9.0
-Requires-Dist: rq>=2.4.1
-Requires-Dist: sqlalchemy>=2.0.43
 Requires-Dist: sse-starlette>=2.2.1
 Requires-Dist: typer>=0.16.0
 Requires-Dist: PySide6>=6.9.0

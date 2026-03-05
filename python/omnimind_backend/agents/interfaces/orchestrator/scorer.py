@@ -1,29 +1,29 @@
 """Scorer interface.
 
-Defines the contract for computing component validation scores.
+Defines the contract for computing task validation scores.
 """
 
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from omnimind_backend.schemas.orchestration.decomposition.decomposition_v2 import SubComponentState
+from omnimind_backend.schemas.orchestration.decomposition.decomposition_v2 import SubTaskState
 
 
 @runtime_checkable
 class ScorerProtocol(Protocol):
-    """Contract for component scoring implementations."""
+    """Contract for task scoring implementations."""
 
     def score(
         self,
-        state: SubComponentState,
+        state: SubTaskState,
         consistency: float,
         agent_confidence: float,
     ) -> float:
-        """Compute the composite validation score for a component.
+        """Compute the composite validation score for a task.
 
         Args:
-            state: Current component state with progress and evidence.
+            state: Current task state with progress and evidence.
             consistency: Output compatibility with dependents (0-1).
             agent_confidence: Agent's self-reported confidence (0-1).
 

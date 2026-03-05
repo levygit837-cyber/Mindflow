@@ -73,6 +73,61 @@ class VectorStore(Protocol):
     ) -> None:
         """Store vectors with metadata."""
         ...
+    
+    async def search_subtask_context(
+        self,
+        session_id: str,
+        task_id: str,
+        query_vector: list[float],
+        limit: int = 10,
+        score_threshold: float = 0.7,
+        include_dependencies: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Search for context relevant to specific sub-task."""
+        ...
+    
+    async def store_subtask_context(
+        self,
+        session_id: str,
+        task_id: str,
+        agent_type: str,
+        content: str,
+        embedding: list[float],
+        metadata: dict[str, Any] | None = None,
+        dependencies: list[str] | None = None,
+    ) -> str:
+        """Store context for a specific sub-task with dependencies."""
+        ...
+    
+    async def get_task_dependencies_context(
+        self,
+        session_id: str,
+        task_id: str,
+        dependency_task_ids: list[str],
+    ) -> list[dict[str, Any]]:
+        """Get context from specific dependency tasks."""
+        ...
+    
+    async def update_task_status(
+        self,
+        session_id: str,
+        task_id: str,
+        status: str,
+        completion_data: dict[str, Any] | None = None,
+    ) -> None:
+        """Update the status of a task in the vector store."""
+        ...
+    
+    async def wait_for_task_context(
+        self,
+        session_id: str,
+        task_id: str,
+        required_task_ids: list[str],
+        timeout_seconds: int = 30,
+        poll_interval: float = 0.5,
+    ) -> dict[str, Any]:
+        """Wait for required task contexts to become available."""
+        ...
 
 
 @runtime_checkable
