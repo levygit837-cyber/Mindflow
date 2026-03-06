@@ -8,11 +8,11 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from omnimind_backend.grpc.client import GrpcAgentClient, LocalAgentClient
-from omnimind_backend.grpc.server import GrpcAgentServer, start_grpc_server, stop_grpc_server
-from omnimind_backend.grpc.config import GrpcConfig, GrpcClientConfig
-from omnimind_backend.infra.config import get_settings
-from omnimind_backend.infra.logging import get_logger
+from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient
+from mindflow_backend.grpc.server import GrpcAgentServer, start_grpc_server, stop_grpc_server
+from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -253,7 +253,7 @@ async def example_error_handling():
 
 async def main():
     """Run all examples."""
-    print("🎯 OmniMind gRPC Implementation Examples")
+    print("🎯 MindFlow gRPC Implementation Examples")
     print("=" * 60)
     print("This script demonstrates the new gRPC client and server")
     print("implementation with proper error handling and monitoring.")
@@ -269,7 +269,7 @@ async def main():
     print("\n✅ Examples completed!")
     print("\nNext steps:")
     print("1. Generate gRPC bindings: bash scripts/gen_proto.sh")
-    print("2. Start the application: python -m omnimind_backend.main")
+    print("2. Start the application: python -m mindflow_backend.main")
     print("3. Test gRPC endpoints with a gRPC client")
     print("4. Monitor gRPC server health via /health endpoint")
 

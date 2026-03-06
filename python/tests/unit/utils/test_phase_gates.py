@@ -6,7 +6,7 @@ Tests are skipped if the corresponding feature flag is disabled.
 
 import pytest
 
-from omnimind_backend.infra.config import get_settings
+from mindflow_backend.infra.config import get_settings
 
 
 class TestPhase0DocumentationConvergence:
@@ -15,15 +15,15 @@ class TestPhase0DocumentationConvergence:
     def test_schemas_importable(self) -> None:
         """All schema modules should import without error."""
         try:
-            from omnimind_backend.schemas import orchestrator  # noqa: F401
-            from omnimind_backend.schemas import decomposition  # noqa: F401
-            from omnimind_backend.schemas import agent  # noqa: F401
+            from mindflow_backend.schemas import orchestrator  # noqa: F401
+            from mindflow_backend.schemas import decomposition  # noqa: F401
+            from mindflow_backend.schemas import agent  # noqa: F401
         except ImportError as exc:
             pytest.skip(f"Phase 0 schemas not yet available: {exc}")
 
     def test_agent_type_enum_has_base_agents(self) -> None:
         try:
-            from omnimind_backend.schemas.orchestrator import AgentType
+            from mindflow_backend.schemas.orchestrator import AgentType
         except ImportError:
             pytest.skip("AgentType not yet available (Phase 0 incomplete)")
         assert len(AgentType) >= 5  # At least the original 5
@@ -35,7 +35,7 @@ class TestPhase1AgentContractParity:
     def test_analyst_sub_personalities_available(self) -> None:
         """Test that analyst sub-personalities are defined."""
         try:
-            from omnimind_backend.agents.core.personalities import ANALYST_SUB_PERSONALITIES
+            from mindflow_backend.agents.core.personalities import ANALYST_SUB_PERSONALITIES
         except ImportError:
             pytest.skip("ANALYST_SUB_PERSONALITIES not yet available")
         
@@ -56,13 +56,13 @@ class TestPhase2ContextGovernance:
         settings = get_settings()
         if not settings.enable_input_normalization:
             pytest.skip("ENABLE_INPUT_NORMALIZATION is False")
-        from omnimind_backend.infra.normalizer import normalize_message  # noqa: F401
+        from mindflow_backend.infra.normalizer import normalize_message  # noqa: F401
 
     def test_context_budget_importable(self) -> None:
         settings = get_settings()
         if not settings.enable_context_governance:
             pytest.skip("ENABLE_CONTEXT_GOVERNANCE is False")
-        from omnimind_backend.orchestrator.context_budget import ContextBudgetTracker  # noqa: F401
+        from mindflow_backend.orchestrator.context_budget import ContextBudgetTracker  # noqa: F401
 
 
 # Phase 3 (async workflows, workflow registry) was deprecated and removed
@@ -75,7 +75,7 @@ class TestPhase4DTv2:
         settings = get_settings()
         if not settings.enable_dt_v2:
             pytest.skip("ENABLE_DT_V2 is False")
-        from omnimind_backend.schemas.decomposition_v2 import (  # noqa: F401
+        from mindflow_backend.schemas.decomposition_v2 import (  # noqa: F401
             MainComponentContract,
             SubComponentContract,
             SynthesisContract,
@@ -85,4 +85,4 @@ class TestPhase4DTv2:
         settings = get_settings()
         if not settings.enable_dt_v2:
             pytest.skip("ENABLE_DT_V2 is False")
-        from omnimind_backend.orchestrator.decomposition.scoring import compute_component_score  # noqa: F401
+        from mindflow_backend.orchestrator.decomposition.scoring import compute_component_score  # noqa: F401

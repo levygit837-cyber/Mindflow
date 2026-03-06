@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from omnimind_backend.schemas.session_review import (
+from mindflow_backend.schemas.session_review import (
     ReviewPriority,
     ReviewTask,
     ReviewTriggerType,
@@ -11,7 +11,7 @@ from omnimind_backend.schemas.session_review import (
     WindowProgressInfo,
     WindowSize,
 )
-from omnimind_backend.services.session_review_service import SessionReviewService
+from mindflow_backend.services.session_review_service import SessionReviewService
 
 
 @pytest.fixture
@@ -199,7 +199,7 @@ class TestTokenWindowTracker:
     
     def test_should_trigger_review(self):
         """Test review trigger logic."""
-        from omnimind_backend.schemas.session_review import TokenWindowTracker
+        from mindflow_backend.schemas.session_review import TokenWindowTracker
         
         tracker = TokenWindowTracker(
             session_id="test",
@@ -219,7 +219,7 @@ class TestTokenWindowTracker:
     
     def test_advance_to_next_window(self):
         """Test window advancement logic."""
-        from omnimind_backend.schemas.session_review import TokenWindowTracker
+        from mindflow_backend.schemas.session_review import TokenWindowTracker
         
         tracker = TokenWindowTracker(
             session_id="test",
@@ -237,7 +237,7 @@ class TestTokenWindowTracker:
     
     def test_get_current_window_bounds(self):
         """Test getting current window bounds."""
-        from omnimind_backend.schemas.session_review import TokenWindowTracker
+        from mindflow_backend.schemas.session_review import TokenWindowTracker
         
         tracker = TokenWindowTracker(
             session_id="test",

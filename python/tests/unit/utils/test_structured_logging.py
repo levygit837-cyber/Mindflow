@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import structlog
 
-from omnimind_backend.infra.config import Settings
-from omnimind_backend.infra.logging import configure_logging, get_logger, reset_logging
+from mindflow_backend.infra.config import Settings
+from mindflow_backend.infra.logging import configure_logging, get_logger, reset_logging
 
 
 def _capture_log(log_format: str, message: str) -> str:
@@ -18,7 +18,7 @@ def _capture_log(log_format: str, message: str) -> str:
     reset_logging()
     fake_settings = Settings(LOG_FORMAT=log_format)
 
-    with patch("omnimind_backend.infra.logging._get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.logging._get_settings", return_value=fake_settings):
         configure_logging(level=logging.INFO)
 
     # Replace the handler to capture output into a buffer.
@@ -65,7 +65,7 @@ def test_console_format_is_human_readable():
 def test_configure_logging_is_idempotent():
     reset_logging()
     fake_settings = Settings(LOG_FORMAT="console")
-    with patch("omnimind_backend.infra.logging._get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.logging._get_settings", return_value=fake_settings):
         configure_logging(level=logging.INFO)
         handler_count = len(logging.getLogger().handlers)
         # Second call should be no-op

@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from omnimind_backend.schemas.decomposition_v2 import (
+from mindflow_backend.schemas.decomposition_v2 import (
     ComponentEvidence,
     ComponentOwner,
     ComponentStatus,

@@ -1,16 +1,16 @@
 """Tests for agent personality factories."""
 
-from omnimind_backend.agents._base import AgentPersonality, BaseAgent
-from omnimind_backend.agents.personalities import (
+from mindflow_backend.agents._base import AgentPersonality, BaseAgent
+from mindflow_backend.agents.personalities import (
     create_analyst_agent,
     create_arch_tech_agent,
     create_coder_agent,
     create_critic_agent,
     create_researcher_agent,
 )
-from omnimind_backend.agents.personalities.creative import create_creative_agent
-from omnimind_backend.agents.personalities.security_guard import create_security_guard_agent
-from omnimind_backend.schemas.orchestrator import (
+from mindflow_backend.agents.personalities.creative import create_creative_agent
+from mindflow_backend.agents.personalities.security_guard import create_security_guard_agent
+from mindflow_backend.schemas.orchestrator import (
     AgentType,
     SandboxMode,
     ThinkingLevel,

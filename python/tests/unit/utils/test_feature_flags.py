@@ -1,6 +1,6 @@
 """Tests for per-phase feature flags."""
 
-from omnimind_backend.infra.config import Settings
+from mindflow_backend.infra.config import Settings
 
 
 def test_phase1_flags_default_off() -> None:

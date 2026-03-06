@@ -4,7 +4,7 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from omnimind_backend.grpc.server import GrpcAgentServer, get_server, start_grpc_server, stop_grpc_server
+from mindflow_backend.grpc.server import GrpcAgentServer, get_server, start_grpc_server, stop_grpc_server
 
 
 class TestGrpcAgentServer:
@@ -32,7 +32,7 @@ class TestGrpcAgentServer:
         mock_grpc_server.wait_for_termination = AsyncMock()
         
         with patch('grpc.aio.server', return_value=mock_grpc_server), \
-             patch('omnimind_backend.grpc.server.pb2_grpc.add_AgentRuntimeServiceServicer_to_server'):
+             patch('mindflow_backend.grpc.server.pb2_grpc.add_AgentRuntimeServiceServicer_to_server'):
             
             await server.start()
             
@@ -145,7 +145,7 @@ class TestGrpcAgentServer:
         server._server = mock_grpc_server
         server.settings.app_env = "development"
         
-        with patch('omnimind_backend.grpc.server.ErrorHandlerInterceptor') as mock_interceptor_class:
+        with patch('mindflow_backend.grpc.server.ErrorHandlerInterceptor') as mock_interceptor_class:
             mock_interceptor = MagicMock()
             mock_interceptor_class.return_value = mock_interceptor
             
@@ -163,7 +163,7 @@ class TestGrpcAgentServer:
         mock_grpc_server = MagicMock()
         server._server = mock_grpc_server
         
-        with patch('omnimind_backend.grpc.server.pb2_grpc.add_AgentRuntimeServiceServicer_to_server') as mock_add_service:
+        with patch('mindflow_backend.grpc.server.pb2_grpc.add_AgentRuntimeServiceServicer_to_server') as mock_add_service:
             await server._setup_services()
             
             mock_add_service.assert_called_once()
@@ -177,7 +177,7 @@ class TestGrpcAgentServer:
         mock_grpc_server = MagicMock()
         server._server = mock_grpc_server
         
-        with patch('omnimind_backend.grpc.server.pb2_grpc', side_effect=ImportError("No module")):
+        with patch('mindflow_backend.grpc.server.pb2_grpc', side_effect=ImportError("No module")):
             with pytest.raises(RuntimeError, match="Missing generated gRPC bindings"):
                 await server._setup_services()
     
@@ -274,8 +274,8 @@ class TestServerManagement:
     async def test_get_server_singleton(self):
         """Test get_server returns singleton instance."""
         # Clear any existing server
-        import omnimind_backend.grpc.server
-        omnimind_backend.grpc.server._server_instance = None
+        import mindflow_backend.grpc.server
+        mindflow_backend.grpc.server._server_instance = None
         
         server1 = await get_server()
         server2 = await get_server()
@@ -286,14 +286,14 @@ class TestServerManagement:
     async def test_start_grpc_server(self):
         """Test start_grpc_server function."""
         # Clear any existing server
-        import omnimind_backend.grpc.server
-        omnimind_backend.grpc.server._server_instance = None
+        import mindflow_backend.grpc.server
+        mindflow_backend.grpc.server._server_instance = None
         
         mock_server = MagicMock()
         mock_server.is_running.return_value = False
         mock_server.start = AsyncMock()
         
-        with patch('omnimind_backend.grpc.server.get_server', return_value=mock_server):
+        with patch('mindflow_backend.grpc.server.get_server', return_value=mock_server):
             result = await start_grpc_server()
             
             assert result is mock_server
@@ -303,14 +303,14 @@ class TestServerManagement:
     async def test_start_grpc_server_already_running(self):
         """Test start_grpc_server when already running."""
         # Clear any existing server
-        import omnimind_backend.grpc.server
-        omnimind_backend.grpc.server._server_instance = None
+        import mindflow_backend.grpc.server
+        mindflow_backend.grpc.server._server_instance = None
         
         mock_server = MagicMock()
         mock_server.is_running.return_value = True
         mock_server.start = AsyncMock()
         
-        with patch('omnimind_backend.grpc.server.get_server', return_value=mock_server):
+        with patch('mindflow_backend.grpc.server.get_server', return_value=mock_server):
             result = await start_grpc_server()
             
             assert result is mock_server
@@ -320,25 +320,25 @@ class TestServerManagement:
     async def test_stop_grpc_server(self):
         """Test stop_grpc_server function."""
         # Set up a running server
-        import omnimind_backend.grpc.server
+        import mindflow_backend.grpc.server
         mock_server = MagicMock()
         mock_server.is_running.return_value = True
         mock_server.stop = AsyncMock()
-        omnimind_backend.grpc.server._server_instance = mock_server
+        mindflow_backend.grpc.server._server_instance = mock_server
         
         await stop_grpc_server()
         
         mock_server.stop.assert_called_once()
-        assert omnimind_backend.grpc.server._server_instance is None
+        assert mindflow_backend.grpc.server._server_instance is None
     
     @pytest.mark.asyncio
     async def test_stop_grpc_server_not_running(self):
         """Test stop_grpc_server when not running."""
         # Clear any existing server
-        import omnimind_backend.grpc.server
-        omnimind_backend.grpc.server._server_instance = None
+        import mindflow_backend.grpc.server
+        mindflow_backend.grpc.server._server_instance = None
         
         # Should not raise error
         await stop_grpc_server()
         
-        assert omnimind_backend.grpc.server._server_instance is None
+        assert mindflow_backend.grpc.server._server_instance is None

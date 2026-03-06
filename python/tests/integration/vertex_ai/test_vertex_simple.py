@@ -7,13 +7,13 @@ import sys
 import time
 
 # Add the project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 async def test_vertex_model():
     """Test basic Vertex AI model functionality."""
     try:
         # Import the function directly
-        from omnimind_backend.runtime.providers.providers import get_model_for_provider
+        from mindflow_backend.runtime.providers.providers import get_model_for_provider
         
         print("✓ Successfully imported get_model_for_provider")
         
@@ -66,7 +66,7 @@ async def test_vertex_model():
 async def test_vertex_question():
     """Test Vertex AI question answering."""
     try:
-        from omnimind_backend.runtime.providers.providers import get_model_for_provider
+        from mindflow_backend.runtime.providers.providers import get_model_for_provider
         
         model = get_model_for_provider("vertexai", "gemini-3-flash-preview")
         

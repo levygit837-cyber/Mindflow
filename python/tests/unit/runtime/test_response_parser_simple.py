@@ -5,10 +5,10 @@ import sys
 import os
 
 # Add the project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 # Import from proper module
-from omnimind_backend.runtime.utils.response_parser import (
+from mindflow_backend.runtime.utils.response_parser import (
     extract_ai_message_content,
     extract_text_only,
     extract_thinking_only,

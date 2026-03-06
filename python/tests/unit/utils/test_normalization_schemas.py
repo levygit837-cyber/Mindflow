@@ -1,6 +1,6 @@
 """Tests for normalization config schema."""
 
-from omnimind_backend.schemas.normalization import NormalizationConfig
+from mindflow_backend.schemas.normalization import NormalizationConfig
 
 
 def test_defaults() -> None:

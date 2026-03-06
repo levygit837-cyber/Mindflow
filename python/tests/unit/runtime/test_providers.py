@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from omnimind_backend.runtime import providers
+from mindflow_backend.runtime import providers
 
 
 class _PrimaryFailureModel:

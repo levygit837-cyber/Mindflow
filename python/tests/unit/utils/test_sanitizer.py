@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from omnimind_backend.infra.sanitizer import SanitizationError, sanitize_message
+from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 
 
 def test_strips_control_characters():

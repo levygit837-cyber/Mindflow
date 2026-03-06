@@ -13,13 +13,13 @@ import sys
 from pathlib import Path
 
 # Add the project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
-from omnimind_backend.agents.research.query_engine import get_research_query_engine
-from omnimind_backend.agents.research.enhanced_researcher import get_enhanced_researcher_agent
-from omnimind_backend.agents.personalities.researcher import create_researcher_agent
-from omnimind_backend.schemas.orchestrator import ToolScope
-from omnimind_backend.schemas.research import ResearchConfig
+from mindflow_backend.agents.research.query_engine import get_research_query_engine
+from mindflow_backend.agents.research.enhanced_researcher import get_enhanced_researcher_agent
+from mindflow_backend.agents.personalities.researcher import create_researcher_agent
+from mindflow_backend.schemas.orchestrator import ToolScope
+from mindflow_backend.schemas.research import ResearchConfig
 
 
 async def test_query_engine():
@@ -140,7 +140,7 @@ def test_database_schema():
     
     try:
         # Import models to ensure they're properly defined
-        from omnimind_backend.storage.postgresql.models import (
+        from mindflow_backend.storage.postgresql.models import (
             BrowserActionTrail,
             ResearchSession,
             ResearchFinding,

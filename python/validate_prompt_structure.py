@@ -49,10 +49,10 @@ def main():
     
     # Test core imports
     core_tests = [
-        ("omnimind_backend.agents.prompts.base", "Base utilities"),
-        ("omnimind_backend.agents.prompts.core", "Core personalities module"),
-        ("omnimind_backend.agents.prompts.specialized", "Specialized functions module"),
-        ("omnimind_backend.agents.prompts.composite", "Composite prompts module"),
+        ("mindflow_backend.agents.prompts.base", "Base utilities"),
+        ("mindflow_backend.agents.prompts.core", "Core personalities module"),
+        ("mindflow_backend.agents.prompts.specialized", "Specialized functions module"),
+        ("mindflow_backend.agents.prompts.composite", "Composite prompts module"),
     ]
     
     for module, desc in core_tests:
@@ -62,7 +62,7 @@ def main():
     
     # Test main prompts module
     total_tests += 1
-    if test_import("omnimind_backend.agents.prompts", "Main prompts module"):
+    if test_import("mindflow_backend.agents.prompts", "Main prompts module"):
         tests_passed += 1
     
     # Test core personalities availability
@@ -74,7 +74,7 @@ def main():
     ]
     
     total_tests += 1
-    if test_prompt_availability("omnimind_backend.agents.prompts", core_prompts, "Core personalities"):
+    if test_prompt_availability("mindflow_backend.agents.prompts", core_prompts, "Core personalities"):
         tests_passed += 1
     
     # Test specialized functions availability
@@ -89,7 +89,7 @@ def main():
     ]
     
     total_tests += 1
-    if test_prompt_availability("omnimind_backend.agents.prompts", specialized_prompts, "Specialized functions"):
+    if test_prompt_availability("mindflow_backend.agents.prompts", specialized_prompts, "Specialized functions"):
         tests_passed += 1
     
     # Test composite prompts availability
@@ -100,7 +100,7 @@ def main():
     ]
     
     total_tests += 1
-    if test_prompt_availability("omnimind_backend.agents.prompts", composite_prompts, "Composite prompts"):
+    if test_prompt_availability("mindflow_backend.agents.prompts", composite_prompts, "Composite prompts"):
         tests_passed += 1
     
     # Test legacy compatibility
@@ -111,17 +111,17 @@ def main():
     ]
     
     total_tests += 1
-    if test_prompt_availability("omnimind_backend.agents.prompts", legacy_prompts, "Legacy compatibility"):
+    if test_prompt_availability("mindflow_backend.agents.prompts", legacy_prompts, "Legacy compatibility"):
         tests_passed += 1
     
     # Test sub-personalities
     total_tests += 1
-    if test_import("omnimind_backend.agents.personality.sub_personalities", "Sub-personalities module"):
+    if test_import("mindflow_backend.agents.personality.sub_personalities", "Sub-personalities module"):
         tests_passed += 1
     
     # Test sub-personality functionality
     try:
-        from omnimind_backend.agents.personality.sub_personalities import (
+        from mindflow_backend.agents.personality.sub_personalities import (
             get_sub_personality,
             get_all_sub_personalities,
             find_best_sub_personality,
@@ -150,7 +150,7 @@ def main():
     
     # Test prompt content quality
     try:
-        from omnimind_backend.agents.prompts import (
+        from mindflow_backend.agents.prompts import (
             ANALYST_SYSTEM_PROMPT,
             CODER_SYSTEM_PROMPT,
             SECURITY_ANALYSIS_PROMPT,

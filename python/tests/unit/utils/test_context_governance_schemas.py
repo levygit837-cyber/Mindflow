@@ -1,6 +1,6 @@
 """Tests for context governance schemas."""
 
-from omnimind_backend.schemas.context_governance import (
+from mindflow_backend.schemas.context_governance import (
     ContextBudgetConfig,
     ContextScope,
     ExplorerSummary,

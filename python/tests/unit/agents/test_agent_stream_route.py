@@ -5,14 +5,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Keep import path stable when generated gRPC bindings are absent in test checkouts.
-_pb2 = types.ModuleType("omnimind_backend.grpc.generated.omnimind_backend_pb2")
-_pb2_grpc = types.ModuleType("omnimind_backend.grpc.generated.omnimind_backend_pb2_grpc")
+_pb2 = types.ModuleType("mindflow_backend.grpc.generated.mindflow_backend_pb2")
+_pb2_grpc = types.ModuleType("mindflow_backend.grpc.generated.mindflow_backend_pb2_grpc")
 _pb2_grpc.AgentRuntimeServiceServicer = type("AgentRuntimeServiceServicer", (), {})
-sys.modules.setdefault("omnimind_backend.grpc.generated.omnimind_backend_pb2", _pb2)
-sys.modules.setdefault("omnimind_backend.grpc.generated.omnimind_backend_pb2_grpc", _pb2_grpc)
+sys.modules.setdefault("mindflow_backend.grpc.generated.mindflow_backend_pb2", _pb2)
+sys.modules.setdefault("mindflow_backend.grpc.generated.mindflow_backend_pb2_grpc", _pb2_grpc)
 
-from omnimind_backend.api.v1.agent import router as agent_router
-from omnimind_backend.schemas.agent import StreamEvent
+from mindflow_backend.api.v1.agent import router as agent_router
+from mindflow_backend.schemas.agent import StreamEvent
 
 app = FastAPI()
 app.include_router(agent_router, prefix="/v1")
@@ -38,7 +38,7 @@ def test_stream_route_emits_response_and_done(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "omnimind_backend.grpc.client.LocalAgentClient.stream_chat",
+        "mindflow_backend.grpc.client.LocalAgentClient.stream_chat",
         _fake_stream_chat,
         raising=False,
     )

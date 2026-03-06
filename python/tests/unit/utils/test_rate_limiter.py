@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from omnimind_backend.infra.config import Settings
-from omnimind_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
+from mindflow_backend.infra.config import Settings
+from mindflow_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
 
 
 def _make_app(rate_limit_enabled: bool = True, limit: int = 3) -> TestClient:
@@ -36,7 +36,7 @@ def _make_app(rate_limit_enabled: bool = True, limit: int = 3) -> TestClient:
 
 def test_rate_limiter_disabled_passes_through():
     client, fake_settings = _make_app(rate_limit_enabled=False)
-    with patch("omnimind_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings):
         resp = client.get("/health")
     assert resp.status_code == 200
     assert "X-RateLimit-Limit" not in resp.headers
@@ -46,13 +46,13 @@ def test_rate_limiter_allows_within_limit():
     client, fake_settings = _make_app(rate_limit_enabled=True, limit=10)
 
     with (
-        patch("omnimind_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings),
+        patch("mindflow_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings),
         patch(
-            "omnimind_backend.infra.middleware.rate_limiter._check_rate_limit",
+            "mindflow_backend.infra.middleware.rate_limiter._check_rate_limit",
             new_callable=AsyncMock,
             return_value=(True, 9),
         ),
-        patch("omnimind_backend.infra.middleware.rate_limiter._get_redis", return_value=AsyncMock()),
+        patch("mindflow_backend.infra.middleware.rate_limiter._get_redis", return_value=AsyncMock()),
     ):
         resp = client.get("/health")
     assert resp.status_code == 200
@@ -64,13 +64,13 @@ def test_rate_limiter_returns_429_when_exceeded():
     client, fake_settings = _make_app(rate_limit_enabled=True, limit=2)
 
     with (
-        patch("omnimind_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings),
+        patch("mindflow_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings),
         patch(
-            "omnimind_backend.infra.middleware.rate_limiter._check_rate_limit",
+            "mindflow_backend.infra.middleware.rate_limiter._check_rate_limit",
             new_callable=AsyncMock,
             return_value=(False, 0),
         ),
-        patch("omnimind_backend.infra.middleware.rate_limiter._get_redis", return_value=AsyncMock()),
+        patch("mindflow_backend.infra.middleware.rate_limiter._get_redis", return_value=AsyncMock()),
     ):
         resp = client.get("/health")
     assert resp.status_code == 429
@@ -83,9 +83,9 @@ def test_rate_limiter_fails_open_on_redis_error():
     client, fake_settings = _make_app(rate_limit_enabled=True, limit=2)
 
     with (
-        patch("omnimind_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings),
+        patch("mindflow_backend.infra.middleware.rate_limiter.get_settings", return_value=fake_settings),
         patch(
-            "omnimind_backend.infra.middleware.rate_limiter._get_redis",
+            "mindflow_backend.infra.middleware.rate_limiter._get_redis",
             side_effect=ConnectionError("Redis down"),
         ),
     ):

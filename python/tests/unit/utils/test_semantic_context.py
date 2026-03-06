@@ -8,12 +8,12 @@ import pytest
 import asyncio
 from uuid import uuid4
 
-from omnimind_backend.services.multilingual_embeddings import MultilingualEmbeddingService
-from omnimind_backend.orchestrator.semantic_context_manager import (
+from mindflow_backend.services.multilingual_embeddings import MultilingualEmbeddingService
+from mindflow_backend.orchestrator.semantic_context_manager import (
     SemanticContextManager,
     ContextMatch,
 )
-from omnimind_backend.orchestrator.decomposition.context_aware_resolver import (
+from mindflow_backend.orchestrator.decomposition.context_aware_resolver import (
     ContextAwareResolver,
 )
 
@@ -91,7 +91,7 @@ class TestSemanticContextManager:
     
     @pytest.fixture
     async def context_manager(self):
-        from omnimind_backend.agents.context.vector_store import InMemoryVectorStore
+        from mindflow_backend.agents.context.vector_store import InMemoryVectorStore
         vector_store = InMemoryVectorStore()
         manager = SemanticContextManager(vector_store)
         await manager.initialize()
@@ -198,7 +198,7 @@ class TestContextAwareResolver:
     @pytest.mark.asyncio
     async def test_context_resolution(self, resolver):
         """Test resolution with context awareness."""
-        from omnimind_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
             SubTaskContract,
             ComponentOwner,
         )
@@ -248,7 +248,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_end_to_end_workflow(self):
         """Test complete workflow from decomposition to resolution."""
-        from omnimind_backend.orchestrator.decomposition.tasker_v2 import TaskerV2
+        from mindflow_backend.orchestrator.decomposition.tasker_v2 import TaskerV2
         
         # Initialize components
         tasker = TaskerV2()
@@ -314,8 +314,8 @@ class TestPerformance:
         """Benchmark context search performance."""
         import time
         
-        from omnimind_backend.agents.context.vector_store import InMemoryVectorStore
-        from omnimind_backend.orchestrator.semantic_context_manager import SemanticContextManager
+        from mindflow_backend.agents.context.vector_store import InMemoryVectorStore
+        from mindflow_backend.orchestrator.semantic_context_manager import SemanticContextManager
         
         vector_store = InMemoryVectorStore()
         manager = SemanticContextManager(vector_store)

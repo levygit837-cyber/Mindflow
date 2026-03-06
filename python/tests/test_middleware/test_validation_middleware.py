@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from omnimind_backend.api.middleware.validation import ValidationMiddleware
+from mindflow_backend.api.middleware.validation import ValidationMiddleware
 
 
 class TestValidationMiddleware:

@@ -21,7 +21,7 @@ class TestAPIEndpointsIntegration:
     def test_agent_endpoints_integration(self, client: TestClient):
         """Test agent endpoints integration."""
         # Test agent capabilities endpoint
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.get_capabilities.return_value = {
                 "success": True,
@@ -39,7 +39,7 @@ class TestAPIEndpointsIntegration:
     
     def test_session_endpoints_integration(self, client: TestClient):
         """Test session endpoints integration."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.create_session.return_value = {
                 "success": True,
@@ -57,7 +57,7 @@ class TestAPIEndpointsIntegration:
     
     def test_orchestration_endpoints_integration(self, client: TestClient):
         """Test orchestration endpoints integration."""
-        with patch('omnimind_backend.api.v1.orchestration.orchestration_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.orchestration.orchestration_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.decompose_task.return_value = {
                 "success": True,
@@ -80,7 +80,7 @@ class TestAPIEndpointsIntegration:
     
     def test_provider_endpoints_integration(self, client: TestClient):
         """Test provider endpoints integration."""
-        with patch('omnimind_backend.api.v1.providers.provider_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.providers.provider_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.list_providers.return_value = {
                 "success": True,
@@ -100,7 +100,7 @@ class TestAPIEndpointsIntegration:
     
     def test_memory_endpoints_integration(self, client: TestClient):
         """Test memory endpoints integration."""
-        with patch('omnimind_backend.api.v1.memory.memory_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.memory.memory_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.get_agent_memory.return_value = {
                 "success": True,
@@ -129,7 +129,7 @@ class TestAPIEndpointsIntegration:
     @pytest.mark.asyncio
     async def test_streaming_endpoint_integration(self, async_client: AsyncClient):
         """Test streaming endpoint integration."""
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_stream_response = AsyncMock()
             mock_controller_instance.stream_chat.return_value = mock_stream_response
@@ -260,7 +260,7 @@ class TestAPIWorkflowIntegration:
     
     def test_complete_agent_workflow(self, client: TestClient):
         """Test complete agent interaction workflow."""
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             
             # Mock all agent controller methods
@@ -307,7 +307,7 @@ class TestAPIWorkflowIntegration:
     
     def test_complete_session_workflow(self, client: TestClient):
         """Test complete session management workflow."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             
             # Mock session controller methods
@@ -358,7 +358,7 @@ class TestAPIWorkflowIntegration:
     
     def test_complete_orchestration_workflow(self, client: TestClient):
         """Test complete orchestration workflow."""
-        with patch('omnimind_backend.api.v1.orchestration.orchestration_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.orchestration.orchestration_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             
             # Mock orchestration controller methods
