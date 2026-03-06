@@ -10,7 +10,7 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: uv run --extra dev mypy omnimind_backend omnimind_desktop
+        entry: uv run --extra dev mypy mindflow_backend mindflow_desktop
         language: system
         pass_filenames: false
-        files: ^(omnimind_backend|omnimind_desktop)/.*\.py$
+        files: ^(mindflow_backend|mindflow_desktop)/.*\.py$

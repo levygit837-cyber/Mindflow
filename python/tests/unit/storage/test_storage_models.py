@@ -1,4 +1,4 @@
-from omnimind_backend.storage.postgresql.models import NeuralDocument
+from mindflow_backend.storage.postgresql.models import NeuralDocument
 
 
 def test_neural_document_no_session_id_column() -> None:

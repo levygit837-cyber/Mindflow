@@ -9,13 +9,13 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from omnimind_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager, PoolConfig
-from omnimind_backend.grpc.performance.load_balancing.balancer import GrpcLoadBalancer
-from omnimind_backend.grpc.performance.load_balancing.strategies import LoadBalancingStrategyFactory
-from omnimind_backend.grpc.performance.compression.compressor import GrpcMessageCompressor
-from omnimind_backend.grpc.performance.caching.cache import GrpcResponseCache
-from omnimind_backend.grpc.performance.monitoring.profiler import GrpcProfiler
-from omnimind_backend.infra.logging import get_logger
+from mindflow_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager, PoolConfig
+from mindflow_backend.grpc.performance.load_balancing.balancer import GrpcLoadBalancer
+from mindflow_backend.grpc.performance.load_balancing.strategies import LoadBalancingStrategyFactory
+from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor
+from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache
+from mindflow_backend.grpc.performance.monitoring.profiler import GrpcProfiler
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -27,7 +27,7 @@ async def example_connection_pooling():
     
     try:
         # Create pool manager
-        from omnimind_backend.grpc.performance.pooling.manager import PoolManagerConfig
+        from mindflow_backend.grpc.performance.pooling.manager import PoolManagerConfig
         manager_config = PoolManagerConfig(
             default_min_pool_size=5,
             default_max_pool_size=20,
@@ -119,7 +119,7 @@ async def example_load_balancing():
     
     try:
         # Create test endpoints
-        from omnimind_backend.grpc.performance.load_balancing.strategies import Endpoint, EndpointState
+        from mindflow_backend.grpc.performance.load_balancing.strategies import Endpoint, EndpointState
         
         endpoints = [
             Endpoint("endpoint-1", "localhost", 50051, weight=1.0),
@@ -144,7 +144,7 @@ async def example_load_balancing():
                 # Simulate endpoint selection
                 selections = {}
                 for i in range(20):
-                    from omnimind_backend.grpc.performance.load_balancing.strategies import SelectionContext
+                    from mindflow_backend.grpc.performance.load_balancing.strategies import SelectionContext
                     context = SelectionContext(
                         available_endpoints=endpoints,
                         user_id=f"user-{i % 5}",
@@ -229,7 +229,7 @@ async def example_compression():
     
     try:
         # Create compressor configuration
-        from omnimind_backend.grpc.performance.compression.compressor import CompressionConfig
+        from mindflow_backend.grpc.performance.compression.compressor import CompressionConfig
         config = CompressionConfig(
             enabled_algorithms=["gzip", "deflate"],
             min_compression_size=100,
@@ -327,7 +327,7 @@ async def example_caching():
     
     try:
         # Create cache configuration
-        from omnimind_backend.grpc.performance.caching.cache import CacheConfig
+        from mindflow_backend.grpc.performance.caching.cache import CacheConfig
         config = CacheConfig(
             store_type="memory",
             max_entries=1000,
@@ -339,7 +339,7 @@ async def example_caching():
         cache = GrpcResponseCache(config)
         
         # Simulate gRPC responses
-        from omnimind_backend.grpc.performance.caching.cache import CachedResponse
+        from mindflow_backend.grpc.performance.caching.cache import CachedResponse
         
         test_responses = [
             ("user:123:profile", CachedResponse(b'{"name": "Alice", "age": 30}', 300)),
@@ -564,13 +564,13 @@ async def example_integrated_performance():
                 connection = await pool.get_connection()
                 
                 # 3. Select endpoint via load balancer
-                from omnimind_backend.grpc.performance.load_balancing.strategies import Endpoint, EndpointState
+                from mindflow_backend.grpc.performance.load_balancing.strategies import Endpoint, EndpointState
                 endpoints = [
                     Endpoint(f"endpoint-{j}", "localhost", 50051 + j, state=EndpointState.HEALTHY)
                     for j in range(3)
                 ]
                 
-                from omnimind_backend.grpc.performance.load_balancing.strategies import SelectionContext
+                from mindflow_backend.grpc.performance.load_balancing.strategies import SelectionContext
                 context = SelectionContext(available_endpoints=endpoints, user_id=f"user-{i}")
                 endpoint = load_balancer.select_endpoint(endpoints, context)
                 
@@ -583,7 +583,7 @@ async def example_integrated_performance():
                 
                 # 6. Cache result
                 response_data = f"Response data for operation {i}".encode()
-                from omnimind_backend.grpc.performance.caching.cache import CachedResponse
+                from mindflow_backend.grpc.performance.caching.cache import CachedResponse
                 await cache.set(cache_key, CachedResponse(response_data, 60))
                 
                 # 7. Return connection
@@ -637,7 +637,7 @@ async def example_integrated_performance():
 
 async def main():
     """Run all performance optimization examples."""
-    print("🎯 OmniMind Performance Optimization Examples")
+    print("🎯 MindFlow Performance Optimization Examples")
     print("=" * 70)
     print("This script demonstrates the performance optimization system with")
     print("connection pooling, load balancing, compression, caching, and monitoring.")

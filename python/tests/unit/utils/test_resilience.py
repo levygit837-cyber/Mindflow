@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from omnimind_backend.infra.resilience import (
+from mindflow_backend.infra.resilience import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitOpenError,

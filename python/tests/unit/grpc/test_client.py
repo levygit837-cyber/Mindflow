@@ -4,9 +4,9 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from omnimind_backend.grpc.client import GrpcAgentClient, LocalAgentClient
-from omnimind_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
-from omnimind_backend.schemas.core.common import LLMProvider
+from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient
+from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
+from mindflow_backend.schemas.core.common import LLMProvider
 
 
 class TestGrpcAgentClient:
@@ -37,8 +37,8 @@ class TestGrpcAgentClient:
         
         with patch('grpc.aio.insecure_channel', return_value=mock_channel), \
              patch('grpc.channel_ready_future'), \
-             patch('omnimind_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
-             patch('omnimind_backend.grpc.client.pb2.ChatStreamRequest'):
+             patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
+             patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
             
             await client.connect()
             
@@ -84,8 +84,8 @@ class TestGrpcAgentClient:
         
         with patch('grpc.aio.insecure_channel', return_value=mock_channel), \
              patch('grpc.channel_ready_future'), \
-             patch('omnimind_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
-             patch('omnimind_backend.grpc.client.pb2.ChatStreamRequest'):
+             patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
+             patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
             
             await client.connect()
             
@@ -149,8 +149,8 @@ class TestGrpcAgentClient:
         
         with patch('grpc.aio.insecure_channel', side_effect=mock_channel), \
              patch('grpc.channel_ready_future'), \
-             patch('omnimind_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub'), \
-             patch('omnimind_backend.grpc.client.pb2.ChatStreamRequest'):
+             patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub'), \
+             patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
             
             await client.connect()
             assert client.is_connected() is True

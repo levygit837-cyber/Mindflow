@@ -1,5 +1,5 @@
 import pytest
-from omnimind_backend.orchestrator.complexity import ComplexityScorer
+from mindflow_backend.orchestrator.complexity import ComplexityScorer
 
 def test_heuristic_scoring():
     scorer = ComplexityScorer()
@@ -38,7 +38,7 @@ async def test_get_complexity_score_handles_list_content_from_model(monkeypatch)
             return _Response()
 
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.complexity.get_model_for_provider",
+        "mindflow_backend.orchestrator.complexity.get_model_for_provider",
         lambda _provider, _model: _Model(),
     )
 

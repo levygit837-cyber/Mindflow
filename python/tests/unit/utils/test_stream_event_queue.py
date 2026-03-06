@@ -1,5 +1,5 @@
-from omnimind_backend.runtime.stream_event_queue import StreamEventQueue
-from omnimind_backend.schemas.agent import StreamEventMeta
+from mindflow_backend.runtime.stream_event_queue import StreamEventQueue
+from mindflow_backend.schemas.agent import StreamEventMeta
 
 
 def test_insert_before_marker_on_drain() -> None:

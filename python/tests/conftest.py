@@ -10,9 +10,9 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from omnimind_backend.main import app
-from omnimind_backend.storage.postgresql.connection import async_session_factory
-from omnimind_backend.storage.postgresql.models import Base
+from mindflow_backend.main import app
+from mindflow_backend.storage.postgresql.connection import async_session_factory
+from mindflow_backend.storage.postgresql.models import Base
 
 
 @pytest.fixture(scope="session")

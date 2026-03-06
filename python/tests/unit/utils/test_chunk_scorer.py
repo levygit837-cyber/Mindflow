@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from omnimind_backend.runtime.chunk_scorer import compute_chunk_score
-from omnimind_backend.schemas.session_chunk import ChunkMetadata, ChunkType
+from mindflow_backend.runtime.chunk_scorer import compute_chunk_score
+from mindflow_backend.schemas.session_chunk import ChunkMetadata, ChunkType
 
 
 def test_high_relevance_fresh_confident() -> None:

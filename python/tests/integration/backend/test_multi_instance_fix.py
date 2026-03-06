@@ -8,8 +8,8 @@ import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock
 
-from omnimind_backend.agents.research.pinchtab_service import PinchTabService
-from omnimind_backend.schemas.research import BrowserSession, ResearchStatus
+from mindflow_backend.agents.research.pinchtab_service import PinchTabService
+from mindflow_backend.schemas.research import BrowserSession, ResearchStatus
 
 
 async def test_multi_instance_isolation():

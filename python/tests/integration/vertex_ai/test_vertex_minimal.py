@@ -7,7 +7,7 @@ import sys
 import time
 
 # Add the project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 async def test_vertex_minimal():
     """Test Vertex AI with minimal dependencies."""
@@ -19,10 +19,10 @@ async def test_vertex_minimal():
         from collections.abc import Callable
         
         # Import settings
-        from omnimind_backend.infra.config import get_settings
+        from mindflow_backend.infra.config import get_settings
         
         # Import the providers module directly
-        sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python/omnimind_backend/runtime/providers')
+        sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python/mindflow_backend/runtime/providers')
         import providers
         
         print("✓ Successfully imported providers module")

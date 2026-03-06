@@ -1,11 +1,11 @@
 """Tests for DT v2 component-to-agent routing."""
 
-from omnimind_backend.orchestrator.decomposition.component_router import (
+from mindflow_backend.orchestrator.decomposition.component_router import (
     ComponentType,
     get_agent_for_component,
     get_fallback_agent,
 )
-from omnimind_backend.schemas.decomposition_v2 import ComponentOwner
+from mindflow_backend.schemas.decomposition_v2 import ComponentOwner
 
 
 def test_code_implementation_routes_to_coder() -> None:

@@ -1,4 +1,4 @@
-from omnimind_backend.runtime.output_categorizer import categorize_output
+from mindflow_backend.runtime.output_categorizer import categorize_output
 
 
 def test_decision_prefix() -> None:

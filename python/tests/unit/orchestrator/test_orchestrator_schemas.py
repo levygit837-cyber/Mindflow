@@ -1,6 +1,6 @@
 """Tests for orchestrator schema enums."""
 
-from omnimind_backend.schemas.orchestrator import AgentType
+from mindflow_backend.schemas.orchestrator import AgentType
 
 
 def test_creative_agent_type_exists() -> None:

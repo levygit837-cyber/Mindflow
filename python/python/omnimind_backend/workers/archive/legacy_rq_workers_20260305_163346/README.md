@@ -21,6 +21,6 @@ It provides:
 ## Usage:
 Use the new system via:
 ```bash
-python -m omnimind_backend.workers.main --list
-python -m omnimind_backend.workers.main --workers health coder
+python -m mindflow_backend.workers.main --list
+python -m mindflow_backend.workers.main --workers health coder
 ```

@@ -19,7 +19,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 
-from omnimind_backend.infra.config import get_settings
+from mindflow_backend.infra.config import get_settings
 
 
 def _iso_now() -> str:
@@ -64,7 +64,7 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def _write_sql(path: Path, tasks: list[dict[str, Any]], events: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8") as fh:
-        fh.write("-- OmniMind local Swarm backup\n")
+        fh.write("-- MindFlow local Swarm backup\n")
         fh.write(f"-- generated_at: {_iso_now()}\n\n")
         fh.write("BEGIN;\n\n")
 

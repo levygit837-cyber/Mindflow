@@ -1,7 +1,7 @@
 """Tests for input normalizer."""
 
-from omnimind_backend.infra.normalizer import normalize_message
-from omnimind_backend.schemas.normalization import NormalizationConfig
+from mindflow_backend.infra.normalizer import normalize_message
+from mindflow_backend.schemas.normalization import NormalizationConfig
 
 
 def test_collapse_excessive_punctuation() -> None:

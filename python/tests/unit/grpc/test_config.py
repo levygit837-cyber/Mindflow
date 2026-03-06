@@ -4,10 +4,10 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-from omnimind_backend.grpc.client import GrpcAgentClient
-from omnimind_backend.grpc.server import GrpcAgentServer
-from omnimind_backend.grpc.config import GrpcConfig, GrpcClientConfig
-from omnimind_backend.infra.config import get_settings
+from mindflow_backend.grpc.client import GrpcAgentClient
+from mindflow_backend.grpc.server import GrpcAgentServer
+from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.infra.config import get_settings
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def grpc_server():
 @pytest.fixture
 def mock_stream_event():
     """Create mock stream event for testing."""
-    from omnimind_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
+    from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
     
     return StreamEvent(
         id="test-event-1",

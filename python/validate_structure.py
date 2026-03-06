@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the new OmniMind agent structure without dependencies.
+"""Validate the new MindFlow agent structure without dependencies.
 
 Tests that all files exist and have the correct structure.
 """
@@ -9,7 +9,7 @@ from pathlib import Path
 
 def check_file_exists(file_path: str, description: str) -> bool:
     """Check if a file exists."""
-    full_path = Path("python/omnimind_backend") / file_path
+    full_path = Path("python/mindflow_backend") / file_path
     if full_path.exists():
         print(f"✅ {description}")
         return True
@@ -19,7 +19,7 @@ def check_file_exists(file_path: str, description: str) -> bool:
 
 def check_directory_exists(dir_path: str, description: str) -> bool:
     """Check if a directory exists."""
-    full_path = Path("python/omnimind_backend") / dir_path
+    full_path = Path("python/mindflow_backend") / dir_path
     if full_path.exists() and full_path.is_dir():
         print(f"✅ {description}")
         return True
@@ -29,7 +29,7 @@ def check_directory_exists(dir_path: str, description: str) -> bool:
 
 def check_file_structure():
     """Check the new file structure."""
-    print("🏗️  Validating OmniMind Agent Structure")
+    print("🏗️  Validating MindFlow Agent Structure")
     print("=" * 50)
     
     tests_passed = 0
@@ -119,7 +119,7 @@ def check_file_structure():
     
     for file_path, desc in old_files:
         total_tests += 1
-        full_path = Path("python/omnimind_backend") / file_path
+        full_path = Path("python/mindflow_backend") / file_path
         if not full_path.exists():
             print(f"✅ {desc}: correctly moved")
             tests_passed += 1
@@ -142,7 +142,7 @@ def check_file_structure():
     
     if tests_passed == total_tests:
         print("🎉 All structure validation checks passed!")
-        print("✅ The new OmniMind agent structure is correct.")
+        print("✅ The new MindFlow agent structure is correct.")
         return True
     else:
         print("⚠️  Some structure checks failed.")
@@ -161,7 +161,7 @@ def check_file_contents():
     ]
     
     for file_path, expected_exports in init_files:
-        full_path = Path("python/omnimind_backend") / file_path
+        full_path = Path("python/mindflow_backend") / file_path
         if full_path.exists():
             content = full_path.read_text()
             missing_exports = []

@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from omnimind_backend.orchestrator.graph import execute_node
-from omnimind_backend.schemas.orchestrator import AgentType, OrchestratorDecision
+from mindflow_backend.orchestrator.graph import execute_node
+from mindflow_backend.schemas.orchestrator import AgentType, OrchestratorDecision
 
 
 class _FakeLLM:
@@ -36,29 +36,29 @@ async def test_execute_node_injects_memory_context_into_llm_messages(monkeypatch
                 references=["window:1"],
             )
 
-    monkeypatch.setattr("omnimind_backend.orchestrator.graph.get_agent", lambda *_args, **_kwargs: fake_agent)
+    monkeypatch.setattr("mindflow_backend.orchestrator.graph.get_agent", lambda *_args, **_kwargs: fake_agent)
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.get_model_for_provider",
+        "mindflow_backend.orchestrator.graph.get_model_for_provider",
         lambda *_args, **_kwargs: fake_llm,
     )
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.create_default_registry",
+        "mindflow_backend.orchestrator.graph.create_default_registry",
         lambda *_args, **_kwargs: SimpleNamespace(get_tools_for_agent=lambda *_a, **_k: []),
     )
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.OmniMindSandbox",
+        "mindflow_backend.orchestrator.graph.MindFlowSandbox",
         lambda *_args, **_kwargs: object(),
     )
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.get_memory_service",
+        "mindflow_backend.orchestrator.graph.get_memory_service",
         lambda: _FakeMemoryService(),
     )
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.db_session",
+        "mindflow_backend.orchestrator.graph.db_session",
         lambda: contextlib.nullcontext(object()),
     )
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.get_settings",
+        "mindflow_backend.orchestrator.graph.get_settings",
         lambda: SimpleNamespace(
             default_provider="openai",
             default_model="stub",
@@ -70,7 +70,7 @@ async def test_execute_node_injects_memory_context_into_llm_messages(monkeypatch
     async def _noop_dispatch(*_args, **_kwargs):  # noqa: ANN001
         return None
 
-    monkeypatch.setattr("omnimind_backend.orchestrator.graph.adispatch_custom_event", _noop_dispatch)
+    monkeypatch.setattr("mindflow_backend.orchestrator.graph.adispatch_custom_event", _noop_dispatch)
 
     state = {
         "message": "Implemente login com JWT",
