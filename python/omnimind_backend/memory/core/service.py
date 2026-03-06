@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.schemas.session.contracts import RetrievedContext
-from omnimind_backend.storage.models import (
+from omnimind_backend.memory.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
     AgentMemoryEvent,
@@ -30,9 +30,9 @@ from omnimind_backend.storage.models import (
     SessionChunk,
     SessionEmbedding,
 )
-from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.postgresql.connection import db_session
 from omnimind_backend.services.interfaces.base_interfaces import BaseAbstractService
-from omnimind_backend.services.interfaces.core_interfaces import MemoryServiceInterface
+from omnimind_backend.memory.core.interfaces import MemoryServiceInterface
 
 
 @dataclass(slots=True)

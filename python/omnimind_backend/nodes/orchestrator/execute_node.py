@@ -37,7 +37,7 @@ class ExecuteNode(StreamableNode, BaseNode):
         from omnimind_backend.infra.config import get_settings
         from omnimind_backend.infra.logging import get_logger
         from omnimind_backend.runtime.providers import get_model_for_provider
-        from omnimind_backend.storage.db import db_session
+        from omnimind_backend.storage.postgresql.connection import db_session
         
         _logger = get_logger(__name__)
         
@@ -171,7 +171,7 @@ class ExecuteNode(StreamableNode, BaseNode):
     
     def _retrieve_memory_context(self, *, query: str, session_id: str, agent_id: str) -> str:
         """Retrieve memory context for the query."""
-        from omnimind_backend.memory.service import MemoryRetrievalResult, get_memory_service
+        from omnimind_backend.memory import MemoryRetrievalResult, get_memory_service
         from omnimind_backend.infra.config import get_settings
         
         settings = get_settings()
@@ -179,7 +179,7 @@ class ExecuteNode(StreamableNode, BaseNode):
             return ""
         
         try:
-            from omnimind_backend.storage.db import db_session
+            from omnimind_backend.storage.postgresql.connection import db_session
             with db_session() as db:
                 result = get_memory_service().retrieve_context_for_query(
                     db=db,

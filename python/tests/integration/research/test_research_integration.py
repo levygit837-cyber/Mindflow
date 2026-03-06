@@ -140,7 +140,7 @@ def test_database_schema():
     
     try:
         # Import models to ensure they're properly defined
-        from omnimind_backend.storage.models import (
+        from omnimind_backend.storage.postgresql.models import (
             BrowserActionTrail,
             ResearchSession,
             ResearchFinding,

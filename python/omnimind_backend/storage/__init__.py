@@ -12,19 +12,14 @@ from .postgresql.models import (
     AgentMemoryWindow,
     ChatMessage,
     ChatSession,
+    BrowserActionTrail,
     BrowserInstance,
-    ResearchAction,
     ResearchFinding,
     ResearchSession,
 )
 from .postgresql.repositories import (
-    AgentMemoryCursorRepository,
-    AgentMemoryEventRepository,
-    AgentMemoryFactRepository,
-    AgentMemoryWindowRepository,
-    ChatMessageRepository,
-    ChatSessionRepository,
-    ResearchSessionRepository,
+    ChatRepository,
+    NeuralRepository,
 )
 
 # KuzuDB - Vector Storage
@@ -52,17 +47,12 @@ __all__ = [
     "AgentMemoryWindow",
     "AgentMemoryFact",
     "ResearchSession",
-    "ResearchAction",
+    "BrowserActionTrail",
     "ResearchFinding",
     "BrowserInstance",
     # Repositories
-    "ChatSessionRepository",
-    "ChatMessageRepository",
-    "AgentMemoryEventRepository",
-    "AgentMemoryCursorRepository",
-    "AgentMemoryWindowRepository",
-    "AgentMemoryFactRepository",
-    "ResearchSessionRepository",
+    "ChatRepository",
+    "NeuralRepository",
     # KuzuDB - Vector Storage
     "KuzuDBVectorStore",
     "KuzuDBVectorManager",

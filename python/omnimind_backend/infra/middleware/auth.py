@@ -71,8 +71,8 @@ async def _validate_key(api_key: str) -> bool:
 
     from sqlalchemy import select
 
-    from omnimind_backend.storage.db import async_session_factory
-    from omnimind_backend.storage.models import ApiKey
+    from omnimind_backend.storage.postgresql.connection import async_session_factory
+    from omnimind_backend.storage.postgresql.models import ApiKey
 
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
 

@@ -188,9 +188,9 @@ def initialize_core_services() -> None:
     from omnimind_backend.services.core import (
         get_agent_service,
         get_session_service,
-        get_memory_service,
         get_provider_service
     )
+    from omnimind_backend.memory import get_memory_service
     
     container = get_container()
     

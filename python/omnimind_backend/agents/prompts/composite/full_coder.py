@@ -7,18 +7,16 @@ Maintains backward compatibility with the original CODER_SYSTEM_PROMPT.
 from __future__ import annotations
 
 from omnimind_backend.agents.prompts.core.coder import compose_coder_prompt
-from omnimind_backend.agents.prompts.specialized.architecture_review import ARCHITECTURE_REVIEW
 
 
 def build_full_coder_prompt(*segments: str) -> str:
     """Build a full Coder system prompt from core and specialized segments.
     
     Args:
-        *segments: Segment keys including core ("core", "tool_use") and specialized
-                 ("architecture").
+        *segments: Segment keys including core ("core", "tool_use").
         
     Returns:
-        A fully composed system prompt combining core and specialized functions.
+        A fully composed system prompt combining core functions.
     """
     parts = []
     
@@ -29,19 +27,13 @@ def build_full_coder_prompt(*segments: str) -> str:
             parts.append(compose_coder_prompt(seg))
             segments = tuple(s for s in segments if s != seg)
     
-    # Specialized segments
-    specialized_map = {
-        "architecture": ARCHITECTURE_REVIEW,
-    }
+    # No specialized segments available
     
     for seg in segments:
-        if seg in specialized_map:
-            parts.append(specialized_map[seg])
-        else:
-            raise KeyError(f"Unknown coder segment {seg!r}. Valid: core, tool_use, architecture")
+        raise KeyError(f"Unknown coder segment {seg!r}. Valid: core, tool_use")
     
     return "\n\n".join(parts)
 
 
-# Default full coder prompt (core + tool_use + architecture)
-FULL_CODER_PROMPT = build_full_coder_prompt("core", "tool_use", "architecture")
+# Default full coder prompt (core + tool_use)
+FULL_CODER_PROMPT = build_full_coder_prompt("core", "tool_use")

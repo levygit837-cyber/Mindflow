@@ -131,7 +131,7 @@ def compose_orchestrator_prompt(*segments: str) -> str:
 
     Args:
         *segments: One or more segment keys: ``"core"``, ``"governance"``,
-            ``"delegation"``, ``"reflection"``.
+            ``"delegation"``, ``"reflection"``, ``"architecture"``.
 
     Returns:
         A fully composed system prompt with the OmniMind preamble.
@@ -146,6 +146,9 @@ def compose_orchestrator_prompt(*segments: str) -> str:
 
         # With reflection (active reasoning during delegation idle time)
         prompt = compose_orchestrator_prompt("core", "delegation", "reflection")
+
+        # With architecture review capability
+        prompt = compose_orchestrator_prompt("core", "delegation", "architecture")
     """
     parts = []
     for seg in segments:
@@ -160,10 +163,13 @@ def compose_orchestrator_prompt(*segments: str) -> str:
         elif seg == "reflection":
             from omnimind_backend.agents.prompts.specialized.orchestrator_reflection import ORCHESTRATOR_REFLECTION
             parts.append(ORCHESTRATOR_REFLECTION)
+        elif seg == "architecture":
+            from omnimind_backend.agents.prompts.specialized.architecture_review import ARCHITECTURE_REVIEW
+            parts.append(ARCHITECTURE_REVIEW)
         else:
             raise KeyError(
                 f"Unknown orchestrator prompt segment {seg!r}. "
-                "Valid: core, governance, delegation, reflection"
+                "Valid: core, governance, delegation, reflection, architecture"
             )
 
     return build_system_prompt("\n\n".join(parts))

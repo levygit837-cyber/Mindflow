@@ -7,14 +7,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from omnimind_backend.agents.tools.search_web import search_web
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
-from omnimind_backend.memory.service import get_memory_service
+from omnimind_backend.memory import get_memory_service
 from omnimind_backend.orchestrator.graph import build_orchestrator_graph
 from omnimind_backend.orchestrator.router import route_message
 from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
 from omnimind_backend.runtime.normalizer import AgentChatStreamNormalizer
 from omnimind_backend.runtime.providers import get_model_for_provider
 from omnimind_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
-from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.postgresql.connection import db_session
 from omnimind_backend.storage.repositories import ChatRepository
 
 _logger = get_logger(__name__)

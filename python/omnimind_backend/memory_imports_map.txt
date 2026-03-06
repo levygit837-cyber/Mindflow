@@ -1,0 +1,26 @@
+Arquivos que fazem import de memory services (19 arquivos encontrados):
+
+1. ./memory/service.py - get_memory_service() definition
+2. ./memory/__init__.py - from omnimind_backend.memory.service import get_memory_service
+3. ./services/monitoring/health_service.py - from omnimind_backend.services import get_memory_service
+4. ./services/monitoring/review_service.py - from omnimind_backend.services import get_memory_service
+5. ./services/context/retrieval_service.py - from omnimind_backend.services import get_memory_service
+6. ./services/__init__.py - get_memory_service() factory
+7. ./services/orchestration/orchestration_service.py - from omnimind_backend.services import get_memory_service
+8. ./services/core/agent_service.py - from omnimind_backend.services import get_memory_service
+9. ./services/core/container.py - get_memory_service registration
+10. ./services/core/__init__.py - get_memory_service() factory
+11. ./services/core/session_service.py - from omnimind_backend.services import get_memory_service
+12. ./orchestrator/graph.py - from omnimind_backend.memory.service import get_memory_service
+13. ./nodes/orchestrator/execute_node.py - from omnimind_backend.memory.service import get_memory_service
+14. ./agents/interfaces/orchestrator/tasker.py - memory_context parameter
+15. ./agents/interfaces/orchestrator/resolver.py - memory_context parameter
+16. ./api/controllers/memory_controller.py - from omnimind_backend.services import get_memory_service
+17. ./runtime/streaming/stream.py - from omnimind_backend.memory.service import get_memory_service
+18. ./memory_backup/service.py - backup copy
+19. ./memory_backup/memory_controller.py - backup copy
+
+Padrões de import identificados:
+- from omnimind_backend.services import get_memory_service (services layer)
+- from omnimind_backend.memory.service import get_memory_service (runtime/orchestrator)
+- from omnimind_backend.memory.service import AgentMemoryService (direct import)

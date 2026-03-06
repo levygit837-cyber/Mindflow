@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from omnimind_backend.infra.config import get_settings
-from omnimind_backend.storage.models import Base
+from omnimind_backend.storage.postgresql.models import Base
 
 config = context.config
 if config.config_file_name is not None:

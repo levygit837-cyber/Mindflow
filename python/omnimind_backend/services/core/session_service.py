@@ -12,8 +12,8 @@ import uuid
 
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.storage.repositories import ChatRepository
-from omnimind_backend.storage.db import async_session_factory
-from omnimind_backend.storage.models import ChatSession, ChatMessage
+from omnimind_backend.storage.postgresql.connection import async_session_factory
+from omnimind_backend.storage.postgresql.models import ChatSession, ChatMessage
 from omnimind_backend.services.interfaces.base_interfaces import BaseAbstractService
 from omnimind_backend.services.interfaces.core_interfaces import SessionServiceInterface
 
@@ -41,7 +41,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     def _get_memory_service(self):
         """Get memory service instance (lazy loading)."""
         if self._memory_service is None:
-            from omnimind_backend.services import get_memory_service
+            from omnimind_backend.memory import get_memory_service
             self._memory_service = get_memory_service()
         return self._memory_service
     

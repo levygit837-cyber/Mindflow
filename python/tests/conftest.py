@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from omnimind_backend.main import app
-from omnimind_backend.storage.db import async_session_factory
-from omnimind_backend.storage.models import Base
+from omnimind_backend.storage.postgresql.connection import async_session_factory
+from omnimind_backend.storage.postgresql.models import Base
 
 
 @pytest.fixture(scope="session")

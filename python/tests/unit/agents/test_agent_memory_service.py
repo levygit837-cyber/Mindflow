@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from omnimind_backend.memory.service import AgentMemoryService
-from omnimind_backend.storage.models import (
+from omnimind_backend.storage.postgresql.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
     AgentMemoryFact,
