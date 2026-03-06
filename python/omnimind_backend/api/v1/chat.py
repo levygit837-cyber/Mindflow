@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from omnimind_backend.schemas.chat.agent import ChatMessageSchema, ChatSessionSchema
-from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.postgresql.connection import db_session
 from omnimind_backend.storage.repositories import ChatRepository
 from omnimind_backend.api.controllers.session_controller import SessionController
 from omnimind_backend.api.schemas.requests import SessionCreateRequest, SessionUpdateRequest

@@ -13,7 +13,7 @@ from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.infra.middleware.auth import require_api_key
 from omnimind_backend.infra.sanitizer import SanitizationError, sanitize_message
-from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.postgresql.connection import db_session
 
 _logger = get_logger(__name__)
 T = TypeVar("T")

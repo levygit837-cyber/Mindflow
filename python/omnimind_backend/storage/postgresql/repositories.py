@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from omnimind_backend.storage.models import ChatMessage, ChatSession, NeuralDocument
+from omnimind_backend.storage.postgresql.models import ChatMessage, ChatSession, NeuralDocument
 
 
 class ChatRepository:

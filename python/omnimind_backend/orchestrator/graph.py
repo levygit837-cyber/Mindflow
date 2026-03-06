@@ -25,11 +25,11 @@ from omnimind_backend.agents.tools import create_default_registry
 from omnimind_backend.agents.tools.sandbox import OmniMindSandbox
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
-from omnimind_backend.memory.service import MemoryRetrievalResult, get_memory_service
+from omnimind_backend.memory import MemoryRetrievalResult, get_memory_service
 from omnimind_backend.orchestrator.router import route_message
 from omnimind_backend.runtime import get_model_for_provider, extract_ai_message_content
 from omnimind_backend.schemas.orchestration.orchestrator import OrchestratorDecision, SandboxMode
-from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.postgresql.connection import db_session
 
 _logger = get_logger(__name__)
 

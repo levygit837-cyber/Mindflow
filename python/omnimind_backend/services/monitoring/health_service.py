@@ -156,7 +156,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         
         try:
             # Test database connection
-            from omnimind_backend.storage.db import db_session
+            from omnimind_backend.storage.postgresql.connection import db_session
             
             connection_test = {
                 "connection_time_ms": 0,
@@ -474,7 +474,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                 service = get_agent_service()
                 return {"healthy": True, "response_time_ms": 10}
             elif service_name == "memory_service":
-                from omnimind_backend.services import get_memory_service
+                from omnimind_backend.memory import get_memory_service
                 service = get_memory_service()
                 return {"healthy": True, "response_time_ms": 15}
             elif service_name == "vector_service":

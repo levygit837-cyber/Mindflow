@@ -23,7 +23,7 @@ from omnimind_backend.schemas.agents.research import (
     SourceType,
     ConfidenceLevel,
 )
-from omnimind_backend.storage.db import db_session
+from omnimind_backend.storage.postgresql.connection import db_session
 
 _logger = get_logger(__name__)
 

@@ -18,9 +18,9 @@ def get_session_service():
     return SessionService()
 
 def get_memory_service():
-    """Factory function for MemoryService."""
-    from omnimind_backend.services.core.memory_service import MemoryService
-    return MemoryService()
+    """Factory function for MemoryService - now imported from memory module."""
+    from omnimind_backend.memory import get_memory_service
+    return get_memory_service()
 
 def get_provider_service():
     """Factory function for ProviderService."""

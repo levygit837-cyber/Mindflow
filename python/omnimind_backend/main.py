@@ -19,8 +19,8 @@ from omnimind_backend.infra.middleware.security_headers import SecurityHeadersMi
 from omnimind_backend.api.middleware.validation import ValidationMiddleware
 from omnimind_backend.api.middleware.performance import PerformanceMiddleware
 from omnimind_backend.api.middleware.caching import AdvancedCacheMiddleware, MemoryCacheBackend
-from omnimind_backend.storage.db import engine
-from omnimind_backend.storage.models import Base
+from omnimind_backend.storage.postgresql.connection import engine
+from omnimind_backend.storage.postgresql.models import Base
 
 settings = get_settings()
 configure_logging(logging.DEBUG if settings.app_env == "development" else logging.INFO)

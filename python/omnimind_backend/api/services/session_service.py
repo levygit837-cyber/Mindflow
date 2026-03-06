@@ -7,8 +7,8 @@ from datetime import datetime, UTC
 
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.storage.repositories import ChatRepository
-from omnimind_backend.storage.db import async_session_factory
-from omnimind_backend.storage.models import ChatSession, ChatMessage
+from omnimind_backend.storage.postgresql.connection import async_session_factory
+from omnimind_backend.storage.postgresql.models import ChatSession, ChatMessage
 
 _logger = get_logger(__name__)
 

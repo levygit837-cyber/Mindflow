@@ -47,7 +47,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
     def _get_memory_service(self):
         """Get memory service instance (lazy loading)."""
         if self._memory_service is None:
-            from omnimind_backend.services import get_memory_service
+            from omnimind_backend.memory import get_memory_service
             self._memory_service = get_memory_service()
         return self._memory_service
     

@@ -30,9 +30,10 @@ from __future__ import annotations
 from omnimind_backend.services.core import (
     get_agent_service,
     get_session_service,
-    get_memory_service,
     get_provider_service,
 )
+# Memory service now from new location
+from omnimind_backend.memory import get_memory_service
 
 # Orchestration domain services
 from omnimind_backend.services.orchestration import (

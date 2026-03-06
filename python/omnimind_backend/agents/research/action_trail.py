@@ -19,7 +19,7 @@ from omnimind_backend.schemas.agents.research import (
     BrowserActionResponse,
     IterationType,
 )
-from omnimind_backend.storage.models import BrowserActionTrail
+from omnimind_backend.storage.postgresql.models import BrowserActionTrail
 
 _logger = get_logger(__name__)
 

@@ -14,7 +14,7 @@ from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.schemas.session.contracts import RetrievedContext
 from omnimind_backend.services.vector_manager import get_vector_manager
-from omnimind_backend.storage.models import (
+from omnimind_backend.memory.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
     AgentMemoryEvent,

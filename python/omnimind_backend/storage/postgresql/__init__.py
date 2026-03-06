@@ -11,19 +11,14 @@ from .models import (
     AgentMemoryWindow,
     ChatMessage,
     ChatSession,
+    BrowserActionTrail,
     BrowserInstance,
-    ResearchAction,
     ResearchFinding,
     ResearchSession,
 )
 from .repositories import (
-    AgentMemoryCursorRepository,
-    AgentMemoryEventRepository,
-    AgentMemoryFactRepository,
-    AgentMemoryWindowRepository,
-    ChatMessageRepository,
-    ChatSessionRepository,
-    ResearchSessionRepository,
+    ChatRepository,
+    NeuralRepository,
 )
 
 __all__ = [
@@ -35,14 +30,9 @@ __all__ = [
     "AgentMemoryWindow",
     "AgentMemoryFact",
     "ResearchSession",
-    "ResearchAction",
+    "BrowserActionTrail",
     "ResearchFinding",
     "BrowserInstance",
-    "ChatSessionRepository",
-    "ChatMessageRepository",
-    "AgentMemoryEventRepository",
-    "AgentMemoryCursorRepository",
-    "AgentMemoryWindowRepository",
-    "AgentMemoryFactRepository",
-    "ResearchSessionRepository",
+    "ChatRepository",
+    "NeuralRepository",
 ]

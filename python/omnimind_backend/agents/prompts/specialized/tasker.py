@@ -35,7 +35,7 @@ access to semantic context from previous tasks.
 | Agent | Assign when… |
 |-------|-------------|
 | ``coder`` | Implementation, debugging, refactoring, file operations, tests |
-| ``analyst`` | Code analysis, architecture review, symbol tracing, metrics |
+| ``analyst`` | Code analysis, symbol tracing, metrics, investigation |
 | ``researcher`` | External research, documentation, best practices, API investigation |
 
 ### Sub-Personalities (domain-specific, registered at runtime)
@@ -49,7 +49,7 @@ Common examples:
 
 **Rule**: If a registered sub-personality perfectly matches the task domain, use its \
 registered name. If unsure whether a sub-personality is available, default to the \
-closest core agent (e.g. ``analyst`` for architecture review, ``coder`` for security \
+closest core agent (e.g. ``analyst`` for code investigation, ``coder`` for security \
 fixes). The system will route to the best available agent.
 
 ## Output Format

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from omnimind_backend.agents.prompts.core.analyst import compose_analyst_prompt
 from omnimind_backend.agents.prompts.specialized.security_analysis import SECURITY_ANALYSIS
-from omnimind_backend.agents.prompts.specialized.architecture_review import ARCHITECTURE_REVIEW
 from omnimind_backend.agents.prompts.specialized.code_review import CODE_REVIEW
 from omnimind_backend.agents.prompts.specialized.brainstorming import BRAINSTORMING
 from omnimind_backend.agents.prompts.specialized.deep_analysis import DEEP_ANALYSIS
@@ -19,7 +18,7 @@ def build_full_analyst_prompt(*segments: str) -> str:
     
     Args:
         *segments: Segment keys including core ("core", "read") and specialized
-                 ("security", "architecture", "review", "brainstorm", "deep").
+                 ("security", "review", "brainstorm", "deep").
         
     Returns:
         A fully composed system prompt combining core and specialized functions.
@@ -36,7 +35,6 @@ def build_full_analyst_prompt(*segments: str) -> str:
     # Specialized segments
     specialized_map = {
         "security": SECURITY_ANALYSIS,
-        "architecture": ARCHITECTURE_REVIEW,
         "review": CODE_REVIEW,
         "brainstorm": BRAINSTORMING,
         "deep": DEEP_ANALYSIS,
@@ -46,12 +44,12 @@ def build_full_analyst_prompt(*segments: str) -> str:
         if seg in specialized_map:
             parts.append(specialized_map[seg])
         else:
-            raise KeyError(f"Unknown analyst segment {seg!r}. Valid: core, read, security, architecture, review, brainstorm, deep")
+            raise KeyError(f"Unknown analyst segment {seg!r}. Valid: core, read, security, review, brainstorm, deep")
     
     return "\n\n".join(parts)
 
 
 # Default full analyst prompt (core + read + all specialized functions)
 FULL_ANALYST_PROMPT = build_full_analyst_prompt(
-    "core", "read", "security", "architecture", "review", "brainstorm", "deep"
+    "core", "read", "security", "review", "brainstorm", "deep"
 )
