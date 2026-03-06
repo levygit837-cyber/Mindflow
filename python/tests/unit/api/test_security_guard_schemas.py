@@ -1,6 +1,6 @@
 """Tests for SecurityGuard agent output schemas."""
 
-from omnimind_backend.schemas.security_guard import (
+from mindflow_backend.schemas.security_guard import (
     CICDGatesStatus,
     Exploitability,
     RemediationAction,

@@ -10,7 +10,7 @@ def archive_legacy_workers():
     """Archive legacy worker files to prevent accidental use."""
     
     project_root = Path(__file__).parent
-    workers_dir = project_root / "python" / "omnimind_backend" / "workers"
+    workers_dir = project_root / "python" / "mindflow_backend" / "workers"
     
     # Files to archive
     legacy_files = [
@@ -61,8 +61,8 @@ It provides:
 ## Usage:
 Use the new system via:
 ```bash
-python -m omnimind_backend.workers.main --list
-python -m omnimind_backend.workers.main --workers health coder
+python -m mindflow_backend.workers.main --list
+python -m mindflow_backend.workers.main --workers health coder
 ```
 """.format(date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     
@@ -93,7 +93,7 @@ The project has migrated from RQ/Redis workers to a new hierarchical RabbitMQ-ba
 - `workers/tasks.py` - Deprecated tasks
 
 ### New System:
-- **Main Entry**: `python -m omnimind_backend.workers.main`
+- **Main Entry**: `python -m mindflow_backend.workers.main`
 - **Organization**: Hierarchical structure by domain
   - `agents/` - Coder, Analyst, Researcher, Orchestrator workers
   - `system/` - Health, Memory, Vector, Session review workers  
@@ -104,18 +104,18 @@ The project has migrated from RQ/Redis workers to a new hierarchical RabbitMQ-ba
 ### Usage:
 ```bash
 # List available workers
-python -m omnimind_backend.workers.main --list
+python -m mindflow_backend.workers.main --list
 
 # Start specific workers
-python -m omnimind_backend.workers.main --workers health coder
+python -m mindflow_backend.workers.main --workers health coder
 
 # Start all workers
-python -m omnimind_backend.workers.main
+python -m mindflow_backend.workers.main
 ```
 
 ### Environment Variables:
-- `OMNIMIND_USE_NEW_WORKERS=1` - Enable new system in launcher
-- `OMNIMIND_START_WORKER=1` - Start worker process
+- `MINDFLOW_USE_NEW_WORKERS=1` - Enable new system in launcher
+- `MINDFLOW_START_WORKER=1` - Start worker process
 - RabbitMQ configuration variables (see .env.example)
 
 ### Docker:
@@ -149,9 +149,9 @@ def main():
     print("\n=== Migration Complete ===")
     print("The new RabbitMQ worker system is ready for use!")
     print("\nNext steps:")
-    print("1. Set OMNIMIND_USE_NEW_WORKERS=1 in your environment")
+    print("1. Set MINDFLOW_USE_NEW_WORKERS=1 in your environment")
     print("2. Start RabbitMQ: docker-compose -f python/docker-compose.backend.yml up -d rabbitmq")
-    print("3. Test new workers: python -m omnimind_backend.workers.main --list")
+    print("3. Test new workers: python -m mindflow_backend.workers.main --list")
 
 if __name__ == "__main__":
     main()

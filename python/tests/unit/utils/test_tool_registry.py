@@ -1,12 +1,12 @@
 import pytest
 from pathlib import Path
-from omnimind_backend.agents.tools import create_default_registry
-from omnimind_backend.agents.tools.sandbox import OmniMindSandbox
-from omnimind_backend.schemas.orchestrator import AgentType
+from mindflow_backend.agents.tools import create_default_registry
+from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+from mindflow_backend.schemas.orchestrator import AgentType
 
 def test_tool_registry_scopes():
     # Setup a mock sandbox
-    sandbox = OmniMindSandbox(root_dir="./test_sandbox")
+    sandbox = MindFlowSandbox(root_dir="./test_sandbox")
     registry = create_default_registry(sandbox)
     
     # Check all tool names
@@ -22,14 +22,14 @@ def test_tool_registry_scopes():
     assert len(analyst_tools) > 0
 
 def test_sandbox_execution():
-    sandbox = OmniMindSandbox()
+    sandbox = MindFlowSandbox()
     result = sandbox.execute("echo 'hello world'")
     
     assert result.exit_code == 0
     assert "hello world" in result.output
 
 def test_sandbox_filesystem(tmp_path):
-    sandbox = OmniMindSandbox(root_dir=tmp_path)
+    sandbox = MindFlowSandbox(root_dir=tmp_path)
     
     # Write a file
     write_result = sandbox.write("test.txt", "content")

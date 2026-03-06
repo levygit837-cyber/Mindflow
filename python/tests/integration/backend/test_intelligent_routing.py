@@ -5,7 +5,7 @@ import sys
 import os
 
 # Add project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 def test_intent_analysis():
     """Test basic intent analysis without external dependencies."""
@@ -23,7 +23,7 @@ def test_intent_analysis():
         default_model = 'test-model'
     
     # Test intelligent router directly
-    from omnimind_backend.orchestrator.intelligent_router import get_intelligent_router
+    from mindflow_backend.orchestrator.intelligent_router import get_intelligent_router
     
     router = get_intelligent_router()
     router.settings = MockSettings()

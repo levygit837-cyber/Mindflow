@@ -7,7 +7,7 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from omnimind_backend.infra.middleware.security_headers import SecurityHeadersMiddleware
+from mindflow_backend.infra.middleware.security_headers import SecurityHeadersMiddleware
 
 
 def _make_app(app_env: str = "development") -> TestClient:
@@ -20,18 +20,18 @@ def _make_app(app_env: str = "development") -> TestClient:
         return {"status": "ok"}
 
     # Patch get_settings to control app_env
-    from omnimind_backend.infra.config import Settings
+    from mindflow_backend.infra.config import Settings
 
     fake_settings = Settings(APP_ENV=app_env)
 
-    with patch("omnimind_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
         client = TestClient(app)
     return client, fake_settings
 
 
 def test_common_security_headers_present():
     client, fake_settings = _make_app("development")
-    with patch("omnimind_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
         resp = client.get("/health")
 
     assert resp.status_code == 200
@@ -45,13 +45,13 @@ def test_common_security_headers_present():
 
 def test_hsts_absent_in_development():
     client, fake_settings = _make_app("development")
-    with patch("omnimind_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
         resp = client.get("/health")
     assert "Strict-Transport-Security" not in resp.headers
 
 
 def test_hsts_present_in_production():
     client, fake_settings = _make_app("production")
-    with patch("omnimind_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.security_headers.get_settings", return_value=fake_settings):
         resp = client.get("/health")
     assert resp.headers["Strict-Transport-Security"] == "max-age=31536000; includeSubDomains"

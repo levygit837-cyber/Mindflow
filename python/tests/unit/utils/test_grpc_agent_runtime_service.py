@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from omnimind_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
-from omnimind_backend.schemas.agent import StreamEvent
+from mindflow_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
+from mindflow_backend.schemas.agent import StreamEvent
 
 
 @pytest.mark.asyncio

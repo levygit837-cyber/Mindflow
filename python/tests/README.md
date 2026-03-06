@@ -1,6 +1,6 @@
 # Tests Structure Documentation
 
-This directory contains the reorganized test suite for the OmniMind backend.
+This directory contains the reorganized test suite for the MindFlow backend.
 
 ## 📁 Structure
 

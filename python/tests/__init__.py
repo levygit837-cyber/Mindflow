@@ -1,1 +1,1 @@
-"""Test suite for OmniMind API controllers and services."""
+"""Test suite for MindFlow API controllers and services."""

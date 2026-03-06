@@ -1,3 +1,0 @@
-omnimind_backend
-omnimind_cli
-omnimind_desktop

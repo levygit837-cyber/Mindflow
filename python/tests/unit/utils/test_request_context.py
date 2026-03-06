@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from omnimind_backend.infra.middleware.request_context import (
+from mindflow_backend.infra.middleware.request_context import (
     RequestContextMiddleware,
     get_request_id,
 )

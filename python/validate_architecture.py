@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the new OmniMind agent architecture.
+"""Validate the new MindFlow agent architecture.
 
 Tests that all modules can be imported correctly and the
 new structure works as expected.
@@ -23,7 +23,7 @@ def test_import(module_path: str, description: str) -> bool:
 def test_subsystem(subsystem: str, description: str) -> bool:
     """Test importing a subsystem."""
     try:
-        module = __import__(f"omnimind_backend.agents.{subsystem}", fromlist=[''])
+        module = __import__(f"mindflow_backend.agents.{subsystem}", fromlist=[''])
         print(f"✅ {description}")
         
         # Test key components
@@ -42,7 +42,7 @@ def test_subsystem(subsystem: str, description: str) -> bool:
 
 def main():
     """Run architecture validation tests."""
-    print("🏗️  Validating OmniMind Agent Architecture")
+    print("🏗️  Validating MindFlow Agent Architecture")
     print("=" * 50)
     
     tests_passed = 0
@@ -50,10 +50,10 @@ def main():
     
     # Test core imports
     core_tests = [
-        ("omnimind_backend.agents.core.interfaces", "Core interfaces"),
-        ("omnimind_backend.agents.core.container", "Dependency injection container"),
-        ("omnimind_backend.agents.core.exceptions", "Custom exceptions"),
-        ("omnimind_backend.agents.core.initialization", "System initialization"),
+        ("mindflow_backend.agents.core.interfaces", "Core interfaces"),
+        ("mindflow_backend.agents.core.container", "Dependency injection container"),
+        ("mindflow_backend.agents.core.exceptions", "Custom exceptions"),
+        ("mindflow_backend.agents.core.initialization", "System initialization"),
     ]
     
     for module, desc in core_tests:
@@ -75,16 +75,16 @@ def main():
     
     # Test component imports
     component_tests = [
-        ("omnimind_backend.agents.context.cache", "Context cache"),
-        ("omnimind_backend.agents.context.vector_store", "Vector store"),
-        ("omnimind_backend.agents.context.analyzer", "Content analyzer"),
-        ("omnimind_backend.agents.personality.cache", "Personality cache"),
-        ("omnimind_backend.agents.personality.rule_engine", "Rule engine"),
-        ("omnimind_backend.agents.personality.configuration", "Configuration builders"),
-        ("omnimind_backend.agents.personality.sub_personalities", "Sub-personalities"),
-        ("omnimind_backend.agents.personality.dynamic_prompts", "Dynamic prompts"),
-        ("omnimind_backend.agents.review.analyzer", "Review analyzer"),
-        ("omnimind_backend.agents.review.parser", "Result parser"),
+        ("mindflow_backend.agents.context.cache", "Context cache"),
+        ("mindflow_backend.agents.context.vector_store", "Vector store"),
+        ("mindflow_backend.agents.context.analyzer", "Content analyzer"),
+        ("mindflow_backend.agents.personality.cache", "Personality cache"),
+        ("mindflow_backend.agents.personality.rule_engine", "Rule engine"),
+        ("mindflow_backend.agents.personality.configuration", "Configuration builders"),
+        ("mindflow_backend.agents.personality.sub_personalities", "Sub-personalities"),
+        ("mindflow_backend.agents.personality.dynamic_prompts", "Dynamic prompts"),
+        ("mindflow_backend.agents.review.analyzer", "Review analyzer"),
+        ("mindflow_backend.agents.review.parser", "Result parser"),
     ]
     
     for module, desc in component_tests:
@@ -94,8 +94,8 @@ def main():
     
     # Test configuration imports
     config_tests = [
-        ("omnimind_backend.config.agents", "Agent configuration"),
-        ("omnimind_backend.config.personality_rules", "Personality rules"),
+        ("mindflow_backend.config.agents", "Agent configuration"),
+        ("mindflow_backend.config.personality_rules", "Personality rules"),
     ]
     
     for module, desc in config_tests:
@@ -105,7 +105,7 @@ def main():
     
     # Test legacy compatibility
     legacy_tests = [
-        ("omnimind_backend.agents", "Main agents module (legacy compatibility)"),
+        ("mindflow_backend.agents", "Main agents module (legacy compatibility)"),
     ]
     
     for module, desc in legacy_tests:
@@ -115,7 +115,7 @@ def main():
     
     # Test sub-personalities specifically
     try:
-        from omnimind_backend.agents.personality.sub_personalities import (
+        from mindflow_backend.agents.personality.sub_personalities import (
             get_sub_personality,
             get_all_sub_personalities,
             find_best_sub_personality,
@@ -144,7 +144,7 @@ def main():
     
     # Test dynamic prompts
     try:
-        from omnimind_backend.agents.personality.dynamic_prompts import (
+        from mindflow_backend.agents.personality.dynamic_prompts import (
             get_dynamic_prompt_builder,
             PromptContext,
         )
@@ -173,7 +173,7 @@ def main():
     
     if tests_passed == total_tests:
         print("🎉 All architecture validation tests passed!")
-        print("✅ The new OmniMind agent architecture is working correctly.")
+        print("✅ The new MindFlow agent architecture is working correctly.")
         return 0
     else:
         print("⚠️  Some tests failed. Please check the errors above.")

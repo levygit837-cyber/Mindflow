@@ -1,7 +1,7 @@
 """Tests for response parsing utilities."""
 
 import pytest
-from omnimind_backend.runtime.utils.response_parser import (
+from mindflow_backend.runtime.utils.response_parser import (
     extract_ai_message_content,
     extract_text_only,
     extract_thinking_only,

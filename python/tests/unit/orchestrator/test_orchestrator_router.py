@@ -1,7 +1,7 @@
 """Tests for the orchestrator keyword router."""
 
-from omnimind_backend.orchestrator.router import route_message
-from omnimind_backend.schemas.orchestrator import AgentType, ToolScope
+from mindflow_backend.orchestrator.router import route_message
+from mindflow_backend.schemas.orchestrator import AgentType, ToolScope
 
 # ---------------------------------------------------------------------------
 # Routing tests

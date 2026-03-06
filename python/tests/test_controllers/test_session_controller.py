@@ -7,8 +7,8 @@ from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from omnimind_backend.api.controllers.session_controller import SessionController
-from omnimind_backend.api.schemas.responses import SessionResponse, SessionListResponse
+from mindflow_backend.api.controllers.session_controller import SessionController
+from mindflow_backend.api.schemas.responses import SessionResponse, SessionListResponse
 
 
 class TestSessionController:
@@ -165,7 +165,7 @@ class TestSessionControllerIntegration:
     
     def test_create_session_endpoint(self, client: TestClient, mock_session_service):
         """Test POST /chat/sessions endpoint."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.create_session.return_value = SessionResponse(
                 success=True,
@@ -188,7 +188,7 @@ class TestSessionControllerIntegration:
     
     def test_get_session_endpoint(self, client: TestClient, mock_session_service):
         """Test GET /chat/sessions/{session_id} endpoint."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.get_session.return_value = SessionResponse(
                 success=True,
@@ -206,7 +206,7 @@ class TestSessionControllerIntegration:
     
     def test_list_sessions_endpoint(self, client: TestClient, mock_session_service):
         """Test GET /chat/sessions endpoint."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.list_sessions.return_value = SessionListResponse(
                 success=True,
@@ -228,7 +228,7 @@ class TestSessionControllerIntegration:
     
     def test_update_session_endpoint(self, client: TestClient, mock_session_service):
         """Test PUT /chat/sessions/{session_id} endpoint."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.update_session.return_value = SessionResponse(
                 success=True,
@@ -248,7 +248,7 @@ class TestSessionControllerIntegration:
     
     def test_delete_session_endpoint(self, client: TestClient, mock_session_service):
         """Test DELETE /chat/sessions/{session_id} endpoint."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.delete_session.return_value = {
                 "success": True,
@@ -265,7 +265,7 @@ class TestSessionControllerIntegration:
     
     def test_add_message_endpoint(self, client: TestClient, mock_session_service):
         """Test POST /chat/sessions/{session_id}/messages endpoint."""
-        with patch('omnimind_backend.api.v1.chat.session_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.chat.session_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.add_message.return_value = {
                 "success": True,

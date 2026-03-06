@@ -1,6 +1,6 @@
 """Tests for Analyst agent mode schemas."""
 
-from omnimind_backend.schemas.analyst import (
+from mindflow_backend.schemas.analyst import (
     AnalysisMode,
     AnalystOutput,
 )

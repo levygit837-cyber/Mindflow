@@ -1,18 +1,18 @@
-# OmniMind
+# MindFlow
 
 Multi-agent AI engineering assistant with specialized personalities.
 
 ## Overview
 
-OmniMind is a multi-agent AI system built for software engineering assistance. It features specialized agent personalities (Coder, Analyst, Researcher, Orchestrator), each with unique system prompts, tool access, and reasoning depth. Complex tasks are decomposed into a DAG of sub-tasks, scheduled via topological sort, and resolved by the most appropriate agent.
+MindFlow is a multi-agent AI system built for software engineering assistance. It features specialized agent personalities (Coder, Analyst, Researcher, Orchestrator), each with unique system prompts, tool access, and reasoning depth. Complex tasks are decomposed into a DAG of sub-tasks, scheduled via topological sort, and resolved by the most appropriate agent.
 
 ## Architecture
 
 | Component | Stack | Location |
 |---|---|---|
-| **Backend** | Python 3.11+ / FastAPI / LangGraph / gRPC / Redis+RQ / PostgreSQL 16 | `python/omnimind_backend/` |
+| **Backend** | Python 3.11+ / FastAPI / LangGraph / gRPC / Redis+RQ / PostgreSQL 16 | `python/mindflow_backend/` |
 | **Frontend** | React 19 / Vite / TypeScript | `frontend/` |
-| **CLI** | Typer + Rich | `python/omnimind_cli/` |
+| **CLI** | Typer + Rich | `python/mindflow_cli/` |
 
 ### Request Flow
 
@@ -57,9 +57,9 @@ cd python
 uv sync
 cp ../.env.example ../.env   # Configure your API keys
 
-uv run omnimind-api          # FastAPI on :8000
-uv run omnimind-grpc         # gRPC on :50051
-uv run omnimind-worker       # RQ background worker
+uv run mindflow-api          # FastAPI on :8000
+uv run mindflow-grpc         # gRPC on :50051
+uv run mindflow-worker       # RQ background worker
 
 # Apply DB migrations
 uv run alembic upgrade head
@@ -86,7 +86,7 @@ Copy `.env.example` to `.env` and configure:
 - `GOOGLE_API_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` — for Gemini/VertexAI
 - `ANTHROPIC_API_KEY` — for Claude
 - `OPENAI_API_KEY` — for GPT
-- `DATABASE_URL` — PostgreSQL connection string (default: `localhost:5433/omnimind_v1`)
+- `DATABASE_URL` — PostgreSQL connection string (default: `localhost:5433/mindflow_v1`)
 - `REDIS_URL` — Redis connection string (default: `localhost:6380`)
 
 ### Local Infrastructure (Docker)
@@ -97,7 +97,7 @@ docker-compose up -d   # PostgreSQL, Redis, SearXNG
 
 | Service | Default Address |
 |---|---|
-| PostgreSQL | `localhost:5433` — DB: `omnimind_v1` |
+| PostgreSQL | `localhost:5433` — DB: `mindflow_v1` |
 | Redis | `localhost:6380` |
 | SearXNG | `localhost:8080` |
 

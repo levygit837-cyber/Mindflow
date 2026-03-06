@@ -1,4 +1,4 @@
-from omnimind_backend.schemas.agent import AgentChatRequest
+from mindflow_backend.schemas.agent import AgentChatRequest
 
 
 def test_agent_request_accepts_agent_type_and_agent_alias() -> None:

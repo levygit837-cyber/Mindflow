@@ -10,14 +10,14 @@ import json
 import logging
 from contextlib import asynccontextmanager
 
-from omnimind_backend.grpc.config.dynamic.manager import DynamicConfigManager, get_config_manager
-from omnimind_backend.grpc.config.dynamic.storage import create_config_storage
-from omnimind_backend.grpc.config.dynamic.validator import ConfigValidator
-from omnimind_backend.grpc.config.profiles import get_environment_loader
-from omnimind_backend.grpc.config.features import get_feature_toggles, FeatureEvaluationContext
-from omnimind_backend.grpc.config.dynamic.watcher import CombinedConfigWatcher
-from omnimind_backend.grpc.config import GrpcConfig
-from omnimind_backend.infra.logging import get_logger
+from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager, get_config_manager
+from mindflow_backend.grpc.config.dynamic.storage import create_config_storage
+from mindflow_backend.grpc.config.dynamic.validator import ConfigValidator
+from mindflow_backend.grpc.config.profiles import get_environment_loader
+from mindflow_backend.grpc.config.features import get_feature_toggles, FeatureEvaluationContext
+from mindflow_backend.grpc.config.dynamic.watcher import CombinedConfigWatcher
+from mindflow_backend.grpc.config import GrpcConfig
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -273,7 +273,7 @@ async def example_config_watcher():
         await config_manager.initialize(initial_config)
         
         # Create watcher
-        from omnimind_backend.grpc.config.dynamic.watcher import ConfigWatcher, FileWatchConfig
+        from mindflow_backend.grpc.config.dynamic.watcher import ConfigWatcher, FileWatchConfig
         
         watch_config = FileWatchConfig(
             watch_directories={"."},
@@ -465,7 +465,7 @@ async def example_integrated_dynamic_config():
 
 async def main():
     """Run all dynamic configuration examples."""
-    print("🎯 OmniMind Dynamic gRPC Configuration Examples")
+    print("🎯 MindFlow Dynamic gRPC Configuration Examples")
     print("=" * 70)
     print("This script demonstrates the dynamic configuration system with")
     print("hot reload, environment profiles, feature flags, and validation.")
@@ -486,7 +486,7 @@ async def main():
     
     print("\n✅ Dynamic Configuration Examples Completed!")
     print("\n🚀 Next Steps:")
-    print("1. Start the application: python -m omnimind_backend.main")
+    print("1. Start the application: python -m mindflow_backend.main")
     print("2. Access configuration API: http://localhost:8000/api/v1/config")
     print("3. View feature flags: http://localhost:8000/api/v1/config/features")
     print("4. Check environment profiles: http://localhost:8000/api/v1/config/profiles")

@@ -6,7 +6,7 @@ is receiving messages and responding correctly.
 
 import time
 import pytest
-from omnimind_backend.runtime.providers.providers import get_model_for_provider
+from mindflow_backend.runtime.providers.providers import get_model_for_provider
 
 
 class TestVertexModelIntegration:

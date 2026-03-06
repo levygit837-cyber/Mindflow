@@ -5,21 +5,21 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from omnimind_backend.orchestrator.decomposition.dt_dependency_resolver import (
+from mindflow_backend.orchestrator.decomposition.dt_dependency_resolver import (
     get_dt_dependency_resolver,
     DependencyAnalysis,
     DependencyValidation,
 )
-from omnimind_backend.orchestrator.decomposition.dt_rag_context_manager import (
+from mindflow_backend.orchestrator.decomposition.dt_rag_context_manager import (
     get_dt_rag_context_manager,
 )
-from omnimind_backend.orchestrator.decomposition.dt_state_orchestrator import (
+from mindflow_backend.orchestrator.decomposition.dt_state_orchestrator import (
     get_dt_state_orchestrator,
 )
-from omnimind_backend.orchestrator.decomposition.component_router import (
+from mindflow_backend.orchestrator.decomposition.component_router import (
     get_rag_aware_router,
 )
-from omnimind_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
     ComponentOwner,
     ComponentStatus,
     SubComponentContract,

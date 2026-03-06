@@ -8,4 +8,4 @@ if [ ! -f .env ]; then
   echo "Created python/.env from .env.example"
 fi
 
-uv run omnimind-desktop
+uv run mindflow-desktop

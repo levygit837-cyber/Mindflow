@@ -2,7 +2,7 @@
 
 import pytest
 
-from omnimind_backend.orchestrator.context_validation import validate_payload_size, PayloadTooLargeError, estimate_tokens
+from mindflow_backend.orchestrator.context_validation import validate_payload_size, PayloadTooLargeError, estimate_tokens
 
 
 def test_small_payload_passes() -> None:

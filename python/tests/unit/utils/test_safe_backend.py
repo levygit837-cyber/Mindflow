@@ -1,6 +1,6 @@
 import pytest
 
-from omnimind_backend.runtime.safe_backend import ExecuteResult, SafeBackend
+from mindflow_backend.runtime.safe_backend import ExecuteResult, SafeBackend
 
 
 class MockBackend:

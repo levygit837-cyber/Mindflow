@@ -9,7 +9,7 @@ from pathlib import Path
 
 def check_file_exists(file_path: str, description: str) -> bool:
     """Check if a file exists."""
-    full_path = Path("omnimind_backend") / file_path
+    full_path = Path("mindflow_backend") / file_path
     if full_path.exists():
         print(f"✅ {description}")
         return True
@@ -19,7 +19,7 @@ def check_file_exists(file_path: str, description: str) -> bool:
 
 def check_file_content(file_path: str, expected_content: list[str], description: str) -> bool:
     """Check if a file contains expected content."""
-    full_path = Path("omnimind_backend") / file_path
+    full_path = Path("mindflow_backend") / file_path
     if not full_path.exists():
         print(f"❌ {description}: file not found")
         return False
@@ -58,7 +58,7 @@ def main():
     
     for dir_path, desc in directories:
         total_tests += 1
-        full_path = Path("omnimind_backend") / dir_path
+        full_path = Path("mindflow_backend") / dir_path
         if full_path.exists() and full_path.is_dir():
             print(f"✅ {desc}")
             tests_passed += 1
@@ -141,7 +141,7 @@ def main():
     
     for file_path, desc in old_files:
         total_tests += 1
-        full_path = Path("python/omnimind_backend") / file_path
+        full_path = Path("python/mindflow_backend") / file_path
         if not full_path.exists():
             print(f"✅ {desc}: correctly removed")
             tests_passed += 1

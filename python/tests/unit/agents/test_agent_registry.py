@@ -2,13 +2,13 @@
 
 import pytest
 
-from omnimind_backend.agents._registry import (
+from mindflow_backend.agents._registry import (
     AgentRegistry,
     get_registry,
     register_all_personalities,
 )
-from omnimind_backend.agents.personalities.coder import create_coder_agent
-from omnimind_backend.schemas.orchestrator import AgentType
+from mindflow_backend.agents.personalities.coder import create_coder_agent
+from mindflow_backend.schemas.orchestrator import AgentType
 
 
 @pytest.fixture(autouse=True)

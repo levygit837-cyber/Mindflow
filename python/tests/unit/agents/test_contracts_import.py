@@ -9,7 +9,7 @@ def test_imports():
     
     # Test main interfaces import
     try:
-        from omnimind_backend.agents.interfaces import (
+        from mindflow_backend.agents.interfaces import (
             # Core interfaces
             ContextRetriever,
             VectorStore,
@@ -61,9 +61,9 @@ def test_imports():
     
     # Test individual module imports
     try:
-        from omnimind_backend.agents.interfaces.core import SessionManagerContract, StreamingContract
-        from omnimind_backend.agents.interfaces.agents import CorePersonalityContract, EnhancedCoder, EnhancedAnalyst, EnhancedReviewer
-        from omnimind_backend.agents.interfaces.orchestrator import OrchestratorCoreContract, PersonalityManagerContract, DelegationManagerContract
+        from mindflow_backend.agents.interfaces.core import SessionManagerContract, StreamingContract
+        from mindflow_backend.agents.interfaces.agents import CorePersonalityContract, EnhancedCoder, EnhancedAnalyst, EnhancedReviewer
+        from mindflow_backend.agents.interfaces.orchestrator import OrchestratorCoreContract, PersonalityManagerContract, DelegationManagerContract
         print("✅ All module imports successful")
     except ImportError as e:
         print(f"❌ Module import error: {e}")
@@ -72,7 +72,7 @@ def test_imports():
     # Test that contracts are runtime checkable
     try:
         import inspect
-        from omnimind_backend.agents.interfaces.agents.core_personality import CorePersonalityContract
+        from mindflow_backend.agents.interfaces.agents.core_personality import CorePersonalityContract
         
         # Check if it has _is_runtime_protocol attribute (runtime_checkable)
         if hasattr(CorePersonalityContract, '_is_runtime_protocol'):
@@ -98,12 +98,12 @@ def test_schema_integration():
     
     try:
         # Test schema imports used in contracts
-        from omnimind_backend.schemas.orchestration.orchestrator import OrchestratorDecision, AgentType
-        from omnimind_backend.schemas.orchestration.personality import PersonalityDecisionResult, PersonalityType
-        from omnimind_backend.schemas.orchestration.delegation import DelegationTask, DelegationResult
-        from omnimind_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
-        from omnimind_backend.schemas.agents.research import ResearchRequest, ResearchResponse
-        from omnimind_backend.schemas.session.contracts import SessionReview, RetrievedContext
+        from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, AgentType
+        from mindflow_backend.schemas.orchestration.personality import PersonalityDecisionResult, PersonalityType
+        from mindflow_backend.schemas.orchestration.delegation import DelegationTask, DelegationResult
+        from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
+        from mindflow_backend.schemas.agents.research import ResearchRequest, ResearchResponse
+        from mindflow_backend.schemas.session.contracts import SessionReview, RetrievedContext
         
         print("✅ All schema imports successful")
         return True
@@ -115,7 +115,7 @@ def test_schema_integration():
 def main():
     """Run all validation tests."""
     
-    print("🔍 Validating OmniMind Contract Implementation")
+    print("🔍 Validating MindFlow Contract Implementation")
     print("=" * 50)
     
     # Test imports

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from omnimind_backend.schemas.agent import AgentChatRequest
+from mindflow_backend.schemas.agent import AgentChatRequest
 
 
 def test_agent_chat_requires_message() -> None:

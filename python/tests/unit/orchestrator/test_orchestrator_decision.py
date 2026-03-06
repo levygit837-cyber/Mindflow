@@ -1,6 +1,6 @@
 """Tests for orchestrator decision schemas."""
 
-from omnimind_backend.schemas.orchestrator import (
+from mindflow_backend.schemas.orchestrator import (
     AgentType,
     ChainStep,
     OrchestratorDecision,

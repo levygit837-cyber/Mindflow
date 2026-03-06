@@ -1,6 +1,6 @@
 """Tests for Creative agent output schemas."""
 
-from omnimind_backend.schemas.creative import (
+from mindflow_backend.schemas.creative import (
     CreativeOutput,
     CreativeWorkType,
     DiscardedPath,

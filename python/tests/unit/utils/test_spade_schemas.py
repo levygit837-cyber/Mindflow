@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from omnimind_backend.schemas.spade import (
+from mindflow_backend.schemas.spade import (
     AgentEnvelope,
     ExecutionMode,
     Intent,
@@ -19,7 +19,7 @@ def test_agent_envelope_creation() -> None:
         message_id=uuid4(),
         correlation_id=uuid4(),
         conversation_id="conv-123",
-        sender_jid="orchestrator@omnimind",
+        sender_jid="orchestrator@mindflow",
         performative=Performative.REQUEST,
         intent=Intent.DELEGATE_TASK,
         payload={"task": "analyze code"},
@@ -57,13 +57,13 @@ def test_envelope_round_trip() -> None:
         message_id=uuid4(),
         correlation_id=uuid4(),
         conversation_id="conv-456",
-        sender_jid="coder@omnimind",
-        recipient_jid="orchestrator@omnimind",
+        sender_jid="coder@mindflow",
+        recipient_jid="orchestrator@mindflow",
         performative=Performative.INFORM,
         intent=Intent.REASONING_RESULT,
         payload={"result": "done"},
     )
     data = env.model_dump(mode="json")
     restored = AgentEnvelope.model_validate(data)
-    assert restored.sender_jid == "coder@omnimind"
+    assert restored.sender_jid == "coder@mindflow"
     assert restored.schema_version == "spade.v1"

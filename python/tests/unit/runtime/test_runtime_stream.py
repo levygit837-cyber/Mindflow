@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from omnimind_backend.runtime.stream import AgentRuntime
-from omnimind_backend.schemas.agent import AgentChatRequest
+from mindflow_backend.runtime.stream import AgentRuntime
+from mindflow_backend.schemas.agent import AgentChatRequest
 
 
 class _DummyResponse:
@@ -44,10 +44,10 @@ class _DummyModelWithThinkingList:
 @pytest.mark.asyncio
 async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
     from unittest.mock import MagicMock
-    monkeypatch.setattr("omnimind_backend.runtime.stream.db_session", MagicMock())
-    monkeypatch.setattr("omnimind_backend.runtime.stream.ChatRepository", MagicMock())
+    monkeypatch.setattr("mindflow_backend.runtime.stream.db_session", MagicMock())
+    monkeypatch.setattr("mindflow_backend.runtime.stream.ChatRepository", MagicMock())
     monkeypatch.setattr(
-        "omnimind_backend.runtime.stream.get_model_for_provider",
+        "mindflow_backend.runtime.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
     )
 
@@ -82,14 +82,14 @@ async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None:
     monkeypatch.setattr(
-        "omnimind_backend.runtime.stream.get_model_for_provider",
+        "mindflow_backend.runtime.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
     )
 
     async def _fake_search(_query: str) -> str:
         return "fresh web context"
 
-    monkeypatch.setattr("omnimind_backend.runtime.stream.search_web", _fake_search)
+    monkeypatch.setattr("mindflow_backend.runtime.stream.search_web", _fake_search)
 
     runtime = AgentRuntime()
     payload = AgentChatRequest(message="search latest docs", provider="openai", model="stub")
@@ -104,10 +104,10 @@ async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None
 async def test_stream_contract_extracts_thought_and_response_from_list_content(monkeypatch) -> None:
     from unittest.mock import MagicMock
 
-    monkeypatch.setattr("omnimind_backend.runtime.stream.db_session", MagicMock())
-    monkeypatch.setattr("omnimind_backend.runtime.stream.ChatRepository", MagicMock())
+    monkeypatch.setattr("mindflow_backend.runtime.stream.db_session", MagicMock())
+    monkeypatch.setattr("mindflow_backend.runtime.stream.ChatRepository", MagicMock())
     monkeypatch.setattr(
-        "omnimind_backend.runtime.stream.get_model_for_provider",
+        "mindflow_backend.runtime.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModelWithThinkingList(),
     )
 
