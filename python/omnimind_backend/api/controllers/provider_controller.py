@@ -12,7 +12,7 @@ from omnimind_backend.api.schemas.responses import (
     ProviderListResponse,
     ProviderTestResponse
 )
-from omnimind_backend.api.services.provider_service import ProviderService
+from omnimind_backend.services import get_provider_service
 
 
 class ProviderController(BaseController):
@@ -20,7 +20,7 @@ class ProviderController(BaseController):
     
     def __init__(self):
         super().__init__()
-        self.provider_service = ProviderService()
+        self.provider_service = get_provider_service()
     
     @require_auth
     @audit_log("provider_list")

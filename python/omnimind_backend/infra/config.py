@@ -109,18 +109,39 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
     semantic_context_limit: int = Field(default=10, alias="SEMANTIC_CONTEXT_LIMIT")
 
-    # Session Review System
-    enable_session_review_agent: bool = Field(default=False, alias="ENABLE_SESSION_REVIEW_AGENT")
-    session_review_window_size: int = Field(default=10000, alias="SESSION_REVIEW_WINDOW_SIZE")
-    session_review_trigger_threshold: int = Field(default=10000, alias="SESSION_REVIEW_TRIGGER_THRESHOLD")
-    session_review_max_reviews: int = Field(default=50, alias="SESSION_REVIEW_MAX_REVIEWS")
-    session_review_retention_days: int = Field(default=30, alias="SESSION_REVIEW_RETENTION_DAYS")
-    session_review_auto_advance: bool = Field(default=True, alias="SESSION_REVIEW_AUTO_ADVANCE")
-
+    
+    # gRPC Configuration
+    grpc_enabled: bool = Field(default=True, alias="GRPC_ENABLED")
+    grpc_auto_start: bool = Field(default=True, alias="GRPC_AUTO_START")
     grpc_host: str = Field(default="0.0.0.0", alias="GRPC_HOST")
     grpc_port: int = Field(default=50051, alias="GRPC_PORT")
     grpc_tls_cert_path: str | None = Field(default=None, alias="GRPC_TLS_CERT_PATH")
     grpc_tls_key_path: str | None = Field(default=None, alias="GRPC_TLS_KEY_PATH")
+    grpc_tls_ca_path: str | None = Field(default=None, alias="GRPC_TLS_CA_PATH")
+    grpc_secure: bool = Field(default=False, alias="GRPC_SECURE")
+    grpc_max_connections: int = Field(default=100, alias="GRPC_MAX_CONNECTIONS")
+    grpc_connection_timeout_seconds: int = Field(default=30, alias="GRPC_CONNECTION_TIMEOUT_SECONDS")
+    grpc_max_attempts: int = Field(default=3, alias="GRPC_MAX_ATTEMPTS")
+    grpc_default_timeout_seconds: int = Field(default=300, alias="GRPC_DEFAULT_TIMEOUT_SECONDS")
+    grpc_enable_metrics: bool = Field(default=True, alias="GRPC_ENABLE_METRICS")
+    grpc_enable_health_check: bool = Field(default=True, alias="GRPC_ENABLE_HEALTH_CHECK")
+    grpc_health_check_interval_seconds: int = Field(default=30, alias="GRPC_HEALTH_CHECK_INTERVAL_SECONDS")
+    grpc_reflection_enabled: bool = Field(default=False, alias="GRPC_REFLECTION_ENABLED")
+    
+    # gRPC Monitoring Configuration
+    grpc_prometheus_port: int = Field(default=9090, alias="GRPC_PROMETHEUS_PORT")
+    grpc_metrics_history_size: int = Field(default=1000, alias="GRPC_METRICS_HISTORY_SIZE")
+    grpc_system_metrics_interval: int = Field(default=5, alias="GRPC_SYSTEM_METRICS_INTERVAL")
+    
+    # gRPC Resilience Configuration
+    grpc_circuit_breaker_enabled: bool = Field(default=True, alias="GRPC_CIRCUIT_BREAKER_ENABLED")
+    grpc_circuit_breaker_threshold: int = Field(default=5, alias="GRPC_CIRCUIT_BREAKER_THRESHOLD")
+    grpc_circuit_breaker_recovery_timeout: int = Field(default=60, alias="GRPC_CIRCUIT_BREAKER_RECOVERY_TIMEOUT")
+    grpc_circuit_breaker_success_threshold: int = Field(default=3, alias="GRPC_CIRCUIT_BREAKER_SUCCESS_THRESHOLD")
+    grpc_retry_jitter: bool = Field(default=True, alias="GRPC_RETRY_JITTER")
+    grpc_retry_max_delay: int = Field(default=10, alias="GRPC_RETRY_MAX_DELAY")
+    grpc_timeout_adaptive: bool = Field(default=True, alias="GRPC_TIMEOUT_ADAPTIVE")
+    grpc_timeout_deadline_propagation: bool = Field(default=True, alias="GRPC_TIMEOUT_DEADLINE_PROPAGATION")
 
 
 @lru_cache(maxsize=1)

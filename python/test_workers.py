@@ -55,7 +55,7 @@ async def test_worker_imports():
     try:
         from omnimind_backend.workers import (
             CoderWorker, AnalystWorker, ResearcherWorker, OrchestratorWorker,
-            SessionReviewWorker, VectorWorker, MemoryWorker, HealthWorker,
+            VectorWorker, MemoryWorker, HealthWorker,
             BrowserWorker, ContentWorker,
             QueueManager, WorkerFactory, WorkerMonitor
         )

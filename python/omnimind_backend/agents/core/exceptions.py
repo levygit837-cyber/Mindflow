@@ -89,13 +89,6 @@ class DependencyInjectionError(AgentSystemError):
         self.dependency_type = dependency_type
 
 
-class SessionReviewError(AgentSystemError):
-    """Raised when session review operations fail."""
-    
-    def __init__(self, message: str, session_id: str | None = None, task_id: str | None = None):
-        super().__init__(message)
-        self.session_id = session_id
-        self.task_id = task_id
 
 
 class AgentRegistrationError(AgentSystemError):

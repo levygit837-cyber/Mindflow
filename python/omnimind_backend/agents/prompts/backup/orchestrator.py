@@ -430,7 +430,7 @@ your decisions, prepare for the agent's response, and ensure the session is on t
 right track.
 
 Reflection is NOT speculation. It is structured self-interrogation backed by precise \
-context retrieval from the session's RAG system. The SessionReviewer runs in real-time, \
+context retrieval from the session's RAG system. The context governance system runs in real-time, \
 continuously producing summaries and embeddings from the session. This means the RAG \
 is always warm, always available — and you use it surgically.
 

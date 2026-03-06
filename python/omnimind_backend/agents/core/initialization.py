@@ -32,8 +32,6 @@ from omnimind_backend.agents.personality.configuration import (
     PersonalityConfigurationBuilder,
     DelegationTaskBuilder,
 )
-from omnimind_backend.agents.review.analyzer import get_session_review_analyzer, SessionReviewContentAnalyzer
-from omnimind_backend.agents.review.parser import get_session_review_parser, SessionReviewResultParser
 from omnimind_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -53,8 +51,6 @@ def initialize_agent_system() -> None:
         # Register personality implementations
         _register_personality_implementations()
         
-        # Register review implementations
-        _register_review_implementations()
         
         _logger.info("agent_system_initialization_completed")
     
@@ -96,15 +92,6 @@ def _register_personality_implementations() -> None:
     _logger.debug("personality_implementations_registered")
 
 
-def _register_review_implementations() -> None:
-    """Register session review implementations."""
-    # Register review analyzer
-    register_singleton(ContentAnalyzer, SessionReviewContentAnalyzer)
-    
-    # Register result parser
-    register_singleton(ResultParser, SessionReviewResultParser)
-    
-    _logger.debug("review_implementations_registered")
 
 
 def get_initialization_status() -> dict[str, bool]:

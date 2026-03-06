@@ -27,11 +27,6 @@ python/omnimind_backend/agents/
 │   ├── configuration.py    # Config builders
 │   ├── sub_personalities.py # Sub-personalities (unified)
 │   └── dynamic_prompts.py  # Dynamic prompt system
-├── review/                 # Session review subsystem
-│   ├── __init__.py         # Public API
-│   ├── agent.py            # SessionReviewAgent (moved)
-│   ├── analyzer.py         # Content analyzer
-│   └── parser.py           # Result parser
 ├── prompts/                # Legacy prompts (deprecated)
 ├── personalities/          # Legacy personalities (deprecated)
 └── _base.py, _registry.py   # Core system (unchanged)
@@ -155,14 +150,12 @@ result = await agent.review_session_window(task, context)
 ```python
 from omnimind_backend.agents.context_retriever import AgentContextRetriever
 from omnimind_backend.agents.personality_selector import PersonalitySelector
-from omnimind_backend.agents.session_review_agent import SessionReviewAgentImplementation
 ```
 
 **New imports:**
 ```python
 from omnimind_backend.agents.context import AgentContextRetriever
 from omnimind_backend.agents.personality import PersonalitySelector
-from omnimind_backend.agents.review import SessionReviewAgentImplementation
 ```
 
 ### Legacy Compatibility
@@ -172,7 +165,6 @@ Legacy imports still work but are deprecated:
 # Still works but deprecated
 from omnimind_backend.agents import get_agent_context_retriever
 from omnimind_backend.agents import get_personality_selector
-from omnimind_backend.agents import get_session_review_agent
 ```
 
 ## 🎯 Benefits

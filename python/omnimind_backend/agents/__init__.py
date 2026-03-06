@@ -3,7 +3,6 @@
 Unified agent architecture with modular components:
 - Context retrieval with RAG and vector search
 - Personality system with dynamic prompts and sub-personalities  
-- Session review with structured analysis
 - Core interfaces and dependency injection
 
 Public API:
@@ -11,7 +10,7 @@ Public API:
     - ``AgentRegistry`` — personality registry singleton
     - ``get_agent`` — retrieve a personality by type
     - ``register_all_personalities`` — startup bootstrap
-    - Context, Personality, and Review subsystems
+    - Context and Personality subsystems
 """
 
 # Core agent system
@@ -26,12 +25,10 @@ from omnimind_backend.agents._registry import (
 # Modular subsystems
 from omnimind_backend.agents import context
 from omnimind_backend.agents import personality
-from omnimind_backend.agents import review
 
 # Legacy compatibility (deprecated - use subsystems above)
 from omnimind_backend.agents.context import get_agent_context_retriever
 from omnimind_backend.agents.personality import get_personality_selector
-from omnimind_backend.agents.review import get_session_review_agent
 
 __all__ = [
     # Core system
@@ -45,10 +42,8 @@ __all__ = [
     # Subsystems
     "context",
     "personality", 
-    "review",
     
     # Legacy compatibility
     "get_agent_context_retriever",
     "get_personality_selector",
-    "get_session_review_agent",
 ]

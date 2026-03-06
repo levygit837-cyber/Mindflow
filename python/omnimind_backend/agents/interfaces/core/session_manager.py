@@ -18,7 +18,6 @@ from omnimind_backend.schemas.session.contracts import (
     SubSessionReview,
     SummarizationReview,
 )
-from omnimind_backend.schemas.session.review import ReviewExecutionContext
 
 
 @runtime_checkable

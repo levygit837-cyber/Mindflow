@@ -33,10 +33,7 @@ def test_subsystem(subsystem: str, description: str) -> bool:
         elif subsystem == "personality":
             assert hasattr(module, 'get_personality_selector')
             assert hasattr(module, 'get_personality_config_builder')
-        elif subsystem == "review":
-            assert hasattr(module, 'SessionReviewAgentImplementation')
-            assert hasattr(module, 'get_session_review_agent')
-        
+                
         return True
     except Exception as e:
         print(f"❌ {description}: {e}")

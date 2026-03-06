@@ -103,17 +103,6 @@ class QueueDefinitions:
     )
     
     # System queues
-    SESSION_REVIEW_HIGH = QueueConfig(
-        name="session_review_high",
-        domain=WorkerDomain.SYSTEM,
-        worker_type="session_review",
-        priority=QueuePriority.HIGH,
-        routing_key="system.session_review.high",
-        concurrency=2,
-        max_retries=2,
-        retry_delay=120,
-    )
-    
     VECTOR_MEDIUM = QueueConfig(
         name="vector_medium",
         domain=WorkerDomain.SYSTEM,
@@ -173,7 +162,7 @@ class QueueDefinitions:
         # Agent queues
         CODER_CRITICAL, CODER_HIGH, ANALYST_HIGH, RESEARCHER_HIGH, ORCHESTRATOR_CRITICAL,
         # System queues
-        SESSION_REVIEW_HIGH, VECTOR_MEDIUM, MEMORY_LOW, HEALTH_LOW,
+        VECTOR_MEDIUM, MEMORY_LOW, HEALTH_LOW,
         # Research queues
         BROWSER_HIGH, CONTENT_MEDIUM,
     ]

@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from omnimind_backend.infra.config import get_settings
 from omnimind_backend.infra.logging import get_logger
 from omnimind_backend.schemas.session.contracts import RetrievedContext
-from omnimind_backend.services.session_review_service import get_session_review_service
 from omnimind_backend.services.vector_manager import get_vector_manager
 from omnimind_backend.storage.models import (
     AgentMemoryCursor,
@@ -115,7 +114,6 @@ class AgentMemoryService:
         self.summary_window_tokens = summary_window_tokens or settings.memory_summary_window_tokens
         self.retrieval_top_k = retrieval_top_k or settings.memory_retrieval_top_k
         self.embedding_dims = embedding_dims or settings.memory_embedding_dims
-        self.session_review_service = get_session_review_service()
 
     def record_message(
         self,
@@ -145,62 +143,6 @@ class AgentMemoryService:
         cursor = self._get_or_create_cursor(db, session_id=session_id, agent_id=agent_id)
         cursor.token_total += token_count
         cursor.tokens_since_summary += token_count
-
-        # Update session review service if enabled
-        settings = get_settings()
-        if settings.enable_session_review_agent:
-            try:
-                # Schedule async update without blocking
-                import asyncio
-                from omnimind_backend.schemas.session.review import WindowSize
-                
-                # Initialize session review if not already done
-                if not self.session_review_service.get_active_tracker(session_id):
-                    # Schedule initialization for later if we're not in async context
-                    try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            # We're in an async context, schedule for later
-                            loop.call_soon(
-                                lambda: asyncio.create_task(
-                                    self.session_review_service.initialize_session_review(
-                                        session_id,
-                                        window_size=WindowSize.MEDIUM,
-                                    )
-                                )
-                            )
-                        else:
-                            # No loop running, create one
-                            asyncio.run(
-                                self.session_review_service.initialize_session_review(
-                                    session_id,
-                                    window_size=WindowSize.MEDIUM,
-                                )
-                            )
-                    except RuntimeError:
-                        # No event loop, skip session review update
-                        pass
-                
-                # Schedule token count update
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        loop.call_soon(
-                            lambda: asyncio.create_task(
-                                self.session_review_service.update_token_count(session_id, token_count)
-                            )
-                        )
-                except RuntimeError:
-                    # No event loop, skip
-                    pass
-                
-            except Exception as exc:
-                _logger.warning(
-                    "session_review_update_failed",
-                    error=str(exc),
-                    session_id=session_id,
-                    agent_id=agent_id,
-                )
 
         if cursor.tokens_since_summary >= self.summary_window_tokens:
             self._summarize_pending_window(

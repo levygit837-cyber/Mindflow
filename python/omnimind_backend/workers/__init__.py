@@ -10,7 +10,7 @@ from .base import BaseWorker, WorkerError, WorkerConfigurationError, WorkerConne
 from .agents import CoderWorker, AnalystWorker, ResearcherWorker, OrchestratorWorker
 
 # System workers
-from .system import SessionReviewWorker, VectorWorker, MemoryWorker, HealthWorker
+from .system import VectorWorker, MemoryWorker, HealthWorker
 
 # Research workers
 from .research import BrowserWorker, ContentWorker
@@ -47,7 +47,6 @@ __all__ = [
     "OrchestratorWorker",
     
     # System workers
-    "SessionReviewWorker",
     "VectorWorker",
     "MemoryWorker",
     "HealthWorker",
