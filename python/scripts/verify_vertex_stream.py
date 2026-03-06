@@ -11,8 +11,8 @@ from typing import Any
 
 import httpx
 
-from omnimind_backend.schemas.agent import StreamEvent
-from omnimind_cli.sse import iter_sse_payloads
+from mindflow_backend.schemas.agent import StreamEvent
+from mindflow_cli.sse import iter_sse_payloads
 
 
 def _wait_for_health(base_url: str, attempts: int = 20, sleep_seconds: float = 1.5) -> dict[str, Any]:
@@ -66,7 +66,7 @@ def _persist_report(report: dict[str, Any], logs_dir: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify Vertex stream emits thought, response and done events.")
-    parser.add_argument("--base-url", default=os.getenv("OMNIMIND_API_URL", "http://127.0.0.1:8000"))
+    parser.add_argument("--base-url", default=os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000"))
     parser.add_argument("--provider", default="vertexai")
     parser.add_argument("--model", default="gemini-3-flash-preview")
     parser.add_argument("--agent-type", default="coder")

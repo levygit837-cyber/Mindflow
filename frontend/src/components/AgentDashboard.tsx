@@ -261,7 +261,7 @@ const AgentDashboard: React.FC = () => {
           zIndex: 5
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)' }}>OmniMind</span>
+            <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)' }}>MindFlow</span>
             <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>/</span>
             <span style={{ 
               fontSize: '14px', 
@@ -303,7 +303,7 @@ const AgentDashboard: React.FC = () => {
                         <Cpu size={48} color="var(--brand-primary)" style={{ opacity: 0.8 }} />
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                        <h2 style={{ color: 'var(--text-primary)', fontSize: '20px', marginBottom: '8px' }}>Welcome to OmniMind</h2>
+                        <h2 style={{ color: 'var(--text-primary)', fontSize: '20px', marginBottom: '8px' }}>Welcome to MindFlow</h2>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '400px', lineHeight: '1.5' }}>
                             I'm your engineering assistant. Select an agent personality or ask a complex question to trigger multi-step reasoning.
                         </p>
@@ -332,7 +332,7 @@ const AgentDashboard: React.FC = () => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 disabled={isStreaming}
-                placeholder="Ask OmniMind anything..." 
+                placeholder="Ask MindFlow anything..." 
                 style={{
                   background: 'none',
                   border: 'none',

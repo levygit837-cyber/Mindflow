@@ -1,4 +1,4 @@
-# Correções de Erros no Frontend OmniMind
+# Correções de Erros no Frontend MindFlow
 
 ## Problemas Resolvidos
 
