@@ -25,7 +25,7 @@ export const SettingsPage: React.FC = () => {
           Settings
         </h1>
         <p className="text-text-secondary">
-          Customize your OmniMind experience
+          Customize your MindFlow experience
         </p>
       </div>
 

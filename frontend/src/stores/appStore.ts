@@ -242,7 +242,7 @@ export const useAppStore = create<AppStore>()(
           }),
       }),
       {
-        name: 'omnimind-store',
+        name: 'mindflow-store',
         partialize: (state) => ({
           settings: state.settings,
           theme: state.theme,
@@ -253,7 +253,7 @@ export const useAppStore = create<AppStore>()(
       }
     ),
     {
-      name: 'omnimind-store',
+      name: 'mindflow-store',
     }
   )
 );

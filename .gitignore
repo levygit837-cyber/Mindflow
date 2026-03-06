@@ -43,6 +43,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 python/.env
+python/*.egg-info/
 
 # local data
 /data/
@@ -59,7 +60,7 @@ python/backups/
 
 # desktop runtime artifacts
 python/.qt/
-python/omnimind_desktop/.cache/
+python/mindflow_desktop/.cache/
 python/.logs/
 
 # searxng docker volume (permission-restricted)

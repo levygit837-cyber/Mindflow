@@ -30,7 +30,7 @@ export const DashboardPage: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-text-primary mb-2">
-          Welcome to OmniMind
+          Welcome to MindFlow
         </h1>
         <p className="text-text-secondary">
           Your multi-agent AI assistant system

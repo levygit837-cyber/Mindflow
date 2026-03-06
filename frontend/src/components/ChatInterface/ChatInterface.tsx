@@ -37,7 +37,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId: _sessio
                 Start a conversation
               </h3>
               <p className="text-text-secondary">
-                Choose an agent and begin chatting with OmniMind
+                Choose an agent and begin chatting with MindFlow
               </p>
             </motion.div>
           </div>
