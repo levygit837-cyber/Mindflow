@@ -93,3 +93,17 @@ start_dev.sh
 
 # Claude Code worktrees (local only)
 .claude/worktrees/
+
+# AI tools and IDE configurations
+.windsurf/
+.claude/
+
+# Project documentation and analysis files
+.env.example
+.complexity-log.md
+.OmniMind-project-structure.md
+ANALYSIS_REPORT.md
+MIGRATION_GUIDE.md
+SERVICES_RESTRUCTURE_SUMMARY.md
+CLAUDE.md
+AGENTS.md
