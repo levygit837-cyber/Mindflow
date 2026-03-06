@@ -47,15 +47,7 @@ class TestPhase1AgentContractParity:
         assert "critic" in ANALYST_SUB_PERSONALITIES
         assert len(ANALYST_SUB_PERSONALITIES["critic"].strip()) > 0
 
-    def test_session_review_agent_importable(self) -> None:
-        """Test that session review agent shim works."""
-        try:
-            from omnimind_backend.agents.session_review_agent import get_session_review_agent
-            # Just test import - actual functionality depends on enable_session_review_agent flag
-            assert callable(get_session_review_agent)
-        except ImportError as exc:
-            pytest.skip(f"Session review agent import failed: {exc}")
-
+    
 
 class TestPhase2ContextGovernance:
     """Phase 2: Input normalization and context governance active."""

@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from omnimind_backend.api.controllers.base_controller import BaseController, require_auth, sanitize_input, rate_limit, audit_log
 from omnimind_backend.api.schemas.requests import AgentChatRequest
 from omnimind_backend.api.schemas.responses import AgentResponse
-from omnimind_backend.api.services.agent_service import AgentService
+from omnimind_backend.services import get_agent_service
 from omnimind_backend.grpc.client import LocalAgentClient
 from omnimind_backend.infra.sanitizer import SanitizationError, sanitize_message
 from omnimind_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
@@ -20,7 +20,7 @@ class AgentController(BaseController):
     
     def __init__(self):
         super().__init__()
-        self.agent_service = AgentService()
+        self.agent_service = get_agent_service()
     
     @require_auth
     @sanitize_input

@@ -17,7 +17,7 @@ from omnimind_backend.api.schemas.responses import (
     MemorySummaryResponse,
     ContextWindowResponse
 )
-from omnimind_backend.api.services.memory_service import MemoryService
+from omnimind_backend.services import get_memory_service
 
 
 class MemoryController(BaseController):
@@ -25,7 +25,7 @@ class MemoryController(BaseController):
     
     def __init__(self):
         super().__init__()
-        self.memory_service = MemoryService()
+        self.memory_service = get_memory_service()
     
     @require_auth
     @audit_log("memory_get_agent")

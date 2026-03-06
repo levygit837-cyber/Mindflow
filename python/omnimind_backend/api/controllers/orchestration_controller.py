@@ -17,7 +17,7 @@ from omnimind_backend.api.schemas.responses import (
     PersonalitySelectionResponse,
     ExecutionStatusResponse
 )
-from omnimind_backend.api.services.orchestration_service import OrchestrationService
+from omnimind_backend.services import get_orchestration_service
 
 
 class OrchestrationController(BaseController):
@@ -25,7 +25,7 @@ class OrchestrationController(BaseController):
     
     def __init__(self):
         super().__init__()
-        self.orchestration_service = OrchestrationService()
+        self.orchestration_service = get_orchestration_service()
     
     @require_auth
     @audit_log("orchestration_decompose")

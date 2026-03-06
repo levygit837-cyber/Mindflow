@@ -15,7 +15,6 @@ from omnimind_backend.workers.research.browser_worker import BrowserWorker
 from omnimind_backend.workers.research.content_worker import ContentWorker
 from omnimind_backend.workers.system.health_worker import HealthWorker
 from omnimind_backend.workers.system.memory_worker import MemoryWorker
-from omnimind_backend.workers.system.session_review_worker import SessionReviewWorker
 from omnimind_backend.workers.system.vector_worker import VectorWorker
 
 _logger = get_logger(__name__)
@@ -33,7 +32,6 @@ class WorkerFactory:
         "orchestrator": OrchestratorWorker,
         
         # System workers
-        "session_review": SessionReviewWorker,
         "vector": VectorWorker,
         "memory": MemoryWorker,
         "health": HealthWorker,
@@ -106,7 +104,6 @@ class WorkerFactory:
             "analyst": "analyst_high",
             "researcher": "researcher_high",
             "orchestrator": "orchestrator_critical",
-            "session_review": "session_review_high",
             "vector": "vector_medium",
             "memory": "memory_low",
             "health": "health_low",

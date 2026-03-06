@@ -166,51 +166,6 @@ class ApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-# Context Governance Models
-
-class SessionReview(Base):
-    __tablename__ = "session_reviews"
-
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    main_session_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    token_range: Mapped[str] = mapped_column(String(20), nullable=False)
-    execution_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
-    execution_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
-    context_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
-    context_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
-    mode: Mapped[str] = mapped_column(String(10), default="normal")
-    parent_session_id: Mapped[UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    current_window_position: Mapped[int] = mapped_column(Integer, default=0)
-    total_tokens_processed: Mapped[int] = mapped_column(Integer, default=0)
-    session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
-
-    # Relationships
-    child_sessions: Mapped[list["SubSessionReview"]] = relationship(
-        "SubSessionReview", back_populates="parent_session", cascade="all, delete-orphan"
-    )
-
-
-class SubSessionReview(Base):
-    __tablename__ = "sub_session_reviews"
-
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    parent_session_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("session_reviews.id"), nullable=False, index=True
-    )
-    main_session_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    token_sub_range: Mapped[str] = mapped_column(String(20), nullable=False)
-    execution_window_start: Mapped[int] = mapped_column(Integer, nullable=False)
-    execution_window_end: Mapped[int] = mapped_column(Integer, nullable=False)
-    relationship_type: Mapped[str] = mapped_column(String(20), default="sequential")
-    dependency_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
-
-    # Relationships
-    parent_session: Mapped["SessionReview"] = relationship("SessionReview", back_populates="child_sessions")
 
 
 class SessionRetriever(Base):

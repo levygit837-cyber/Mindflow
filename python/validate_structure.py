@@ -155,10 +155,9 @@ def check_file_contents():
     
     # Check __init__.py files have proper exports
     init_files = [
-        ("agents/__init__.py", ["context", "personality", "review"]),
+        ("agents/__init__.py", ["context", "personality"]),
         ("agents/context/__init__.py", ["AgentContextRetriever", "get_agent_context_retriever"]),
         ("agents/personality/__init__.py", ["get_personality_selector", "DynamicPromptBuilder"]),
-        ("agents/review/__init__.py", ["SessionReviewAgentImplementation", "get_session_review_agent"]),
     ]
     
     for file_path, expected_exports in init_files:

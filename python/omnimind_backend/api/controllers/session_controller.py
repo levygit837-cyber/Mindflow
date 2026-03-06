@@ -10,7 +10,7 @@ from omnimind_backend.api.controllers.base_controller import BaseController, req
 from omnimind_backend.api.schemas.requests import SessionCreateRequest, SessionUpdateRequest
 from omnimind_backend.api.schemas.responses import SessionResponse, SessionListResponse
 from omnimind_backend.api.schemas.common import PaginationParams
-from omnimind_backend.api.services.session_service import SessionService
+from omnimind_backend.services import get_session_service
 from omnimind_backend.storage.db import db_session
 
 
@@ -19,7 +19,7 @@ class SessionController(BaseController):
     
     def __init__(self):
         super().__init__()
-        self.session_service = SessionService()
+        self.session_service = get_session_service()
     
     def get_db_dependency(self):
         """Get database session dependency."""
