@@ -2,11 +2,11 @@
 
 from uuid import uuid4
 
-from omnimind_backend.orchestrator.decomposition.scoring import (
+from mindflow_backend.orchestrator.decomposition.scoring import (
     compute_task_score,
     is_validated,
 )
-from omnimind_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
     TaskEvidence,
     TaskStatus,
     SubTaskState,

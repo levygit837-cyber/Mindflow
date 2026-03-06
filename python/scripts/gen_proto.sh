@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python -m grpc_tools.protoc \
-  -I ./omnimind_backend/grpc/proto \
-  --python_out=./omnimind_backend/grpc/generated \
-  --grpc_python_out=./omnimind_backend/grpc/generated \
-  ./omnimind_backend/grpc/proto/omnimind_backend.proto
+  -I ./mindflow_backend/grpc/proto \
+  --python_out=./mindflow_backend/grpc/generated \
+  --grpc_python_out=./mindflow_backend/grpc/generated \
+  ./mindflow_backend/grpc/proto/mindflow_backend.proto

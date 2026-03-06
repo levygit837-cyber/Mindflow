@@ -9,9 +9,9 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "python"))
 
-from omnimind_backend.workers.infrastructure.worker_factory import WorkerFactory
-from omnimind_backend.workers.infrastructure.queue_manager import QueueManager
-from omnimind_backend.workers.config.settings import get_worker_settings
+from mindflow_backend.workers.infrastructure.worker_factory import WorkerFactory
+from mindflow_backend.workers.infrastructure.queue_manager import QueueManager
+from mindflow_backend.workers.config.settings import get_worker_settings
 
 
 async def test_worker_factory():
@@ -53,7 +53,7 @@ async def test_worker_imports():
     print("\nTesting worker imports...")
     
     try:
-        from omnimind_backend.workers import (
+        from mindflow_backend.workers import (
             CoderWorker, AnalystWorker, ResearcherWorker, OrchestratorWorker,
             VectorWorker, MemoryWorker, HealthWorker,
             BrowserWorker, ContentWorker,
@@ -68,7 +68,7 @@ async def test_worker_imports():
 
 async def main():
     """Run all tests."""
-    print("=== OmniMind Worker System Test ===\n")
+    print("=== MindFlow Worker System Test ===\n")
     
     tests = [
         test_worker_imports,

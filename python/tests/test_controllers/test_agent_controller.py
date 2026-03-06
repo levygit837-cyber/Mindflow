@@ -7,8 +7,8 @@ from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from omnimind_backend.api.controllers.agent_controller import AgentController
-from omnimind_backend.api.schemas.responses import AgentResponse
+from mindflow_backend.api.controllers.agent_controller import AgentController
+from mindflow_backend.api.schemas.responses import AgentResponse
 
 
 class TestAgentController:
@@ -94,7 +94,7 @@ class TestAgentController:
         controller.agent_service = mock_agent_service
         
         # Mock the streaming response
-        with patch('omnimind_backend.api.controllers.agent_controller.StreamingResponse') as mock_response:
+        with patch('mindflow_backend.api.controllers.agent_controller.StreamingResponse') as mock_response:
             mock_response.return_value = AsyncMock()
             
             request = AsyncMock()
@@ -113,8 +113,8 @@ class TestAgentController:
         controller = AgentController()
         controller.agent_service = mock_agent_service
         
-        with patch('omnimind_backend.api.controllers.agent_controller.sanitize_message') as mock_sanitize:
-            from omnimind_backend.infra.sanitizer import SanitizationError
+        with patch('mindflow_backend.api.controllers.agent_controller.sanitize_message') as mock_sanitize:
+            from mindflow_backend.infra.sanitizer import SanitizationError
             mock_sanitize.side_effect = SanitizationError("Invalid content")
             
             request = AsyncMock()
@@ -129,7 +129,7 @@ class TestAgentControllerIntegration:
     
     def test_agent_capabilities_endpoint(self, client: TestClient, mock_agent_service):
         """Test /agent/capabilities/{agent_type} endpoint."""
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.get_capabilities.return_value = AgentResponse(
                 success=True,
@@ -147,7 +147,7 @@ class TestAgentControllerIntegration:
     
     def test_agent_list_endpoint(self, client: TestClient, mock_agent_service):
         """Test /agent/list endpoint."""
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.list_agents.return_value = AgentResponse(
                 success=True,
@@ -165,7 +165,7 @@ class TestAgentControllerIntegration:
     
     def test_agent_validate_endpoint(self, client: TestClient, mock_agent_service):
         """Test /agent/validate endpoint."""
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.validate_request.return_value = AgentResponse(
                 success=True,
@@ -189,7 +189,7 @@ class TestAgentControllerIntegration:
     @pytest.mark.asyncio
     async def test_agent_stream_endpoint_async(self, async_client: AsyncClient, mock_agent_service):
         """Test /agent/chat/stream endpoint with async client."""
-        with patch('omnimind_backend.api.v1.agent.agent_controller') as mock_controller:
+        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
             mock_controller_instance = AsyncMock()
             mock_controller_instance.stream_chat.return_value = AsyncMock()
             mock_controller.return_value = mock_controller_instance

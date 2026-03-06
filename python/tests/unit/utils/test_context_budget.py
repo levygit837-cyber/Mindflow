@@ -1,7 +1,7 @@
 """Tests for context budget tracking."""
 
-from omnimind_backend.orchestrator.context_budget import ContextBudgetTracker
-from omnimind_backend.schemas.context_governance import ContextBudgetConfig, ContextEventType
+from mindflow_backend.orchestrator.context_budget import ContextBudgetTracker
+from mindflow_backend.schemas.context_governance import ContextBudgetConfig, ContextEventType
 
 
 def test_initial_state() -> None:

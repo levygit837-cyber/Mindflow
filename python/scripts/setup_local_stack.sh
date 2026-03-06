@@ -21,9 +21,9 @@ POSTGRES_CONTAINER_NAME="$(get_env_value POSTGRES_CONTAINER_NAME)"
 POSTGRES_USER="$(get_env_value POSTGRES_USER)"
 POSTGRES_DB="$(get_env_value POSTGRES_DB)"
 
-POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-omnimind-postgres-v1}"
-POSTGRES_USER="${POSTGRES_USER:-omnimind_app}"
-POSTGRES_DB="${POSTGRES_DB:-omnimind_v1}"
+POSTGRES_CONTAINER_NAME="${POSTGRES_CONTAINER_NAME:-mindflow-postgres-v1}"
+POSTGRES_USER="${POSTGRES_USER:-mindflow_app}"
+POSTGRES_DB="${POSTGRES_DB:-mindflow_v1}"
 
 echo "Waiting for PostgreSQL container: ${POSTGRES_CONTAINER_NAME}"
 for _ in $(seq 1 45); do
@@ -44,5 +44,5 @@ uv run alembic upgrade head
 uv run pytest -q
 
 echo "Local stack is ready."
-echo "Run API:      uv run omnimind-api"
-echo "Run Desktop:  uv run omnimind-desktop"
+echo "Run API:      uv run mindflow-api"
+echo "Run Desktop:  uv run mindflow-desktop"

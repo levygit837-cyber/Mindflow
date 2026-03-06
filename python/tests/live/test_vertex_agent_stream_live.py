@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 import httpx
 import pytest
 
-from omnimind_backend.schemas.agent import StreamEvent
+from mindflow_backend.schemas.agent import StreamEvent
 
 
 def _live_enabled() -> bool:
@@ -34,7 +34,7 @@ async def _iter_sse_payloads(lines: AsyncIterator[str]) -> AsyncIterator[str]:
 @pytest.mark.asyncio
 @pytest.mark.skipif(not _live_enabled(), reason="Set RUN_LIVE_VERTEX_TESTS=1 to run live Vertex validation")
 async def test_live_vertex_stream_returns_model_thought_and_response() -> None:
-    base_url = os.getenv("OMNIMIND_API_URL", "http://127.0.0.1:8000").rstrip("/")
+    base_url = os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000").rstrip("/")
     payload = {
         "message": "Explique em duas frases por que testes de integração importam.",
         "provider": "vertexai",

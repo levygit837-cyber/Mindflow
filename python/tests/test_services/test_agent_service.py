@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, AsyncMock
 
-from omnimind_backend.api.services.agent_service import AgentService
+from mindflow_backend.api.services.agent_service import AgentService
 
 
 class TestAgentService:
@@ -25,7 +25,7 @@ class TestAgentService:
         """Test processing agent request successfully."""
         service = AgentService()
         
-        with patch('omnimind_backend.api.services.agent_service.LocalAgentClient') as mock_client:
+        with patch('mindflow_backend.api.services.agent_service.LocalAgentClient') as mock_client:
             mock_client_instance = AsyncMock()
             mock_client.return_value = mock_client_instance
             
@@ -59,7 +59,7 @@ class TestAgentService:
         """Test processing request when gRPC client fails."""
         service = AgentService()
         
-        with patch('omnimind_backend.api.services.agent_service.LocalAgentClient') as mock_client:
+        with patch('mindflow_backend.api.services.agent_service.LocalAgentClient') as mock_client:
             mock_client.side_effect = Exception("gRPC error")
             
             result = await service.process_agent_request(
@@ -267,7 +267,7 @@ class TestAgentServiceIntegration:
         assert is_valid is True
         
         # 4. Process the request (with mocked gRPC)
-        with patch('omnimind_backend.api.services.agent_service.LocalAgentClient') as mock_client:
+        with patch('mindflow_backend.api.services.agent_service.LocalAgentClient') as mock_client:
             mock_client_instance = AsyncMock()
             mock_client.return_value = mock_client_instance
             

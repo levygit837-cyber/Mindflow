@@ -9,16 +9,16 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from omnimind_backend.grpc.client import EnhancedGrpcAgentClient
-from omnimind_backend.grpc.server import EnhancedGrpcAgentServer, start_grpc_server, stop_grpc_server
-from omnimind_backend.grpc.config import GrpcConfig, GrpcClientConfig
-from omnimind_backend.grpc.monitoring.metrics import GrpcMetricsCollector
-from omnimind_backend.grpc.monitoring.health import AdvancedHealthChecker
-from omnimind_backend.grpc.resilience.circuit_breaker import GrpcCircuitBreaker, CircuitBreakerConfig
-from omnimind_backend.grpc.resilience.retry import AdvancedRetryPolicy, RetryConfig
-from omnimind_backend.grpc.resilience.timeout import TimeoutManager, TimeoutConfig
-from omnimind_backend.infra.config import get_settings
-from omnimind_backend.infra.logging import get_logger
+from mindflow_backend.grpc.client import EnhancedGrpcAgentClient
+from mindflow_backend.grpc.server import EnhancedGrpcAgentServer, start_grpc_server, stop_grpc_server
+from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
+from mindflow_backend.grpc.monitoring.health import AdvancedHealthChecker
+from mindflow_backend.grpc.resilience.circuit_breaker import GrpcCircuitBreaker, CircuitBreakerConfig
+from mindflow_backend.grpc.resilience.retry import AdvancedRetryPolicy, RetryConfig
+from mindflow_backend.grpc.resilience.timeout import TimeoutManager, TimeoutConfig
+from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -440,7 +440,7 @@ async def example_monitoring_dashboard():
 
 async def main():
     """Run all enhanced examples."""
-    print("🎯 OmniMind Enhanced gRPC Implementation Examples")
+    print("🎯 MindFlow Enhanced gRPC Implementation Examples")
     print("=" * 70)
     print("This script demonstrates the enhanced gRPC client and server")
     print("with comprehensive monitoring, resilience, and advanced features.")
@@ -457,7 +457,7 @@ async def main():
     print("\n✅ Enhanced Examples Completed!")
     print("\n🚀 Next Steps:")
     print("1. Generate gRPC bindings: bash scripts/gen_proto.sh")
-    print("2. Start the application: python -m omnimind_backend.main")
+    print("2. Start the application: python -m mindflow_backend.main")
     print("3. View Prometheus metrics: http://localhost:9090/metrics")
     print("4. Check health status: http://localhost:8000/health")
     print("5. Monitor circuit breakers and retry policies in logs")

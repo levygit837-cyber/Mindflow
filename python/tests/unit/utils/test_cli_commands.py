@@ -3,10 +3,10 @@ from io import StringIO
 from rich.console import Console
 from typer.testing import CliRunner
 
-from omnimind_backend.schemas.agent import StreamEvent
-from omnimind_cli.app import app
-from omnimind_cli.render.chat_stream import ChatStreamRenderer
-from omnimind_cli.sse import iter_sse_payloads
+from mindflow_backend.schemas.agent import StreamEvent
+from mindflow_cli.app import app
+from mindflow_cli.render.chat_stream import ChatStreamRenderer
+from mindflow_cli.sse import iter_sse_payloads
 
 runner = CliRunner()
 
@@ -57,7 +57,7 @@ def test_health_command_uses_client_and_prints_status(monkeypatch) -> None:
         def get_health(self) -> dict[str, str]:
             return {"status": "ok"}
 
-    monkeypatch.setattr("omnimind_cli.commands.health.build_client", lambda _base_url: _DummyClient())
+    monkeypatch.setattr("mindflow_cli.commands.health.build_client", lambda _base_url: _DummyClient())
 
     result = runner.invoke(app, ["health", "--base-url", "http://127.0.0.1:8000"])
 
@@ -86,7 +86,7 @@ def test_chat_command_streams_response(monkeypatch) -> None:
             yield _event("response", "final", seq=3)
             yield _event("done", "", seq=4)
 
-    monkeypatch.setattr("omnimind_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
+    monkeypatch.setattr("mindflow_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
 
     result = runner.invoke(
         app,
@@ -132,7 +132,7 @@ def test_connect_command_runs_interactive_chat_until_exit(monkeypatch) -> None:
             yield _event("response", "ok", seq=2)
             yield _event("done", "", seq=3)
 
-    monkeypatch.setattr("omnimind_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
+    monkeypatch.setattr("mindflow_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
 
     result = runner.invoke(
         app,
@@ -176,7 +176,7 @@ def test_connect_command_reset_clears_local_history(monkeypatch) -> None:
             yield _event("response", "ok", seq=1)
             yield _event("done", "", seq=2)
 
-    monkeypatch.setattr("omnimind_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
+    monkeypatch.setattr("mindflow_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
 
     result = runner.invoke(
         app,
@@ -205,7 +205,7 @@ def test_chat_command_fails_when_stream_has_no_done(monkeypatch) -> None:
             if False:
                 yield
 
-    monkeypatch.setattr("omnimind_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
+    monkeypatch.setattr("mindflow_cli.commands.chat.build_client", lambda _base_url: _DummyClient())
 
     result = runner.invoke(app, ["chat", "--message", "oi"])
 

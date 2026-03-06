@@ -1,4 +1,4 @@
-from omnimind_backend.runtime.node_registry import (
+from mindflow_backend.runtime.node_registry import (
     NodeCategory,
     classify_node,
     get_node_label,

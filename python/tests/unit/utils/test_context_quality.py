@@ -1,6 +1,6 @@
 """Tests for context quality gates."""
 
-from omnimind_backend.orchestrator.context_validation import (
+from mindflow_backend.orchestrator.context_validation import (
     check_staleness,
     check_relevance,
     QualityIssue,

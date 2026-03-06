@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from omnimind_backend.schemas.session_chunk import (
+from mindflow_backend.schemas.session_chunk import (
     ChunkEdgeType,
     ChunkMetadata,
     ChunkRetrievalQuery,

@@ -6,7 +6,7 @@ import sys
 import os
 
 # Add the project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 async def test_graph_architecture():
     """Test the new graph architecture."""
@@ -14,7 +14,7 @@ async def test_graph_architecture():
     
     try:
         # Test graph factory
-        from omnimind_backend.graphs import get_graph_factory, create_orchestrator_graph
+        from mindflow_backend.graphs import get_graph_factory, create_orchestrator_graph
         
         factory = get_graph_factory()
         print(f"✓ Graph factory created: {factory}")
@@ -28,7 +28,7 @@ async def test_graph_architecture():
         print(f"✓ Graph info: {info['graph_id']}, {info['node_count']} nodes")
         
         # Test node registry
-        from omnimind_backend.nodes import get_node_registry
+        from mindflow_backend.nodes import get_node_registry
         
         registry = get_node_registry()
         print(f"✓ Node registry created: {registry}")
@@ -45,13 +45,13 @@ async def test_graph_architecture():
         print(f"✓ Nodes created: route={route_node is not None}, execute={execute_node is not None}, respond={respond_node is not None}")
         
         # Test backward compatibility
-        from omnimind_backend.orchestrator.graph import build_simple_orchestrator_flow
+        from mindflow_backend.orchestrator.graph import build_simple_orchestrator_flow
         
         flow = build_simple_orchestrator_flow()
         print(f"✓ Backward compatible flow created: {flow}")
         
         # Test chain framework
-        from omnimind_backend.chains.base import SequentialChain, ChainType, ChainStep, StepType
+        from mindflow_backend.chains.base import SequentialChain, ChainType, ChainStep, StepType
         
         chain = SequentialChain("test_chain")
         print(f"✓ Chain created: {chain}")
@@ -82,7 +82,7 @@ async def test_simple_execution():
     print("\nTesting simple execution...")
     
     try:
-        from omnimind_backend.orchestrator.graph import build_simple_orchestrator_flow
+        from mindflow_backend.orchestrator.graph import build_simple_orchestrator_flow
         
         # Create the flow
         flow = build_simple_orchestrator_flow()
@@ -119,7 +119,7 @@ async def test_simple_execution():
 async def main():
     """Run all tests."""
     print("=" * 60)
-    print("Testing OmniMind New Architecture")
+    print("Testing MindFlow New Architecture")
     print("=" * 60)
     
     # Test basic architecture

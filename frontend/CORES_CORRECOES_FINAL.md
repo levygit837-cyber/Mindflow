@@ -95,7 +95,7 @@ useEffect(() => {
 
 ## 🔧 **Comando para Testar**
 ```bash
-cd /home/levybonito/Projetos/OmniMind/frontend
+cd frontend
 npm run dev
 ```
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from omnimind_backend.infra.config import Settings
+from mindflow_backend.infra.config import Settings
 
 
 def test_production_cors_restricts_methods():

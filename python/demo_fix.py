@@ -199,7 +199,7 @@ def main():
     print(f"\n🎯 CONCLUSION:")
     if old_broken and new_fixed:
         print("✅ The fix successfully resolves the multi-instance issue!")
-        print("✅ OmniMind can now run true parallel browser research!")
+        print("✅ MindFlow can now run true parallel browser research!")
         print("✅ Each browser instance will communicate with its correct port!")
     else:
         print("❌ The demonstration shows issues with the fix.")

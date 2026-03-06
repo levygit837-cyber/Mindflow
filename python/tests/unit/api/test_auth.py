@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, patch
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from omnimind_backend.infra.config import Settings
-from omnimind_backend.infra.middleware.auth import require_api_key
+from mindflow_backend.infra.config import Settings
+from mindflow_backend.infra.middleware.auth import require_api_key
 
 
 def _make_app(auth_enabled: bool = True, master_key: str | None = "test-master-key") -> TestClient:
@@ -29,14 +29,14 @@ def _make_app(auth_enabled: bool = True, master_key: str | None = "test-master-k
 
 def test_auth_disabled_allows_all():
     client, fake_settings = _make_app(auth_enabled=False)
-    with patch("omnimind_backend.infra.middleware.auth.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.auth.get_settings", return_value=fake_settings):
         resp = client.post("/v1/agent/chat/stream")
     assert resp.status_code == 200
 
 
 def test_auth_enabled_rejects_without_key():
     client, fake_settings = _make_app(auth_enabled=True)
-    with patch("omnimind_backend.infra.middleware.auth.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.auth.get_settings", return_value=fake_settings):
         resp = client.post("/v1/agent/chat/stream")
     assert resp.status_code == 401
     assert "Missing API key" in resp.json()["detail"]
@@ -46,8 +46,8 @@ def test_auth_enabled_accepts_master_key():
     client, fake_settings = _make_app(auth_enabled=True, master_key="test-master-key")
 
     with (
-        patch("omnimind_backend.infra.middleware.auth.get_settings", return_value=fake_settings),
-        patch("omnimind_backend.infra.middleware.auth._validate_key", new_callable=AsyncMock, return_value=True),
+        patch("mindflow_backend.infra.middleware.auth.get_settings", return_value=fake_settings),
+        patch("mindflow_backend.infra.middleware.auth._validate_key", new_callable=AsyncMock, return_value=True),
     ):
         resp = client.post(
             "/v1/agent/chat/stream",
@@ -60,8 +60,8 @@ def test_auth_enabled_rejects_invalid_key():
     client, fake_settings = _make_app(auth_enabled=True)
 
     with (
-        patch("omnimind_backend.infra.middleware.auth.get_settings", return_value=fake_settings),
-        patch("omnimind_backend.infra.middleware.auth._validate_key", new_callable=AsyncMock, return_value=False),
+        patch("mindflow_backend.infra.middleware.auth.get_settings", return_value=fake_settings),
+        patch("mindflow_backend.infra.middleware.auth._validate_key", new_callable=AsyncMock, return_value=False),
     ):
         resp = client.post(
             "/v1/agent/chat/stream",
@@ -76,6 +76,6 @@ def test_health_endpoint_always_open():
     client, fake_settings = _make_app(auth_enabled=True)
     # /health doesn't use the auth dependency in this test app,
     # so it should always be accessible.
-    with patch("omnimind_backend.infra.middleware.auth.get_settings", return_value=fake_settings):
+    with patch("mindflow_backend.infra.middleware.auth.get_settings", return_value=fake_settings):
         resp = client.get("/health")
     assert resp.status_code == 200

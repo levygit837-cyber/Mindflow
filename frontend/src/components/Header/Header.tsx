@@ -32,7 +32,7 @@ export const Header: React.FC = () => {
       <div className="flex items-center space-x-3">
         <Brain className="h-6 w-6 text-brand-primary" />
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">OmniMind</h1>
+          <h1 className="text-lg font-semibold text-text-primary">MindFlow</h1>
           <p className="text-xs text-text-secondary">Multi-Agent AI System</p>
         </div>
       </div>

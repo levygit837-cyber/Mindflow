@@ -6,13 +6,13 @@ import sys
 import os
 
 # Add the project root to Python path
-sys.path.insert(0, '/home/levybonito/Projetos/OmniMind/python')
+sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 # Import response parser from proper module
-from omnimind_backend.runtime.utils.response_parser import extract_ai_message_content, normalize_response_for_json
+from mindflow_backend.runtime.utils.response_parser import extract_ai_message_content, normalize_response_for_json
 
 # Import providers from proper module
-from omnimind_backend.runtime.providers import providers
+from mindflow_backend.runtime.providers import providers
 
 
 class MockAIMessage:
@@ -130,7 +130,7 @@ async def test_backward_compatibility():
 async def main():
     """Run all integration tests."""
     print("=== Backend Integration Tests ===")
-    print("Testing Vertex AI thinking/text support in OmniMind backend\n")
+    print("Testing Vertex AI thinking/text support in MindFlow backend\n")
     
     # Check environment
     if not os.getenv("GOOGLE_API_KEY") and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):

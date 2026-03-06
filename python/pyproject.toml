@@ -1,7 +1,7 @@
 [project]
-name = "omnimind-backend"
+name = "mindflow-backend"
 version = "0.1.0"
-description = "OmniMind backend Python (FastAPI + gRPC + PostgreSQL + KuzuDB)"
+description = "MindFlow backend Python (FastAPI + gRPC + PostgreSQL + KuzuDB)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -46,13 +46,13 @@ dev = [
 ]
 
 [project.scripts]
-omnimind-api = "omnimind_backend.main:run"
-omnimind-worker = "omnimind_backend.workers.worker:run"
-omnimind-new-worker = "omnimind_backend.workers.main:main"
-omnimind-grpc = "omnimind_backend.grpc.server:run"
-omnimind-desktop = "omnimind_desktop.launcher:run"
-omnimind-desktop-ui = "omnimind_desktop.main:run_ui"
-omnimind-cli = "omnimind_cli.app:run"
+mindflow-api = "mindflow_backend.main:run"
+mindflow-worker = "mindflow_backend.workers.worker:run"
+mindflow-new-worker = "mindflow_backend.workers.main:main"
+mindflow-grpc = "mindflow_backend.grpc.server:run"
+mindflow-desktop = "mindflow_desktop.launcher:run"
+mindflow-desktop-ui = "mindflow_desktop.main:run_ui"
+mindflow-cli = "mindflow_cli.app:run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -65,14 +65,14 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["omnimind_backend", "omnimind_cli", "omnimind_desktop", "tests"]
+src = ["mindflow_backend", "mindflow_cli", "mindflow_desktop", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["omnimind_backend", "omnimind_cli", "omnimind_desktop"]
+known-first-party = ["mindflow_backend", "mindflow_cli", "mindflow_desktop"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -90,13 +90,13 @@ warn_return_any = true
 check_untyped_defs = true
 no_implicit_optional = true
 exclude = [
-  "omnimind_backend/grpc/generated",
-  "omnimind_backend/storage/migrations",
+  "mindflow_backend/grpc/generated",
+  "mindflow_backend/storage/migrations",
 ]
 
 [[tool.mypy.overrides]]
 module = [
-  "omnimind_backend.grpc.generated.*",
+  "mindflow_backend.grpc.generated.*",
   "alembic.*",
 ]
 ignore_errors = true
@@ -106,7 +106,7 @@ module = ["tests.*"]
 disallow_untyped_defs = false
 
 [tool.setuptools.packages.find]
-include = ["omnimind_backend*", "omnimind_cli*", "omnimind_desktop*"]
+include = ["mindflow_backend*", "mindflow_cli*", "mindflow_desktop*"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

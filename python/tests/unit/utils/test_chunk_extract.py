@@ -1,4 +1,4 @@
-from omnimind_backend.runtime.chunk_extract import extract_chunk_parts
+from mindflow_backend.runtime.chunk_extract import extract_chunk_parts
 
 
 class _DummyChunk:

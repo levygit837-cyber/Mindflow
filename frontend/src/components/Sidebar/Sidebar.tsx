@@ -69,7 +69,7 @@ export const Sidebar: React.FC = () => {
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center space-x-2">
             <Brain className="h-8 w-8 text-brand-primary" />
-            <span className="text-lg font-bold text-text-primary">OmniMind</span>
+            <span className="text-lg font-bold text-text-primary">MindFlow</span>
           </div>
           
           <Button

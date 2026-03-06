@@ -4,10 +4,10 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from omnimind_backend.grpc.client import GrpcAgentClient
-from omnimind_backend.grpc.server import GrpcAgentServer, start_grpc_server, stop_grpc_server
-from omnimind_backend.grpc.config import GrpcConfig, GrpcClientConfig
-from omnimind_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
+from mindflow_backend.grpc.client import GrpcAgentClient
+from mindflow_backend.grpc.server import GrpcAgentServer, start_grpc_server, stop_grpc_server
+from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
 
 class TestGrpcEndToEnd:
@@ -50,8 +50,8 @@ class TestGrpcEndToEnd:
         mock_service.StreamChat = mock_stream_chat
         
         with patch('grpc.aio.server', return_value=mock_grpc_server), \
-             patch('omnimind_backend.grpc.server.pb2_grpc.add_AgentRuntimeServiceServicer_to_server'), \
-             patch('omnimind_backend.grpc.server.AgentRuntimeServiceImpl', return_value=mock_service):
+             patch('mindflow_backend.grpc.server.pb2_grpc.add_AgentRuntimeServiceServicer_to_server'), \
+             patch('mindflow_backend.grpc.server.AgentRuntimeServiceImpl', return_value=mock_service):
             
             # Start server
             await server.start()
@@ -84,8 +84,8 @@ class TestGrpcEndToEnd:
             
             with patch('grpc.aio.insecure_channel', return_value=mock_channel), \
                  patch('grpc.channel_ready_future'), \
-                 patch('omnimind_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
-                 patch('omnimind_backend.grpc.client.pb2.ChatStreamRequest'):
+                 patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
+                 patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
                 
                 # Connect client
                 await client.connect()
@@ -118,15 +118,15 @@ class TestGrpcEndToEnd:
     async def test_server_management_functions(self):
         """Test server management functions."""
         # Clear any existing server
-        import omnimind_backend.grpc.server
-        omnimind_backend.grpc.server._server_instance = None
+        import mindflow_backend.grpc.server
+        mindflow_backend.grpc.server._server_instance = None
         
         mock_server = MagicMock()
         mock_server.is_running.return_value = False
         mock_server.start = AsyncMock()
         mock_server.stop = AsyncMock()
         
-        with patch('omnimind_backend.grpc.server.get_server', return_value=mock_server):
+        with patch('mindflow_backend.grpc.server.get_server', return_value=mock_server):
             # Test start
             server = await start_grpc_server()
             assert server is mock_server
@@ -198,7 +198,7 @@ class TestGrpcBackwardCompatibility:
     @pytest.mark.asyncio
     async def test_local_agent_client_compatibility(self):
         """Test that LocalAgentClient still works for backward compatibility."""
-        from omnimind_backend.grpc.client import LocalAgentClient
+        from mindflow_backend.grpc.client import LocalAgentClient
         
         client = LocalAgentClient()
         
@@ -233,7 +233,7 @@ class TestGrpcBackwardCompatibility:
     @pytest.mark.asyncio
     async def test_server_legacy_functions(self):
         """Test that legacy server functions still work."""
-        from omnimind_backend.grpc.server import serve
+        from mindflow_backend.grpc.server import serve
         
         # Mock the server components
         mock_server = MagicMock()
@@ -241,8 +241,8 @@ class TestGrpcBackwardCompatibility:
         mock_server.wait_for_termination = AsyncMock()
         mock_server.stop = AsyncMock()
         
-        with patch('omnimind_backend.grpc.server.GrpcAgentServer', return_value=mock_server), \
-             patch('omnimind_backend.grpc.server.setup_signal_handlers'):
+        with patch('mindflow_backend.grpc.server.GrpcAgentServer', return_value=mock_server), \
+             patch('mindflow_backend.grpc.server.setup_signal_handlers'):
             
             # Test that serve function still works
             serve_task = asyncio.create_task(serve())

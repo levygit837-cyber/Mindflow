@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from omnimind_backend.orchestrator.graph import build_orchestrator_graph, route_node
-from omnimind_backend.schemas.orchestrator import ThinkingMode
+from mindflow_backend.orchestrator.graph import build_orchestrator_graph, route_node
+from mindflow_backend.schemas.orchestrator import ThinkingMode
 
 
 
@@ -34,11 +34,11 @@ async def test_route_node_keeps_normal_thinking_when_decomposition_disabled(monk
             return True
 
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.complexity.ComplexityScorer",
+        "mindflow_backend.orchestrator.complexity.ComplexityScorer",
         _HighComplexityScorer,
     )
     monkeypatch.setattr(
-        "omnimind_backend.orchestrator.graph.get_settings",
+        "mindflow_backend.orchestrator.graph.get_settings",
         lambda: SimpleNamespace(enable_decomposition_thinking=False),
     )
 

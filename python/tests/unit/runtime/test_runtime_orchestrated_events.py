@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from omnimind_backend.runtime.stream import AgentRuntime
-from omnimind_backend.schemas.agent import AgentChatRequest
+from mindflow_backend.runtime.stream import AgentRuntime
+from mindflow_backend.schemas.agent import AgentChatRequest
 
 
 class _FakeGraph:
@@ -17,7 +17,7 @@ class _FakeGraph:
 
 @pytest.mark.asyncio
 async def test_orchestrated_stream_maps_dt_step_and_tool_call_without_crashing(monkeypatch) -> None:
-    monkeypatch.setattr("omnimind_backend.runtime.stream.db_session", lambda: contextlib.nullcontext(None))
+    monkeypatch.setattr("mindflow_backend.runtime.stream.db_session", lambda: contextlib.nullcontext(None))
 
     runtime = AgentRuntime()
     runtime._orchestrator_graph = _FakeGraph()
