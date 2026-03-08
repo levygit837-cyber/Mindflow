@@ -15,7 +15,7 @@ from mindflow_backend.agents.core.container import (
 from mindflow_backend.agents.core.interfaces import (
     ContextRetriever,
     VectorStore,
-    PersonalitySelector,
+    SpecialistSelector,
     ContentAnalyzer,
     ResultParser,
     Cache,
@@ -24,12 +24,12 @@ from mindflow_backend.agents.core.interfaces import (
 from mindflow_backend.agents.context.cache import get_context_cache, ContextCache
 from mindflow_backend.agents.context.vector_store import get_vector_store, InMemoryVectorStore
 from mindflow_backend.agents.context.analyzer import get_content_analyzer, SessionContentAnalyzer
-from mindflow_backend.agents.personality.cache import get_personality_cache, PersonalityCache
-from mindflow_backend.agents.personality.rule_engine import get_personality_rule_engine, PersonalityRuleEngine
-from mindflow_backend.agents.personality.configuration import (
-    get_personality_config_builder,
+from mindflow_backend.agents.specialists.cache import get_specialist_cache, SpecialistCache
+from mindflow_backend.agents.specialists.rule_engine import get_specialist_rule_engine, SpecialistRuleEngine
+from mindflow_backend.agents.specialists.configuration import (
+    get_specialist_config_builder,
     get_delegation_task_builder,
-    PersonalityConfigurationBuilder,
+    SpecialistConfigurationBuilder,
     DelegationTaskBuilder,
 )
 from mindflow_backend.infra.logging import get_logger
@@ -48,8 +48,8 @@ def initialize_agent_system() -> None:
         # Register context implementations
         _register_context_implementations()
         
-        # Register personality implementations
-        _register_personality_implementations()
+        # Register specialist implementations
+        _register_specialist_implementations()
         
         
         _logger.info("agent_system_initialization_completed")
@@ -64,7 +64,7 @@ def _register_core_implementations() -> None:
     # Register cache implementations
     register_singleton(Cache, ContextCache)
     register_singleton(ContextCache, ContextCache)
-    register_singleton(PersonalityCache, PersonalityCache)
+    register_singleton(SpecialistCache, SpecialistCache)
     
     _logger.debug("core_implementations_registered")
 
@@ -80,16 +80,16 @@ def _register_context_implementations() -> None:
     _logger.debug("context_implementations_registered")
 
 
-def _register_personality_implementations() -> None:
-    """Register personality system implementations."""
+def _register_specialist_implementations() -> None:
+    """Register specialist system implementations."""
     # Register rule engine
-    register_singleton(RuleEngine, PersonalityRuleEngine)
+    register_singleton(RuleEngine, SpecialistRuleEngine)
     
     # Register configuration builders
-    register_singleton(PersonalityConfigurationBuilder, PersonalityConfigurationBuilder)
+    register_singleton(SpecialistConfigurationBuilder, SpecialistConfigurationBuilder)
     register_singleton(DelegationTaskBuilder, DelegationTaskBuilder)
     
-    _logger.debug("personality_implementations_registered")
+    _logger.debug("specialist_implementations_registered")
 
 
 
@@ -103,11 +103,11 @@ def get_initialization_status() -> dict[str, bool]:
     implementations = [
         (Cache, "Cache"),
         (ContextCache, "ContextCache"),
-        (PersonalityCache, "PersonalityCache"),
+        (SpecialistCache, "SpecialistCache"),
         (VectorStore, "VectorStore"),
         (ContentAnalyzer, "ContentAnalyzer"),
         (RuleEngine, "RuleEngine"),
-        (PersonalityConfigurationBuilder, "PersonalityConfigurationBuilder"),
+        (SpecialistConfigurationBuilder, "SpecialistConfigurationBuilder"),
         (DelegationTaskBuilder, "DelegationTaskBuilder"),
         (ResultParser, "ResultParser"),
     ]

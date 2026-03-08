@@ -8,21 +8,21 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from mindflow_backend.schemas.orchestration.personality import PersonalityDecisionResult
+from mindflow_backend.schemas.orchestration.personality import SpecialistDecisionResult
 
 
 @runtime_checkable
-class PersonalitySelector(Protocol):
+class SpecialistSelector(Protocol):
     """Contract for personality selection implementations."""
     
-    def select_personality(
+    def select_specialist(
         self,
         task_id: str,
         task_description: str,
         task_complexity: str,
         context_requirements: list[str] | None = None,
-        current_personality: str | None = None,
-    ) -> PersonalityDecisionResult:
+        current_specialist: str | None = None,
+    ) -> SpecialistDecisionResult:
         """Select optimal personality for a task."""
         ...
 

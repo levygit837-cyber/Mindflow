@@ -69,14 +69,14 @@ class TaskDecompositionResponse(BaseResponse):
     estimated_duration: Optional[str] = Field(default=None, description="Estimated duration")
 
 
-class PersonalitySelectionResponse(BaseResponse):
-    """Response for personality selection."""
+class SpecialistSelectionResponse(BaseResponse):
+    """Response for specialist selection."""
     
     task_id: str = Field(description="Task ID")
-    selected_personality: str = Field(description="Selected personality")
+    selected_specialist: str = Field(description="Selected specialist")
     rationale: str = Field(description="Selection rationale")
     confidence: float = Field(description="Selection confidence")
-    alternatives: Optional[list[dict[str, Any]]] = Field(default=None, description="Alternative personalities")
+    alternatives: Optional[list[dict[str, Any]]] = Field(default=None, description="Alternative specialists")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Selection metadata")
 
 

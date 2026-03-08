@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 from collections import OrderedDict
 
 from mindflow_backend.agents.core.interfaces import Cache
-from mindflow_backend.agents.core.exceptions import CacheError
+from mindflow_backend.exceptions import AgentCacheError
 from mindflow_backend.config.agents import get_agent_config
 
 
@@ -68,7 +68,7 @@ class LRUCache(Cache):
                 self._cache.move_to_end(key)
         
         except Exception as e:
-            raise CacheError(f"Failed to set cache entry: {e}", operation="set", key=key)
+            raise AgentCacheError(f"Failed to set cache entry: {e}", operation="set", key=key)
     
     def delete(self, key: str) -> None:
         """Delete value from cache."""
@@ -77,7 +77,7 @@ class LRUCache(Cache):
                 if key in self._cache:
                     del self._cache[key]
         except Exception as e:
-            raise CacheError(f"Failed to delete cache entry: {e}", operation="delete", key=key)
+            raise AgentCacheError(f"Failed to delete cache entry: {e}", operation="delete", key=key)
     
     def clear(self) -> None:
         """Clear all cache entries."""
@@ -85,7 +85,7 @@ class LRUCache(Cache):
             with self._lock:
                 self._cache.clear()
         except Exception as e:
-            raise CacheError(f"Failed to clear cache: {e}", operation="clear")
+            raise AgentCacheError(f"Failed to clear cache: {e}", operation="clear")
     
     def _is_expired(self, entry: Dict[str, Any]) -> bool:
         """Check if cache entry is expired."""

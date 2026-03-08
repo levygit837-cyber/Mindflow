@@ -1,21 +1,17 @@
-"""Pydantic schemas for tool validation and metadata.
-
-Provides standardized schemas for tool parameters, results,
-and capabilities validation across the tool ecosystem.
+"""
+Tool schema definitions for MindFlow agents. Provides standardized schema
+structures for tool parameters, validation, and configuration.
 """
 
 from __future__ import annotations
-
-from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional, Union, Literal
 from enum import Enum
-
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 
 class ParameterType(str, Enum):
-    """Supported parameter types for tools."""
-    
+    """Parameter type enumeration."""
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -23,12 +19,11 @@ class ParameterType(str, Enum):
     ARRAY = "array"
     OBJECT = "object"
     FILE = "file"
-    DIRECTORY = "directory"
 
 
-class ToolParameter(BaseModel):
-    """Schema definition for a tool parameter."""
-    
+@dataclass
+class ToolParameter:
+    """Tool parameter definition."""
     name: str = Field(..., description="Parameter name")
     type: ParameterType = Field(..., description="Parameter data type")
     description: str = Field(..., description="Parameter description")
@@ -39,179 +34,129 @@ class ToolParameter(BaseModel):
     max_value: Optional[Union[int, float]] = Field(default=None, description="Maximum value")
     min_length: Optional[int] = Field(default=None, description="Minimum length")
     max_length: Optional[int] = Field(default=None, description="Maximum length")
-    pattern: Optional[str] = Field(default=None, description="Regex pattern for validation")
+    pattern: Optional[str] = Field(default=None, description="Regex pattern")
+
+
+@dataclass
+class ToolSchema:
+    """Tool schema definition."""
+    name: str = Field(..., description="Tool name")
+    description: str = Field(..., description="Tool description")
+    category: str = Field(default="general", description="Tool category")
+    version: str = Field(default="1.0.0", description="Tool version")
+    parameters: List[ToolParameter] = Field(default_factory=list, description="Tool parameters")
+    returns: Dict[str, Any] = Field(default_factory=dict, description="Return value schema")
+    examples: List[Dict[str, Any]] = Field(default_factory=list, description="Usage examples")
     
-    class Config:
-        use_enum_values = True
+    def dict(self) -> Dict[str, Any]:
+        """Convert schema to dictionary."""
+        from dataclasses import asdict
+        result = asdict(self)
+        # Convert parameters to proper format
+        result['parameters'] = [
+            {
+                'name': param.name,
+                'type': param.type.value,
+                'description': param.description,
+                'required': param.required,
+                'default': param.default,
+                'enum': param.enum,
+                'min_value': param.min_value,
+                'max_value': param.max_value,
+                'min_length': param.min_length,
+                'max_length': param.max_length,
+                'pattern': param.pattern
+            }
+            for param in self.parameters
+        ]
+        return result
 
 
 class ToolResult(BaseModel):
-    """Standardized result format for tool execution."""
-    
+    """Standard tool result format."""
     success: bool = Field(..., description="Whether execution was successful")
-    result: Optional[Any] = Field(default=None, description="Main result data")
-    error: Optional[str] = Field(default=None, description="Error message if failed")
+    result: Optional[Any] = Field(default=None, description="Execution result")
+    error: Optional[str] = Field(default=None, description="Error message")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
-    tool_name: str = Field(..., description="Name of the tool that generated result")
     timestamp: str = Field(..., description="Execution timestamp")
-    execution_time_ms: Optional[int] = Field(default=None, description="Execution time in milliseconds")
-    
-    class Config:
-        json_encoders = {
-            # Add custom encoders if needed
-        }
 
 
-class ToolCapability(BaseModel):
-    """Definition of a tool capability or requirement."""
+def create_tool_schema(
+    name: str,
+    description: str,
+    category: str = "general",
+    parameters: Optional[List[Dict[str, Any]]] = None,
+    returns: Optional[Dict[str, Any]] = None,
+    version: str = "1.0.0"
+) -> ToolSchema:
+    """
+    Create a tool schema from parameters.
+    Args:
+        name: Tool name
+        description: Tool description
+        category: Tool category
+        parameters: List of parameter dictionaries
+        returns: Return value schema
+        version: Tool version
+    Returns:
+        ToolSchema instance
+    """
+    tool_parameters = []
     
-    name: str = Field(..., description="Capability name")
-    description: str = Field(..., description="Capability description")
-    required: bool = Field(default=False, description="Whether this capability is required")
-    version: Optional[str] = Field(default=None, description="Capability version")
+    if parameters:
+        for param in parameters:
+            tool_param = ToolParameter(
+                name=param.get("name", ""),
+                type=ParameterType(param.get("type", "string")),
+                description=param.get("description", ""),
+                required=param.get("required", False),
+                default=param.get("default"),
+                enum=param.get("enum"),
+                min_value=param.get("min_value"),
+                max_value=param.get("max_value"),
+                min_length=param.get("min_length"),
+                max_length=param.get("max_length"),
+                pattern=param.get("pattern")
+            )
+            tool_parameters.append(tool_param)
 
-
-class ToolSchema(BaseModel):
-    """Complete schema definition for a tool."""
-    
-    name: str = Field(..., description="Tool name")
-    description: str = Field(..., description="Tool description")
-    version: str = Field(default="1.0.0", description="Tool version")
-    category: str = Field(..., description="Tool category (filesystem, web, code, etc.)")
-    
-    parameters: List[ToolParameter] = Field(default_factory=list, description="Tool parameters")
-    returns: ToolResult = Field(..., description="Tool return schema")
-    
-    capabilities: List[ToolCapability] = Field(default_factory=list, description="Tool capabilities")
-    
-    # Requirements
-    requires_backend: bool = Field(default=False, description="Requires backend integration")
-    requires_sandbox: bool = Field(default=False, description="Requires sandbox execution")
-    requires_internet: bool = Field(default=False, description="Requires internet access")
-    
-    # Agent permissions
-    supported_agents: List[AgentType] = Field(default_factory=lambda: list(AgentType), description="Supported agent types")
-    restricted_agents: List[AgentType] = Field(default_factory=list, description="Restricted agent types")
-    
-    # Performance characteristics
-    async_execution: bool = Field(default=True, description="Supports async execution")
-    stateful: bool = Field(default=False, description="Maintains state between calls")
-    
-    # Resource requirements
-    memory_mb: Optional[int] = Field(default=None, description="Memory requirement in MB")
-    timeout_seconds: Optional[int] = Field(default=None, description="Default timeout in seconds")
-    
-    # Security
-    security_level: str = Field(default="medium", description="Security level (low, medium, high)")
-    
-    class Config:
-        use_enum_values = True
-        schema_extra = {
-            "example": {
-                "name": "file_reader",
-                "description": "Read file contents",
-                "parameters": [
-                    {
-                        "name": "file_path",
-                        "type": "string",
-                        "description": "Path to file to read",
-                        "required": True
-                    }
-                ],
-                "returns": {
-                    "success": True,
-                    "result": "file contents",
-                    "tool_name": "file_reader",
-                    "timestamp": "2024-01-01T00:00:00"
-                }
-            }
-        }
-
-
-class ToolRegistrySchema(BaseModel):
-    """Schema for tool registry configuration."""
-    
-    name: str = Field(..., description="Registry name")
-    version: str = Field(default="1.0.0", description="Registry version")
-    
-    # Tool storage
-    tools: Dict[str, ToolSchema] = Field(default_factory=dict, description="Registered tools")
-    tool_classes: Dict[str, str] = Field(default_factory=dict, description="Tool class paths")
-    
-    # Permissions
-    default_permissions: List[AgentType] = Field(
-        default_factory=lambda: list(AgentType),
-        description="Default agent permissions"
+    return ToolSchema(
+        name=name,
+        description=description,
+        category=category,
+        parameters=tool_parameters,
+        returns=returns or {},
+        version=version
     )
-    
-    # Configuration
-    auto_discovery: bool = Field(default=True, description="Enable auto-discovery of tools")
-    validation_enabled: bool = Field(default=True, description="Enable schema validation")
-    caching_enabled: bool = Field(default=True, description="Enable tool result caching")
-    
-    # Performance
-    cache_ttl_seconds: int = Field(default=300, description="Cache TTL in seconds")
-    max_concurrent_executions: int = Field(default=10, description="Max concurrent executions")
-    
-    class Config:
-        use_enum_values = True
 
 
-class ToolExecutionContext(BaseModel):
-    """Context information for tool execution."""
-    
-    tool_name: str = Field(..., description="Name of executing tool")
-    agent_type: AgentType = Field(..., description="Type of agent executing tool")
-    session_id: Optional[str] = Field(default=None, description="Session identifier")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Execution parameters")
-    
-    # Execution metadata
-    request_id: Optional[str] = Field(default=None, description="Request identifier")
-    parent_request_id: Optional[str] = Field(default=None, description="Parent request ID")
-    
-    # Security context
-    sandbox_mode: Optional[str] = Field(default=None, description="Sandbox mode")
-    permissions: List[str] = Field(default_factory=list, description="Granted permissions")
-    
-    # Performance tracking
-    start_time: Optional[str] = Field(default=None, description="Execution start time")
-    timeout_seconds: Optional[int] = Field(default=None, description="Execution timeout")
-    
-    class Config:
-        use_enum_values = True
-
-
-class ToolValidationError(BaseModel):
-    """Schema for tool validation errors."""
-    
-    tool_name: str = Field(..., description="Name of the tool")
-    parameter_name: str = Field(..., description="Name of invalid parameter")
-    error_type: str = Field(..., description="Type of validation error")
-    error_message: str = Field(..., description="Detailed error message")
-    provided_value: Any = Field(..., description="Value that caused validation error")
-    expected_type: Optional[str] = Field(default=None, description="Expected type")
-    
-    class Config:
-        use_enum_values = True
-
-
-# Utility functions for schema validation
 def create_parameter(
     name: str,
     param_type: ParameterType,
     description: str,
     required: bool = False,
-    **kwargs
+    default: Optional[Any] = None,
+    enum: Optional[List[Any]] = None,
+    min_value: Optional[Union[int, float]] = None,
+    max_value: Optional[Union[int, float]] = None,
+    min_length: Optional[int] = None,
+    max_length: Optional[int] = None,
+    pattern: Optional[str] = None
 ) -> ToolParameter:
-    """Create a ToolParameter with common defaults.
-    
+    """
+    Create a tool parameter.
     Args:
         name: Parameter name
         param_type: Parameter type
         description: Parameter description
         required: Whether parameter is required
-        **kwargs: Additional parameter properties
-        
+        default: Default value
+        enum: Allowed values
+        min_value: Minimum value
+        max_value: Maximum value
+        min_length: Minimum length
+        max_length: Maximum length
+        pattern: Regex pattern
     Returns:
         ToolParameter instance
     """
@@ -220,33 +165,101 @@ def create_parameter(
         type=param_type,
         description=description,
         required=required,
-        **kwargs
+        default=default,
+        enum=enum,
+        min_value=min_value,
+        max_value=max_value,
+        min_length=min_length,
+        max_length=max_length,
+        pattern=pattern
     )
 
 
-def create_tool_schema(
-    name: str,
-    description: str,
-    category: str,
-    parameters: List[ToolParameter],
-    **kwargs
-) -> ToolSchema:
-    """Create a ToolSchema with common defaults.
-    
-    Args:
-        name: Tool name
-        description: Tool description
-        category: Tool category
-        parameters: List of tool parameters
-        **kwargs: Additional schema properties
-        
-    Returns:
-        ToolSchema instance
+def validate_tool_parameters(
+    parameters: Dict[str, Any],
+    schema: ToolSchema
+) -> Dict[str, Any]:
     """
-    return ToolSchema(
-        name=name,
-        description=description,
-        category=category,
-        parameters=parameters,
-        **kwargs
-    )
+    Validate parameters against a tool schema.
+    Args:
+        parameters: Parameters to validate
+        schema: Tool schema to validate against
+    Returns:
+        Dictionary with validation result
+    """
+    errors = []
+    validated_params = {}
+
+    for param_schema in schema.parameters:
+        param_name = param_schema.name
+        param_value = parameters.get(param_name)
+
+        # Check required parameters
+        if param_schema.required and param_value is None:
+            errors.append(f"Required parameter '{param_name}' is missing")
+            continue
+
+        # Skip validation if parameter not provided and not required
+        if param_value is None and not param_schema.required:
+            continue
+
+        # Type validation
+        if param_schema.type == ParameterType.STRING:
+            if not isinstance(param_value, str):
+                errors.append(f"Parameter '{param_name}' must be a string")
+            else:
+                # Length validation
+                if param_schema.min_length and len(param_value) < param_schema.min_length:
+                    errors.append(f"Parameter '{param_name}' must be at least {param_schema.min_length} characters")
+                if param_schema.max_length and len(param_value) > param_schema.max_length:
+                    errors.append(f"Parameter '{param_name}' must be at most {param_schema.max_length} characters")
+                
+                # Pattern validation
+                if param_schema.pattern:
+                    import re
+                    if not re.match(param_schema.pattern, param_value):
+                        errors.append(f"Parameter '{param_name}' does not match required pattern")
+
+        elif param_schema.type == ParameterType.INTEGER:
+            if not isinstance(param_value, int):
+                errors.append(f"Parameter '{param_name}' must be an integer")
+            else:
+                # Range validation
+                if param_schema.min_value is not None and param_value < param_schema.min_value:
+                    errors.append(f"Parameter '{param_name}' must be at least {param_schema.min_value}")
+                if param_schema.max_value is not None and param_value > param_schema.max_value:
+                    errors.append(f"Parameter '{param_name}' must be at most {param_schema.max_value}")
+
+        elif param_schema.type == ParameterType.FLOAT:
+            if not isinstance(param_value, (int, float)):
+                errors.append(f"Parameter '{param_name}' must be a number")
+            else:
+                # Range validation
+                if param_schema.min_value is not None and param_value < param_schema.min_value:
+                    errors.append(f"Parameter '{param_name}' must be at least {param_schema.min_value}")
+                if param_schema.max_value is not None and param_value > param_schema.max_value:
+                    errors.append(f"Parameter '{param_name}' must be at most {param_schema.max_value}")
+
+        elif param_schema.type == ParameterType.BOOLEAN:
+            if not isinstance(param_value, bool):
+                errors.append(f"Parameter '{param_name}' must be a boolean")
+
+        elif param_schema.type == ParameterType.ARRAY:
+            if not isinstance(param_value, list):
+                errors.append(f"Parameter '{param_name}' must be an array")
+
+        elif param_schema.type == ParameterType.OBJECT:
+            if not isinstance(param_value, dict):
+                errors.append(f"Parameter '{param_name}' must be an object")
+
+        # Enum validation
+        if param_schema.enum and param_value not in param_schema.enum:
+            errors.append(f"Parameter '{param_name}' must be one of: {param_schema.enum}")
+
+        validated_params[param_name] = param_value
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "parameters": validated_params
+    }

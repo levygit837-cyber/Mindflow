@@ -14,7 +14,7 @@ def test_imports():
             ContextRetriever,
             VectorStore,
             Cache,
-            PersonalitySelector,
+            SpecialistSelector,
             RuleEngine,
             ContentAnalyzer,
             ResultParser,
@@ -99,7 +99,7 @@ def test_schema_integration():
     try:
         # Test schema imports used in contracts
         from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, AgentType
-        from mindflow_backend.schemas.orchestration.personality import PersonalityDecisionResult, PersonalityType
+        from mindflow_backend.schemas.orchestration.personality import SpecialistDecisionResult, SpecialistType
         from mindflow_backend.schemas.orchestration.delegation import DelegationTask, DelegationResult
         from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
         from mindflow_backend.schemas.agents.research import ResearchRequest, ResearchResponse

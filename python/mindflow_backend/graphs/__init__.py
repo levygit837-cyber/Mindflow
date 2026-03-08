@@ -10,8 +10,15 @@ from mindflow_backend.graphs.base import (
     NodeConnection,
 )
 
+# Workflow graphs
+from mindflow_backend.graphs.implementations.workflow import (
+    SequentialWorkflowGraph,
+    ParallelWorkflowGraph,
+    ConditionalWorkflowGraph,
+)
+
 # Orchestrator implementations
-from mindflow_backend.graphs.orchestrator import (
+from mindflow_backend.graphs.implementations.orchestrator import (
     SimpleOrchestratorGraph,
     MultiAgentGraph,
     DecompositionGraph,
@@ -26,7 +33,7 @@ from mindflow_backend.graphs.factory import (
 )
 
 # Backward compatibility
-from mindflow_backend.graphs.orchestrator.simple_flow import build_simple_orchestrator_flow
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import build_simple_orchestrator_flow
 
 __all__ = [
     # Base classes

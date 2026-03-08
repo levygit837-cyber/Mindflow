@@ -72,13 +72,13 @@ class TaskDecompositionRequest(BaseModel):
     max_subtasks: int = Field(default=10, ge=1, le=50, description="Maximum number of subtasks")
 
 
-class PersonalitySelectionRequest(BaseModel):
-    """Request for personality selection."""
+class SpecialistSelectionRequest(BaseModel):
+    """Request for specialist selection."""
     
     task_id: str = Field(description="Task identifier")
     task_description: str = Field(min_length=10, max_length=10000, description="Task description")
     task_complexity: Literal["low", "medium", "high"] = Field(description="Task complexity")
-    current_personality: Optional[str] = Field(default=None, description="Current personality")
+    current_specialist: Optional[str] = Field(default=None, description="Current specialist")
     context_requirements: Optional[list[str]] = Field(
         default=None, description="Required context"
     )

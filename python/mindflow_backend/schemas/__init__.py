@@ -12,7 +12,7 @@ from .agents.security_guard import Severity, Exploitability, RemediationPriority
 # Orchestration schemas
 from .orchestration.orchestrator import AgentType, ThinkingLevel, ThinkingMode, ToolScope
 from .orchestration.delegation import DelegationStatus, ContextContinuity, AgentSessionStatus
-from .orchestration.personality import PersonalityType, TaskComplexity, SpecializationRequirement
+from .orchestration.specialists import SpecialistType, TaskComplexity, SpecializationRequirement
 
 # Session schemas
 from .session.contracts import SessionMode, RelationshipType, RetrievalMode
@@ -40,7 +40,7 @@ __all__ = [
     # Orchestration
     "AgentType", "ThinkingLevel", "ThinkingMode", "ToolScope",
     "DelegationStatus", "ContextContinuity", "AgentSessionStatus",
-    "PersonalityType", "TaskComplexity", "SpecializationRequirement",
+    "SpecialistType", "TaskComplexity", "SpecializationRequirement",
     
     # Session
     "SessionMode", "RelationshipType", "RetrievalMode",

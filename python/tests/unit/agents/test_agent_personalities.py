@@ -1,15 +1,15 @@
-"""Tests for agent personality factories."""
+"""Tests for agent specialist factories."""
 
 from mindflow_backend.agents._base import AgentPersonality, BaseAgent
-from mindflow_backend.agents.personalities import (
+from mindflow_backend.agents.specialists import (
     create_analyst_agent,
-    create_arch_tech_agent,
+    create_architecture_agent,
     create_coder_agent,
-    create_critic_agent,
+    create_review_agent,
     create_researcher_agent,
 )
-from mindflow_backend.agents.personalities.creative import create_creative_agent
-from mindflow_backend.agents.personalities.security_guard import create_security_guard_agent
+from mindflow_backend.agents.specialists.creative import create_creative_agent
+from mindflow_backend.agents.specialists.security import create_security_agent
 from mindflow_backend.schemas.orchestrator import (
     AgentType,
     SandboxMode,
@@ -92,10 +92,10 @@ def test_all_agents_satisfy_protocol() -> None:
         create_coder_agent,
         create_analyst_agent,
         create_researcher_agent,
-        create_arch_tech_agent,
-        create_critic_agent,
+        create_review_agent,
+        create_architecture_agent,
         create_creative_agent,
-        create_security_guard_agent,
+        create_security_agent,
     ):
         agent = factory()
         assert isinstance(agent, AgentPersonality)

@@ -7,10 +7,14 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mindflow_backend.agents._registry import register_all_personalities
+from mindflow_backend.agents._registry import register_all_specialists
 from mindflow_backend.api.router import router
 from mindflow_backend.api.docs import custom_openapi, setup_documentation_routes, add_operation_examples
 from mindflow_backend.grpc.server import start_grpc_server, stop_grpc_server, setup_signal_handlers
+from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager, get_config_manager
+from mindflow_backend.grpc.config.profiles import get_environment_loader
+from mindflow_backend.grpc.config.features import get_feature_toggles
+from mindflow_backend.grpc.config.config import GrpcConfig
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import configure_logging, get_logger
 from mindflow_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
@@ -29,16 +33,26 @@ _logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager with gRPC integration."""
+    """Application lifespan manager with gRPC and dynamic configuration integration."""
     # Convenience bootstrap for local environments.
     # Base.metadata.create_all(bind=engine)
     # Phase 2: Boot agent registry.
-    register_all_personalities()
+    register_all_specialists()
+    
+    # Initialize dynamic configuration system
+    config_manager = get_config_manager()
+    await config_manager.initialize()
+    
+    # Load dynamic gRPC configuration
+    from mindflow_backend.grpc.config import GrpcConfig
+    grpc_config = await GrpcConfig.load_dynamic()
+    app.state.grpc_config = grpc_config
+    app.state.config_manager = config_manager
     
     # Start gRPC server if enabled
-    if settings.grpc_enabled and settings.grpc_auto_start:
+    if grpc_config.enabled and grpc_config.auto_start:
         try:
-            grpc_server = await start_grpc_server()
+            grpc_server = await start_grpc_server(grpc_config)
             app.state.grpc_server = grpc_server
             _logger.info("grpc_server_started_in_lifespan", port=grpc_server.get_port())
         except Exception as exc:
@@ -118,26 +132,42 @@ app.add_middleware(RequestContextMiddleware)
 
 
 @app.get("/health")
-def health() -> dict[str, str | dict]:
-    """Health check endpoint that includes gRPC status."""
+async def health() -> dict[str, str | dict]:
+    """Health check endpoint that includes gRPC status with dynamic configuration."""
     grpc_status = {
-        "enabled": settings.grpc_enabled,
+        "enabled": False,
         "status": "not_running",
     }
     
-    if settings.grpc_enabled:
-        try:
-            from mindflow_backend.grpc.server import get_server
-            server = get_server()
-            if server.is_running():
-                grpc_status.update({
-                    "status": "running",
-                    "host": server.get_host(),
-                    "port": server.get_port(),
-                    "uptime_seconds": server.get_uptime_seconds(),
-                })
-        except Exception:
-            grpc_status["status"] = "error"
+    # Check if we have dynamic configuration
+    if hasattr(app.state, 'grpc_config'):
+        grpc_config = app.state.grpc_config
+        grpc_status.update({
+            "enabled": grpc_config.enabled,
+            "profile": grpc_config.profile,
+            "auto_reload": grpc_config.auto_reload,
+        })
+        
+        if grpc_config.enabled:
+            try:
+                from mindflow_backend.grpc.server import get_server
+                server = get_server()
+                if server and server.is_running():
+                    grpc_status.update({
+                        "status": "running",
+                        "host": server.get_host(),
+                        "port": server.get_port(),
+                        "uptime_seconds": server.get_uptime_seconds(),
+                    })
+                    
+                    # Add enhanced health info if available
+                    if hasattr(server, 'get_health_report'):
+                        health_report = await server.get_health_report()
+                        grpc_status["health_details"] = health_report
+                        
+            except Exception as exc:
+                grpc_status["status"] = "error"
+                grpc_status["error"] = str(exc)
     
     return {
         "status": "ok",

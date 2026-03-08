@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
 
-from mindflow_backend.grpc.config import GrpcConfig
+from mindflow_backend.grpc.config.config import GrpcConfig
 from mindflow_backend.grpc.config.dynamic.validator import ConfigValidator, ValidationResult
 from mindflow_backend.grpc.config.dynamic.storage import ConfigStorage, MemoryConfigStorage
 from mindflow_backend.infra.logging import get_logger

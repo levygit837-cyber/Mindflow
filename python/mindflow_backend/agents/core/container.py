@@ -7,7 +7,7 @@ promote loose coupling between components.
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, Type
-from mindflow_backend.agents.core.exceptions import DependencyInjectionError
+from mindflow_backend.exceptions import DependencyInjectionError
 
 
 class DIContainer:

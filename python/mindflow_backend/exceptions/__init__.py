@@ -5,24 +5,34 @@ and debugging across the system.
 """
 
 # Base exceptions
-from .base import MindFlowError, SystemError, BusinessLogicError
+from .base import (
+    MindFlowError, 
+    SystemError, 
+    BusinessLogicError,
+    InfrastructureError,
+    NetworkError,
+    TimeoutError,
+    ResourceError,
+    ErrorFactory,
+)
 
 # Domain-specific exceptions
 from .agents import (
     AgentSystemError,
     ContextRetrievalError,
-    VectorStoreError,
-    PersonalitySelectionError,
+    AgentVectorStoreError,
+    SpecialistSelectionError,
     RuleEngineError,
     ContentAnalysisError,
     ResultParsingError,
-    CacheError,
-    ConfigurationError,
+    AgentCacheError,
+    AgentConfigurationError,
     DependencyInjectionError,
     AgentRegistrationError,
     AgentExecutionError,
     AgentTimeoutError,
     AgentCommunicationError,
+    AgentErrors,
 )
 
 from .api import (
@@ -80,22 +90,28 @@ __all__ = [
     "MindFlowError",
     "SystemError",
     "BusinessLogicError",
+    "InfrastructureError",
+    "NetworkError",
+    "TimeoutError",
+    "ResourceError",
+    "ErrorFactory",
     
     # Agents
     "AgentSystemError",
     "ContextRetrievalError",
-    "VectorStoreError",
-    "PersonalitySelectionError",
+    "AgentVectorStoreError",
+    "SpecialistSelectionError",
     "RuleEngineError",
     "ContentAnalysisError",
     "ResultParsingError",
-    "CacheError",
-    "ConfigurationError",
+    "AgentCacheError",
+    "AgentConfigurationError",
     "DependencyInjectionError",
     "AgentRegistrationError",
     "AgentExecutionError",
     "AgentTimeoutError",
     "AgentCommunicationError",
+    "AgentErrors",
     
     # API
     "AuthenticationError",

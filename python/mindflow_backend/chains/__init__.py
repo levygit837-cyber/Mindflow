@@ -19,24 +19,23 @@ from mindflow_backend.chains.base import (
 )
 
 # Chain builders (will be implemented)
-# from mindflow_backend.chains.builders import (
-#     SequentialChainBuilder,
-#     ConditionalChainBuilder,
-#     AdaptiveChainBuilder,
-# )
+from mindflow_backend.chains.builders import (
+    SequentialChainBuilder,
+    ConditionalChainBuilder,
+)
 
 # Chain templates (will be implemented)
-# from mindflow_backend.chains.templates import (
-#     ResearchChain,
-#     CodingChain,
-#     AnalysisChain,
-# )
+from mindflow_backend.chains.templates import (
+    ResearchChain,
+    CodingChain,
+)
 
-# Manager (will be implemented)
-# from mindflow_backend.chains.manager import (
-#     ChainManager,
-#     get_chain_manager,
-# )
+# Chain managers (will be implemented)
+from mindflow_backend.chains.managers import (
+    ChainManager,
+    get_chain_manager,
+    reset_chain_manager,
+)
 
 __all__ = [
     # Base classes
@@ -54,4 +53,17 @@ __all__ = [
     "StepContext",
     "StepMetrics",
     "COMMON_STEP_TEMPLATES",
+    
+    # Chain builders
+    "SequentialChainBuilder",
+    "ConditionalChainBuilder",
+    
+    # Chain templates
+    "ResearchChain",
+    "CodingChain",
+    
+    # Chain managers
+    "ChainManager",
+    "get_chain_manager",
+    "reset_chain_manager",
 ]
