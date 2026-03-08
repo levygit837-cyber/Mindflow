@@ -373,10 +373,10 @@ class TestAPIWorkflowIntegration:
                     }
                 ]
             }
-            mock_controller_instance.select_personality.return_value = {
+            mock_controller_instance.select_specialist.return_value = {
                 "success": True,
                 "task_id": "test-task",
-                "selected_personality": "analyst",
+                "selected_specialist": "analyst",
                 "confidence": 0.8
             }
             mock_controller_instance.get_execution_status.return_value = {
@@ -397,16 +397,16 @@ class TestAPIWorkflowIntegration:
             decomposition_data = response.json()
             task_id = decomposition_data["task_id"]
             
-            # 2. Select personality for the task
-            personality_request = {
+            # 2. Select specialist for the task
+            specialist_request = {
                 "task_id": task_id,
                 "task_description": "Analyze the codebase",
                 "task_complexity": "medium"
             }
-            response = client.post("/v1/orchestration/select-personality", json=personality_request)
+            response = client.post("/v1/orchestration/select-specialist", json=specialist_request)
             assert response.status_code == 200
-            personality_data = response.json()
-            assert personality_data["selected_personality"] == "analyst"
+            specialist_data = response.json()
+            assert specialist_data["selected_specialist"] == "analyst"
             
             # 3. Check execution status
             response = client.get(f"/v1/orchestration/execution/test-exec")

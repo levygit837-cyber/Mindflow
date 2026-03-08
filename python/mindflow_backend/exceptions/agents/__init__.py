@@ -1,42 +1,45 @@
 """Agent system exceptions.
 
-All exceptions related to agent operations, personalities, and communication.
+Simplified exception hierarchy for agent operations following best practices.
+All exceptions now inherit directly from MindFlowError with clear context.
 """
 
-# Re-export existing exceptions for backward compatibility
-from mindflow_backend.agents.core.exceptions import (
+from .system import (
     AgentSystemError,
     ContextRetrievalError,
-    VectorStoreError,
-    PersonalitySelectionError,
+    AgentVectorStoreError,
+    SpecialistSelectionError,
     RuleEngineError,
     ContentAnalysisError,
     ResultParsingError,
-    CacheError,
-    ConfigurationError,
+    AgentCacheError,
+    AgentConfigurationError,
     DependencyInjectionError,
     AgentRegistrationError,
+    AgentExecutionError,
+    AgentTimeoutError,
+    AgentCommunicationError,
+    AgentErrors,
+    # Backward compatibility
+    PersonalitySelectionError,
 )
 
-# New agent-specific exceptions
-from .core import AgentExecutionError, AgentTimeoutError
-from .communication import AgentCommunicationError
-
 __all__ = [
-    # Existing exceptions
     "AgentSystemError",
     "ContextRetrievalError",
-    "VectorStoreError",
-    "PersonalitySelectionError",
+    "AgentVectorStoreError",
+    "SpecialistSelectionError",
     "RuleEngineError",
     "ContentAnalysisError",
     "ResultParsingError",
-    "CacheError",
-    "ConfigurationError",
+    "AgentCacheError",
+    "AgentConfigurationError",
     "DependencyInjectionError",
     "AgentRegistrationError",
-    # New exceptions
     "AgentExecutionError",
     "AgentTimeoutError",
     "AgentCommunicationError",
+    "AgentErrors",
+    # Backward compatibility
+    "PersonalitySelectionError",
 ]

@@ -8,10 +8,14 @@ from .metrics import GrpcMetricsCollector
 from .interceptor import MetricsInterceptor
 from .health import AdvancedHealthChecker
 from .prometheus import PrometheusExporter
+from .alerting import AlertManager, AlertConfig, AlertCondition
 
 __all__ = [
     "GrpcMetricsCollector",
     "MetricsInterceptor", 
     "AdvancedHealthChecker",
     "PrometheusExporter",
+    "AlertManager",
+    "AlertConfig",
+    "AlertCondition",
 ]

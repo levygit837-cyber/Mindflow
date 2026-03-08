@@ -13,7 +13,7 @@ from uuid import uuid4
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from mindflow_backend.agents.core.interfaces import ContentAnalyzer
-from mindflow_backend.agents.core.exceptions import ContentAnalysisError
+from mindflow_backend.exceptions import ContentAnalysisError
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.config.agents import get_agent_config

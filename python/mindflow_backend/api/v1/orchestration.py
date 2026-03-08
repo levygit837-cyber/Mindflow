@@ -6,7 +6,7 @@ from mindflow_backend.api.controllers.orchestration_controller import Orchestrat
 from mindflow_backend.api.schemas.requests import (
     OrchestrationRequest,
     TaskDecompositionRequest,
-    PersonalitySelectionRequest
+    SpecialistSelectionRequest
 )
 
 router = APIRouter(prefix="/orchestration", tags=["orchestration"])
@@ -33,10 +33,10 @@ async def get_execution_status(execution_id: str):
     return await orchestration_controller.get_execution_status(execution_id)
 
 
-@router.post("/select-personality")
-async def select_personality(request: PersonalitySelectionRequest):
-    """Select optimal personality for a task."""
-    return await orchestration_controller.select_personality(request)
+@router.post("/select-specialist")
+async def select_specialist(request: SpecialistSelectionRequest):
+    """Select optimal specialist for a task."""
+    return await orchestration_controller.select_specialist(request)
 
 
 @router.post("/coordinate/{task_id}")

@@ -9,12 +9,12 @@ from mindflow_backend.api.controllers.base_controller import BaseController, req
 from mindflow_backend.api.schemas.requests import (
     OrchestrationRequest,
     TaskDecompositionRequest,
-    PersonalitySelectionRequest
+    SpecialistSelectionRequest
 )
 from mindflow_backend.api.schemas.responses import (
     OrchestrationResponse,
     TaskDecompositionResponse,
-    PersonalitySelectionResponse,
+    SpecialistSelectionResponse,
     ExecutionStatusResponse
 )
 from mindflow_backend.services import get_orchestration_service
@@ -119,24 +119,24 @@ class OrchestrationController(BaseController):
             raise self.handle_error(e, "get_execution_status")
     
     @require_auth
-    @audit_log("orchestration_select_personality")
-    async def select_personality(self, request: PersonalitySelectionRequest, req: Request) -> PersonalitySelectionResponse:
-        """Select optimal personality for a task."""
+    @audit_log("orchestration_select_specialist")
+    async def select_specialist(self, request: SpecialistSelectionRequest, req: Request) -> SpecialistSelectionResponse:
+        """Select optimal specialist for a task."""
         try:
-            self.log_request(req, "select_personality", task_id=request.task_id)
+            self.log_request(req, "select_specialist", task_id=request.task_id)
             
-            result = await self.orchestration_service.select_personality(
+            result = await self.orchestration_service.select_specialist(
                 task_id=request.task_id,
                 task_description=request.task_description,
                 task_complexity=request.task_complexity,
-                current_personality=request.current_personality
+                current_specialist=request.current_specialist
             )
             
-            return PersonalitySelectionResponse(
+            return SpecialistSelectionResponse(
                 success=True,
-                message="Personality selection completed",
+                message="Specialist selection completed",
                 task_id=result["task_id"],
-                selected_personality=result["selected_personality"],
+                selected_specialist=result["selected_specialist"],
                 rationale=result["rationale"],
                 confidence=result["confidence"],
                 alternatives=result.get("alternatives", []),
@@ -144,7 +144,7 @@ class OrchestrationController(BaseController):
             )
             
         except Exception as e:
-            raise self.handle_error(e, "select_personality")
+            raise self.handle_error(e, "select_specialist")
     
     @require_auth
     @audit_log("orchestration_coordinate")

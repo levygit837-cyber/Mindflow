@@ -6,7 +6,7 @@ and migration failures.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import InfrastructureError
+from mindflow_backend.exceptions.base.core_simple import InfrastructureError
 
 
 class DatabaseError(InfrastructureError):
@@ -24,8 +24,8 @@ class DatabaseError(InfrastructureError):
         super().__init__(
             message,
             service="database",
-            operation=operation,
             component="storage",
+            context={"operation": operation} if operation else None,
             **kwargs
         )
         self.database_name = database_name
@@ -45,7 +45,7 @@ class ConnectionError(DatabaseError):
     ):
         super().__init__(
             message,
-            operation="connect",
+            context={"operation": "connect"},
             **kwargs
         )
         self.connection_string = connection_string
@@ -65,7 +65,7 @@ class MigrationError(DatabaseError):
     ):
         super().__init__(
             message,
-            operation="migrate",
+            context={"operation": "migrate"},
             **kwargs
         )
         self.migration_version = migration_version

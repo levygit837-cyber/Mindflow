@@ -7,11 +7,11 @@ and system-wide settings.
 from __future__ import annotations
 
 from .agents import AgentConfig, get_agent_config
-from .personality_rules import PersonalityRuleConfig, get_personality_rules
+from .specialist_rules import SpecialistRuleConfig, get_specialist_rules
 
 __all__ = [
     "AgentConfig",
     "get_agent_config", 
-    "PersonalityRuleConfig",
-    "get_personality_rules",
+    "SpecialistRuleConfig",
+    "get_specialist_rules",
 ]

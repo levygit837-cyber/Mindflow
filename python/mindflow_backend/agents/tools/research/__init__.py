@@ -1,8 +1,7 @@
-"""Research tools for MindFlow agents.
+"""Research tools for MindFlow agents. Provides tools for research tasks including 
+source validation, content analysis, data extraction, and research workflows. """
 
-Provides tools for research tasks including source validation,
-content analysis, data extraction, and research workflows.
-"""
+from __future__ import annotations
 
 from .source_validator import SourceValidatorTool
 from .content_analyzer import ContentAnalyzerTool
@@ -10,6 +9,6 @@ from .data_extractor import DataExtractorTool
 
 __all__ = [
     "SourceValidatorTool",
-    "ContentAnalyzerTool",
+    "ContentAnalyzerTool", 
     "DataExtractorTool",
 ]
