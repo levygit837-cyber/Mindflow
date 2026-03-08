@@ -460,7 +460,7 @@ class FileInputNode(InputNode):
     def __init__(
         self,
         node_id: str = "file_input",
-        file_path: str,
+        file_path: str = "",
         encoding: str = "utf-8",
         description: str = "File-based data input"
     ) -> None:

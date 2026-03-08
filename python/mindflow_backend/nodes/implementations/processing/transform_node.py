@@ -6,6 +6,7 @@ various transformation patterns and data manipulation operations.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
@@ -342,14 +343,14 @@ class DataMappingNode(TransformNode):
     def __init__(
         self,
         node_id: str = "data_mapping",
-        mapping_rules: Dict[str, Any],
+        mapping_rules: Dict[str, Any] = None,
         field_mappings: Optional[Dict[str, str]] = None,
         description: str = "Data mapping transformation"
     ) -> None:
         super().__init__(
             node_id=node_id,
             transform_type="mapping",
-            mapping_rules=mapping_rules,
+            mapping_rules=mapping_rules or {},
             description=description
         )
         
@@ -376,7 +377,7 @@ class DataValidationNode(TransformNode):
     def __init__(
         self,
         node_id: str = "data_validation",
-        validation_rules: List[Dict[str, Any]],
+        validation_rules: List[Dict[str, Any]] = None,
         strict_mode: bool = False,
         description: str = "Data validation transformation"
     ) -> None:
@@ -385,7 +386,7 @@ class DataValidationNode(TransformNode):
             results = []
             is_valid = True
             
-            for rule in validation_rules:
+            for rule in (validation_rules or []):
                 field = rule.get("field")
                 required = rule.get("required", False)
                 data_type = rule.get("type")
@@ -459,7 +460,6 @@ class DataValidationNode(TransformNode):
     
     def _check_pattern(self, value: Any, pattern: str) -> bool:
         """Check if value matches regex pattern."""
-        import re
         try:
             return bool(re.search(pattern, str(value)))
         except re.error:
