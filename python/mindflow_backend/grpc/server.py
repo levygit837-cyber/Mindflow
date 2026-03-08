@@ -20,8 +20,18 @@ from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
 from mindflow_backend.grpc.monitoring.interceptor import MetricsInterceptor
 from mindflow_backend.grpc.monitoring.health import AdvancedHealthChecker
 from mindflow_backend.grpc.monitoring.prometheus import PrometheusExporter
+from mindflow_backend.grpc.monitoring.alerting import AlertManager, AlertConfig, AlertCondition, AlertSeverity
 from mindflow_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
 from mindflow_backend.grpc.config import GrpcConfig
+from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import EnhancedGrpcCircuitBreaker, EnhancedCircuitBreakerConfig, AdaptiveThresholdType
+from mindflow_backend.grpc.resilience.advanced_retry import AdvancedRetryPolicy, AdvancedRetryConfig, AdaptiveBackoffType, RetryConditionType
+from mindflow_backend.grpc.resilience.bulkhead import GrpcBulkhead, BulkheadConfig
+from mindflow_backend.grpc.resilience.fallback import FallbackManager, FallbackConfig, DefaultResponseFallback
+from mindflow_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager
+from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor, CompressionConfig, CompressionAlgorithm
+from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache, CacheConfig
+from mindflow_backend.grpc.performance.monitoring.profiler import GrpcProfiler, ProfileConfig, ProfileLevel
+from mindflow_backend.grpc.performance.optimization.optimizer import GrpcOptimizer, OptimizationConfig
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 
@@ -42,18 +52,27 @@ class EnhancedGrpcAgentServer(GrpcServer):
         self._host: str = self.config.host
         self._port: int = self.config.port
         
-        # Enhanced components
+        # Enhanced monitoring components
         self.metrics_collector = GrpcMetricsCollector() if self.config.enable_metrics else None
         self.health_checker = AdvancedHealthChecker() if self.config.enable_health_check else None
         self.prometheus_exporter = None
+        self.alert_manager = None
         
-        # Initialize components
-        if self.config.enable_metrics and self.config.grpc_prometheus_port:
-            self.prometheus_exporter = PrometheusExporter(
-                self.metrics_collector,
-                host="0.0.0.0",
-                port=self.config.grpc_prometheus_port
-            )
+        # Enhanced resilience components
+        self.circuit_breaker = None
+        self.retry_policy = None
+        self.bulkhead = None
+        self.fallback_manager = None
+        
+        # Enhanced performance components
+        self.connection_pool_manager = None
+        self.message_compressor = None
+        self.response_cache = None
+        self.profiler = None
+        self.optimizer = None
+        
+        # Initialize enhanced components
+        self._initialize_enhanced_components()
         
         _logger.info(
             "enhanced_grpc_server_initialized",
@@ -62,6 +81,148 @@ class EnhancedGrpcAgentServer(GrpcServer):
             monitoring=self.config.enable_metrics,
             health_check=self.config.enable_health_check,
             prometheus_port=getattr(self.config, 'grpc_prometheus_port', None)
+        )
+    
+    def _initialize_enhanced_components(self) -> None:
+        """Initialize all enhanced resilience and performance components."""
+        
+        # Initialize monitoring components
+        if self.config.enable_metrics and self.config.grpc_prometheus_port:
+            self.prometheus_exporter = PrometheusExporter(
+                self.metrics_collector,
+                host="0.0.0.0",
+                port=self.config.grpc_prometheus_port
+            )
+        
+        # Initialize alerting system
+        if self.config.enable_metrics:
+            alert_config = AlertConfig(
+                enabled=True,
+                notification_channels=[],  # Log only for now
+                enable_rate_limiting=True,
+                max_alerts_per_hour=50
+            )
+            self.alert_manager = AlertManager(alert_config)
+            
+            # Add default alert conditions
+            high_error_rate = AlertCondition(
+                name="high_error_rate",
+                metric_name="error_rate",
+                threshold_value=10.0,
+                comparison_operator=">=",
+                severity=AlertSeverity.WARNING,
+                duration_seconds=60.0
+            )
+            high_latency = AlertCondition(
+                name="high_latency", 
+                metric_name="response_time_p95",
+                threshold_value=500.0,
+                comparison_operator=">",
+                severity=AlertSeverity.ERROR,
+                duration_seconds=30.0
+            )
+            
+            self.alert_manager.add_condition(high_error_rate)
+            self.alert_manager.add_condition(high_latency)
+        
+        # Initialize resilience components
+        if getattr(self.config, 'enable_resilience', True):
+            # Enhanced circuit breaker
+            circuit_config = EnhancedCircuitBreakerConfig(
+                failure_threshold=getattr(self.config, 'circuit_breaker_failure_threshold', 5),
+                recovery_timeout=getattr(self.config, 'circuit_breaker_recovery_timeout', 60.0),
+                success_threshold=getattr(self.config, 'circuit_breaker_success_threshold', 3),
+                adaptive_threshold_type=AdaptiveThresholdType.PERCENTILE_BASED,
+                enable_dynamic_config=True,
+                auto_tune_thresholds=True
+            )
+            self.circuit_breaker = EnhancedGrpcCircuitBreaker("grpc_server", circuit_config)
+            
+            # Advanced retry policy
+            retry_config = AdvancedRetryConfig(
+                max_attempts=getattr(self.config, 'max_attempts', 3),
+                base_delay=getattr(self.config, 'initial_retry_delay_ms', 100) / 1000.0,
+                max_delay=getattr(self.config, 'max_retry_delay_ms', 1000) / 1000.0,
+                adaptive_backoff_type=AdaptiveBackoffType.EXPONENTIAL_WITH_JITTER,
+                enable_adaptive_delay=True,
+                retry_condition_type=RetryConditionType.ON_ERROR_TYPE,
+                enable_performance_retry=True
+            )
+            self.retry_policy = AdvancedRetryPolicy("grpc_server", retry_config)
+            
+            # Bulkhead pattern
+            bulkhead_config = BulkheadConfig(
+                max_concurrent=getattr(self.config, 'bulkhead_max_concurrent', 100),
+                max_queue_size=getattr(self.config, 'bulkhead_max_queue_size', 1000),
+                queue_timeout_seconds=getattr(self.config, 'bulkhead_queue_timeout', 30.0),
+                execution_timeout_seconds=getattr(self.config, 'default_timeout_seconds', 300),
+                enable_metrics=True
+            )
+            self.bulkhead = GrpcBulkhead(bulkhead_config)
+            
+            # Fallback manager
+            fallback_config = FallbackConfig(
+                enabled=True,
+                fallback_timeout_seconds=5.0,
+                max_fallback_attempts=3,
+                enable_metrics=True
+            )
+            self.fallback_manager = FallbackManager(fallback_config)
+            
+            # Add default fallback strategies
+            default_responses = {
+                "agent_chat": {"status": "degraded", "message": "AI service temporarily unavailable"},
+                "stream_chat": {"status": "degraded", "message": "Stream service temporarily unavailable"}
+            }
+            default_fallback = DefaultResponseFallback(fallback_config, default_responses)
+            self.fallback_manager.add_strategy(default_fallback)
+        
+        # Initialize performance components
+        if getattr(self.config, 'enable_performance_optimization', True):
+            # Connection pool manager
+            self.connection_pool_manager = GrpcConnectionPoolManager()
+            
+            # Message compressor
+            compression_config = CompressionConfig(
+                algorithm=getattr(self.config, 'compression_algorithm', CompressionAlgorithm.GZIP),
+                compression_level=getattr(self.config, 'compression_level', 6),
+                threshold_bytes=getattr(self.config, 'compression_threshold', 512),
+                enable_compression_stats=True
+            )
+            self.message_compressor = GrpcMessageCompressor(compression_config)
+            
+            # Response cache
+            cache_config = CacheConfig(
+                max_size=getattr(self.config, 'cache_max_size', 1000),
+                max_memory_mb=getattr(self.config, 'cache_max_memory_mb', 100),
+                default_ttl_seconds=getattr(self.config, 'cache_default_ttl', 300),
+                enable_stats=True
+            )
+            self.response_cache = GrpcResponseCache(cache_config)
+            
+            # Performance profiler
+            profiler_config = ProfileConfig(
+                enabled=getattr(self.config, 'enable_profiling', True),
+                level=ProfileLevel.BASIC,
+                sampling_rate=getattr(self.config, 'profiling_sampling_rate', 0.1),
+                max_profiles=getattr(self.config, 'profiling_max_profiles', 10000)
+            )
+            self.profiler = GrpcProfiler(profiler_config)
+            
+            # Performance optimizer
+            optimization_config = OptimizationConfig(
+                enabled=getattr(self.config, 'enable_optimization', True),
+                auto_tune=getattr(self.config, 'enable_auto_tuning', False),
+                optimization_interval_seconds=getattr(self.config, 'optimization_interval', 300),
+                min_data_points=getattr(self.config, 'optimization_min_data_points', 100)
+            )
+            self.optimizer = GrpcOptimizer(optimization_config)
+        
+        _logger.info(
+            "enhanced_components_initialized",
+            resilience_components=len([c for c in [self.circuit_breaker, self.retry_policy, self.bulkhead, self.fallback_manager] if c]),
+            performance_components=len([c for c in [self.connection_pool_manager, self.message_compressor, self.response_cache, self.profiler, self.optimizer] if c]),
+            monitoring_components=len([c for c in [self.metrics_collector, self.health_checker, self.alert_manager] if c])
         )
     
     async def start(self) -> None:
@@ -373,17 +534,25 @@ def run() -> None:
     asyncio.run(serve())
 
 
-async def get_server() -> GrpcAgentServer:
+async def get_server() -> EnhancedGrpcAgentServer:
     """Get or create the global server instance."""
     global _server_instance
     if _server_instance is None:
-        _server_instance = GrpcAgentServer()
+        # Create with default configuration - will be updated dynamically
+        _server_instance = EnhancedGrpcAgentServer()
     return _server_instance
 
 
-async def start_grpc_server() -> GrpcAgentServer:
+async def start_grpc_server(config: GrpcConfig | None = None) -> EnhancedGrpcAgentServer:
     """Start gRPC server and return instance for management."""
     server = await get_server()
+    
+    # Update server configuration if provided
+    if config:
+        server.config = config
+        server._host = config.host
+        server._port = config.port
+    
     if not server.is_running():
         await server.start()
     return server
@@ -406,6 +575,47 @@ def setup_signal_handlers() -> None:
     
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
+
+
+# Enhanced status methods for the server
+def get_enhanced_status(self) -> Dict[str, Any]:
+    """Get comprehensive status of all enhanced components."""
+    status = self.get_status()
+    
+    # Add resilience components status
+    status['resilience'] = {}
+    if self.circuit_breaker:
+        status['resilience']['circuit_breaker'] = self.circuit_breaker.get_enhanced_metrics()
+    if self.retry_policy:
+        status['resilience']['retry_policy'] = self.retry_policy.get_advanced_metrics()
+    if self.bulkhead:
+        status['resilience']['bulkhead'] = self.bulkhead.get_status()
+    if self.fallback_manager:
+        status['resilience']['fallback_manager'] = self.fallback_manager.get_metrics()
+    
+    # Add performance components status
+    status['performance'] = {}
+    if self.connection_pool_manager:
+        status['performance']['connection_pool_manager'] = self.connection_pool_manager.get_status()
+    if self.message_compressor:
+        status['performance']['message_compressor'] = self.message_compressor.get_compression_stats()
+    if self.response_cache:
+        status['performance']['response_cache'] = self.response_cache.get_stats()
+    if self.profiler:
+        status['performance']['profiler'] = self.profiler.get_summary()
+    if self.optimizer:
+        status['performance']['optimizer'] = self.optimizer.get_status()
+    
+    # Add alerting status
+    status['alerting'] = {}
+    if self.alert_manager:
+        status['alerting']['alert_manager'] = self.alert_manager.get_alert_metrics()
+        status['alerting']['active_alerts'] = len(self.alert_manager.get_active_alerts())
+    
+    return status
+
+# Add the method to the class
+EnhancedGrpcAgentServer.get_enhanced_status = get_enhanced_status
 
 
 if __name__ == "__main__":

@@ -68,8 +68,8 @@ def get_registry() -> AgentRegistry:
     return _registry
 
 
-def register_all_personalities() -> None:
-    """Import and register every personality in global registry.
+def register_all_specialists() -> None:
+    """Import and register every specialist in global registry.
 
     Call once during application startup (e.g. in ``main.py``).
     Initializes the new dependency injection system.
@@ -82,24 +82,32 @@ def register_all_personalities() -> None:
         if not validate_dependencies():
             raise RuntimeError("Agent system dependency validation failed")
         
-        # Import and register personality factories
-        from mindflow_backend.agents.personalities import (
+        # Import and register specialist factories
+        from mindflow_backend.agents.specialists import (
             create_analyst_agent,
             create_coder_agent,
-            create_orchestrator_agent,
             create_researcher_agent,
+            create_security_agent,
+            create_review_agent,
+            create_architecture_agent,
+            create_creative_agent,
+            create_deep_analysis_agent,
         )
 
         for factory in (
-            create_orchestrator_agent,
-            create_coder_agent,
             create_analyst_agent,
+            create_coder_agent,
             create_researcher_agent,
+            create_security_agent,
+            create_review_agent,
+            create_architecture_agent,
+            create_creative_agent,
+            create_deep_analysis_agent,
         ):
             _registry.register(factory())
 
-        _logger.info("all_personalities_registered", count=_registry.count)
+        _logger.info("all_specialists_registered", count=_registry.count)
     
     except Exception as e:
-        _logger.error("personality_registration_failed", error=str(e))
+        _logger.error("specialist_registration_failed", error=str(e))
         raise

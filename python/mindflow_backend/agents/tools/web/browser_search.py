@@ -1,15 +1,12 @@
-"""Enhanced browser search tool using PinchTab automation.
-
-Migrated to the new ToolInterface architecture while preserving all
-existing functionality including browser automation, source classification,
-and structured result extraction.
+"""
+Browser search tool using PinchTab automation. Provides async interface 
+for web research with browser automation, source classification, and structured result extraction. 
 """
 
 from __future__ import annotations
-
 import asyncio
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from mindflow_backend.agents.research.action_trail import get_action_trail_logger
 from mindflow_backend.agents.research.pinchtab_service import get_pinchtab_service
@@ -24,159 +21,30 @@ from mindflow_backend.schemas.agents.research import (
     SourceType,
     ConfidenceLevel,
 )
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from mindflow_backend.storage.postgresql.connection import db_session
-
-from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, 
-    ToolParameter, 
-    ParameterType,
-    create_tool_schema,
-    create_parameter
-)
 
 _logger = get_logger(__name__)
 
 
-class BrowserSearchTool(AsyncToolInterface):
-    """Enhanced browser search tool using PinchTab automation.
-    
-    Migrated to ToolInterface while preserving all existing functionality
-    for web research with browser automation, source classification,
-    and structured result extraction.
+class BrowserSearchTool:
     """
-    
-    def __init__(self):
-        super().__init__()
-        self.name = "browser_search"
-        self.description = "Advanced browser search with automation and source classification"
-        
-        # Internal state
+    Async browser search tool using PinchTab automation.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialize browser search tool.
+        """
         self.pinchtab_service = None
         self.action_logger = None
-        self.session_id = None
-        self.agent_id = None
-        self._initialized = False
-    
-    def get_schema(self) -> Dict[str, Any]:
-        """Return tool schema for validation."""
-        return create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="web",
-            parameters=[
-                create_parameter(
-                    name="query",
-                    param_type=ParameterType.STRING,
-                    description="Search query or research question",
-                    required=True,
-                    min_length=1
-                ),
-                create_parameter(
-                    name="session_id",
-                    param_type=ParameterType.STRING,
-                    description="Research session identifier",
-                    required=True,
-                    min_length=1
-                ),
-                create_parameter(
-                    name="agent_id",
-                    param_type=ParameterType.STRING,
-                    description="Agent identifier",
-                    required=True,
-                    min_length=1
-                ),
-                create_parameter(
-                    name="max_results",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum number of results to return",
-                    required=False,
-                    default=10,
-                    min_value=1,
-                    max_value=50
-                ),
-                create_parameter(
-                    name="search_engines",
-                    param_type=ParameterType.ARRAY,
-                    description="List of search engines to use",
-                    required=False,
-                    default=["google", "bing"]
-                ),
-                create_parameter(
-                    name="max_concurrent_browsers",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum concurrent browser instances",
-                    required=False,
-                    default=3,
-                    min_value=1,
-                    max_value=10
-                )
-            ],
-            requires_internet=True,
-            requires_sandbox=True,
-            supported_agents=[AgentType.RESEARCHER, AgentType.ANALYST],
-            security_level="high"
-        ).dict()
-    
-    async def execute(self, *args, **kwargs) -> Dict[str, Any]:
-        """Execute browser search with enhanced interface.
-        
-        Args:
-            query: Search query or research question
-            session_id: Research session identifier  
-            agent_id: Agent identifier
-            max_results: Maximum number of results
-            search_engines: List of search engines
-            max_concurrent_browsers: Maximum concurrent browsers
-            
-        Returns:
-            Research results with findings and metadata
+
+    async def initialize(self, session_id: str, agent_id: str) -> None:
         """
-        try:
-            # Initialize if not already done
-            if not self._initialized:
-                session_id = kwargs.get("session_id")
-                agent_id = kwargs.get("agent_id")
-                if not session_id or not agent_id:
-                    return self._format_result(
-                        success=False,
-                        error="session_id and agent_id are required for initialization"
-                    )
-                
-                await self._initialize_internal(session_id, agent_id)
-            
-            # Create query plan from parameters
-            query_plan = self._create_query_plan_from_params(kwargs)
-            
-            # Execute research using existing logic
-            result = await self.execute_research(query_plan, kwargs.get("max_concurrent_browsers", 3))
-            
-            return self._format_result(
-                success=True,
-                result=result.dict() if hasattr(result, 'dict') else result,
-                metadata={
-                    "session_id": self.session_id,
-                    "agent_id": self.agent_id,
-                    "query_count": len(query_plan.queries),
-                    "search_engines": query_plan.search_engines
-                }
-            )
-            
-        except Exception as e:
-            _logger.error(
-                "browser_search_execution_failed",
-                error=str(e),
-                session_id=kwargs.get("session_id"),
-                agent_id=kwargs.get("agent_id")
-            )
-            return self._format_result(
-                success=False,
-                error=f"Browser search execution failed: {str(e)}"
-            )
-    
-    async def _initialize_internal(self, session_id: str, agent_id: str) -> None:
-        """Internal initialization matching legacy interface."""
+        Initialize the tool with session context.
+        Args:
+            session_id: Research session identifier
+            agent_id: Agent performing the search
+        """
         self.pinchtab_service = await get_pinchtab_service()
         self.session_id = session_id
         self.agent_id = agent_id
@@ -184,60 +52,21 @@ class BrowserSearchTool(AsyncToolInterface):
         # Initialize action logger
         with db_session() as db_session_obj:
             self.action_logger = await get_action_trail_logger(db_session_obj)
-        
-        self._initialized = True
-        _logger.info(
-            "browser_search_tool_initialized",
-            session_id=session_id,
-            agent_id=agent_id
-        )
-    
-    def _create_query_plan_from_params(self, params: Dict[str, Any]) -> QueryPlan:
-        """Create QueryPlan from execution parameters."""
-        query = params.get("query", "")
-        search_engines = params.get("search_engines", ["google", "bing"])
-        max_results = params.get("max_results", 10)
-        
-        # Create basic query plan
-        return QueryPlan(
-            queries=[query],
-            search_engines=search_engines,
-            browser_count=1,
-            max_results_per_engine=max_results,
-            confidence_threshold=0.7,
-            source_types=[SourceType.ACADEMIC, SourceType.NEWS, SourceType.OFFICIAL]
-        )
-    
-    # Legacy interface methods for backward compatibility
-    
-    async def initialize(self, session_id: str, agent_id: str) -> None:
-        """Legacy initialization method for backward compatibility.
-        
-        Args:
-            session_id: Research session identifier
-            agent_id: Agent performing the search
-        """
-        await self._initialize_internal(session_id, agent_id)
-    
+
     async def execute_research(
-        self, 
-        query_plan: QueryPlan,
-        max_concurrent_browsers: int = 5
+        self, query_plan: QueryPlan, max_concurrent_browsers: int = 5
     ) -> ResearchResult:
-        """Execute a complete research session with multiple browsers.
-        
-        This method preserves the original interface for existing agents.
-        
+        """
+        Execute a complete research session with multiple browsers.
         Args:
             query_plan: Research query plan with multiple queries
             max_concurrent_browsers: Maximum concurrent browser instances
-            
         Returns:
             Complete research result with findings and synthesis
         """
         if not self.pinchtab_service or not self.action_logger:
             raise RuntimeError("Browser search tool not initialized")
-            
+
         start_time = asyncio.get_event_loop().time()
         browsers_used = min(query_plan.browser_count, max_concurrent_browsers)
         
@@ -246,184 +75,375 @@ class BrowserSearchTool(AsyncToolInterface):
             session_id=self.session_id,
             agent_id=self.agent_id,
             original_query=query_plan.queries[0] if query_plan.queries else "",
-            browsers_used=browsers_used,
-            total_queries=len(query_plan.queries),
+            browsers_count=browsers_used,
+            queries_count=len(query_plan.queries)
         )
-        
-        # Create browser instances
-        browser_sessions = []
+
         try:
-            for i in range(browsers_used):
-                session = await self.pinchtab_service.create_instance(
-                    headless=True, 
-                    stealth=True
-                )
-                browser_sessions.append(session)
-                
-            # Execute queries in parallel
+            # Create browser tasks
             tasks = []
-            for i, (browser_session, query) in enumerate(zip(browser_sessions, query_plan.queries)):
-                if i < len(query_plan.queries):
-                    task = self._execute_single_browser_query(
-                        browser_session.browser_id,
-                        query,
-                        query_plan.search_engines[i % len(query_plan.search_engines)],
-                        query_plan.max_results_per_engine
-                    )
-                    tasks.append(task)
-            
-            # Wait for all tasks to complete
+            for i, query in enumerate(query_plan.queries[:browsers_used]):
+                task = self._execute_single_browser_search(query, i)
+                tasks.append(task)
+
+            # Execute all browser searches concurrently
             browser_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Process results
+            all_findings = []
+            successful_searches = 0
             
-            # Process results and create research findings
-            findings = []
-            total_actions = 0
-            total_duration = 0
-            
-            for i, result in enumerate(browser_results):
+            for result in browser_results:
                 if isinstance(result, Exception):
                     _logger.error(
-                        "browser_query_failed",
-                        query=query_plan.queries[i] if i < len(query_plan.queries) else "unknown",
+                        "browser_search_failed",
+                        session_id=self.session_id,
+                        agent_id=self.agent_id,
                         error=str(result)
                     )
                     continue
                 
-                if result:
-                    # Convert browser action response to research findings
-                    for action_response in result:
-                        if isinstance(action_response, BrowserActionResponse):
-                            finding = self._convert_to_research_finding(action_response, i)
-                            if finding:
-                                findings.append(finding)
-                                total_actions += 1
-                                total_duration += getattr(action_response, 'duration_ms', 0)
+                if result and result.success:
+                    all_findings.extend(result.findings or [])
+                    successful_searches += 1
+
+            # Synthesize results
+            synthesis = await self._synthesize_findings(all_findings, query_plan)
             
-            # Create synthesis
-            synthesis = self._create_synthesis(findings, query_plan.queries[0] if query_plan.queries else "")
+            elapsed_time = asyncio.get_event_loop().time() - start_time
             
-            # Build final result
             research_result = ResearchResult(
                 session_id=self.session_id,
                 agent_id=self.agent_id,
                 original_query=query_plan.queries[0] if query_plan.queries else "",
-                findings=findings,
+                findings=all_findings,
                 synthesis=synthesis,
-                total_duration_seconds=int(asyncio.get_event_loop().time() - start_time),
                 browsers_used=browsers_used,
-                actions_completed=total_actions,
-                confidence_level=self._calculate_confidence_level(findings),
-                source_classification=self._classify_sources(findings)
+                successful_searches=successful_searches,
+                total_time=elapsed_time,
+                completed_at=asyncio.get_event_loop().time()
             )
-            
+
             _logger.info(
                 "browser_research_completed",
                 session_id=self.session_id,
                 agent_id=self.agent_id,
-                findings_count=len(findings),
-                total_duration=research_result.total_duration_seconds,
-                confidence_level=research_result.confidence_level.value
+                findings_count=len(all_findings),
+                successful_searches=successful_searches,
+                elapsed_time=elapsed_time
             )
-            
+
             return research_result
-            
-        finally:
-            # Clean up browser sessions
-            for session in browser_sessions:
-                try:
-                    await self.pinchtab_service.close_instance(session.browser_id)
-                except Exception as e:
-                    _logger.warning(
-                        "browser_cleanup_failed",
-                        browser_id=session.browser_id,
-                        error=str(e)
+
+        except Exception as e:
+            _logger.error(
+                "browser_research_error",
+                session_id=self.session_id,
+                agent_id=self.agent_id,
+                error=str(e)
+            )
+            raise
+
+    async def _execute_single_browser_search(self, query: str, browser_index: int) -> ResearchResult:
+        """
+        Execute search in a single browser instance.
+        Args:
+            query: Search query
+            browser_index: Index of this browser instance
+        Returns:
+            Research result from this browser
+        """
+        try:
+            await self.action_logger.log_action(
+                session_id=self.session_id,
+                agent_id=self.agent_id,
+                action_type="browser_search_started",
+                details={
+                    "query": query,
+                    "browser_index": browser_index
+                }
+            )
+
+            # Execute browser search using PinchTab
+            search_result = await self.pinchtab_service.search(
+                query=query,
+                session_id=self.session_id,
+                browser_index=browser_index
+            )
+
+            # Process search results
+            findings = []
+            if search_result and search_result.results:
+                for result in search_result.results:
+                    finding = ResearchFinding(
+                        title=result.title or "",
+                        url=result.url or "",
+                        content=result.content or "",
+                        source_classification=self._classify_source(result.url),
+                        confidence_score=self._calculate_confidence(result),
+                        metadata={
+                            "browser_index": browser_index,
+                            "search_rank": result.rank if hasattr(result, 'rank') else 0,
+                            "domain": self._extract_domain(result.url) if result.url else ""
+                        }
                     )
-    
-    async def _execute_single_browser_query(
-        self,
-        browser_id: str,
-        query: str,
-        search_engine: str,
-        max_results: int
-    ) -> list[BrowserActionResponse]:
-        """Execute a single browser query using legacy implementation."""
-        # This would contain the existing browser automation logic
-        # For now, return empty list as placeholder
-        return []
-    
-    def _convert_to_research_finding(
-        self, 
-        action_response: BrowserActionResponse,
-        query_index: int
-    ) -> Optional[ResearchFinding]:
-        """Convert browser action response to research finding."""
-        # Implementation would convert action response to finding
-        # For now, return None as placeholder
-        return None
-    
-    def _create_synthesis(self, findings: list[ResearchFinding], original_query: str) -> str:
-        """Create synthesis from research findings."""
-        if not findings:
-            return f"No relevant information found for query: {original_query}"
+                    findings.append(finding)
+
+            await self.action_logger.log_action(
+                session_id=self.session_id,
+                agent_id=self.agent_id,
+                action_type="browser_search_completed",
+                details={
+                    "query": query,
+                    "browser_index": browser_index,
+                    "findings_count": len(findings)
+                }
+            )
+
+            return ResearchResult(
+                session_id=self.session_id,
+                agent_id=self.agent_id,
+                original_query=query,
+                findings=findings,
+                synthesis="",
+                browsers_used=1,
+                successful_searches=1 if findings else 0,
+                total_time=0,
+                completed_at=asyncio.get_event_loop().time()
+            )
+
+        except Exception as e:
+            await self.action_logger.log_action(
+                session_id=self.session_id,
+                agent_id=self.agent_id,
+                action_type="browser_search_error",
+                details={
+                    "query": query,
+                    "browser_index": browser_index,
+                    "error": str(e)
+                }
+            )
+            _logger.error(
+                "single_browser_search_error",
+                session_id=self.session_id,
+                agent_id=self.agent_id,
+                query=query,
+                browser_index=browser_index,
+                error=str(e)
+            )
+            return None
+
+    def _classify_source(self, url: str) -> SourceClassification:
+        """
+        Classify the source type and credibility.
+        Args:
+            url: Source URL
+        Returns:
+            Source classification
+        """
+        if not url:
+            return SourceClassification(
+                source_type=SourceType.UNKNOWN,
+                confidence=ConfidenceLevel.LOW,
+                reason="No URL provided"
+            )
+
+        domain = self._extract_domain(url)
         
-        # Simple synthesis - would be enhanced with actual logic
-        return f"Found {len(findings)} relevant sources for: {original_query}"
-    
-    def _calculate_confidence_level(self, findings: list[ResearchFinding]) -> ConfidenceLevel:
-        """Calculate overall confidence level from findings."""
-        if not findings:
-            return ConfidenceLevel.LOW
+        # Academic sources
+        academic_patterns = [
+            r'\.edu$', r'\.ac\.', r'scholar\.google\.com',
+            r'arxiv\.org', r'pubmed\.ncbi\.nlm\.nih\.gov',
+            r'ieee\.org', r'springer\.com', r'sciencedirect\.com'
+        ]
         
-        # Simple confidence calculation - would be enhanced
-        high_confidence_count = sum(1 for f in findings if f.confidence_level == ConfidenceLevel.HIGH)
-        if high_confidence_count > len(findings) / 2:
-            return ConfidenceLevel.HIGH
-        elif high_confidence_count > 0:
-            return ConfidenceLevel.MEDIUM
-        else:
-            return ConfidenceLevel.LOW
-    
-    def _classify_sources(self, findings: list[ResearchFinding]) -> SourceClassification:
-        """Classify sources from findings."""
-        # Simple classification - would be enhanced
+        # Government sources
+        gov_patterns = [
+            r'\.gov$', r'\.mil$', r'who\.int',
+            r'un\.org', r'worldbank\.org'
+        ]
+        
+        # News sources
+        news_patterns = [
+            r'cnn\.com', r'bbc\.com', r'reuters\.com',
+            r'nytimes\.com', r'washingtonpost\.com', r'wsj\.com'
+        ]
+        
+        # Social media
+        social_patterns = [
+            r'twitter\.com', r'facebook\.com', r'linkedin\.com',
+            r'reddit\.com', r'instagram\.com'
+        ]
+
+        for pattern in academic_patterns:
+            if re.search(pattern, domain, re.IGNORECASE):
+                return SourceClassification(
+                    source_type=SourceType.ACADEMIC,
+                    confidence=ConfidenceLevel.HIGH,
+                    reason=f"Matches academic pattern: {pattern}"
+                )
+
+        for pattern in gov_patterns:
+            if re.search(pattern, domain, re.IGNORECASE):
+                return SourceClassification(
+                    source_type=SourceType.GOVERNMENT,
+                    confidence=ConfidenceLevel.HIGH,
+                    reason=f"Matches government pattern: {pattern}"
+                )
+
+        for pattern in news_patterns:
+            if re.search(pattern, domain, re.IGNORECASE):
+                return SourceClassification(
+                    source_type=SourceType.NEWS,
+                    confidence=ConfidenceLevel.MEDIUM,
+                    reason=f"Matches news pattern: {pattern}"
+                )
+
+        for pattern in social_patterns:
+            if re.search(pattern, domain, re.IGNORECASE):
+                return SourceClassification(
+                    source_type=SourceType.SOCIAL_MEDIA,
+                    confidence=ConfidenceLevel.LOW,
+                    reason=f"Matches social media pattern: {pattern}"
+                )
+
+        # Default to general web
         return SourceClassification(
-            academic=0,
-            news=0,
-            official=0,
-            commercial=0,
-            social_media=0,
-            forum=0,
-            blog=0,
-            other=len(findings)
+            source_type=SourceType.GENERAL_WEB,
+            confidence=ConfidenceLevel.MEDIUM,
+            reason="General web source"
         )
 
+    def _calculate_confidence(self, result) -> ConfidenceLevel:
+        """
+        Calculate confidence score for a search result.
+        Args:
+            result: Search result object
+        Returns:
+            Confidence level
+        """
+        score = 0
+        
+        # Check content length
+        if hasattr(result, 'content') and result.content:
+            content_length = len(result.content)
+            if content_length > 1000:
+                score += 3
+            elif content_length > 500:
+                score += 2
+            elif content_length > 100:
+                score += 1
 
-# Legacy wrapper for backward compatibility
-class LegacyBrowserSearchTool:
-    """Legacy wrapper for backward compatibility with existing agents."""
-    
-    def __init__(self):
-        self._enhanced_tool = BrowserSearchTool()
-    
-    async def initialize(self, session_id: str, agent_id: str) -> None:
-        """Legacy initialize method."""
-        await self._enhanced_tool.initialize(session_id, agent_id)
-    
-    async def execute_research(
-        self, 
-        query_plan: QueryPlan,
-        max_concurrent_browsers: int = 5
-    ) -> ResearchResult:
-        """Legacy execute_research method."""
-        return await self._enhanced_tool.execute_research(query_plan, max_concurrent_browsers)
+        # Check title quality
+        if hasattr(result, 'title') and result.title:
+            title_length = len(result.title)
+            if 10 <= title_length <= 100:
+                score += 2
+            elif title_length > 5:
+                score += 1
+
+        # Check URL quality
+        if hasattr(result, 'url') and result.url:
+            url = result.url.lower()
+            if not any(pattern in url for pattern in ['ads', 'spam', 'fake']):
+                score += 1
+
+        # Convert score to confidence level
+        if score >= 6:
+            return ConfidenceLevel.HIGH
+        elif score >= 4:
+            return ConfidenceLevel.MEDIUM
+        elif score >= 2:
+            return ConfidenceLevel.LOW
+        else:
+            return ConfidenceLevel.VERY_LOW
+
+    def _extract_domain(self, url: str) -> str:
+        """
+        Extract domain from URL.
+        Args:
+            url: Full URL
+        Returns:
+            Domain name
+        """
+        if not url:
+            return ""
+        
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            return parsed.netloc.lower()
+        except Exception:
+            return ""
+
+    async def _synthesize_findings(self, findings: list, query_plan: QueryPlan) -> str:
+        """
+        Synthesize findings into a coherent summary.
+        Args:
+            findings: List of research findings
+            query_plan: Original query plan
+        Returns:
+            Synthesized summary
+        """
+        if not findings:
+            return "No relevant information found for the search query."
+
+        # Group findings by source type
+        academic_findings = [f for f in findings if f.source_classification.source_type == SourceType.ACADEMIC]
+        gov_findings = [f for f in findings if f.source_classification.source_type == SourceType.GOVERNMENT]
+        news_findings = [f for f in findings if f.source_classification.source_type == SourceType.NEWS]
+        general_findings = [f for f in findings if f.source_classification.source_type == SourceType.GENERAL_WEB]
+
+        synthesis_parts = []
+        
+        if academic_findings:
+            synthesis_parts.append(f"Academic sources ({len(academic_findings)} findings):")
+            for finding in academic_findings[:3]:  # Top 3 academic findings
+                synthesis_parts.append(f"- {finding.title}: {finding.content[:200]}...")
+
+        if gov_findings:
+            synthesis_parts.append(f"Government sources ({len(gov_findings)} findings):")
+            for finding in gov_findings[:3]:  # Top 3 gov findings
+                synthesis_parts.append(f"- {finding.title}: {finding.content[:200]}...")
+
+        if news_findings:
+            synthesis_parts.append(f"News sources ({len(news_findings)} findings):")
+            for finding in news_findings[:3]:  # Top 3 news findings
+                synthesis_parts.append(f"- {finding.title}: {finding.content[:200]}...")
+
+        if general_findings:
+            synthesis_parts.append(f"Other web sources ({len(general_findings)} findings):")
+            for finding in general_findings[:3]:  # Top 3 general findings
+                synthesis_parts.append(f"- {finding.title}: {finding.content[:200]}...")
+
+        return "\n\n".join(synthesis_parts)
+
+    async def cleanup(self) -> None:
+        """
+        Clean up browser resources.
+        """
+        if self.pinchtab_service:
+            try:
+                await self.pinchtab_service.cleanup_session(self.session_id)
+                _logger.info(
+                    "browser_cleanup_completed",
+                    session_id=self.session_id,
+                    agent_id=self.agent_id
+                )
+            except Exception as e:
+                _logger.error(
+                    "browser_cleanup_error",
+                    session_id=self.session_id,
+                    agent_id=self.agent_id,
+                    error=str(e)
+                )
 
 
-# Factory function for dependency injection
-def get_browser_search_tool() -> LegacyBrowserSearchTool:
-    """Factory function to get browser search tool (legacy interface)."""
-    return LegacyBrowserSearchTool()
-
-
-def get_enhanced_browser_search_tool() -> BrowserSearchTool:
-    """Factory function to get enhanced browser search tool."""
+# Convenience function for creating browser search tool
+def get_browser_search_tool() -> BrowserSearchTool:
+    """
+    Get a configured browser search tool instance.
+    Returns:
+        BrowserSearchTool instance
+    """
     return BrowserSearchTool()

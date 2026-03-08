@@ -1,7 +1,8 @@
 """Example of integrating error handling into MindFlow applications.
 
 Shows how to set up error handling middleware, use decorators,
-and implement consistent error handling patterns.
+and implement consistent error handling patterns using OmniMind's
+comprehensive error handling system.
 """
 
 from __future__ import annotations
@@ -9,8 +10,12 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mindflow_backend.api.middleware import ErrorHandlerMiddleware
-from mindflow_backend.grpc.interceptors import ErrorHandlerInterceptor
+# Use OmniMind's error handling utilities
+from mindflow_backend.utils.error_setup import (
+    setup_fastapi_error_handling,
+    setup_grpc_error_handling,
+    setup_comprehensive_error_handling,
+)
 from mindflow_backend.utils.error_handling import (
     handle_errors,
     retry_on_error,
@@ -19,8 +24,8 @@ from mindflow_backend.utils.error_handling import (
 )
 
 
-def setup_fastapi_error_handling(app: FastAPI, debug: bool = False) -> None:
-    """Set up error handling for FastAPI application."""
+def setup_fastapi_error_handling_legacy(app: FastAPI, debug: bool = False) -> None:
+    """Legacy setup function - use setup_fastapi_error_handling from utils instead."""
     
     # Add error handling middleware
     app.add_middleware(ErrorHandlerMiddleware, debug=debug)
@@ -35,8 +40,8 @@ def setup_fastapi_error_handling(app: FastAPI, debug: bool = False) -> None:
     )
 
 
-def setup_grpc_error_handling(server, debug: bool = False) -> None:
-    """Set up error handling for gRPC server."""
+def setup_grpc_error_handling_legacy(server, debug: bool = False) -> None:
+    """Legacy setup function - use setup_grpc_error_handling from utils instead."""
     
     # Add error handling interceptor
     error_interceptor = ErrorHandlerInterceptor(debug=debug)
@@ -124,11 +129,11 @@ class ExampleService:
 
 # Example FastAPI route with error handling
 def create_example_app() -> FastAPI:
-    """Create example FastAPI app with error handling."""
+    """Create example FastAPI app with error handling using OmniMind utilities."""
     
     app = FastAPI(title="MindFlow Example API")
     
-    # Set up error handling
+    # Set up error handling using OmniMind utilities
     setup_fastapi_error_handling(app, debug=True)
     
     service = ExampleService()
@@ -157,14 +162,50 @@ def create_example_app() -> FastAPI:
     return app
 
 
+def create_comprehensive_app() -> tuple[FastAPI, dict]:
+    """Create comprehensive app with both FastAPI and gRPC error handling."""
+    
+    # Create FastAPI app
+    app = FastAPI(title="MindFlow Comprehensive Example")
+    
+    # Import gRPC server for demonstration
+    import grpc
+    grpc_server = grpc.server(None)
+    
+    # Set up comprehensive error handling
+    setup_status = setup_comprehensive_error_handling(
+        fastapi_app=app,
+        grpc_server=grpc_server,
+        debug=True,
+        fastapi_cors_origins=["http://localhost:3000"],
+        grpc_port=50051,
+    )
+    
+    return app, setup_status
+
+
 if __name__ == "__main__":
     # Example usage
     app = create_example_app()
     
-    print("Error handling integration example:")
+    print("=== MindFlow Error Handling Integration Example ===")
+    print("Features demonstrated:")
     print("- FastAPI app with error handling middleware")
     print("- Service class with error handling decorators")
     print("- Circuit breaker protection")
     print("- Error context tracking")
-    print("\nTo run the example:")
+    print("- Comprehensive setup utilities")
+    print("\nTo run the basic example:")
     print("  uvicorn examples.error_handling_integration:create_example_app --reload")
+    print("\nTo run the comprehensive example:")
+    print("  uvicorn examples.error_handling_integration:create_comprehensive_app --reload")
+    print("\nFor a complete service example:")
+    print("  uvicorn examples.service_with_error_handling:create_fastapi_app_with_service --reload")
+    
+    # Demonstrate comprehensive setup
+    print("\n=== Comprehensive Setup Demo ===")
+    comprehensive_app, setup_status = create_comprehensive_app()
+    print(f"FastAPI setup: {setup_status['fastapi_setup']}")
+    print(f"gRPC setup: {setup_status['grpc_setup']}")
+    print(f"Debug mode: {setup_status['debug_enabled']}")
+    print("Configuration:", setup_status['configuration'])

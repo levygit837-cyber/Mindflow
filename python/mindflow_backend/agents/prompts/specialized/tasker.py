@@ -15,7 +15,7 @@ access to semantic context from previous tasks.
 - Break complex requests into atomic, independently verifiable sub-tasks.
 - Ensure tasks form a valid DAG (no circular dependencies).
 - Consider semantic relationships between tasks.
-- Assign the most appropriate agent or sub-personality to each task.
+- Assign the most appropriate agent or specialist to each task.
 
 ### 2. Context Integration
 - Analyse provided semantic context from previous tasks.
@@ -38,17 +38,17 @@ access to semantic context from previous tasks.
 | ``analyst`` | Code analysis, symbol tracing, metrics, investigation |
 | ``researcher`` | External research, documentation, best practices, API investigation |
 
-### Sub-Personalities (domain-specific, registered at runtime)
+### Specialists (domain-specific, registered at runtime)
 
-Sub-personalities are extensible agents with custom SystemPrompts. They are NOT \
-hardcoded — which sub-personalities exist depends on the project configuration. \
+Specialists are extensible agents with custom SystemPrompts. They are NOT \
+hardcoded — which specialists exist depends on the project configuration. \
 Common examples:
 - ``security`` — security review, vulnerability analysis
 - ``arch_tech`` — architecture design, technical design
 - ``critic`` — code quality, style review
 
-**Rule**: If a registered sub-personality perfectly matches the task domain, use its \
-registered name. If unsure whether a sub-personality is available, default to the \
+**Rule**: If a registered specialist perfectly matches the task domain, use its \
+registered name. If unsure whether a specialist is available, default to the \
 closest core agent (e.g. ``analyst`` for code investigation, ``coder`` for security \
 fixes). The system will route to the best available agent.
 
@@ -64,7 +64,7 @@ Return ONLY valid JSON with this exact schema:
     {
       "title": "Short, descriptive title for the task",
       "scope": "Detailed description of what this task must accomplish",
-      "owner_agent": "coder|analyst|researcher|<sub-personality-name>",
+      "owner_agent": "coder|analyst|researcher|<specialist-name>",
       "dependencies": [0, 1, 2],
       "context_boundary": "What context this task can access and use",
       "expected_artifacts": ["Specific deliverables this task should produce"],

@@ -15,7 +15,7 @@ __all__ = [
     "ContextRetriever",
     "VectorStore",
     "Cache",
-    "PersonalitySelector",
+    "SpecialistSelector",
     "RuleEngine",
     "ContentAnalyzer",
     "ResultParser",

@@ -11,6 +11,33 @@ from .base import (
     ErrorContext,
     ErrorResponse,
 )
+from .base_exceptions import (
+    MindFlowErrorSchema,
+    SystemErrorSchema,
+    ConfigurationErrorSchema,
+    InfrastructureErrorSchema,
+    NetworkErrorSchema,
+    ResourceErrorSchema,
+    TimeoutErrorSchema,
+    BusinessLogicErrorSchema,
+    ValidationErrorSchema,
+    AuthenticationErrorSchema,
+    AuthorizationErrorSchema,
+    BusinessRuleErrorSchema,
+    ConflictErrorSchema,
+    DomainErrorSchema,
+    NotFoundErrorSchema,
+    WorkflowErrorSchema,
+)
+from .api_errors import (
+    RoutingErrorSchema,
+    RequestValidationErrorSchema,
+    AuthenticationErrorSchema as ApiAuthenticationErrorSchema,
+    AuthorizationErrorSchema as ApiAuthorizationErrorSchema,
+    StreamingErrorSchema,
+    RateLimitErrorSchema,
+    ApiTimeoutErrorSchema,
+)
 from .agent_errors import (
     AgentErrorSchema,
     AgentExecutionErrorSchema,
@@ -19,13 +46,13 @@ from .agent_errors import (
 )
 from .provider_errors import (
     ProviderErrorSchema,
-    RateLimitErrorSchema,
+    RateLimitErrorSchema as ProviderRateLimitErrorSchema,
     TokenLimitErrorSchema,
     ModelUnavailableErrorSchema,
 )
 from .orchestrator_errors import (
     OrchestratorErrorSchema,
-    RoutingErrorSchema,
+    RoutingErrorSchema as OrchestratorRoutingErrorSchema,
     DecompositionErrorSchema,
     SchedulingErrorSchema,
 )
@@ -38,6 +65,33 @@ __all__ = [
     "ErrorContext",
     "ErrorResponse",
     
+    # Base exception schemas
+    "MindFlowErrorSchema",
+    "SystemErrorSchema",
+    "ConfigurationErrorSchema",
+    "InfrastructureErrorSchema",
+    "NetworkErrorSchema",
+    "ResourceErrorSchema",
+    "TimeoutErrorSchema",
+    "BusinessLogicErrorSchema",
+    "ValidationErrorSchema",
+    "AuthenticationErrorSchema",
+    "AuthorizationErrorSchema",
+    "BusinessRuleErrorSchema",
+    "ConflictErrorSchema",
+    "DomainErrorSchema",
+    "NotFoundErrorSchema",
+    "WorkflowErrorSchema",
+    
+    # API error schemas
+    "RoutingErrorSchema",
+    "RequestValidationErrorSchema",
+    "ApiAuthenticationErrorSchema",
+    "ApiAuthorizationErrorSchema",
+    "StreamingErrorSchema",
+    "RateLimitErrorSchema",
+    "ApiTimeoutErrorSchema",
+    
     # Agent errors
     "AgentErrorSchema",
     "AgentExecutionErrorSchema",
@@ -46,13 +100,13 @@ __all__ = [
     
     # Provider errors
     "ProviderErrorSchema",
-    "RateLimitErrorSchema",
+    "ProviderRateLimitErrorSchema",
     "TokenLimitErrorSchema",
     "ModelUnavailableErrorSchema",
     
     # Orchestrator errors
     "OrchestratorErrorSchema",
-    "RoutingErrorSchema",
+    "OrchestratorRoutingErrorSchema",
     "DecompositionErrorSchema",
     "SchedulingErrorSchema",
 ]
