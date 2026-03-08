@@ -398,14 +398,14 @@ class GroupByAggregateNode(AggregateNode):
     def __init__(
         self,
         node_id: str = "group_by_aggregate",
-        group_fields: List[str],
-        aggregations: Dict[str, str],  # field_name -> aggregation_type
+        group_fields: List[str] = None,
+        aggregations: Dict[str, str] = None,  # field_name -> aggregation_type
         description: str = "Group-by aggregation operations"
     ) -> None:
         super().__init__(
             node_id=node_id,
             aggregation_type="group",
-            group_by=group_fields,
+            group_by=group_fields or [],
             description=description
         )
         
