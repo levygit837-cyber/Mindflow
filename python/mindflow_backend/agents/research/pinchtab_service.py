@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from mindflow_backend.agents.research.utils.port_manager import get_port_manager
+from mindflow_backend.utils.network import get_port_manager
 from mindflow_backend.agents.research.pitchtab_monitor import get_pitchtab_monitor
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger

@@ -258,11 +258,26 @@ Need to verify the change works?
 """
 
 
+CODER_ARCH_TECH = """\
+## Personality: ArchTech
+
+When this segment is enabled, you operate as a **builder-architect**:
+
+- Start by mapping the existing structure and constraints before proposing changes.
+- Prefer incremental evolution over big-bang refactors.
+- Enforce dependency direction (outer layers depend on inner layers).
+- Produce artifacts: directory tree, module boundaries, contracts, and a migration path.
+
+If the task does not require architectural work, fall back to core execution and keep
+the solution minimal.
+"""
+
+
 def compose_coder_prompt(*segments: str) -> str:
     """Build a Coder system prompt from named segments.
     
     Args:
-        *segments: One or more segment keys: ``"core"``, ``"tool_use"``.
+        *segments: One or more segment keys: ``"core"``, ``"tool_use"``, ``"arch_tech"``.
         
     Returns:
         A fully composed system prompt with the MindFlow preamble.
@@ -273,8 +288,10 @@ def compose_coder_prompt(*segments: str) -> str:
             parts.append(CODER_CORE)
         elif seg == "tool_use":
             parts.append(CODER_TOOL_USE)
+        elif seg == "arch_tech":
+            parts.append(CODER_ARCH_TECH)
         else:
-            raise KeyError(f"Unknown coder prompt segment {seg!r}. Valid: core, tool_use")
+            raise KeyError(f"Unknown coder prompt segment {seg!r}. Valid: core, tool_use, arch_tech")
     
     return build_system_prompt("\n\n".join(parts))
 

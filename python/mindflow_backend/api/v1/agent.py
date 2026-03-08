@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 
-from mindflow_backend.api.sse import format_sse
+from mindflow_backend.utils.formatting import format_sse
 from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEventMeta

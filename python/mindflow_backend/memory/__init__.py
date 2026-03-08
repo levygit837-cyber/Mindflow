@@ -25,7 +25,7 @@ from .api.controller import MemoryController
 from .api.routes import router
 
 # Utils
-from .utils.tokenization import estimate_token_count
+from mindflow_backend.utils.core import estimate_token_count
 
 # Legacy exports for backward compatibility
 __all__ = [

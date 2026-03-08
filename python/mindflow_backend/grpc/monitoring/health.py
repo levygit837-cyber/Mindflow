@@ -404,9 +404,9 @@ class AdvancedHealthChecker:
         self.add_checker(grpc_checker)
         
         # Database checker
-        if hasattr(settings, 'database_url'):
+        if hasattr(settings, 'database') and hasattr(settings.database, 'url'):
             db_checker = DatabaseHealthChecker(
-                database_url=settings.database_url,
+                database_url=settings.database.url,
                 timeout_seconds=5.0
             )
             self.add_checker(db_checker)

@@ -17,10 +17,8 @@ from mindflow_backend.agents.prompts.specialized.tasker import (
     TASKER_VALIDATION_RULES,
 )
 from mindflow_backend.decomposition.engine import TaskDecomposer
-from mindflow_backend.decomposition.utils import (
-    extract_json_from_response,
-    validate_task_dependencies,
-)
+from mindflow_backend.utils.formatting import extract_json_from_response
+from mindflow_backend.utils.validation import validate_task_dependencies
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 # lazy import inside _ensure_initialized

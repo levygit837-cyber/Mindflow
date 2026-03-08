@@ -38,6 +38,9 @@ class ChatSessionSchema(BaseModel):
 
 
 StreamModeName = Literal["updates", "messages", "custom", "values", "debug"]
+
+# Rich event types for orchestrator UI (OrchestratorStreamRenderer).
+# Notifier: generic channel for any info to show in UI (kind, message, details).
 StreamEventType = Literal[
     "thought",
     "tool_call",
@@ -48,10 +51,47 @@ StreamEventType = Literal[
     "done",
     "error",
     "notifier",
+    # Orchestrator flow
+    "orchestrator_thinking_start",
+    "orchestrator_thinking",
+    "orchestrator_thinking_end",
+    "reflection_mode_start",
+    "reflection_mode_end",
+    "orchestrator_decision",
+    "agent_delegation_start",
+    "agent_delegation_complete",
+    "specialist_activation",
+    "specialist_thinking",
+    "orchestrator_step",
+    "tool_operation_start",
+    "tool_operation_update",
+    "tool_operation_complete",
+    "routing_analysis",
+    "agent_execution_start",
 ]
 
 
+class NotifierPayload(BaseModel):
+    """Flexible payload for 'notifier' events. Any action or info to show in the UI.
+
+    Use kind (or category) to identify the type; message for display; details for extra data.
+    Example kinds: file_read, file_write, tool_start, tool_end, context_loaded, search_done, info, warning.
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    kind: str = Field(
+        ...,
+        alias="category",
+        description="Notification type: file_read, file_write, tool_start, context_loaded, info, etc.",
+    )
+    message: str = Field(..., description="Short text to display in the UI")
+    details: dict[str, Any] = Field(default_factory=dict, description="Optional extra data (file_path, start_line, tool_name, etc.)")
+
+
 class StreamEventMeta(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     runId: str | None = None
     parentRunId: str | None = None
     node: str | None = None
@@ -67,6 +107,7 @@ class StreamEventMeta(BaseModel):
     insertBefore: str | None = None
     firstResponseMarker: str | None = None
     category: Literal["explanation", "decision", "code_result", "summary", "response"] | None = None
+    agent: str | None = None  # Current agent (orchestrator, coder, analyst, researcher) for UI
 
 
 class StreamEvent(BaseModel):

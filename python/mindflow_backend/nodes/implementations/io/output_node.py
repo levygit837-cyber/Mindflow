@@ -363,8 +363,8 @@ class StreamOutputNode(OutputNode):
     
     def __init__(
         self,
-        node_id: str = "stream_output",
         stream_destination: Callable[[Any], None],
+        node_id: str = "stream_output",
         buffer_size: int = 1000,
         flush_interval: float = 1.0,
         description: str = "Streaming data output"

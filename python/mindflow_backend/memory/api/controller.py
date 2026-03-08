@@ -15,7 +15,7 @@ from mindflow_backend.memory.api.schemas import (
     MemorySummaryResponse,
     ContextWindowResponse
 )
-from mindflow_backend.services import get_memory_service
+from mindflow_backend.memory import get_memory_service
 
 
 class MemoryController(BaseController):

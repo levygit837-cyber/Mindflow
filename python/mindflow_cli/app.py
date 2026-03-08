@@ -5,6 +5,8 @@ import typer
 from mindflow_cli.commands.chat import register_chat_commands
 from mindflow_cli.commands.health import register_health_commands
 from mindflow_cli.commands.workflow import register_workflow_commands
+from mindflow_cli.commands.start import register_start_commands
+from mindflow_cli.commands.test_orchestrator import register_test_orchestrator_commands
 
 app = typer.Typer(help="MindFlow terminal-first CLI", invoke_without_command=True)
 
@@ -13,13 +15,15 @@ def main(ctx: typer.Context) -> None:
     """MindFlow CLI - Modo interativo por padrão"""
     if ctx.invoked_subcommand is None:
         from rich.console import Console
-        Console().print("[yellow]Dica: Rode `mindflow connect` para iniciar o modo interativo. Para ajuda: `mindflow --help`[/]")
+        Console().print("[yellow]Dica: Rode `mindflow start` para iniciar o modo interativo. Para ajuda: `mindflow --help`[/]")
 
 
 # Register all command groups
 register_health_commands(app)
 register_chat_commands(app)
 register_workflow_commands(app)
+register_start_commands(app)
+register_test_orchestrator_commands(app)
 
 
 def run() -> None:

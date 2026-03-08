@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Callable, TypeVar
 from functools import wraps
 
@@ -131,10 +132,10 @@ def audit_log(operation: str):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
-            start_time = logging.time()
+            start_time = time.time()
             try:
                 result = await func(*args, **kwargs)
-                duration = logging.time() - start_time
+                duration = time.time() - start_time
                 _logger.info(
                     f"Audit: {operation} completed",
                     duration=duration,
@@ -142,7 +143,7 @@ def audit_log(operation: str):
                 )
                 return result
             except Exception as e:
-                duration = logging.time() - start_time
+                duration = time.time() - start_time
                 _logger.error(
                     f"Audit: {operation} failed",
                     duration=duration,

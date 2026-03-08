@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
-from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.utils.core import estimate_token_count
 from mindflow_backend.schemas.session.contracts import RetrievedContext
 from mindflow_backend.memory.storage.models import (
     AgentMemoryCursor,
@@ -204,7 +204,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         
         try:
             if token_count <= 0:
-                token_count = self._estimate_token_count(content)
+                token_count = estimate_token_count(content)
             
             with db_session() as db:
                 # Create memory event
@@ -669,12 +669,6 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         # Reset cursor
         cursor.tokens_since_summary = 0
         cursor.last_summary_at = datetime.now(UTC)
-    
-    def _estimate_token_count(self, text: str) -> int:
-        """Estimate token count for text."""
-        if not text:
-            return 0
-        return max(1, math.ceil(len(text) / 4))
     
     # Additional methods for session management
     

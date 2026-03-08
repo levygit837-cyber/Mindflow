@@ -45,7 +45,7 @@ class ConnectionPoolConfigRequest(BaseModel):
 class ProfilerConfigRequest(BaseModel):
     """Request model for profiler configuration."""
     enabled: bool = True
-    level: str = Field(default="basic", regex="^(basic|detailed|comprehensive)$")
+    level: str = Field(default="basic", pattern="^(basic|detailed|comprehensive)$")
     sampling_rate: float = Field(default=0.1, ge=0.0, le=1.0)
     max_profiles: int = Field(default=10000, ge=1)
 

@@ -1,85 +1,69 @@
-"""Logging setup — dual output: structured JSON (production) and Rich console (dev).
+"""Legacy logging wrapper.
 
-Uses ``structlog`` for structured key-value logging.  The log format is
-controlled by the ``LOG_FORMAT`` environment variable (``json`` or ``console``).
+DEPRECATED: This module provides backward compatibility while migrating
+to the new modular logging infrastructure in infra/logging/.
+
+Use mindflow_backend.infra.logging.structured.get_logger() instead.
 """
 
-from __future__ import annotations
+import warnings
+from functools import lru_cache
 
-import logging
-import sys
-from typing import TYPE_CHECKING
+# Import new modular logging
+from mindflow_backend.infra.logging.structured import (
+    configure_logging as _configure_logging,
+    get_logger as _get_logger,
+    reset_logging as _reset_logging,
+)
 
-import structlog
-
-if TYPE_CHECKING:
-    pass
-
-from mindflow_backend.infra.config import get_settings as _get_settings
-
-_configured = False
+# Legacy exports for backward compatibility
+__all__ = ["configure_logging", "get_logger", "reset_logging"]
 
 
-def configure_logging(level: int = logging.INFO) -> None:
+def configure_logging(level: int = 20) -> None:
     """Configure structlog + stdlib logging.
-
-    Call once at startup.  Subsequent calls are no-ops.
+    
+    DEPRECATED: Use mindflow_backend.infra.logging.structured.configure_logging() instead.
+    
+    Args:
+        level: Logging level to configure
     """
-    global _configured  # noqa: PLW0603
-    if _configured:
-        return
-    _configured = True
-
-    settings = _get_settings()
-    is_json = settings.log_format == "json"
-
-    # Shared processors for both renderers.
-    shared_processors: list[structlog.types.Processor] = [
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.UnicodeDecoder(),
-    ]
-
-    if is_json:
-        renderer: structlog.types.Processor = structlog.processors.JSONRenderer()
-    else:
-        renderer = structlog.dev.ConsoleRenderer()
-
-    structlog.configure(
-        processors=[
-            *shared_processors,
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
+    warnings.warn(
+        "infra.logging.configure_logging() is deprecated. Use infra.logging.structured.configure_logging() instead.",
+        DeprecationWarning,
+        stacklevel=2
     )
+    return _configure_logging(level)
 
-    formatter = structlog.stdlib.ProcessorFormatter(
-        processors=[
-            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            renderer,
-        ],
+
+@lru_cache(maxsize=1)
+def get_logger(name: str):
+    """Return a structlog bound logger with the given name.
+    
+    DEPRECATED: Use mindflow_backend.infra.logging.structured.get_logger() instead.
+    
+    Args:
+        name: Logger name
+        
+    Returns:
+        Structlog bound logger
+    """
+    warnings.warn(
+        "infra.logging.get_logger() is deprecated. Use infra.logging.structured.get_logger() instead.",
+        DeprecationWarning,
+        stacklevel=2
     )
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-
-    root = logging.getLogger()
-    root.handlers.clear()
-    root.setLevel(level)
-    root.addHandler(handler)
-
-
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    """Return a structlog bound logger with the given name."""
-    return structlog.get_logger(name)
+    return _get_logger(name)
 
 
 def reset_logging() -> None:
-    """Reset the configured flag (for testing)."""
-    global _configured  # noqa: PLW0603
-    _configured = False
+    """Reset the configured flag (for testing).
+    
+    DEPRECATED: Use mindflow_backend.infra.logging.structured.reset_logging() instead.
+    """
+    warnings.warn(
+        "infra.logging.reset_logging() is deprecated. Use infra.logging.structured.reset_logging() instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _reset_logging()

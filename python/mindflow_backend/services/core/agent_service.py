@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.interfaces.agents.enhanced_analyst import EnhancedAnalyst
 from mindflow_backend.agents.interfaces.agents.enhanced_coder import EnhancedCoder
-from mindflow_backend.agents.interfaces.agents.enhanced_researcher import EnhancedResearcher
+from mindflow_backend.agents.research.enhanced_researcher import get_enhanced_researcher_agent
 from mindflow_backend.agents.interfaces.agents.enhanced_reviewer import EnhancedReviewer
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
@@ -31,7 +31,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
         self._agent_registry = {
             "analyst": EnhancedAnalyst,
             "coder": EnhancedCoder,
-            "researcher": EnhancedResearcher,
+            "researcher": get_enhanced_researcher_agent,
             "reviewer": EnhancedReviewer,
         }
         

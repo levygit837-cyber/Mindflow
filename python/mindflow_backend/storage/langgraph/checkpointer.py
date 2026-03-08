@@ -8,6 +8,6 @@ from mindflow_backend.infra.config import get_settings
 @asynccontextmanager
 async def langgraph_checkpointer():
     settings = get_settings()
-    async with AsyncPostgresSaver.from_conn_string(settings.database_url) as checkpointer:
+    async with AsyncPostgresSaver.from_conn_string(settings.database.url) as checkpointer:
         await checkpointer.setup()
         yield checkpointer

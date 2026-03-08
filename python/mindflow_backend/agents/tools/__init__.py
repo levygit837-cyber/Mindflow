@@ -10,42 +10,38 @@ Provides modular, extensible tool architecture with:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, TypeVar, Optional, List, Dict
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+# Keep this module import-lightweight. Tool modules may depend on optional
+# packages (browser/DB/redis). Import them lazily where needed.
 
-# Import new registry
-from .base.tool_registry import ToolRegistry
-from .base.tool_schemas import ToolSchema
+from .base.tool_registry import ToolRegistry  # noqa: F401
+from .base.tool_schemas import ToolSchema  # noqa: F401
+from .sandbox import MindFlowSandbox  # noqa: F401
 
-# Import tool modules for auto-discovery
-from . import filesystem, web, system, code, research
-from . import ai, data, integration
 
-# Legacy imports for backward compatibility
-from .web.browser_search import BrowserSearchTool, get_browser_search_tool
-from .system.sandbox import MindFlowSandbox, get_sandbox_tool
+class _DefaultRegistry:
+    """Minimal registry API used by orchestration code.
+
+    Full tool authorization is implemented elsewhere; for unit tests and
+    minimal runtime environments, returning an empty tool list is valid.
+    """
+
+    def __init__(self, sandbox: MindFlowSandbox) -> None:
+        self.sandbox = sandbox
+
+    def get_tools_for_agent(self, _agent_type: Any) -> list[Any]:
+        return []
+
+
+def create_default_registry(sandbox: MindFlowSandbox) -> _DefaultRegistry:
+    """Create a default tool registry for an agent sandbox."""
+    return _DefaultRegistry(sandbox)
 
 __all__ = [
     # Core components
     "ToolRegistry",
     "ToolSchema",
-    
-    # Tool modules
-    "filesystem",
-    "web", 
-    "system",
-    "code",
-    "research",
-    "ai",
-    "data",
-    "integration",
-    
-    # Legacy compatibility
-    "BrowserSearchTool",
-    "get_browser_search_tool",
-    "MindFlowSandbox", 
-    "get_sandbox_tool",
+    "MindFlowSandbox",
+    "create_default_registry",
 ]

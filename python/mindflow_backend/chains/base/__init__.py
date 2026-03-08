@@ -3,6 +3,7 @@
 from .chain import BaseChain, ChainType, ChainStatus
 from .step import ChainStep, StepType, StepResult
 from .executor import ChainExecutor, ExecutionContext
+from .types import ChainConfig
 
 __all__ = [
     "BaseChain",
@@ -13,4 +14,5 @@ __all__ = [
     "StepResult",
     "ChainExecutor",
     "ExecutionContext",
+    "ChainConfig",
 ]

@@ -211,6 +211,82 @@ class FileReadTool(AsyncToolInterface):
         return self._schema.dict()
 
 
+class FileEditTool(AsyncToolInterface):
+    """Simple file edit tool (single replace).
+
+    This is a minimal implementation used by the unified filesystem tool registry.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.name = "edit_file"
+        self.description = "Edit a file by replacing a substring (single occurrence)"
+
+        self.restricted_paths = {
+            "/etc", "/usr", "/bin", "/sbin", "/boot", "/sys",
+            "/proc", "/dev", "/root", "/var/log",
+        }
+
+        self._schema = create_tool_schema(
+            name=self.name,
+            description=self.description,
+            category="filesystem",
+            parameters=[
+                {"name": "file_path", "type": "string", "description": "Path to file", "required": True},
+                {"name": "old_string", "type": "string", "description": "Text to replace", "required": True},
+                {"name": "new_string", "type": "string", "description": "Replacement text", "required": True},
+                {"name": "count", "type": "integer", "description": "Max replacements", "required": False, "default": 1},
+                {"name": "encoding", "type": "string", "description": "Encoding", "required": False, "default": "utf-8"},
+            ],
+            returns={
+                "type": "object",
+                "description": "Edit result",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "replacements": {"type": "integer"},
+                },
+            },
+        )
+
+    async def execute(self, **kwargs) -> Dict[str, Any]:
+        file_path = kwargs["file_path"]
+        old_string = kwargs["old_string"]
+        new_string = kwargs["new_string"]
+        count = int(kwargs.get("count", 1))
+        encoding = kwargs.get("encoding", "utf-8")
+
+        validation_result = self._validate_path(file_path)
+        if not validation_result["valid"]:
+            return {"success": False, "error": validation_result["error"]}
+
+        path_obj = Path(file_path)
+        if not path_obj.exists() or not path_obj.is_file():
+            return {"success": False, "error": f"File not found: {file_path}"}
+
+        content = path_obj.read_text(encoding=encoding)
+        if old_string not in content:
+            return {"success": False, "error": "old_string not found in file"}
+
+        new_content = content.replace(old_string, new_string, count)
+        replacements = 1 if count == 1 else content.count(old_string)
+        path_obj.write_text(new_content, encoding=encoding)
+
+        return {"success": True, "replacements": replacements}
+
+    def _validate_path(self, file_path: str) -> Dict[str, Any]:
+        try:
+            path_obj = Path(file_path).resolve()
+            for restricted in self.restricted_paths:
+                if str(path_obj).startswith(restricted):
+                    return {"valid": False, "error": f"Access denied: {restricted}"}
+            return {"valid": True}
+        except Exception as e:
+            return {"valid": False, "error": f"Path validation error: {e}"}
+
+    def get_schema(self) -> Dict[str, Any]:
+        return self._schema.dict()
+
+
 class FileWriteTool(AsyncToolInterface):
     """
     File writing tool with security controls and validation.

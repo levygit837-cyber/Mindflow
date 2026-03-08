@@ -7,16 +7,16 @@ while using the new specialist architecture.
 from __future__ import annotations
 
 from mindflow_backend.agents._base import BaseAgent
-from mindflow_backend.agents.prompts.analyst import (
+from mindflow_backend.agents.prompts.core.analyst import (
     ANALYST_SYSTEM_PROMPT,
     compose_analyst_prompt,
 )
-from mindflow_backend.agents.prompts.coder import (
+from mindflow_backend.agents.prompts.core.coder import (
     CODER_SYSTEM_PROMPT,
     compose_coder_prompt,
 )
-from mindflow_backend.agents.prompts.researcher import RESEARCHER_SYSTEM_PROMPT
-from mindflow_backend.agents.prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
+from mindflow_backend.agents.prompts.core.researcher import RESEARCHER_SYSTEM_PROMPT
+from mindflow_backend.agents.prompts.core.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
     SandboxMode,

@@ -24,6 +24,8 @@ from mindflow_backend.schemas.orchestration.delegation import (
 )
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
+    ChainType,
+    ExecutionStrategy,
     OrchestratorDecision,
     Priority,
     ThinkingLevel,
@@ -45,6 +47,12 @@ class IntentAnalysis(BaseModel):
     confidence: float = Field(description="Confidence in this analysis (0-1)")
     is_multi_agent: bool = Field(default=False, description="Requires multiple agents")
     agent_sequence: list[AgentType] = Field(default_factory=list, description="Sequence of agents needed")
+    execution_strategy: ExecutionStrategy = Field(
+        default=ExecutionStrategy.SINGLE_AGENT,
+        description="How to execute: single agent, chain, or graph",
+    )
+    suggested_chain_id: str | None = Field(default=None, description="Chain identifier if using CHAIN")
+    suggested_chain_type: ChainType | None = Field(default=None, description="Chain type/category")
 
 
 class IntelligentRouter:
@@ -62,11 +70,13 @@ class IntelligentRouter:
         """Use LLM to analyze user intent and recommend actions."""
         
         # Create the intent analysis prompt
-        analysis_prompt = f"""You are an intelligent task analyzer. Analyze this user request and determine:
+        analysis_prompt = f"""You are an intelligent orchestrator planner. Analyze this user request and determine:
 1. What the user actually wants to accomplish
 2. Whether you need codebase context to make good decisions
-3. Which specialized agent should handle this
-4. If multiple agents are needed, in what sequence
+3. What execution strategy to use (SINGLE_AGENT vs CHAIN vs GRAPH)
+4. If CHAIN: which chain (and its type)
+5. Which specialized agent would be responsible if SINGLE_AGENT
+6. If multi-agent is needed, in what sequence
 
 User Request: {message}
 
@@ -78,6 +88,10 @@ Available Agents:
 - RESEARCHER: Web search, documentation lookup, technology comparison
 - ORCHESTRATOR: Session coordination, multi-agent task delegation
 
+Available Chains:
+- coding_task (CODING_TASK): Analyst (read/deep) → Coder (write) → Analyst-as-Critic (code review).
+  Use for most coding/implementation/refactor tasks where changes are expected.
+
 Respond with a JSON object following this schema:
 {{
     "user_intent": "clear interpretation of what user wants to accomplish",
@@ -88,7 +102,10 @@ Respond with a JSON object following this schema:
     "formulated_objective": "precise objective for the target agent",
     "confidence": 0.0-1.0,
     "is_multi_agent": true/false,
-    "agent_sequence": ["AGENT1", "AGENT2"]
+    "agent_sequence": ["AGENT1", "AGENT2"],
+    "execution_strategy": "single_agent|chain|graph",
+    "suggested_chain_id": "coding_task|null",
+    "suggested_chain_type": "coding_task|research|review_only|null"
 }}"""
         
         try:
@@ -120,6 +137,9 @@ Respond with a JSON object following this schema:
                     recommended_agent=AgentType.CODER,
                     formulated_objective=message,
                     confidence=0.3,
+                    execution_strategy=ExecutionStrategy.CHAIN,
+                    suggested_chain_id="coding_task",
+                    suggested_chain_type=ChainType.CODING_TASK,
                 )
             
             _logger.info(
@@ -156,10 +176,31 @@ Respond with a JSON object following this schema:
                 user_intent=message,
             )
         
+        analyst_result = None
+
         # Step 1: Analyze intent with LLM
         session_context = session.session_checkpoints[-1] if session.session_checkpoints else ""
         intent_analysis = await self.analyze_intent_with_llm(message, session_context)
         
+        # If strategy is CHAIN, we do not execute here; execute_node will run the chain.
+        if intent_analysis.execution_strategy == ExecutionStrategy.CHAIN:
+            chain_id = intent_analysis.suggested_chain_id or "coding_task"
+            chain_type = intent_analysis.suggested_chain_type or ChainType.CODING_TASK
+            return OrchestratorDecision(
+                rationale=(
+                    "Using chain execution for coding workflow: "
+                    "Analyst(read) → Coder(write) → Critic(review)."
+                ),
+                agent=AgentType.ORCHESTRATOR,
+                task=intent_analysis.user_intent,
+                thinking=ThinkingLevel.HIGH,
+                tools=[],
+                priority=Priority.HIGH,
+                execution_strategy=ExecutionStrategy.CHAIN,
+                chain_id=chain_id,
+                chain_type=chain_type,
+            )
+
         # Step 2: Get code context if needed
         if intent_analysis.needs_code_context:
             analyst_task = DelegationTask(
@@ -308,8 +349,6 @@ Respond with a JSON object following this schema:
             AgentType.CODER: [ToolScope.FILESYSTEM, ToolScope.SHELL],
             AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
             AgentType.RESEARCHER: [ToolScope.WEB_SEARCH],
-            AgentType.CRITIC: [ToolScope.CODE_ANALYSIS],
-            AgentType.SECURITY_GUARD: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
             AgentType.ORCHESTRATOR: [],  # Orchestrator doesn't use tools directly
         }
         return tool_mapping.get(agent_type, [])

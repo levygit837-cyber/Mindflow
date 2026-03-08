@@ -17,6 +17,9 @@ from mindflow_backend.agents.prompts.specialized.deep_analysis import DEEP_ANALY
 from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import (
     ORCHESTRATOR_REFLECTION_PROMPT,
 )
+from mindflow_backend.agents.prompts.specialized.orchestrator_chains import (
+    ORCHESTRATOR_CHAINS_PROMPT,
+)
 from mindflow_backend.agents.prompts.specialized.planning import PLANNING_PROMPT
 
 # Specialized functions
@@ -31,5 +34,6 @@ __all__ = [
     "CONTEXT_GOVERNANCE_PROMPT",
     "AGENT_DELEGATION_PROMPT",
     "ORCHESTRATOR_REFLECTION_PROMPT",
+    "ORCHESTRATOR_CHAINS_PROMPT",
     "PLANNING_PROMPT",
 ]
