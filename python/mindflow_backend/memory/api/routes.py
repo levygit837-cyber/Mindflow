@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from mindflow_backend.api.controllers.memory_controller import MemoryController
+from mindflow_backend.memory.api.controller import MemoryController
 from mindflow_backend.api.schemas.requests import (
     MemorySearchRequest,
     MemorySummaryRequest,

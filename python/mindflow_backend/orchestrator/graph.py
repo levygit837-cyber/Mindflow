@@ -16,8 +16,8 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 # New architecture imports
-from mindflow_backend.graphs import create_orchestrator_graph, build_simple_orchestrator_flow
-from mindflow_backend.graphs.base.state import GraphState
+# NOTE: keep imports here lightweight; graph factory functions are imported lazily
+# in the compatibility helpers at the bottom of this module.
 
 # Legacy imports for backward compatibility
 from mindflow_backend.agents._registry import get_agent
@@ -25,11 +25,11 @@ from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.memory import MemoryRetrievalResult, get_memory_service
+# Avoid importing memory subsystem at module import time (it can pull DB deps).
+from typing import Any as _Any
 from mindflow_backend.orchestrator.router import route_message
 from mindflow_backend.runtime import get_model_for_provider, extract_ai_message_content
 from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, SandboxMode
-from mindflow_backend.storage.postgresql.connection import db_session
 
 _logger = get_logger(__name__)
 
@@ -106,14 +106,43 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     provider = state.get("provider") or settings.default_provider
     model = decision.model or state.get("model") or settings.default_model
     session_id = str(state.get("session_id", ""))
+    from mindflow_backend.schemas.orchestration.orchestrator import ExecutionStrategy, ThinkingMode
+
+    # 0. Chain Execution Mode (explicit orchestrator strategy)
+    if getattr(decision, "execution_strategy", ExecutionStrategy.SINGLE_AGENT) == ExecutionStrategy.CHAIN:
+        memory_context = ""
+        chain_id = getattr(decision, "chain_id", None) or "coding_task"
+        try:
+            from mindflow_backend.chains.catalog import get_chain
+            chain = get_chain(chain_id)
+            chain_result = await chain.execute(
+                {
+                    "message": state["message"],
+                    "session_id": session_id,
+                    "provider": provider,
+                    "model": model,
+                    "memory_context": memory_context,
+                    "decision": decision.model_dump() if hasattr(decision, "model_dump") else {},
+                }
+            )
+            return {
+                "response": chain_result.get("response", ""),
+                "error": chain_result.get("error"),
+                "chain_result": chain_result,
+            }
+        except Exception as exc:
+            _logger.error("chain_execution_failed", chain_id=chain_id, error=str(exc))
+            return {"response": "", "error": f"Chain execution failed ({chain_id}): {exc}"}
+
     memory_result = _retrieve_memory_context(
         query=state["message"],
         session_id=session_id,
         agent_id=decision.agent.value,
     )
-    memory_context = memory_result.context
-
-    from mindflow_backend.schemas.orchestration.orchestrator import ThinkingMode
+    if isinstance(memory_result, dict):
+        memory_context = memory_result.get("context", "")
+    else:
+        memory_context = getattr(memory_result, "context", "")
 
     # 1. Check for Decomposition Thinking Mode
     if decision.thinking_mode == ThinkingMode.DECOMPOSITION and settings.enable_decomposition_thinking:
@@ -269,14 +298,18 @@ async def _orchestrator_reflect(
     return "\n\n".join(parts)
 
 
-def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> MemoryRetrievalResult:
+def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> _Any:
     settings = get_settings()
     if not settings.memory_enabled:
-        return MemoryRetrievalResult(context="", references=[])
+        return {"context": "", "references": []}
     if not session_id:
-        return MemoryRetrievalResult(context="", references=[])
+        return {"context": "", "references": []}
 
     try:
+        # Lazy import to avoid DB dependencies in unit tests / minimal environments.
+        from mindflow_backend.storage.postgresql.connection import db_session
+        from mindflow_backend.memory import get_memory_service
+
         with db_session() as db:
             return get_memory_service().retrieve_context_for_query(
                 db=db,
@@ -286,7 +319,7 @@ def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> M
             )
     except Exception as exc:
         _logger.warning("memory_retrieval_failed", error=str(exc), session_id=session_id, agent=agent_id)
-        return MemoryRetrievalResult(context="", references=[])
+        return {"context": "", "references": []}
 
 
 async def _run_task_pipeline(

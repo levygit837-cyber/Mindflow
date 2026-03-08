@@ -131,7 +131,7 @@ def compose_orchestrator_prompt(*segments: str) -> str:
 
     Args:
         *segments: One or more segment keys: ``"core"``, ``"governance"``,
-            ``"delegation"``, ``"reflection"``, ``"architecture"``.
+            ``"delegation"``, ``"reflection"``, ``"architecture"``, ``"chains"``.
 
     Returns:
         A fully composed system prompt with the MindFlow preamble.
@@ -166,10 +166,13 @@ def compose_orchestrator_prompt(*segments: str) -> str:
         elif seg == "architecture":
             from mindflow_backend.agents.prompts.specialized.architecture_review import ARCHITECTURE_REVIEW
             parts.append(ARCHITECTURE_REVIEW)
+        elif seg == "chains":
+            from mindflow_backend.agents.prompts.specialized.orchestrator_chains import ORCHESTRATOR_CHAINS
+            parts.append(ORCHESTRATOR_CHAINS)
         else:
             raise KeyError(
                 f"Unknown orchestrator prompt segment {seg!r}. "
-                "Valid: core, governance, delegation, reflection, architecture"
+                "Valid: core, governance, delegation, reflection, architecture, chains"
             )
 
     return build_system_prompt("\n\n".join(parts))

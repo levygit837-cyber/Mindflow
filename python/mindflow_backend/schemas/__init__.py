@@ -21,7 +21,7 @@ from .session.chunk import ChunkType, ChunkEdgeType
 from .session.governance import ContextScope
 
 # Chat schemas
-from .chat.agent import AgentChatRequest, ChatMessageSchema, ChatSessionSchema, StreamEvent
+from .chat.agent import AgentChatRequest, ChatMessageSchema, ChatSessionSchema, NotifierPayload, StreamEvent
 
 # Config schemas
 from .config.settings import AppSettings, SettingsUpdate
@@ -49,7 +49,7 @@ __all__ = [
     "ContextScope",
     
     # Chat
-    "AgentChatRequest", "ChatMessageSchema", "ChatSessionSchema", "StreamEvent",
+    "AgentChatRequest", "ChatMessageSchema", "ChatSessionSchema", "NotifierPayload", "StreamEvent",
     
     # Config
     "AppSettings", "SettingsUpdate", "NormalizationConfig",

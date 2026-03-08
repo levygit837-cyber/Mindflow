@@ -5,6 +5,7 @@ from rich.console import Console
 
 from mindflow_cli.client import MindFlowCliClient
 from mindflow_cli.render.chat_stream import ChatStreamRenderer
+from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
 from mindflow_cli.render.theme import MINDFLOW_THEME
 
 console = Console(theme=MINDFLOW_THEME)
@@ -35,7 +36,7 @@ def _compose_message_with_history(history: list[tuple[str, str]], user_message: 
 def _stream_chat_once(
     *,
     client: MindFlowCliClient,
-    renderer: ChatStreamRenderer,
+    renderer: ChatStreamRenderer | OrchestratorStreamRenderer,
     message: str,
     provider: str | None,
     model: str | None,
@@ -71,9 +72,12 @@ def _run_chat(
     model: str | None,
     base_url: str | None,
     debug_steps: bool,
+    orchestrate: bool = False,
 ) -> None:
     client = build_client(base_url)
-    renderer = ChatStreamRenderer(console)
+    renderer: ChatStreamRenderer | OrchestratorStreamRenderer = (
+        OrchestratorStreamRenderer(console) if orchestrate else ChatStreamRenderer(console)
+    )
 
     try:
         _stream_chat_once(
@@ -83,6 +87,7 @@ def _run_chat(
             provider=provider,
             model=model,
             debug_steps=debug_steps,
+            orchestrate=orchestrate,
         )
     except Exception as exc:
         console.print(f"[bold red]Chat failed:[/] {exc}")
@@ -96,6 +101,7 @@ def register_chat_commands(app: typer.Typer) -> None:
         provider: str | None = typer.Option(None, "--provider", help="Provider override"),
         model: str | None = typer.Option(None, "--model", help="Model override"),
         debug_steps: bool = typer.Option(False, "--debug-steps", help="Enable debug-oriented stream flags"),
+        orchestrate: bool = typer.Option(False, "--orchestrate", help="Use orchestrator (route to specialist agents)"),
         base_url: str | None = typer.Option(
             None,
             "--base-url",
@@ -110,6 +116,7 @@ def register_chat_commands(app: typer.Typer) -> None:
             model=model,
             base_url=base_url,
             debug_steps=debug_steps,
+            orchestrate=orchestrate,
         )
 
     @app.command("connect")

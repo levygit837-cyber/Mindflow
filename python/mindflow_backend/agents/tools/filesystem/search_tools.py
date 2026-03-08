@@ -185,6 +185,68 @@ class GrepSearchTool(AsyncToolInterface):
         return self._schema.dict()
 
 
+class GlobSearchTool(AsyncToolInterface):
+    """Glob-based file search tool (compatibility name)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.name = "glob_search"
+        self.description = "Find files matching a glob pattern"
+        self._schema = create_tool_schema(
+            name=self.name,
+            description=self.description,
+            category="filesystem",
+            parameters=[
+                create_parameter(
+                    name="pattern",
+                    param_type=ParameterType.STRING,
+                    description="Glob pattern (e.g. **/*.py)",
+                    required=True,
+                ),
+                create_parameter(
+                    name="directory",
+                    param_type=ParameterType.STRING,
+                    description="Directory to search in",
+                    required=False,
+                    default=".",
+                ),
+                create_parameter(
+                    name="max_results",
+                    param_type=ParameterType.INTEGER,
+                    description="Maximum number of results",
+                    required=False,
+                    default=200,
+                ),
+            ],
+            returns={
+                "type": "object",
+                "description": "Glob results",
+                "properties": {
+                    "files": {"type": "array"},
+                    "total_count": {"type": "integer"},
+                },
+            },
+        )
+
+    async def execute(self, **kwargs) -> Dict[str, Any]:
+        try:
+            pattern = kwargs["pattern"]
+            directory = kwargs.get("directory", ".")
+            max_results = int(kwargs.get("max_results", 200))
+
+            base = Path(directory)
+            files = [str(p) for p in base.glob(pattern)]
+            if len(files) > max_results:
+                files = files[:max_results]
+
+            return self._format_result(success=True, result={"files": files, "total_count": len(files)})
+        except Exception as e:
+            return self._format_result(success=False, error=f"Glob search error: {e}")
+
+    def get_schema(self) -> Dict[str, Any]:
+        return self._schema.dict()
+
+
 class FileFinderTool(AsyncToolInterface):
     """
     File finder tool for locating files by various criteria.
@@ -353,3 +415,7 @@ class FileFinderTool(AsyncToolInterface):
         Get tool schema.
         """
         return self._schema.dict()
+
+
+# Compatibility alias expected by filesystem __init__.py
+FindFilesTool = FileFinderTool

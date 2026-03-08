@@ -1,47 +1,64 @@
-"""Tests for the orchestrator graph."""
-
-from types import SimpleNamespace
+"""Tests for orchestrator graph execution helpers."""
 
 import pytest
 
-from mindflow_backend.orchestrator.graph import build_orchestrator_graph, route_node
-from mindflow_backend.schemas.orchestrator import ThinkingMode
-
-
-
-def test_build_orchestrator_graph_returns_compiled_graph() -> None:
-    graph = build_orchestrator_graph()
-    
-    # LangGraph's CompiledGraph inherits from Runnable
-    assert hasattr(graph, "ainvoke")
-    assert hasattr(graph, "invoke")
-    
-    # Check the nodes
-    nodes = list(graph.get_graph().nodes.keys())
-    assert "route" in nodes
-    assert "execute" in nodes
-    assert "respond" in nodes
-    assert "__start__" in nodes  # Built-in starting node
+from mindflow_backend.orchestrator.graph import execute_node
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    AgentType,
+    ExecutionStrategy,
+    OrchestratorDecision,
+)
 
 
 @pytest.mark.asyncio
-async def test_route_node_keeps_normal_thinking_when_decomposition_disabled(monkeypatch) -> None:
-    class _HighComplexityScorer:
-        async def get_complexity_score(self, message, provider=None, model=None):  # noqa: ANN001
-            return 0.95
-
-        def should_decompose(self, score: float) -> bool:
-            return True
-
-    monkeypatch.setattr(
-        "mindflow_backend.orchestrator.complexity.ComplexityScorer",
-        _HighComplexityScorer,
-    )
+async def test_execute_node_runs_chain_when_strategy_is_chain(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "mindflow_backend.orchestrator.graph.get_settings",
-        lambda: SimpleNamespace(enable_decomposition_thinking=False),
+        lambda: type(
+            "S",
+            (),
+            {
+                "default_provider": "test",
+                "default_model": "test",
+                "enable_decomposition_thinking": False,
+                "memory_enabled": False,
+                "working_path": None,
+            },
+        )(),
+        raising=True,
     )
 
-    result = await route_node({"message": "Faça uma refatoração complexa em múltiplos módulos"})
+    class _FakeChain:
+        async def execute(self, context):  # noqa: ANN001
+            return {"response": "ok", "error": None, "context_seen": context}
 
-    assert result["decision"].thinking_mode == ThinkingMode.NORMAL
+    def _fake_get_chain(chain_id: str):  # noqa: ANN001
+        assert chain_id == "coding_task"
+        return _FakeChain()
+
+    monkeypatch.setattr(
+        "mindflow_backend.chains.catalog.get_chain",
+        _fake_get_chain,
+        raising=True,
+    )
+
+    decision = OrchestratorDecision(
+        rationale="test",
+        agent=AgentType.ORCHESTRATOR,
+        task="test",
+        execution_strategy=ExecutionStrategy.CHAIN,
+        chain_id="coding_task",
+    )
+
+    result = await execute_node(
+        {
+            "message": "Implement X",
+            "provider": "google",
+            "model": "test-model",
+            "session_id": "sess-test",
+            "decision": decision,
+        }
+    )
+
+    assert result["response"] == "ok"
+    assert result["error"] is None

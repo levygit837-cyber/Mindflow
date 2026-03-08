@@ -19,7 +19,7 @@ from mindflow_backend.agents._registry import (
     AgentRegistry,
     get_agent,
     get_registry,
-    register_all_personalities,
+    register_all_specialists,
 )
 
 # Modular subsystems

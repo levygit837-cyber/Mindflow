@@ -1,86 +1,109 @@
-"""Tests for the orchestrator keyword router."""
+"""Tests for the intelligent orchestrator router.
 
-from mindflow_backend.orchestrator.router import route_message
-from mindflow_backend.schemas.orchestrator import AgentType, ToolScope
+The router is LLM-powered, so these tests stub the intent analysis step to be
+deterministic and side-effect free.
+"""
 
-# ---------------------------------------------------------------------------
-# Routing tests
-# ---------------------------------------------------------------------------
+import pytest
 
-
-def test_routes_to_coder_for_code_message() -> None:
-    decision = route_message("Please implement a new login function")
-    assert decision.agent == AgentType.CODER
-
-
-def test_routes_to_analyst_for_data_message() -> None:
-    decision = route_message("Analyze the performance metrics and show trends")
-    assert decision.agent == AgentType.ANALYST
+from mindflow_backend.orchestrator.routing.router import route_message
+from mindflow_backend.orchestrator.routing.intelligent_router import IntelligentRouter, IntentAnalysis
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    AgentType,
+    ChainType,
+    ExecutionStrategy,
+)
 
 
-def test_routes_to_researcher_for_search_message() -> None:
-    decision = route_message("Research the latest FastAPI documentation")
-    assert decision.agent == AgentType.RESEARCHER
+@pytest.mark.asyncio
+async def test_routes_coding_requests_to_coding_task_chain(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _FakeEngine:
+        async def delegate_task(self, *_args, **_kwargs):  # noqa: ANN001
+            raise AssertionError("delegate_task should not be called for CHAIN decisions")
+
+    monkeypatch.setattr(
+        "mindflow_backend.orchestrator.routing.intelligent_router.get_settings",
+        lambda: type("S", (), {"default_provider": "test", "default_model": "test"})(),
+        raising=True,
+    )
+    router = IntelligentRouter(_FakeEngine())
+
+    async def _fake_analyze(_self, message: str, session_context: str = "") -> IntentAnalysis:
+        return IntentAnalysis(
+            user_intent="Implement feature X",
+            needs_code_context=False,
+            context_needed="",
+            suggested_scope=[],
+            recommended_agent=AgentType.CODER,
+            formulated_objective="Implement feature X",
+            confidence=0.9,
+            is_multi_agent=False,
+            agent_sequence=[],
+            execution_strategy=ExecutionStrategy.CHAIN,
+            suggested_chain_id="coding_task",
+            suggested_chain_type=ChainType.CODING_TASK,
+        )
+
+    monkeypatch.setattr(IntelligentRouter, "analyze_intent_with_llm", _fake_analyze, raising=True)
+    monkeypatch.setattr(
+        "mindflow_backend.orchestrator.routing.intelligent_router.get_intelligent_router",
+        lambda: router,
+        raising=True,
+    )
+
+    decision = await route_message("Please implement a new login function")
+    assert decision.execution_strategy == ExecutionStrategy.CHAIN
+    assert decision.chain_id == "coding_task"
+    assert decision.chain_type == ChainType.CODING_TASK
+    assert decision.agent == AgentType.ORCHESTRATOR
 
 
-def test_routes_to_arch_tech_for_design_message() -> None:
-    decision = route_message("Design a microservice architecture for the payment system")
-    assert decision.agent == AgentType.ARCH_TECH
+@pytest.mark.asyncio
+async def test_routes_non_coding_to_single_agent_without_llm_execution(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _FakeEngine:
+        async def delegate_task(self, task, session):  # noqa: ANN001
+            from mindflow_backend.schemas.orchestration.delegation import DelegationResult
 
+            return DelegationResult(
+                task_id=task.task_id,
+                agent=task.agent,
+                status="completed",
+                key_findings="ok",
+                full_output="ok",
+                confidence=0.9,
+                tokens_consumed=1,
+            )
 
-def test_routes_to_critic_for_review_message() -> None:
-    decision = route_message("Review this code for quality and best practices")
-    assert decision.agent == AgentType.CRITIC
+    monkeypatch.setattr(
+        "mindflow_backend.orchestrator.routing.intelligent_router.get_settings",
+        lambda: type("S", (), {"default_provider": "test", "default_model": "test"})(),
+        raising=True,
+    )
+    router = IntelligentRouter(_FakeEngine())
 
+    async def _fake_analyze(_self, message: str, session_context: str = "") -> IntentAnalysis:
+        return IntentAnalysis(
+            user_intent="Explain concept",
+            needs_code_context=False,
+            context_needed="",
+            suggested_scope=[],
+            recommended_agent=AgentType.ANALYST,
+            formulated_objective="Explain concept succinctly",
+            confidence=0.8,
+            is_multi_agent=False,
+            agent_sequence=[],
+            execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+            suggested_chain_id=None,
+            suggested_chain_type=None,
+        )
 
-def test_defaults_to_coder_for_ambiguous_message() -> None:
-    decision = route_message("Hello, how are you?")
-    assert decision.agent == AgentType.CODER
+    monkeypatch.setattr(IntelligentRouter, "analyze_intent_with_llm", _fake_analyze, raising=True)
+    monkeypatch.setattr(
+        "mindflow_backend.orchestrator.routing.intelligent_router.get_intelligent_router",
+        lambda: router,
+        raising=True,
+    )
 
-
-def test_decision_contains_tools() -> None:
-    decision = route_message("Search the web for Python tutorials")
-    assert decision.agent == AgentType.RESEARCHER
-    assert ToolScope.WEB_SEARCH in decision.tools
-
-
-def test_decision_contains_rationale() -> None:
-    decision = route_message("Fix the bug in the authentication module")
-    assert "coder" in decision.rationale.lower()
-
-
-def test_decision_task_is_original_message() -> None:
-    msg = "Implement a caching layer"
-    decision = route_message(msg)
-    assert decision.task == msg
-
-
-def test_portuguese_keywords_route_correctly() -> None:
-    decision = route_message("Pesquise sobre as últimas novidades em IA")
-    assert decision.agent == AgentType.RESEARCHER
-
-
-def test_mixed_keywords_highest_score_wins() -> None:
-    # "code" → CODER, but "review", "evaluate", "quality", "improve" → CRITIC (more hits)
-    decision = route_message("Review and evaluate the code quality and improve readability")
-    assert decision.agent == AgentType.CRITIC
-
-
-def test_route_creative_keywords() -> None:
-    decision = route_message("brainstorm new approaches for the caching layer")
-    assert decision.agent == AgentType.CREATIVE
-
-
-def test_route_security_keywords() -> None:
-    decision = route_message("scan this code for security vulnerabilities")
-    assert decision.agent == AgentType.SECURITY_GUARD
-
-
-def test_route_creative_innovation() -> None:
-    decision = route_message("innovate on the user onboarding experience")
-    assert decision.agent == AgentType.CREATIVE
-
-
-def test_route_security_owasp() -> None:
-    decision = route_message("check for OWASP top 10 vulnerabilities")
-    assert decision.agent == AgentType.SECURITY_GUARD
+    decision = await route_message("What is dependency injection?")
+    assert decision.execution_strategy == ExecutionStrategy.SINGLE_AGENT
+    assert decision.agent in {AgentType.ANALYST, AgentType.CODER, AgentType.RESEARCHER, AgentType.ORCHESTRATOR}

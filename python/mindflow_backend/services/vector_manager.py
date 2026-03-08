@@ -443,7 +443,7 @@ class VectorManager:
         
         if self._provider == "pgvector":
             self._db = PgVectorDatabase(
-                connection_string=settings.database_url,
+                connection_string=settings.database.url,
                 dimensions=settings.vector_db_dimensions,
             )
         elif self._provider == "qdrant":

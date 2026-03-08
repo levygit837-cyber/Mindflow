@@ -183,4 +183,16 @@ class ChatStreamRenderer:
             self.console.print(Text("  ✓ Task completed successfully", style="success"))
             return
 
+        if event.type == "notifier":
+            try:
+                parsed = self._safe_json(event.data)
+                kind = (parsed or {}).get("kind") or (parsed or {}).get("category", "info")
+                message = (parsed or {}).get("message", event.data)
+                icons = {"file_read": "📖", "file_write": "✏️", "tool_start": "🔧", "context_loaded": "📎"}
+                icon = icons.get(str(kind).lower(), "ℹ️")
+                self.console.print(Text(f"  {icon} {message}", style="dim"))
+            except Exception:
+                self.console.print(Text(f"  ℹ️ {event.data}", style="dim"))
+            return
+
         self.console.print(f"[{event.type}] {event.data}")

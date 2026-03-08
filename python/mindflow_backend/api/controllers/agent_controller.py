@@ -36,7 +36,7 @@ class AgentController(BaseController):
             sanitized_message = self.sanitize_input(payload.message)
             
             # Validate session ID
-            session_id = self.validate_session_id(payload.session_id)
+            session_id = self.validate_session_id(payload.sessionId)
             
             # Log request
             self.log_request(request, "agent_chat_stream", 
@@ -85,7 +85,7 @@ class AgentController(BaseController):
                                 continue
                         
                         # Format and yield SSE event
-                        from mindflow_backend.api.sse import format_sse
+                        from mindflow_backend.utils.formatting import format_sse
                         yield format_sse(event.model_dump())
                         
                         if event.type == "done":
@@ -101,7 +101,7 @@ class AgentController(BaseController):
                         data=str(e),
                         meta=StreamEventMeta(runId=run_id, turnRunId=turn_id)
                     )
-                    from mindflow_backend.api.sse import format_sse
+                    from mindflow_backend.utils.formatting import format_sse
                     yield format_sse(error_event.model_dump())
             
             return StreamingResponse(event_generator(), media_type="text/event-stream")

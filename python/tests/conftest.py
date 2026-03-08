@@ -10,9 +10,8 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from mindflow_backend.main import app
-from mindflow_backend.storage.postgresql.connection import async_session_factory
-from mindflow_backend.storage.postgresql.models import Base
+# NOTE: Avoid importing the full FastAPI app at import-time.
+# Many unit tests don't need it, and importing it can pull optional dependencies.
 
 
 @pytest.fixture(scope="session")
@@ -35,12 +34,14 @@ async def setup_database():
 @pytest.fixture
 def client() -> TestClient:
     """Create a test client."""
+    from mindflow_backend.main import app  # lazy import
     return TestClient(app)
 
 
 @pytest_asyncio.fixture
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client."""
+    from mindflow_backend.main import app  # lazy import
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 

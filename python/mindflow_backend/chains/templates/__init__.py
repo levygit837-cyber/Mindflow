@@ -1,9 +1,8 @@
 """Chain templates for MindFlow."""
 
-from .research_chain import ResearchChain
-from .coding_chain import CodingChain
+from .coding_task_chain import CodingTaskChain, CodingTaskChainConfig
 
 __all__ = [
-    "ResearchChain",
-    "CodingChain",
+    "CodingTaskChain",
+    "CodingTaskChainConfig",
 ]

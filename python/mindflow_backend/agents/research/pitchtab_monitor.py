@@ -11,8 +11,8 @@ import signal
 import subprocess
 from typing import Dict, List, Optional
 
-from mindflow_backend.agents.research.utils.health_checker import get_health_checker
-from mindflow_backend.agents.research.utils.port_manager import get_port_manager
+from mindflow_backend.utils.network import get_port_manager
+from mindflow_backend.utils.monitoring import get_health_manager
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)

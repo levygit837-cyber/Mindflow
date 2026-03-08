@@ -11,6 +11,9 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+# Keep orchestration schemas lightweight: do not import graphs/runtime modules here.
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -69,6 +72,32 @@ class Priority(StrEnum):
     CRITICAL = "critical"
 
 
+class ExecutionStrategy(StrEnum):
+    """How the orchestrator intends to execute a request."""
+
+    SINGLE_AGENT = "single_agent"
+    CHAIN = "chain"
+    GRAPH = "graph"
+
+
+class ChainType(StrEnum):
+    """High-level chain categories (used for routing/analytics)."""
+
+    CODING_TASK = "coding_task"
+    RESEARCH = "research"
+    REVIEW_ONLY = "review_only"
+
+
+class GraphType(StrEnum):
+    """Graph categories (kept here to avoid importing graph modules in schemas)."""
+
+    SIMPLE = "simple"
+    CONDITIONAL = "conditional"
+    PARALLEL = "parallel"
+    CYCLIC = "cyclic"
+    DECOMPOSITION = "decomposition"
+
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -78,6 +107,7 @@ class ChainStep(BaseModel):
     """A single step in a multi-agent chain."""
 
     agent: AgentType
+    specialist: SpecialistType | None = None
     task: str
     tools: list[ToolScope] = Field(default_factory=list)
 
@@ -100,4 +130,9 @@ class OrchestratorDecision(BaseModel):
     keep_context: bool = True
     sandbox: SandboxMode = SandboxMode.NONE
     chain: list[ChainStep] = Field(default_factory=list)
+    execution_strategy: ExecutionStrategy = ExecutionStrategy.SINGLE_AGENT
+    chain_id: str | None = None
+    chain_type: ChainType | None = None
+    graph_id: str | None = None
+    graph_type: GraphType | None = None
     complexity_score: float = Field(default=0.0, ge=0.0, le=1.0)

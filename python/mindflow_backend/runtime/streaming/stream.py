@@ -1,6 +1,8 @@
 import asyncio
+import json
 import uuid
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -8,14 +10,14 @@ from mindflow_backend.agents.tools.search_web import search_web
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory import get_memory_service
-from mindflow_backend.orchestrator.graph import build_orchestrator_graph
+from mindflow_backend.orchestrator.graph import build_simple_orchestrator_flow
 from mindflow_backend.orchestrator.router import route_message
-from mindflow_backend.runtime.chunk_extract import extract_chunk_parts
-from mindflow_backend.runtime.normalizer import AgentChatStreamNormalizer
+from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
+from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
 from mindflow_backend.storage.postgresql.connection import db_session
-from mindflow_backend.storage.repositories import ChatRepository
+from mindflow_backend.storage.postgresql.repositories import ChatRepository
 
 _logger = get_logger(__name__)
 
@@ -27,7 +29,7 @@ SYSTEM_PROMPT = (
 
 class AgentRuntime:
     def __init__(self) -> None:
-        self._orchestrator_graph = build_orchestrator_graph()
+        self._orchestrator_graph = build_simple_orchestrator_flow()
         self._chat_repo = ChatRepository()
         self._memory_service = get_memory_service()
 
@@ -312,6 +314,36 @@ class AgentRuntime:
             meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
         )
 
+    def _custom_event(
+        self,
+        *,
+        counter: list[int],
+        run_id: str,
+        session_id: str,
+        event_type: str,
+        data: str = "",
+        agent: str | None = None,
+    ) -> StreamEvent:
+        """Build a custom stream event (orchestrator_*, reflection_*, agent_delegation_*, etc.)."""
+        seq = self._next_seq(counter)
+        meta = StreamEventMeta(
+            runId=run_id,
+            turnRunId=session_id,
+            node="orchestrator",
+            nodeCategory="RUNTIME",
+            userVisible=True,
+        )
+        if agent:
+            meta.agent = agent
+        return StreamEvent(
+            id=f"evt-{seq}",
+            seq=seq,
+            type=event_type,  # type: ignore[arg-type]
+            mode="custom",
+            data=data,
+            meta=meta,
+        )
+
     async def _stream_chat_legacy(
         self,
         payload: AgentChatRequest,
@@ -434,6 +466,54 @@ class AgentRuntime:
             counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
 
+    def _serialize_decision(self, decision: Any) -> str:
+        """Serialize decision for orchestrator_decision event."""
+        if decision is None:
+            return "{}"
+        if isinstance(decision, dict):
+            return json.dumps(decision)
+        if hasattr(decision, "model_dump"):
+            return json.dumps(decision.model_dump())
+        return json.dumps({"agent": getattr(decision, "agent", None), "task": getattr(decision, "task", "")})
+
+    def _decision_agent_task(self, decision: Any) -> tuple[str, str]:
+        """Get (agent_type, task) from decision (dict or object)."""
+        if isinstance(decision, dict):
+            ag = decision.get("agent")
+            agent_type = getattr(ag, "value", ag) if hasattr(ag, "value") else str(ag or "coder")
+            task = decision.get("task", "")
+            return (agent_type.upper() if isinstance(agent_type, str) else str(agent_type), task)
+        agent_type = getattr(decision, "agent", None)
+        agent_str = getattr(agent_type, "value", agent_type) if agent_type else "coder"
+        task = getattr(decision, "task", "")
+        return (str(agent_str).upper(), task)
+
+    def _notifier_payload_for_tool(self, tool_name: str, args: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+        """Build (kind, message, details) for a notifier from tool name and args."""
+        name = (tool_name or "").lower()
+        details = {"tool_name": tool_name, **{k: v for k, v in args.items() if v is not None}}
+        if name == "read_file":
+            path = args.get("file_path", "")
+            offset = args.get("offset")
+            limit = args.get("max_lines") or args.get("limit")
+            if offset is not None and limit is not None:
+                msg = f"Leitura: {path} (linhas {offset + 1}–{offset + limit})"
+                details["start_line"] = offset + 1
+                details["end_line"] = offset + limit
+            else:
+                msg = f"Leitura: {path}"
+            return ("file_read", msg, details)
+        if name in ("write_file", "write"):
+            path = args.get("file_path", "")
+            return ("file_write", f"Escrita: {path}", details)
+        if name in ("edit_file", "edit"):
+            path = args.get("file_path", "")
+            return ("file_edit", f"Edição: {path}", details)
+        if name == "search_web" or "search" in name:
+            q = args.get("query", args.get("q", ""))
+            return ("search_done", f"Busca: {q[:60]}..." if len(str(q)) > 60 else f"Busca: {q}", details)
+        return ("tool_start", f"Tool: {tool_name}", details)
+
     async def _stream_chat_orchestrated(
         self,
         payload: AgentChatRequest,
@@ -441,7 +521,15 @@ class AgentRuntime:
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
+        current_agent: str | None = None
 
+        yield self._custom_event(
+            counter=counter,
+            run_id=run_id,
+            session_id=session_id,
+            event_type="orchestrator_thinking_start",
+            data="",
+        )
         yield normalizer.step_event(
             self._next_seq(counter),
             run_id=run_id,
@@ -469,10 +557,22 @@ class AgentRuntime:
                     data = event["data"]
 
                     if name == "agent_thought":
-                        yield normalizer.thought_event(self._next_seq(counter), data["thought"], run_id=run_id)
+                        thought_meta = {"agent": current_agent} if current_agent else None
+                        yield normalizer.thought_event(
+                            self._next_seq(counter),
+                            data["thought"],
+                            run_id=run_id,
+                            extra_meta=thought_meta,
+                        )
 
                     elif name == "agent_response":
-                        yield normalizer.response_event(self._next_seq(counter), data["chunk"], run_id=run_id)
+                        # Orchestrator owns the session: attribute response to orchestrator in UI
+                        yield normalizer.response_event(
+                            self._next_seq(counter),
+                            data["chunk"],
+                            run_id=run_id,
+                            extra_meta={"agent": "orchestrator"},
+                        )
 
                     elif name == "task_step":
                         task_name = data.get("task", "unknown")
@@ -490,11 +590,23 @@ class AgentRuntime:
 
                     elif name == "agent_tool_call":
                         chunk = data.get("chunk", {})
-                        if chunk.get("name"):
+                        tool_name = chunk.get("name") or "tool"
+                        args = chunk.get("args") or {}
+                        if tool_name:
                             yield normalizer.thought_event(
                                 self._next_seq(counter),
-                                f"Calling tool: {chunk.get('name')}",
+                                f"Calling tool: {tool_name}",
                                 run_id=run_id,
+                                extra_meta={"agent": current_agent} if current_agent else None,
+                            )
+                            # Flexible notifier for UI (file ops, tools, etc.)
+                            kind, message, details = self._notifier_payload_for_tool(tool_name, args)
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="notifier",
+                                data=json.dumps({"kind": kind, "message": message, "details": details}),
                             )
 
                     elif name == "agent_memory_context":
@@ -506,8 +618,26 @@ class AgentRuntime:
                             f"Loaded {ref_count} memory references for {agent_name}.",
                             run_id=run_id,
                         )
+                        yield self._custom_event(
+                            counter=counter,
+                            run_id=run_id,
+                            session_id=session_id,
+                            event_type="notifier",
+                            data=json.dumps({
+                                "kind": "context_loaded",
+                                "message": f"Contexto carregado: {ref_count} referências para {agent_name}",
+                                "details": {"count": ref_count, "source": agent_name},
+                            }),
+                        )
 
                 elif event_type == "on_chain_start" and event.get("name") == "route":
+                    yield self._custom_event(
+                        counter=counter,
+                        run_id=run_id,
+                        session_id=session_id,
+                        event_type="orchestrator_thinking",
+                        data="Routing request...",
+                    )
                     yield normalizer.thought_event(self._next_seq(counter), "Routing request...", run_id=run_id)
 
                 elif event_type == "on_chain_end" and event.get("name") == "route":
@@ -515,12 +645,68 @@ class AgentRuntime:
                     if output:
                         decision = output.get("decision")
                         if decision:
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="orchestrator_thinking_end",
+                                data="",
+                            )
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="orchestrator_decision",
+                                data=self._serialize_decision(decision),
+                            )
+                            agent_type, task = self._decision_agent_task(decision)
+                            current_agent = agent_type.lower()
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="reflection_mode_start",
+                                data="",
+                            )
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="agent_delegation_start",
+                                data=json.dumps({
+                                    "agent_type": agent_type,
+                                    "delegated_by": "ORCHESTRATOR",
+                                    "task": task,
+                                }),
+                            )
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="specialist_activation",
+                                data=json.dumps({"agent_type": agent_type, "is_core": True}),
+                            )
                             yield normalizer.thought_event(
                                 self._next_seq(counter),
-                                f"Decision: {decision.rationale}. Agent: {decision.agent.value.upper()}.",
+                                f"Decision: {getattr(decision, 'rationale', '') or (decision.get('rationale') if isinstance(decision, dict) else '')}. Agent: {agent_type}.",
                                 run_id=run_id,
                             )
 
+            yield self._custom_event(
+                counter=counter,
+                run_id=run_id,
+                session_id=session_id,
+                event_type="reflection_mode_end",
+                data="",
+            )
+            if current_agent:
+                yield self._custom_event(
+                    counter=counter,
+                    run_id=run_id,
+                    session_id=session_id,
+                    event_type="agent_delegation_complete",
+                    data=json.dumps({"agent_type": current_agent.upper(), "success": True, "error_message": ""}),
+                )
             yield normalizer.step_event(
                 self._next_seq(counter),
                 run_id=run_id,

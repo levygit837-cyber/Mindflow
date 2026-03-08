@@ -37,7 +37,7 @@ class AlertConditionRequest(BaseModel):
     name: str
     metric_name: str
     threshold_value: float
-    comparison_operator: str = Field(default=">", regex="^(>|<|>=|<=|==)$")
+    comparison_operator: str = Field(default=">", pattern="^(>|<|>=|<=|==)$")
     severity: AlertSeverity
     duration_seconds: float = Field(default=0.0, ge=0.0)
     cooldown_seconds: float = Field(default=300.0, ge=1.0)

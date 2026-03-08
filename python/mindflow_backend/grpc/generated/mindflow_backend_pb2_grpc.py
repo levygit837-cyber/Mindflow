@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import mindflow_backend_pb2 as mindflow__backend__pb2
+from . import mindflow_backend_pb2 as mindflow__backend__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
