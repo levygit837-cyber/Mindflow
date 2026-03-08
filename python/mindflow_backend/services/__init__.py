@@ -32,8 +32,6 @@ from mindflow_backend.services.core import (
     get_session_service,
     get_provider_service,
 )
-# Memory service now from new location
-from mindflow_backend.memory import get_memory_service
 
 # Orchestration domain services
 from mindflow_backend.services.orchestration import (
@@ -95,7 +93,6 @@ __all__ = [
     # Core services
     "get_agent_service",
     "get_session_service",
-    "get_memory_service", 
     "get_provider_service",
     
     # Orchestration services

@@ -20,7 +20,7 @@ from mindflow_backend.nodes.registry import (
 )
 
 # Orchestrator nodes
-from mindflow_backend.nodes.orchestrator import (
+from mindflow_backend.nodes.implementations.orchestrator import (
     RouteNode,
     ExecuteNode,
     RespondNode,
@@ -34,12 +34,50 @@ from mindflow_backend.nodes.orchestrator import (
 #     MemoryNode,
 # )
 
-# Control nodes (will be implemented)
-# from mindflow_backend.nodes.control import (
-#     ConditionNode,
-#     LoopNode,
-#     ParallelNode,
-# )
+# Control nodes
+from mindflow_backend.nodes.implementations.control import (
+    ConditionNode,
+    MultiConditionNode,
+    LoopNode,
+    ForEachNode,
+    WhileNode,
+    DoWhileNode,
+    ParallelNode,
+    ParallelMapNode,
+    ParallelAnyNode,
+    ParallelRaceNode,
+)
+
+# Integration nodes
+from mindflow_backend.nodes.implementations.integration import (
+    AgentBridge,
+    ToolBridge,
+    MemoryBridge,
+)
+
+# Processing nodes
+from mindflow_backend.nodes.implementations.processing import (
+    TransformNode,
+    DataMappingNode,
+    DataValidationNode,
+    FilterNode,
+    MultiFilterNode,
+    AggregateNode,
+    StatisticalAggregateNode,
+    GroupByAggregateNode,
+)
+
+# I/O nodes
+from mindflow_backend.nodes.implementations.io import (
+    InputNode,
+    StreamInputNode,
+    FileInputNode,
+    OutputNode,
+    StreamOutputNode,
+    StreamNode,
+    BatchStreamNode,
+    SplitStreamNode,
+)
 
 # Backward compatibility
 from mindflow_backend.runtime.node_registry import (
@@ -70,6 +108,43 @@ __all__ = [
     "ExecuteNode",
     "RespondNode",
     "DecompositionNode",
+    
+    # Control nodes
+    "ConditionNode",
+    "MultiConditionNode",
+    "LoopNode",
+    "ForEachNode",
+    "WhileNode",
+    "DoWhileNode",
+    "ParallelNode",
+    "ParallelMapNode",
+    "ParallelAnyNode",
+    "ParallelRaceNode",
+    
+    # Processing nodes
+    "TransformNode",
+    "DataMappingNode",
+    "DataValidationNode",
+    "FilterNode",
+    "MultiFilterNode",
+    "AggregateNode",
+    "StatisticalAggregateNode",
+    "GroupByAggregateNode",
+    
+    # I/O nodes
+    "InputNode",
+    "StreamInputNode",
+    "FileInputNode",
+    "OutputNode",
+    "StreamOutputNode",
+    "StreamNode",
+    "BatchStreamNode",
+    "SplitStreamNode",
+    
+    # Integration nodes
+    "AgentBridge",
+    "ToolBridge",
+    "MemoryBridge",
     
     # Backward compatibility
     "RuntimeNodeCategory",

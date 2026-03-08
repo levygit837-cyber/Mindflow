@@ -94,12 +94,12 @@ class OrchestrationServiceInterface(Protocol):
         """Decompose a task."""
         ...
     
-    async def select_personality(
+    async def select_specialist(
         self,
         task_id: str,
         task_description: str,
         task_complexity: str,
-        current_personality: str | None = None
+        current_specialist: str | None = None
     ) -> dict[str, Any]:
         """Select personality for task."""
         ...

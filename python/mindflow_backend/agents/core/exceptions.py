@@ -30,8 +30,8 @@ class VectorStoreError(AgentSystemError):
         self.session_id = session_id
 
 
-class PersonalitySelectionError(AgentSystemError):
-    """Raised when personality selection fails."""
+class SpecialistSelectionError(AgentSystemError):
+    """Raised when specialist selection fails."""
     
     def __init__(self, message: str, task_id: str | None = None, task_description: str | None = None):
         super().__init__(message)

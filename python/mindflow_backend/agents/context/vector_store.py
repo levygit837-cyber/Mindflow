@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from mindflow_backend.agents.core.interfaces import VectorStore
-from mindflow_backend.agents.core.exceptions import VectorStoreError
+from mindflow_backend.exceptions import AgentVectorStoreError
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -71,7 +71,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("vector_search_failed", session_id=session_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Vector search failed: {e}",
                 operation="search",
                 session_id=session_id
@@ -89,7 +89,7 @@ class InMemoryVectorStore(VectorStore):
                     _logger.info("session_collection_created", session_id=session_id)
         except Exception as e:
             _logger.error("collection_creation_failed", session_id=session_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Collection creation failed: {e}",
                 operation="create_collection",
                 session_id=session_id
@@ -112,7 +112,7 @@ class InMemoryVectorStore(VectorStore):
                     # Validate vector size
                     vector = vector_data.get("vector", [])
                     if len(vector) != self.vector_size:
-                        raise VectorStoreError(
+                        raise AgentVectorStoreError(
                             f"Vector size mismatch: expected {self.vector_size}, got {len(vector)}"
                         )
                     
@@ -134,7 +134,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("vector_storage_failed", session_id=session_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Vector storage failed: {e}",
                 operation="store",
                 session_id=session_id
@@ -201,7 +201,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("subtask_search_failed", session_id=session_id, task_id=task_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Subtask search failed: {e}",
                 operation="search_subtask",
                 session_id=session_id
@@ -258,7 +258,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("subtask_storage_failed", session_id=session_id, task_id=task_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Subtask storage failed: {e}",
                 operation="store_subtask",
                 session_id=session_id
@@ -301,7 +301,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("dependencies_context_failed", session_id=session_id, task_id=task_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Dependencies context failed: {e}",
                 operation="get_dependencies",
                 session_id=session_id
@@ -344,7 +344,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("task_status_update_failed", session_id=session_id, task_id=task_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Task status update failed: {e}",
                 operation="update_status",
                 session_id=session_id
@@ -417,7 +417,7 @@ class InMemoryVectorStore(VectorStore):
         
         except Exception as e:
             _logger.error("collection_stats_failed", session_id=session_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Failed to get collection stats: {e}",
                 operation="stats",
                 session_id=session_id
@@ -432,7 +432,7 @@ class InMemoryVectorStore(VectorStore):
                     _logger.info("collection_deleted", session_id=session_id)
         except Exception as e:
             _logger.error("collection_deletion_failed", session_id=session_id, error=str(e))
-            raise VectorStoreError(
+            raise AgentVectorStoreError(
                 f"Collection deletion failed: {e}",
                 operation="delete_collection",
                 session_id=session_id

@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from mindflow_backend.agents.core.interfaces import VectorStore
-from mindflow_backend.agents.core.exceptions import VectorStoreError
+from mindflow_backend.exceptions import AgentVectorStoreError
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 
@@ -31,7 +31,7 @@ class KuzuDBVectorStore(VectorStore):
     
     def __init__(self, database_path: str = None, dimension: int = 256):
         if not KUZU_AVAILABLE:
-            raise VectorStoreError("KuzuDB not installed. Run: pip install kuzu")
+            raise AgentVectorStoreError("KuzuDB not installed. Run: pip install kuzu")
         
         self.dimension = dimension
         self.database_path = database_path or "data/mindflow_vectors"
@@ -55,7 +55,7 @@ class KuzuDBVectorStore(VectorStore):
                 _logger.info(f"KuzuDB vector store initialized at {self.database_path}")
                 
             except Exception as e:
-                raise VectorStoreError(f"Failed to initialize KuzuDB: {e}")
+                raise AgentVectorStoreError(f"Failed to initialize KuzuDB: {e}")
     
     async def _create_schema(self) -> None:
         """Create the necessary schema for vector storage."""
@@ -113,7 +113,7 @@ class KuzuDBVectorStore(VectorStore):
         await self.initialize()
         
         if len(vectors) != len(contents):
-            raise VectorStoreError("Number of vectors must match number of contents")
+            raise AgentVectorStoreError("Number of vectors must match number of contents")
         
         if metadata is None:
             metadata = [{} for _ in contents]
@@ -172,7 +172,7 @@ class KuzuDBVectorStore(VectorStore):
                 return vector_ids
                 
             except Exception as e:
-                raise VectorStoreError(f"Failed to store vectors: {e}")
+                raise AgentVectorStoreError(f"Failed to store vectors: {e}")
     
     async def search_session_context(
         self,
@@ -219,7 +219,7 @@ class KuzuDBVectorStore(VectorStore):
                 return results
                 
             except Exception as e:
-                raise VectorStoreError(f"Failed to search vectors: {e}")
+                raise AgentVectorStoreError(f"Failed to search vectors: {e}")
     
     async def search_similar_vectors(
         self,
@@ -271,7 +271,7 @@ class KuzuDBVectorStore(VectorStore):
                 return results
                 
             except Exception as e:
-                raise VectorStoreError(f"Failed to search similar vectors: {e}")
+                raise AgentVectorStoreError(f"Failed to search similar vectors: {e}")
     
     async def delete_session_vectors(self, session_id: str) -> int:
         """Delete all vectors for a session."""
@@ -290,7 +290,7 @@ class KuzuDBVectorStore(VectorStore):
                 return 0  # KuzuDB doesn't return count in the same way
                 
             except Exception as e:
-                raise VectorStoreError(f"Failed to delete session vectors: {e}")
+                raise AgentVectorStoreError(f"Failed to delete session vectors: {e}")
     
     async def get_session_stats(self, session_id: str) -> Dict[str, Any]:
         """Get statistics for a session's vectors."""
@@ -316,7 +316,7 @@ class KuzuDBVectorStore(VectorStore):
                 return {"session_id": session_id, "vector_count": 0, "dimension": self.dimension}
                 
             except Exception as e:
-                raise VectorStoreError(f"Failed to get session stats: {e}")
+                raise AgentVectorStoreError(f"Failed to get session stats: {e}")
     
     async def _ensure_session(self, session_id: str) -> None:
         """Ensure a session node exists."""

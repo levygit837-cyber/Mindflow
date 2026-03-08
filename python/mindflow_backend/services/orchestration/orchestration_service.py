@@ -135,12 +135,12 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             self._logger.error(f"Error decomposing task: {str(exc)}")
             raise
     
-    async def select_personality(
+    async def select_specialist(
         self,
         task_id: str,
         task_description: str,
         task_complexity: str,
-        current_personality: Optional[str] = None
+        current_specialist: Optional[str] = None
     ) -> Dict[str, Any]:
         """Select optimal personality for a task.
         
@@ -148,17 +148,17 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             task_id: Task identifier
             task_description: Description of task
             task_complexity: Complexity level of task
-            current_personality: Currently active personality
+            current_specialist: Currently active personality
             
         Returns:
             Dictionary containing personality selection result
         """
         self.log_operation(
-            "select_personality",
+            "select_specialist",
             task_id=task_id,
             task_description=task_description[:100],
             task_complexity=task_complexity,
-            current_personality=current_personality
+            current_specialist=current_specialist
         )
         
         try:
@@ -185,8 +185,8 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
                 "task_id": task_id,
                 "task_description": task_description,
                 "task_complexity": task_complexity,
-                "current_personality": current_personality,
-                "selected_personality": {
+                "current_specialist": current_specialist,
+                "selected_specialist": {
                     "agent_type": selected_agent_type,
                     "agent_name": agent_capabilities.get("specialization", "General Purpose"),
                     "confidence": routing_result.get("confidence", 0.7),

@@ -1,7 +1,7 @@
-"""Agent personality protocol and base agent definition.
+"""Agent specialist protocol and base agent definition.
 
 Provides ``AgentPersonality`` (structural typing) and ``BaseAgent``
-(immutable configuration) that every personality factory must produce.
+(immutable configuration) that every specialist factory must produce.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ class Priority(StrEnum):
 
 @runtime_checkable
 class AgentPersonality(Protocol):
-    """Structural contract that every agent personality must satisfy."""
+    """Structural contract that every agent specialist must satisfy."""
 
     @property
     def agent_type(self) -> AgentType: ...
@@ -75,10 +75,10 @@ class AgentPersonality(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class BaseAgent:
-    """Immutable agent configuration produced by personality factories.
+    """Immutable agent configuration produced by specialist factories.
 
     A ``BaseAgent`` encapsulates everything the runtime needs to know
-    about a particular personality: its prompt, tools, thinking depth,
+    about a particular specialist: its prompt, tools, thinking depth,
     sandbox policy, etc.
     """
 

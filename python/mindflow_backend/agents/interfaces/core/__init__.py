@@ -6,7 +6,7 @@ session management, and streaming.
 """
 
 from .context import ContextRetriever, VectorStore, Cache
-from .personality import PersonalitySelector, RuleEngine
+from .specialists import SpecialistSelector, RuleEngine
 from .runtime import AgentRuntime, AgentFactory, ContentAnalyzer, ResultParser
 from .logging import Logger, AgentLogBus
 from .session_manager import SessionManagerContract
@@ -16,7 +16,7 @@ __all__ = [
     "ContextRetriever",
     "VectorStore",
     "Cache", 
-    "PersonalitySelector",
+    "SpecialistSelector",
     "RuleEngine",
     "AgentRuntime",
     "AgentFactory",

@@ -10,12 +10,12 @@ from typing import Protocol, runtime_checkable
 from uuid import UUID
 
 from mindflow_backend.schemas.orchestration.personality import (
-    PersonalityConfiguration,
-    PersonalityDecisionResult,
-    PersonalitySelection,
-    PersonalitySelectionRule,
-    PersonalitySwitchContext,
-    PersonalityType,
+    SpecialistConfiguration,
+    SpecialistDecisionResult,
+    SpecialistSelection,
+    SpecialistSelectionRule,
+    SpecialistSwitchContext,
+    SpecialistType,
 )
 
 
@@ -27,14 +27,14 @@ class PersonalityManagerContract(Protocol):
     rule evaluation, and configuration management.
     """
 
-    async def select_personality(
+    async def select_specialist(
         self,
         task_id: str,
         task_description: str,
         task_complexity: str,
         context_requirements: list[str] | None = None,
-        current_personality: PersonalityType | None = None,
-    ) -> PersonalityDecisionResult:
+        current_specialist: SpecialistType | None = None,
+    ) -> SpecialistDecisionResult:
         """Select optimal personality for a given task.
         
         Args:
@@ -42,7 +42,7 @@ class PersonalityManagerContract(Protocol):
             task_description: Description of the task.
             task_complexity: Complexity level (simple/medium/complex).
             context_requirements: Required context capabilities.
-            current_personality: Currently active personality.
+            current_specialist: Currently active personality.
             
         Returns:
             Complete personality selection decision with configuration.
@@ -52,12 +52,12 @@ class PersonalityManagerContract(Protocol):
     async def switch_personality(
         self,
         session_id: str,
-        from_personality: PersonalityType,
-        to_personality: PersonalityType,
+        from_personality: SpecialistType,
+        to_personality: SpecialistType,
         trigger: str,
         rationale: str,
         carry_over_context: str = "",
-    ) -> PersonalitySwitchContext:
+    ) -> SpecialistSwitchContext:
         """Execute a personality switch operation.
         
         Args:
@@ -75,8 +75,8 @@ class PersonalityManagerContract(Protocol):
 
     async def configure_personality(
         self,
-        personality: PersonalityType,
-        configuration: PersonalityConfiguration,
+        personality: SpecialistType,
+        configuration: SpecialistConfiguration,
     ) -> None:
         """Configure a specific personality.
         
@@ -88,8 +88,8 @@ class PersonalityManagerContract(Protocol):
 
     async def get_personality_configuration(
         self,
-        personality: PersonalityType,
-    ) -> PersonalityConfiguration:
+        personality: SpecialistType,
+    ) -> SpecialistConfiguration:
         """Get current configuration for a personality.
         
         Args:
@@ -105,7 +105,7 @@ class PersonalityManagerContract(Protocol):
         task_description: str,
         task_complexity: str,
         specialization: str | None = None,
-    ) -> list[PersonalitySelectionRule]:
+    ) -> list[SpecialistSelectionRule]:
         """Evaluate personality selection rules.
         
         Args:
@@ -120,7 +120,7 @@ class PersonalityManagerContract(Protocol):
 
     async def add_selection_rule(
         self,
-        rule: PersonalitySelectionRule,
+        rule: SpecialistSelectionRule,
     ) -> None:
         """Add a new personality selection rule.
         
@@ -145,7 +145,7 @@ class PersonalityManagerContract(Protocol):
 
     async def get_personality_performance(
         self,
-        personality: PersonalityType,
+        personality: SpecialistType,
         time_window: str = "24h",
     ) -> dict[str, float]:
         """Get performance metrics for a personality.
@@ -162,14 +162,14 @@ class PersonalityManagerContract(Protocol):
     async def should_switch_personality(
         self,
         current_task: dict,
-        current_personality: PersonalityType,
+        current_specialist: SpecialistType,
         performance_metrics: dict[str, float],
     ) -> bool:
         """Determine if personality should be switched.
         
         Args:
             current_task: Current task context.
-            current_personality: Active personality.
+            current_specialist: Active personality.
             performance_metrics: Current performance metrics.
             
         Returns:
@@ -180,8 +180,8 @@ class PersonalityManagerContract(Protocol):
     async def create_switch_context(
         self,
         session_id: str,
-        from_personality: PersonalityType,
-        to_personality: PersonalityType,
+        from_personality: SpecialistType,
+        to_personality: SpecialistType,
         trigger: str,
         rationale: str,
         carry_over_context: str = "",
@@ -205,7 +205,7 @@ class PersonalityManagerContract(Protocol):
         self,
         task_history: list[dict],
         performance_data: dict[str, dict],
-    ) -> list[PersonalitySelectionRule]:
+    ) -> list[SpecialistSelectionRule]:
         """Optimize personality selection rules based on performance.
         
         Args:
@@ -217,17 +217,17 @@ class PersonalityManagerContract(Protocol):
         """
         ...
 
-    async def get_available_personalities(self) -> list[PersonalityType]:
-        """Get list of available personality types.
+    async def get_available_specialists(self) -> list[SpecialistType]:
+        """Get list of available specialist types.
         
         Returns:
-            List of configured personality types.
+            List of configured specialist types.
         """
         ...
 
     async def validate_personality_configuration(
         self,
-        configuration: PersonalityConfiguration,
+        configuration: SpecialistConfiguration,
     ) -> bool:
         """Validate personality configuration.
         

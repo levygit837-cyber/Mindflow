@@ -2,15 +2,15 @@
 
 Unified agent architecture with modular components:
 - Context retrieval with RAG and vector search
-- Personality system with dynamic prompts and sub-personalities  
+- Specialist system with dynamic prompts and specialists  
 - Core interfaces and dependency injection
 
 Public API:
     - ``BaseAgent`` — immutable agent configuration
-    - ``AgentRegistry`` — personality registry singleton
-    - ``get_agent`` — retrieve a personality by type
-    - ``register_all_personalities`` — startup bootstrap
-    - Context and Personality subsystems
+    - ``AgentRegistry`` — specialist registry singleton
+    - ``get_agent`` — retrieve a specialist by type
+    - ``register_all_specialists`` — startup bootstrap
+    - Context and Specialist subsystems
 """
 
 # Core agent system
@@ -24,11 +24,11 @@ from mindflow_backend.agents._registry import (
 
 # Modular subsystems
 from mindflow_backend.agents import context
-from mindflow_backend.agents import personality
+from mindflow_backend.agents import specialists
 
 # Legacy compatibility (deprecated - use subsystems above)
 from mindflow_backend.agents.context import get_agent_context_retriever
-from mindflow_backend.agents.personality import get_personality_selector
+from mindflow_backend.agents.specialists import get_specialist_selector
 
 __all__ = [
     # Core system
@@ -37,13 +37,13 @@ __all__ = [
     "BaseAgent",
     "get_agent",
     "get_registry",
-    "register_all_personalities",
+    "register_all_specialists",
     
     # Subsystems
     "context",
-    "personality", 
+    "specialists", 
     
     # Legacy compatibility
     "get_agent_context_retriever",
-    "get_personality_selector",
+    "get_specialist_selector",
 ]

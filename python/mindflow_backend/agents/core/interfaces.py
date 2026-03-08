@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable, Any
 from mindflow_backend.schemas.session.contracts import RetrievedContext
 from mindflow_backend.schemas.session.review import ReviewExecutionContext
-from mindflow_backend.schemas.orchestration.personality import PersonalityDecisionResult
+from mindflow_backend.schemas.orchestration.specialists import SpecialistDecisionResult
 
 
 @runtime_checkable
@@ -131,30 +131,30 @@ class VectorStore(Protocol):
 
 
 @runtime_checkable
-class PersonalitySelector(Protocol):
-    """Contract for personality selection implementations."""
+class SpecialistSelector(Protocol):
+    """Contract for specialist selection implementations."""
     
-    def select_personality(
+    def select_specialist(
         self,
         task_id: str,
         task_description: str,
         task_complexity: str,
         context_requirements: list[str] | None = None,
-        current_personality: str | None = None,
-    ) -> PersonalityDecisionResult:
-        """Select optimal personality for a task."""
+        current_specialist: str | None = None,
+    ) -> SpecialistDecisionResult:
+        """Select optimal specialist for a task."""
         ...
 
     def create_switch_context(
         self,
         session_id: str,
-        from_personality: str,
-        to_personality: str,
+        from_specialist: str,
+        to_specialist: str,
         trigger: str,
         rationale: str,
         carry_over_context: str = "",
     ) -> dict[str, Any]:
-        """Create context for personality switching."""
+        """Create context for specialist switching."""
         ...
 
 

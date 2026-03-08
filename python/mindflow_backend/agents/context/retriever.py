@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from mindflow_backend.agents.interfaces.core import ContextRetriever, VectorStore, Cache
-from mindflow_backend.agents.core.exceptions import ContextRetrievalError, VectorStoreError
+from mindflow_backend.exceptions import ContextRetrievalError, AgentVectorStoreError
 from mindflow_backend.schemas.session.contracts import RetrievedContext
 from mindflow_backend.services.session_retriever import SessionRetrieverService
 from mindflow_backend.infra.logging import get_logger

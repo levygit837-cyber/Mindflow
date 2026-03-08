@@ -7,7 +7,7 @@ import uuid
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.orchestrator.graph import OrchestratorGraph
-from mindflow_backend.agents.interfaces.orchestrator.personality import PersonalitySelector
+from mindflow_backend.agents.interfaces.orchestrator.specialists import SpecialistSelector
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType, ThinkingLevel
 
 _logger = get_logger(__name__)
@@ -19,7 +19,7 @@ class OrchestrationService:
     def __init__(self):
         self.logger = _logger
         self._orchestrator_graph = OrchestratorGraph()
-        self._personality_selector = PersonalitySelector()
+        self._specialist_selector = SpecialistSelector()
     
     async def decompose_task(
         self,
@@ -82,54 +82,54 @@ class OrchestrationService:
             # Fallback to simple decomposition
             return self._fallback_decomposition(task_description, session_id, complexity_level)
     
-    async def select_personality(
+    async def select_specialist(
         self,
         task_id: str,
         task_description: str,
         task_complexity: str,
-        current_personality: Optional[str] = None
+        current_specialist: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Select optimal personality for a task using real personality logic.
+        """Select optimal specialist for a task using real specialist logic.
         
         Args:
             task_id: Task identifier
             task_description: Description of the task
             task_complexity: Complexity level of the task
-            current_personality: Currently active personality
+            current_specialist: Currently active specialist
             
         Returns:
-            Dictionary containing personality decision
+            Dictionary containing specialist decision
         """
         self.logger.info(
-            "Selecting personality",
+            "Selecting specialist",
             task_id=task_id,
             task_complexity=task_complexity,
-            current_personality=current_personality
+            current_specialist=current_specialist
         )
         
         try:
-            # Use personality selector for decision
-            selection_result = self._personality_selector.select_personality(
+            # Use specialist selector for decision
+            selection_result = self._specialist_selector.select_specialist(
                 task_id=task_id,
                 task_description=task_description,
                 task_complexity=task_complexity,
-                current_personality=current_personality
+                current_specialist=current_specialist
             )
             
             return {
                 "task_id": task_id,
-                "selected_personality": selection_result.get("personality", "analyst"),
+                "selected_specialist": selection_result.get("specialist", "analyst"),
                 "rationale": selection_result.get("rationale", "Task requires analytical approach"),
                 "confidence": selection_result.get("confidence", 0.8),
                 "alternatives": selection_result.get("alternatives", []),
-                "switch_required": current_personality != selection_result.get("personality"),
+                "switch_required": current_specialist != selection_result.get("specialist"),
                 "metadata": selection_result
             }
             
         except Exception as e:
-            self.logger.error(f"Error selecting personality: {str(e)}")
+            self.logger.error(f"Error selecting specialist: {str(e)}")
             # Fallback to simple selection
-            return self._fallback_personality_selection(task_id, task_description, task_complexity)
+            return self._fallback_specialist_selection(task_id, task_description, task_complexity)
     
     async def execute_dag(
         self,
@@ -314,19 +314,19 @@ class OrchestrationService:
             "status": "decomposed_fallback"
         }
     
-    def _fallback_personality_selection(self, task_id: str, task_description: str, task_complexity: str) -> Dict[str, Any]:
-        """Fallback personality selection."""
-        personality_map = {
+    def _fallback_specialist_selection(self, task_id: str, task_description: str, task_complexity: str) -> Dict[str, Any]:
+        """Fallback specialist selection."""
+        specialist_map = {
             "low": "coder",
             "medium": "analyst", 
             "high": "orchestrator"
         }
         
-        selected = personality_map.get(task_complexity, "analyst")
+        selected = specialist_map.get(task_complexity, "analyst")
         
         return {
             "task_id": task_id,
-            "selected_personality": selected,
+            "selected_specialist": selected,
             "rationale": f"Selected {selected} based on {task_complexity} complexity",
             "confidence": 0.7,
             "alternatives": ["analyst", "coder"],

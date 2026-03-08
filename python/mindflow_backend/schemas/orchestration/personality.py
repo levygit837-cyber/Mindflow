@@ -16,8 +16,8 @@ from pydantic import BaseModel, Field
 # Enums
 # ---------------------------------------------------------------------------
 
-class PersonalityType(StrEnum):
-    """Available personality types for dynamic selection."""
+class SpecialistType(StrEnum):
+    """Available specialist types for dynamic selection."""
     
     CORE = "core"
     CODER = "coder"
@@ -62,7 +62,7 @@ class PersonalitySwitchTrigger(StrEnum):
 # Personality Selection Decision
 # ---------------------------------------------------------------------------
 
-class PersonalitySelection(BaseModel):
+class SpecialistSelection(BaseModel):
     """Decision schema for personality selection.
     
     Encapsulates the Orchestrator's reasoning for choosing
@@ -73,8 +73,8 @@ class PersonalitySelection(BaseModel):
     task_complexity: TaskComplexity
     requires_specialization: SpecializationRequirement | None = None
     context_requirements: list[str] = Field(default_factory=list)
-    selected_personality: PersonalityType
-    alternative_personalities: list[PersonalityType] = Field(default_factory=list)
+    selected_specialist: SpecialistType
+    alternative_specialists: list[SpecialistType] = Field(default_factory=list)
     personality_switch_reason: str = Field(
         description="Why this personality was chosen over alternatives."
     )
@@ -99,7 +99,7 @@ class PersonalitySelection(BaseModel):
 # Personality Switch Context
 # ---------------------------------------------------------------------------
 
-class PersonalitySwitchContext(BaseModel):
+class SpecialistSwitchContext(BaseModel):
     """Context for personality switching operations.
     
     Tracks personality transitions and provides continuity
@@ -107,8 +107,8 @@ class PersonalitySwitchContext(BaseModel):
     """
     
     session_id: str
-    from_personality: PersonalityType
-    to_personality: PersonalityType
+    from_personality: SpecialistType
+    to_personality: SpecialistType
     switch_trigger: PersonalitySwitchTrigger
     carry_over_context: str = Field(
         default="",
@@ -131,13 +131,13 @@ class PersonalitySwitchContext(BaseModel):
 # Personality Configuration
 # ---------------------------------------------------------------------------
 
-class PersonalityConfiguration(BaseModel):
+class SpecialistConfiguration(BaseModel):
     """Configuration for a specific personality.
     
     Defines how a personality should be configured for a given task.
     """
     
-    personality: PersonalityType
+    personality: SpecialistType
     agent_type: str  # ANALYST, CODER, etc.
     prompt_segments: list[str] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
@@ -152,15 +152,15 @@ class PersonalityConfiguration(BaseModel):
 # Personality Decision Result
 # ---------------------------------------------------------------------------
 
-class PersonalityDecisionResult(BaseModel):
+class SpecialistDecisionResult(BaseModel):
     """Result of personality selection and configuration.
     
     Complete package that the Orchestrator uses to delegate
     a task with the optimal personality configuration.
     """
     
-    selection: PersonalitySelection
-    configuration: PersonalityConfiguration
+    selection: SpecialistSelection
+    configuration: SpecialistConfiguration
     delegation_task: dict = Field(
         description="Delegation task configured for selected personality.",
     )
@@ -178,7 +178,7 @@ class PersonalityDecisionResult(BaseModel):
 # Personality Selection Rules
 # ---------------------------------------------------------------------------
 
-class PersonalitySelectionRule(BaseModel):
+class SpecialistSelectionRule(BaseModel):
     """Rule for personality selection decisions.
     
     Configurable heuristics that guide personality selection.
@@ -189,7 +189,7 @@ class PersonalitySelectionRule(BaseModel):
     condition_keywords: list[str] = Field(default_factory=list)
     condition_complexity: list[TaskComplexity] = Field(default_factory=list)
     required_specialization: SpecializationRequirement | None = None
-    target_personality: PersonalityType
+    target_personality: SpecialistType
     priority: int = Field(default=1, ge=1, le=10)
     confidence_boost: float = Field(default=0.0, ge=0.0, le=1.0)
     description: str = ""
@@ -199,13 +199,13 @@ class PersonalitySelectionRule(BaseModel):
 # Personality Cache Entry
 # ---------------------------------------------------------------------------
 
-class PersonalityCacheEntry(BaseModel):
+class SpecialistCacheEntry(BaseModel):
     """Cached personality decision for performance optimization."""
     
     task_signature: str = Field(
         description="Hash of task characteristics for cache lookup.",
     )
-    personality: PersonalityType
+    personality: SpecialistType
     confidence: float = 0.8
     usage_count: int = Field(default=0, ge=0)
     success_rate: float = Field(default=1.0, ge=0.0, le=1.0)
