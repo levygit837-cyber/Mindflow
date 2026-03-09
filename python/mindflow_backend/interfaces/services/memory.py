@@ -6,7 +6,8 @@ including storage, retrieval, and context operations.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 from uuid import UUID
 
 
@@ -211,9 +212,98 @@ class VectorMemoryInterface(Protocol):
         ...
 
 
+class AgentMemoryServiceInterface(ABC):
+    """Interface ABC para serviços de memória de agente.
+
+    Define o contrato para gerenciar eventos, janelas de contexto e
+    retrieval semântico dentro de uma sessão de agente.
+    """
+
+    @abstractmethod
+    async def get_agent_memory(
+        self,
+        agent_id: str,
+        session_id: str,
+        token_limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Retorna eventos e janelas de memória do agente."""
+        ...
+
+    @abstractmethod
+    async def add_memory_event(
+        self,
+        agent_id: str,
+        session_id: str,
+        role: str,
+        content: str,
+        token_count: int,
+        source_message_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Adiciona evento de memória e gera embedding em tempo real."""
+        ...
+
+    @abstractmethod
+    async def search_semantic_context(
+        self,
+        query: str,
+        session_id: str,
+        top_k: int = 5,
+        min_score: float = 0.3,
+    ) -> List[Dict[str, Any]]:
+        """Busca contexto semanticamente similar via pgvector."""
+        ...
+
+    @abstractmethod
+    async def retrieve_context_for_query(
+        self,
+        query: str,
+        session_id: str,
+        agent_id: str,
+    ) -> Dict[str, Any]:
+        """Recupera contexto relevante para uma query."""
+        ...
+
+    @abstractmethod
+    async def create_memory_summary(
+        self,
+        agent_id: str,
+        session_id: str,
+        window_range: Tuple[int, int],
+    ) -> Dict[str, Any]:
+        """Cria sumário extrativista de uma janela de tokens."""
+        ...
+
+    @abstractmethod
+    async def get_memory_windows(
+        self,
+        agent_id: str,
+        session_id: str,
+    ) -> List[Dict[str, Any]]:
+        """Lista janelas de memória do agente na sessão."""
+        ...
+
+    @abstractmethod
+    async def initialize_session_memory(
+        self, session_id: str, agent_types: List[str]
+    ) -> Dict[str, Any]:
+        """Inicializa cursores e coleções para uma nova sessão."""
+        ...
+
+    @abstractmethod
+    async def cleanup_session_memory(self, session_id: str) -> bool:
+        """Remove dados de memória de uma sessão encerrada."""
+        ...
+
+    @abstractmethod
+    async def get_session_memory_summary(self, session_id: str) -> Dict[str, Any]:
+        """Retorna sumário consolidado de memória da sessão."""
+        ...
+
+
 # Export all interfaces
 __all__ = [
     "MemoryServiceInterface",
-    "ContextMemoryInterface", 
+    "AgentMemoryServiceInterface",
+    "ContextMemoryInterface",
     "VectorMemoryInterface",
 ]

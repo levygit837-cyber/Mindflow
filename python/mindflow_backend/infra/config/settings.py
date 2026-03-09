@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     memory_retrieval_top_k: int = Field(default=4, alias="MEMORY_RETRIEVAL_TOP_K")
     memory_embedding_dims: int = Field(default=256, alias="MEMORY_EMBEDDING_DIMS")
 
+    # Embedding Provider Configuration (EmbeddingProviderFactory)
+    embedding_backend: str = Field(default="gemini", alias="EMBEDDING_BACKEND")
+    embedding_model_name: str = Field(default="models/text-embedding-004", alias="EMBEDDING_MODEL_NAME")
+    embedding_dims: int = Field(default=768, alias="EMBEDDING_DIMS")
+
     # AI Provider Configuration
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")

@@ -87,7 +87,7 @@ from mindflow_backend.services.interfaces import (
     RoutingServiceInterface,
     RetrievalServiceInterface,
     EmbeddingServiceInterface,
-    VectorServiceInterface,
+    VectorStoreInterface,
     HealthServiceInterface,
     MetricsServiceInterface,
     ReviewServiceInterface,

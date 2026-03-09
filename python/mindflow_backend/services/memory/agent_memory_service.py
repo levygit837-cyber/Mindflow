@@ -28,7 +28,6 @@ from mindflow_backend.memory.storage.models import (
     AgentMemoryEvent,
     AgentMemoryFact,
     AgentMemoryWindow,
-    SessionChunk,
     SessionEmbedding,
 )
 from mindflow_backend.storage.postgresql.connection import db_session

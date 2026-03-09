@@ -1,24 +1,44 @@
 """Agent memory services for long-context compression and retrieval."""
 
-# Core services
-from .core.service import MemoryService
-from .core.agent_memory_service import AgentMemoryService, get_memory_service
-from .core.types import MemoryRetrievalResult
-from .core.interfaces import MemoryServiceInterface
+# Session Memory - Memória Semântica de Sessões
+from .session_memory import (
+    SessionMemoryService,
+    SessionStorage,
+)
 
-# Embeddings
-from .embeddings.providers import EmbeddingProvider
-from .embeddings.vector_store import VectorStore
-from .embeddings.similarity import cosine_similarity
+# Task Memory - Memória Semântica de Tasks
+from .task_memory import (
+    TaskMemoryService,
+    TaskRetriever,
+    TaskDecomposer,
+    TaskIntegration,
+)
 
-# Storage
-from .storage.database import MemoryDatabase
-from .storage.vector_db import MemoryVectorDB
+# Agent Memory - Memória Agêntica (LangGraph)
+from .agent_memory import (
+    AgentMemoryService,
+    LangGraphCheckpointer,
+    RollingWindows,
+    FactExtractor,
+)
 
-# Retrieval
-from .retrieval.semantic import SemanticRetriever
-from .retrieval.context import ContextRetriever
-from .retrieval.ranking import ResultRanker
+# Shared Components - Componentes Compartilhados
+from .shared import (
+    SemanticRetriever,
+    ContextRetriever,
+    ResultRanker,
+    MemoryServiceInterface,
+    MemoryRetrievalResult,
+)
+
+# Embedding factory
+from .shared.embeddings.factory import get_embedding_provider, IEmbeddingProvider, EmbeddingBackend
+
+# Agentic store (LangGraph Store)
+from .agent_memory.store import AgenticMemoryStore
+
+# Cross-task API
+from .task_memory.api import CrossTaskContextAPI, get_cross_task_api
 
 # API
 from .api.controller import MemoryController
@@ -27,33 +47,46 @@ from .api.routes import router
 # Utils
 from mindflow_backend.utils.core import estimate_token_count
 
-# Legacy exports for backward compatibility
 __all__ = [
-    # Core
-    "MemoryService",
-    "AgentMemoryService", 
-    "MemoryRetrievalResult",
-    "get_memory_service",
-    "MemoryServiceInterface",
-    
-    # Embeddings
-    "EmbeddingProvider",
-    "VectorStore",
-    "cosine_similarity",
-    
-    # Storage
-    "MemoryDatabase",
-    "MemoryVectorDB",
-    
-    # Retrieval
+    # Session Memory
+    "SessionMemoryService",
+    "SessionStorage",
+
+    # Task Memory
+    "TaskMemoryService",
+    "TaskRetriever",
+    "TaskDecomposer",
+    "TaskIntegration",
+
+    # Agent Memory
+    "AgentMemoryService",
+    "LangGraphCheckpointer",
+    "RollingWindows",
+    "FactExtractor",
+
+    # Shared Components
     "SemanticRetriever",
-    "ContextRetriever", 
+    "ContextRetriever",
     "ResultRanker",
-    
+    "MemoryServiceInterface",
+    "MemoryRetrievalResult",
+
+    # Embedding factory
+    "get_embedding_provider",
+    "IEmbeddingProvider",
+    "EmbeddingBackend",
+
+    # Agentic store
+    "AgenticMemoryStore",
+
+    # Cross-task API
+    "CrossTaskContextAPI",
+    "get_cross_task_api",
+
     # API
     "MemoryController",
     "router",
-    
+
     # Utils
     "estimate_token_count",
 ]

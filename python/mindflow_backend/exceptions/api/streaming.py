@@ -6,7 +6,7 @@ and real-time communication errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import NetworkError
+from mindflow_backend.exceptions.base.core_new import NetworkError
 
 
 class StreamingError(NetworkError):

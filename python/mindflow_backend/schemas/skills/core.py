@@ -1,11 +1,12 @@
 """Core skill schemas."""
 
 from typing import Dict, List, Optional, Any
+from enum import Enum
 from pydantic import BaseModel, Field
 from .base import SkillConfiguration
 
 
-class CoreSkillType(str):
+class CoreSkillType(str, Enum):
     """Core skill types enumeration."""
     ANALYSIS = "analysis"
     CODING = "coding"

@@ -6,10 +6,10 @@ and third-party integration issues.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import InfrastructureError
+from mindflow_backend.exceptions.base.core_new import NetworkError
 
 
-class ThirdPartyAPIError(InfrastructureError):
+class ThirdPartyAPIError(NetworkError):
     """Third-party API failure."""
     
     def __init__(

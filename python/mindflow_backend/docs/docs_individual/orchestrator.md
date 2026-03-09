@@ -4,12 +4,14 @@
 ## Caminho
 @python/orchestrator
 
-## Arquivos Python (5)
+## Arquivos Python (7)
 
 @python/orchestrator/__init__.py
 @python/orchestrator/delegation_engine.py
 @python/orchestrator/graph.py
 @python/orchestrator/intelligent_router.py
+@python/orchestrator/memory_integration.py
+@python/orchestrator/response_node.py
 @python/orchestrator/router.py
 
 ## Subdiretórios (4)

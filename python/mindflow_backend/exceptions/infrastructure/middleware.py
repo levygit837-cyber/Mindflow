@@ -6,7 +6,7 @@ and pipeline execution errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import InfrastructureError
+from mindflow_backend.exceptions.base.core_new import InfrastructureError
 
 
 class MiddlewareError(InfrastructureError):

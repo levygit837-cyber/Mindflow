@@ -6,7 +6,7 @@ and environment setup errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import ConfigurationError as BaseConfigurationError
+from mindflow_backend.exceptions.base.core_new import SystemError as BaseConfigurationError
 
 
 class ConfigurationError(BaseConfigurationError):

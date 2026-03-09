@@ -6,7 +6,7 @@ from examples - direct inheritance from MindFlowError with clear context.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import MindFlowError
+from mindflow_backend.exceptions.base.core_new import MindFlowError
 
 
 class AgentSystemError(MindFlowError):
