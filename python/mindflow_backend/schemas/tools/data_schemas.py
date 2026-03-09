@@ -117,8 +117,16 @@ CSV_PROCESSOR_SCHEMA = ToolSchema(
 )
 
 
+# Dictionary of all data tool schemas
+DATA_SCHEMAS = {
+    "database_manager": DATABASE_SCHEMA,
+    "csv_processor": CSV_PROCESSOR_SCHEMA
+}
+
+
 # Export schemas for easy import
 __all__ = [
     "DATABASE_SCHEMA",
     "CSV_PROCESSOR_SCHEMA",
+    "DATA_SCHEMAS"
 ]

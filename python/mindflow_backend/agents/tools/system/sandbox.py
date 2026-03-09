@@ -13,11 +13,8 @@ from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
+from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.system_schemas import SANDBOX_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -46,57 +43,7 @@ class SandboxTool(AsyncToolInterface):
             "shutdown", "reboot", "halt", "poweroff", "sudo"
         ]
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="system",
-            parameters=[
-                create_parameter(
-                    name="code",
-                    param_type=ParameterType.STRING,
-                    description="Code to execute",
-                    required=True
-                ),
-                create_parameter(
-                    name="language",
-                    param_type=ParameterType.STRING,
-                    description="Programming language",
-                    required=False,
-                    default="python"
-                ),
-                create_parameter(
-                    name="timeout",
-                    param_type=ParameterType.INTEGER,
-                    description="Execution timeout in seconds",
-                    required=False,
-                    default=30
-                ),
-                create_parameter(
-                    name="working_directory",
-                    param_type=ParameterType.STRING,
-                    description="Working directory for execution",
-                    required=False
-                ),
-                create_parameter(
-                    name="environment_vars",
-                    param_type=ParameterType.OBJECT,
-                    description="Environment variables",
-                    required=False,
-                    default={}
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "Sandbox execution result",
-                "properties": {
-                    "stdout": {"type": "string", "description": "Standard output"},
-                    "stderr": {"type": "string", "description": "Standard error"},
-                    "exit_code": {"type": "integer", "description": "Process exit code"},
-                    "execution_time": {"type": "float", "description": "Execution time in seconds"},
-                    "memory_used": {"type": "integer", "description": "Memory used in bytes"}
-                }
-            }
-        )
+        self._schema = SANDBOX_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

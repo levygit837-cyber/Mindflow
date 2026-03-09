@@ -24,7 +24,7 @@ class RespondNode(StatefulNode, BaseNode):
         self.config.outputs = {"response", "error", "final_response"}
     
     async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute response finalization (currently a pass-through)."""
+        """Execute response finalization with memory storage."""
         from mindflow_backend.infra.logging import get_logger
         
         _logger = get_logger(__name__)
@@ -37,8 +37,38 @@ class RespondNode(StatefulNode, BaseNode):
         response = state.get("response", "")
         error = state.get("error")
         
-        # In the current implementation, this is a pass-through
-        # but we can add post-processing logic here
+        # Store interaction in memory
+        try:
+            session_id = state.get("session_id", "")
+            message = state.get("message", "")
+            decision = state.get("decision")
+            
+            if session_id and message and response:
+                from mindflow_backend.orchestrator.memory_integration import store_orchestrator_interaction
+                
+                # Calculate token positions (simplified)
+                message_tokens = len(message.split())
+                response_tokens = len(response.split())
+                
+                # Get agent ID from decision
+                agent_id = "unknown"
+                if decision and hasattr(decision, 'agent'):
+                    agent_id = decision.agent.value
+                
+                # Store interaction
+                message_id, response_id = await store_orchestrator_interaction(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    message=message,
+                    response=response,
+                    token_start=0,  # Simplified token tracking
+                    token_end=message_tokens + response_tokens,
+                )
+                
+                _logger.debug(f"Stored interaction: message_id={message_id}, response_id={response_id}")
+                
+        except Exception as e:
+            _logger.error(f"Failed to store interaction in memory: {e}")
         
         if error:
             _logger.warning("respond_node_error", error=error)

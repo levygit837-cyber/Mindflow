@@ -11,9 +11,7 @@ from urllib.parse import urlparse
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
+from mindflow_backend.schemas.tools.web_schemas import HTTP_CLIENT_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -31,92 +29,7 @@ class HttpClientTool(AsyncToolInterface):
         self.default_timeout = 30
         self.max_response_size = 10 * 1024 * 1024  # 10MB
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="web",
-            parameters=[
-                create_parameter(
-                    name="method",
-                    param_type=ParameterType.STRING,
-                    description="HTTP method (GET, POST, PUT, DELETE, PATCH)",
-                    required=True
-                ),
-                create_parameter(
-                    name="url",
-                    param_type=ParameterType.STRING,
-                    description="Target URL",
-                    required=True
-                ),
-                create_parameter(
-                    name="headers",
-                    param_type=ParameterType.OBJECT,
-                    description="HTTP headers",
-                    required=False,
-                    default={}
-                ),
-                create_parameter(
-                    name="params",
-                    param_type=ParameterType.OBJECT,
-                    description="Query parameters",
-                    required=False,
-                    default={}
-                ),
-                create_parameter(
-                    name="data",
-                    param_type=ParameterType.OBJECT,
-                    description="Request body data (JSON)",
-                    required=False
-                ),
-                create_parameter(
-                    name="form_data",
-                    param_type=ParameterType.OBJECT,
-                    description="Form data",
-                    required=False
-                ),
-                create_parameter(
-                    name="timeout",
-                    param_type=ParameterType.INTEGER,
-                    description="Request timeout in seconds",
-                    required=False,
-                    default=30
-                ),
-                create_parameter(
-                    name="verify_ssl",
-                    param_type=ParameterType.BOOLEAN,
-                    description="Verify SSL certificates",
-                    required=False,
-                    default=True
-                ),
-                create_parameter(
-                    name="follow_redirects",
-                    param_type=ParameterType.BOOLEAN,
-                    description="Follow HTTP redirects",
-                    required=False,
-                    default=True
-                ),
-                create_parameter(
-                    name="max_redirects",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum redirects to follow",
-                    required=False,
-                    default=5
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "HTTP response data",
-                "properties": {
-                    "status_code": {"type": "integer", "description": "HTTP status code"},
-                    "headers": {"type": "object", "description": "Response headers"},
-                    "body": {"type": "string", "description": "Response body"},
-                    "url": {"type": "string", "description": "Final URL after redirects"},
-                    "elapsed": {"type": "float", "description": "Request time in seconds"},
-                    "content_type": {"type": "string", "description": "Response content type"},
-                    "content_length": {"type": "integer", "description": "Response content length"}
-                }
-            }
-        )
+        self._schema = HTTP_CLIENT_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

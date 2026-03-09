@@ -27,10 +27,16 @@ def get_provider_service():
     from mindflow_backend.services.core.provider_service import ProviderService
     return ProviderService()
 
+def get_pinchtab_service():
+    """Factory function for PinchTabService."""
+    from mindflow_backend.services.core.pinchtab_service import PinchTabService
+    return PinchTabService()
+
 # Public exports
 __all__ = [
     "get_agent_service",
     "get_session_service", 
     "get_memory_service",
     "get_provider_service",
+    "get_pinchtab_service",
 ]

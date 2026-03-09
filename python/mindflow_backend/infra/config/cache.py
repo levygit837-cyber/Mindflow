@@ -7,7 +7,7 @@ cache hierarchy, and performance optimization.
 from __future__ import annotations
 
 from typing import Optional, Dict, Any
-from pydantic import Field, validator
+from pydantic import field_validator,  Field, validator
 from pydantic_settings import BaseSettings
 
 
@@ -109,8 +109,8 @@ class CacheConfig(BaseSettings):
     log_cache_operations: bool = Field(default=False, description="Log cache operations")
     log_cache_keys: bool = Field(default=False, description="Log cache keys (security risk)")
 
-    @validator("redis_url", pre=True, always=True)
-    def build_redis_url_from_components(cls, v: str, values: dict[str, any]) -> str:
+    @field_validator("redis_url", mode="before")
+    def build_redis_url_from_components(cls, v: str, info: pydantic.ValidationInfo) -> str:
         """Build Redis URL from individual components if URL not provided."""
         if v:
             return v
@@ -131,7 +131,7 @@ class CacheConfig(BaseSettings):
         url = f"redis://{auth_part}{host}:{port}/{db}"
         return url
 
-    @validator("redis_ssl_cert_reqs")
+    @field_validator("redis_ssl_cert_reqs")
     def validate_ssl_cert_reqs(cls, v: str) -> str:
         """Validate SSL certificate requirements."""
         valid_options = ["none", "optional", "required"]
@@ -139,7 +139,7 @@ class CacheConfig(BaseSettings):
             raise ValueError(f"SSL cert_reqs must be one of: {valid_options}")
         return v
 
-    @validator("compression_algorithm")
+    @field_validator("compression_algorithm")
     def validate_compression_algorithm(cls, v: str) -> str:
         """Validate compression algorithm."""
         valid_algorithms = ["gzip", "lz4", "brotli", "zlib"]
@@ -147,7 +147,7 @@ class CacheConfig(BaseSettings):
             raise ValueError(f"Compression algorithm must be one of: {valid_algorithms}")
         return v
 
-    @validator("default_serializer")
+    @field_validator("default_serializer")
     def validate_default_serializer(cls, v: str) -> str:
         """Validate default serializer."""
         valid_serializers = ["pickle", "json", "msgpack", "marshal"]
@@ -155,23 +155,23 @@ class CacheConfig(BaseSettings):
             raise ValueError(f"Default serializer must be one of: {valid_serializers}")
         return v
 
-    @validator("l1_cache_ttl", "l2_cache_ttl", "default_ttl", "max_ttl", "min_ttl")
+    @field_validator("l1_cache_ttl", "l2_cache_ttl", "default_ttl", "max_ttl", "min_ttl")
     def validate_ttl_values(cls, v: int) -> int:
         """Validate TTL values."""
         if v <= 0:
             raise ValueError("TTL values must be positive")
         return v
 
-    @validator("max_ttl")
-    def validate_max_ttl_greater_than_min(cls, v: int, values: dict[str, any]) -> int:
+    @field_validator("max_ttl")
+    def validate_max_ttl_greater_than_min(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate max_ttl is greater than min_ttl."""
         min_ttl = values.get("min_ttl", 60)
         if v <= min_ttl:
             raise ValueError(f"max_ttl ({v}) must be greater than min_ttl ({min_ttl})")
         return v
 
-    @validator("default_ttl")
-    def validate_default_ttl_range(cls, v: int, values: dict[str, any]) -> int:
+    @field_validator("default_ttl")
+    def validate_default_ttl_range(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate default_ttl is within min/max range."""
         min_ttl = values.get("min_ttl", 60)
         max_ttl = values.get("max_ttl", 86400)
@@ -180,8 +180,8 @@ class CacheConfig(BaseSettings):
             raise ValueError(f"default_ttl ({v}) must be between min_ttl ({min_ttl}) and max_ttl ({max_ttl})")
         return v
 
-    @validator("l1_cache_ttl")
-    def validate_l1_ttl_less_than_l2(cls, v: int, values: dict[str, any]) -> int:
+    @field_validator("l1_cache_ttl")
+    def validate_l1_ttl_less_than_l2(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate L1 cache TTL is less than L2 cache TTL."""
         l2_ttl = values.get("l2_cache_ttl", 3600)
         if v >= l2_ttl:

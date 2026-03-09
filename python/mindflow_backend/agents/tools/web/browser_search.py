@@ -22,11 +22,13 @@ from mindflow_backend.schemas.agents.research import (
     ConfidenceLevel,
 )
 from mindflow_backend.storage.postgresql.connection import db_session
+from ..base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.web_schemas import BROWSER_SEARCH_SCHEMA
 
 _logger = get_logger(__name__)
 
 
-class BrowserSearchTool:
+class BrowserSearchTool(AsyncToolInterface):
     """
     Async browser search tool using PinchTab automation.
     """
@@ -35,8 +37,18 @@ class BrowserSearchTool:
         """
         Initialize browser search tool.
         """
+        super().__init__()
+        self.name = "browser_search"
+        self.description = "Browser-based web research with PinchTab automation"
         self.pinchtab_service = None
         self.action_logger = None
+        self._schema = BROWSER_SEARCH_SCHEMA
+
+    def get_schema(self) -> Dict[str, Any]:
+        """
+        Get tool schema.
+        """
+        return self._schema.dict()
 
     async def initialize(self, session_id: str, agent_id: str) -> None:
         """

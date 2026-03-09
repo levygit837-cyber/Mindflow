@@ -37,7 +37,7 @@ except ImportError:
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from mindflow_backend.schemas.tools.integration_schemas import GIT_SCHEMA, DOCKER_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
@@ -57,66 +57,7 @@ class GitTool(AsyncToolInterface):
         self.name = "git_manager"
         self.description = "Git repository management and operations"
         
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="integration",
-            parameters=[
-                {
-                    "name": "action",
-                    "type": "string",
-                    "description": "Git action to perform (status, add, commit, push, pull, clone, log, branch, merge, diff)",
-                    "required": True
-                },
-                {
-                    "name": "repository_path",
-                    "type": "string",
-                    "description": "Repository path or URL",
-                    "required": False
-                },
-                {
-                    "name": "files",
-                    "type": "array",
-                    "description": "Files to add",
-                    "required": False
-                },
-                {
-                    "name": "message",
-                    "type": "string",
-                    "description": "Commit message",
-                    "required": False
-                },
-                {
-                    "name": "branch",
-                    "type": "string",
-                    "description": "Branch name",
-                    "required": False
-                },
-                {
-                    "name": "remote",
-                    "type": "string",
-                    "description": "Remote name",
-                    "required": False,
-                    "default": "origin"
-                },
-                {
-                    "name": "options",
-                    "type": "object",
-                    "description": "Additional options",
-                    "required": False,
-                    "default": {}
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "Git operation result",
-                "properties": {
-                    "action": {"type": "string", "description": "Action performed"},
-                    "result": {"type": "object", "description": "Operation result"},
-                    "success": {"type": "boolean", "description": "Operation success"}
-                }
-            }
-        )
+        self._schema = GIT_SCHEMA
     
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """Execute Git operation.
@@ -788,82 +729,7 @@ class DockerTool(AsyncToolInterface):
         
         self._client = None
         
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="integration",
-            parameters=[
-                {
-                    "name": "action",
-                    "type": "string",
-                    "description": "Docker action to perform (list_containers, list_images, run, stop, remove, build, logs, exec)",
-                    "required": True
-                },
-                {
-                    "name": "container_name",
-                    "type": "string",
-                    "description": "Container name or ID",
-                    "required": False
-                },
-                {
-                    "name": "image_name",
-                    "type": "string",
-                    "description": "Image name",
-                    "required": False
-                },
-                {
-                    "name": "command",
-                    "type": "string",
-                    "description": "Container command",
-                    "required": False
-                },
-                {
-                    "name": "ports",
-                    "type": "array",
-                    "description": "Port mappings",
-                    "required": False
-                },
-                {
-                    "name": "volumes",
-                    "type": "array",
-                    "description": "Volume mappings",
-                    "required": False
-                },
-                {
-                    "name": "environment",
-                    "type": "object",
-                    "description": "Environment variables",
-                    "required": False
-                },
-                {
-                    "name": "detach",
-                    "type": "boolean",
-                    "description": "Run in detached mode",
-                    "required": False,
-                    "default": True
-                },
-                {
-                    "name": "dockerfile_path",
-                    "type": "string",
-                    "description": "Dockerfile path for build",
-                    "required": False
-                },
-                {
-                    "name": "tag",
-                    "type": "string",
-                    "description": "Image tag",
-                    "required": False
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "Docker operation result",
-                "properties": {
-                    "action": {"type": "string", "description": "Action performed"},
-                    "result": {"type": "object", "description": "Operation result"}
-                }
-            }
-        )
+        self._schema = DOCKER_SCHEMA
     
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """Execute Docker operation.

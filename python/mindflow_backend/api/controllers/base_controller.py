@@ -8,6 +8,9 @@ from typing import Any, Callable, TypeVar
 from functools import wraps
 
 from fastapi import Depends, HTTPException, Request, status
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
@@ -18,6 +21,9 @@ from mindflow_backend.storage.postgresql.connection import db_session
 
 _logger = get_logger(__name__)
 T = TypeVar("T")
+
+# Global rate limiter instance
+limiter = Limiter(key_func=get_remote_address)
 
 
 class BaseController:
@@ -114,14 +120,35 @@ def sanitize_input(func: Callable[..., T]) -> Callable[..., T]:
     return wrapper
 
 
-def rate_limit(operation: str):
-    """Decorator for rate limiting (placeholder for future implementation)."""
+def rate_limit(limit: str, operation: str = "api"):
+    """Decorator for rate limiting with real implementation."""
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
-            # TODO: Implement actual rate limiting
-            # For now, just log the operation
-            _logger.debug(f"Rate limiting check for operation: {operation}")
+            # Check if rate limiting is enabled in settings
+            settings = get_settings()
+            if not settings.rate_limit_enabled:
+                _logger.debug(f"Rate limiting disabled, allowing operation: {operation}")
+                return await func(*args, **kwargs)
+            
+            # Log the rate limiting check
+            _logger.debug(f"Rate limiting check for operation: {operation} with limit: {limit}")
+            
+            # The actual rate limiting is handled by the limiter middleware
+            # This decorator is mainly for logging and configuration
+            return await func(*args, **kwargs)
+        
+        # Apply the slowapi limiter to the function
+        return limiter.limit(limit)(wrapper)
+    return decorator
+
+
+def rate_limit_exempt(operation: str = "api"):
+    """Decorator for operations exempt from rate limiting."""
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def wrapper(*args, **kwargs) -> T:
+            _logger.debug(f"Rate limiting exempt for operation: {operation}")
             return await func(*args, **kwargs)
         return wrapper
     return decorator
