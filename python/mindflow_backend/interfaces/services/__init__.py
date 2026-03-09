@@ -7,8 +7,16 @@ communication, monitoring, orchestration, storage, and core services.
 from .base import BaseServiceInterface, ServiceLifecycleInterface, CacheableServiceInterface, ConfigurableServiceInterface, BaseAbstractService
 from .communication import CommunicationServiceInterface, GrpcServiceInterface, StreamingServiceInterface
 from .core import CoreServiceInterface, AgentServiceInterface, SessionServiceInterface, MemoryServiceInterface, ProviderServiceInterface
+from .memory import MemoryServiceInterface as MemoryServiceInterfaceNew, ContextMemoryInterface, VectorMemoryInterface
 from .monitoring import MonitoringServiceInterface, HealthServiceInterface, MetricsServiceInterface, ReviewServiceInterface
 from .orchestration import OrchestrationServiceInterface, TaskServiceInterface, RoutingServiceInterface
+
+# Import context interfaces from services
+from mindflow_backend.services.interfaces.context_interfaces import (
+    RetrievalServiceInterface as ContextRetrievalServiceInterface,
+    EmbeddingServiceInterface as ContextEmbeddingServiceInterface,
+    VectorServiceInterface as ContextVectorServiceInterface,
+)
 
 __all__ = [
     # Base service interfaces
@@ -28,7 +36,15 @@ __all__ = [
     "AgentServiceInterface",
     "SessionServiceInterface",
     "MemoryServiceInterface",
+    "MemoryServiceInterfaceNew",
+    "ContextMemoryInterface",
+    "VectorMemoryInterface",
     "ProviderServiceInterface",
+    
+    # Context service interfaces
+    "ContextRetrievalServiceInterface",
+    "ContextEmbeddingServiceInterface",
+    "ContextVectorServiceInterface",
     
     # Monitoring interfaces
     "MonitoringServiceInterface",

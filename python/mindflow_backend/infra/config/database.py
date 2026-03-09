@@ -7,7 +7,7 @@ health monitoring, and performance optimization settings.
 from __future__ import annotations
 
 from typing import Optional
-from pydantic import Field, validator
+from pydantic import field_validator,  Field, validator
 from pydantic_settings import BaseSettings
 
 
@@ -91,8 +91,8 @@ class DatabaseConfig(BaseSettings):
     username: Optional[str] = Field(default=None, description="Database username")
     password: Optional[str] = Field(default=None, description="Database password")
 
-    @validator("url", pre=True, always=True)
-    def build_url_from_components(cls, v: str, values: dict[str, any]) -> str:
+    @field_validator("url", mode="before")
+    def build_url_from_components(cls, v: str, info: pydantic.ValidationInfo) -> str:
         """Build database URL from individual components if URL not provided."""
         if v:
             return v
@@ -106,8 +106,8 @@ class DatabaseConfig(BaseSettings):
         
         return f"postgresql+psycopg://{username}:{password}@{host}:{port}/{database}"
 
-    @validator("max_overflow")
-    def validate_max_overflow(cls, v: int, values: dict[str, any]) -> int:
+    @field_validator("max_overflow")
+    def validate_max_overflow(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate max_overflow against max_connections."""
         max_connections = values.get("max_connections", 100)
         pool_size = values.get("pool_size", 20)
@@ -119,8 +119,8 @@ class DatabaseConfig(BaseSettings):
             
         return v
 
-    @validator("min_connections")
-    def validate_min_connections(cls, v: int, values: dict[str, any]) -> int:
+    @field_validator("min_connections")
+    def validate_min_connections(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate min_connections against pool_size."""
         pool_size = values.get("pool_size", 20)
         
@@ -131,21 +131,21 @@ class DatabaseConfig(BaseSettings):
             
         return v
 
-    @validator("retry_delay", "retry_max_delay")
+    @field_validator("retry_delay", "retry_max_delay")
     def validate_retry_delays(cls, v: float) -> float:
         """Validate retry delay values."""
         if v <= 0:
             raise ValueError("Retry delays must be positive")
         return v
 
-    @validator("retry_backoff_multiplier")
+    @field_validator("retry_backoff_multiplier")
     def validate_backoff_multiplier(cls, v: float) -> float:
         """Validate retry backoff multiplier."""
         if v <= 1.0:
             raise ValueError("Retry backoff multiplier must be greater than 1.0")
         return v
 
-    @validator("ssl_mode")
+    @field_validator("ssl_mode")
     def validate_ssl_mode(cls, v: str) -> str:
         """Validate SSL mode."""
         valid_modes = ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"]
@@ -153,7 +153,7 @@ class DatabaseConfig(BaseSettings):
             raise ValueError(f"SSL mode must be one of: {valid_modes}")
         return v
 
-    @validator("slow_query_threshold_ms")
+    @field_validator("slow_query_threshold_ms")
     def validate_slow_query_threshold(cls, v: float) -> float:
         """Validate slow query threshold."""
         if v <= 0:

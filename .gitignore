@@ -99,6 +99,11 @@ start_dev.sh
 .windsurf/
 .claude/
 
+# CodeX integration (local development artifacts)
+.codex/
+.vscode/settings.json
+.vscode/extensions.json
+
 # Project documentation and analysis files
 .env.example
 .complexity-log.md

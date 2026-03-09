@@ -17,8 +17,14 @@ def get_streaming_service():
     from mindflow_backend.services.communication.streaming_service import StreamingService
     return StreamingService()
 
+def get_agent_runtime_service():
+    """Factory function for AgentRuntimeService."""
+    from mindflow_backend.services.communication.agent_runtime_service import AgentRuntimeService
+    return AgentRuntimeService()
+
 # Public exports
 __all__ = [
     "get_grpc_service",
     "get_streaming_service",
+    "get_agent_runtime_service",
 ]

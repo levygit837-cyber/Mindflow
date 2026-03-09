@@ -31,6 +31,7 @@ from mindflow_backend.services.core import (
     get_agent_service,
     get_session_service,
     get_provider_service,
+    get_pinchtab_service,
 )
 
 # Orchestration domain services
@@ -58,6 +59,12 @@ from mindflow_backend.services.monitoring import (
 from mindflow_backend.services.communication import (
     get_grpc_service,
     get_streaming_service,
+    get_agent_runtime_service,
+)
+
+# Memory domain services
+from mindflow_backend.services.memory import (
+    get_memory_service,
 )
 
 # Dependency injection container
@@ -94,6 +101,7 @@ __all__ = [
     "get_agent_service",
     "get_session_service",
     "get_provider_service",
+    "get_pinchtab_service",
     
     # Orchestration services
     "get_orchestration_service",
@@ -113,6 +121,10 @@ __all__ = [
     # Communication services
     "get_grpc_service",
     "get_streaming_service",
+    "get_agent_runtime_service",
+    
+    # Memory services
+    "get_memory_service",
     
     # Dependency injection
     "get_container",

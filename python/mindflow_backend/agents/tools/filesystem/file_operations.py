@@ -16,7 +16,7 @@ from datetime import datetime
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from mindflow_backend.schemas.tools.filesystem_schemas import READ_FILE_SCHEMA, WRITE_FILE_SCHEMA, EDIT_FILE_SCHEMA, DELETE_FILE_SCHEMA, LIST_DIRECTORY_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
@@ -44,42 +44,7 @@ class FileReadTool(AsyncToolInterface):
             '/proc', '/dev', '/root', '/var/log'
         }
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                {
-                    "name": "file_path",
-                    "type": "string",
-                    "description": "Path to the file to read",
-                    "required": True
-                },
-                {
-                    "name": "encoding",
-                    "type": "string",
-                    "description": "File encoding",
-                    "required": False,
-                    "default": "utf-8"
-                },
-                {
-                    "name": "max_lines",
-                    "type": "integer",
-                    "description": "Maximum number of lines to read",
-                    "required": False
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "File read operation result",
-                "properties": {
-                    "content": {"type": "string", "description": "File content"},
-                    "line_count": {"type": "integer", "description": "Number of lines read"},
-                    "file_size": {"type": "integer", "description": "File size in bytes"},
-                    "encoding": {"type": "string", "description": "File encoding used"}
-                }
-            }
-        )
+        self._schema = READ_FILE_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -227,26 +192,7 @@ class FileEditTool(AsyncToolInterface):
             "/proc", "/dev", "/root", "/var/log",
         }
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                {"name": "file_path", "type": "string", "description": "Path to file", "required": True},
-                {"name": "old_string", "type": "string", "description": "Text to replace", "required": True},
-                {"name": "new_string", "type": "string", "description": "Replacement text", "required": True},
-                {"name": "count", "type": "integer", "description": "Max replacements", "required": False, "default": 1},
-                {"name": "encoding", "type": "string", "description": "Encoding", "required": False, "default": "utf-8"},
-            ],
-            returns={
-                "type": "object",
-                "description": "Edit result",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "replacements": {"type": "integer"},
-                },
-            },
-        )
+        self._schema = EDIT_FILE_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         file_path = kwargs["file_path"]
@@ -309,48 +255,7 @@ class FileWriteTool(AsyncToolInterface):
             '/proc', '/dev', '/root', '/var/log'
         }
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                {
-                    "name": "file_path",
-                    "type": "string",
-                    "description": "Path to the file to write",
-                    "required": True
-                },
-                {
-                    "name": "content",
-                    "type": "string",
-                    "description": "Content to write to the file",
-                    "required": True
-                },
-                {
-                    "name": "encoding",
-                    "type": "string",
-                    "description": "File encoding",
-                    "required": False,
-                    "default": "utf-8"
-                },
-                {
-                    "name": "create_dirs",
-                    "type": "boolean",
-                    "description": "Create parent directories if they don't exist",
-                    "required": False,
-                    "default": True
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "File write operation result",
-                "properties": {
-                    "bytes_written": {"type": "integer", "description": "Number of bytes written"},
-                    "file_path": {"type": "string", "description": "Full path to written file"},
-                    "encoding": {"type": "string", "description": "Encoding used"}
-                }
-            }
-        )
+        self._schema = WRITE_FILE_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -473,48 +378,7 @@ class DirectoryListTool(AsyncToolInterface):
             '/proc', '/dev', '/root', '/var/log'
         }
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                {
-                    "name": "directory_path",
-                    "type": "string",
-                    "description": "Path to the directory to list",
-                    "required": True
-                },
-                {
-                    "name": "show_hidden",
-                    "type": "boolean",
-                    "description": "Include hidden files and directories",
-                    "required": False,
-                    "default": False
-                },
-                {
-                    "name": "recursive",
-                    "type": "boolean",
-                    "description": "List directories recursively",
-                    "required": False,
-                    "default": False
-                },
-                {
-                    "name": "pattern",
-                    "type": "string",
-                    "description": "Pattern to filter files (glob pattern)",
-                    "required": False
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "Directory listing result",
-                "properties": {
-                    "files": {"type": "array", "description": "List of files"},
-                    "directories": {"type": "array", "description": "List of directories"},
-                    "total_count": {"type": "integer", "description": "Total items found"}
-                }
-            }
-        )
+        self._schema = LIST_DIRECTORY_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -657,41 +521,7 @@ class FileDeleteTool(AsyncToolInterface):
             '/proc', '/dev', '/root', '/var/log'
         }
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                {
-                    "name": "file_path",
-                    "type": "string",
-                    "description": "Path to the file or directory to delete",
-                    "required": True
-                },
-                {
-                    "name": "recursive",
-                    "type": "boolean",
-                    "description": "Delete directories recursively",
-                    "required": False,
-                    "default": False
-                },
-                {
-                    "name": "force",
-                    "type": "boolean",
-                    "description": "Force deletion without confirmation",
-                    "required": False,
-                    "default": False
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "File deletion result",
-                "properties": {
-                    "deleted": {"type": "boolean", "description": "Whether the file was deleted"},
-                    "file_path": {"type": "string", "description": "Path that was deleted"}
-                }
-            }
-        )
+        self._schema = DELETE_FILE_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

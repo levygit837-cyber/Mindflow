@@ -13,9 +13,7 @@ from urllib.parse import urljoin
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
+from mindflow_backend.schemas.tools.web_schemas import API_CLIENT_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -30,93 +28,7 @@ class ApiClientTool(AsyncToolInterface):
         self.name = "api_client"
         self.description = "REST API client with authentication and retry logic"
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="web",
-            parameters=[
-                create_parameter(
-                    name="api_url",
-                    param_type=ParameterType.STRING,
-                    description="Base API URL",
-                    required=True
-                ),
-                create_parameter(
-                    name="endpoint",
-                    param_type=ParameterType.STRING,
-                    description="API endpoint",
-                    required=True
-                ),
-                create_parameter(
-                    name="method",
-                    param_type=ParameterType.STRING,
-                    description="HTTP method",
-                    required=False,
-                    default="GET"
-                ),
-                create_parameter(
-                    name="headers",
-                    param_type=ParameterType.OBJECT,
-                    description="API headers",
-                    required=False,
-                    default={}
-                ),
-                create_parameter(
-                    name="auth_type",
-                    param_type=ParameterType.STRING,
-                    description="Authentication type (bearer, basic, api_key)",
-                    required=False
-                ),
-                create_parameter(
-                    name="auth_token",
-                    param_type=ParameterType.STRING,
-                    description="Authentication token",
-                    required=False
-                ),
-                create_parameter(
-                    name="username",
-                    param_type=ParameterType.STRING,
-                    description="Username for basic auth",
-                    required=False
-                ),
-                create_parameter(
-                    name="password",
-                    param_type=ParameterType.STRING,
-                    description="Password for basic auth",
-                    required=False
-                ),
-                create_parameter(
-                    name="api_key_header",
-                    param_type=ParameterType.STRING,
-                    description="API key header name",
-                    required=False,
-                    default="X-API-Key"
-                ),
-                create_parameter(
-                    name="data",
-                    param_type=ParameterType.OBJECT,
-                    description="Request data",
-                    required=False
-                ),
-                create_parameter(
-                    name="params",
-                    param_type=ParameterType.OBJECT,
-                    description="Query parameters",
-                    required=False,
-                    default={}
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "API response",
-                "properties": {
-                    "status_code": {"type": "integer", "description": "HTTP status code"},
-                    "data": {"type": "object", "description": "Response data"},
-                    "headers": {"type": "object", "description": "Response headers"},
-                    "success": {"type": "boolean", "description": "Request success"}
-                }
-            }
-        )
+        self._schema = API_CLIENT_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

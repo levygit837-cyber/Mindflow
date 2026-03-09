@@ -3,17 +3,13 @@ Resource monitoring tool for system operations. Provides tools for monitoring CP
 disk, and network usage with alerting capabilities.
 """
 
-from __future__ import annotations
 import asyncio
 import time
 from typing import Any, Dict, List, Optional, Union
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
+from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.system_schemas import RESOURCE_MONITOR_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -39,58 +35,7 @@ class ResourceMonitorTool(AsyncToolInterface):
             "network": 1000000  # bytes per second
         }
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="system",
-            parameters=[
-                create_parameter(
-                    name="action",
-                    param_type=ParameterType.STRING,
-                    description="Action to perform (start, stop, get_current, get_history)",
-                    required=True
-                ),
-                create_parameter(
-                    name="resources",
-                    param_type=ParameterType.ARRAY,
-                    description="Resources to monitor (cpu, memory, disk, network)",
-                    required=False,
-                    default=["cpu", "memory"]
-                ),
-                create_parameter(
-                    name="duration",
-                    param_type=ParameterType.INTEGER,
-                    description="Monitoring duration in seconds",
-                    required=False,
-                    default=60
-                ),
-                create_parameter(
-                    name="interval",
-                    param_type=ParameterType.INTEGER,
-                    description="Monitoring interval in seconds",
-                    required=False,
-                    default=5
-                ),
-                create_parameter(
-                    name="alert_conditions",
-                    param_type=ParameterType.OBJECT,
-                    description="Alert conditions and thresholds",
-                    required=False,
-                    default={}
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "Resource monitoring results",
-                "properties": {
-                    "current": {"type": "object", "description": "Current resource usage"},
-                    "averages": {"type": "object", "description": "Average resource usage"},
-                    "peaks": {"type": "object", "description": "Peak resource usage"},
-                    "history": {"type": "object", "description": "Historical data"},
-                    "alerts": {"type": "array", "description": "Alert conditions"}
-                }
-            }
-        )
+        self._schema = RESOURCE_MONITOR_SCHEMA
 
         # Internal state
         self._monitoring = False
