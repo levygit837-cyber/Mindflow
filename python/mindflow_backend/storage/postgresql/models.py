@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
@@ -289,6 +290,40 @@ class ResearchFinding(Base):
 
     # Relationships
     research_session: Mapped["ResearchSession"] = relationship("ResearchSession")
+
+
+class SessionReview(Base):
+    """Session review records for context governance."""
+    __tablename__ = "session_reviews"
+    
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    window_start: Mapped[int] = mapped_column(Integer)
+    window_end: Mapped[int] = mapped_column(Integer)
+    review_data: Mapped[dict[str, Any]] = mapped_column(JSON)
+    priority: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    
+    # Relationships
+    session: Mapped["ChatSession"] = relationship("ChatSession")
+    review_results: Mapped[list["SessionReviewResult"]] = relationship(
+        "SessionReviewResult", back_populates="review", cascade="all, delete-orphan"
+    )
+
+
+class SessionReviewResult(Base):
+    """Detailed results of session review analysis."""
+    __tablename__ = "session_review_results"
+    
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    review_id: Mapped[str] = mapped_column(String(64), ForeignKey("session_reviews.id"), index=True)
+    result_type: Mapped[str] = mapped_column(String(32))
+    result_data: Mapped[dict[str, Any]] = mapped_column(JSON)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    
+    # Relationships
+    review: Mapped["SessionReview"] = relationship("SessionReview", back_populates="review_results")
 
 
 class SourceClassification(Base):

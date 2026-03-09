@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, validator
+from pydantic import field_validator,  Field, validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from mindflow_backend.infra.config.database import DatabaseConfig
@@ -172,14 +172,14 @@ class Settings(BaseSettings):
     cache: CacheConfig = Field(default_factory=CacheConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
 
-    @validator("database", pre=True, always=True)
-    def assemble_database_config(cls, v: DatabaseConfig | dict | None, values: dict[str, any]) -> DatabaseConfig:
+    @field_validator("database", mode="before", check_fields=False)
+    def assemble_database_config(cls, v: DatabaseConfig | dict | None, info: pydantic.ValidationInfo) -> DatabaseConfig:
         """Assemble database configuration from environment variables."""
         if isinstance(v, DatabaseConfig):
             return v
             
         # Extract database URL from main settings for backward compatibility
-        database_url = values.get("database_url")
+        database_url = info.parent.database_url
         if database_url:
             if v is None:
                 v = {}
@@ -187,14 +187,14 @@ class Settings(BaseSettings):
             
         return DatabaseConfig(**(v or {}))
 
-    @validator("cache", pre=True, always=True)
-    def assemble_cache_config(cls, v: CacheConfig | dict | None, values: dict[str, any]) -> CacheConfig:
+    @field_validator("cache", mode="before", check_fields=False)
+    def assemble_cache_config(cls, v: CacheConfig | dict | None, info: pydantic.ValidationInfo) -> CacheConfig:
         """Assemble cache configuration from environment variables."""
         if isinstance(v, CacheConfig):
             return v
             
         # Extract Redis configuration from main settings for backward compatibility
-        redis_url = values.get("redis_url")
+        redis_url = info.parent.redis_url
         if redis_url:
             if v is None:
                 v = {}
@@ -202,15 +202,15 @@ class Settings(BaseSettings):
             
         return CacheConfig(**(v or {}))
 
-    @validator("monitoring", pre=True, always=True)
-    def assemble_monitoring_config(cls, v: MonitoringConfig | dict | None, values: dict[str, any]) -> MonitoringConfig:
+    @field_validator("monitoring", mode="before", check_fields=False)
+    def assemble_monitoring_config(cls, v: MonitoringConfig | dict | None, info: pydantic.ValidationInfo) -> MonitoringConfig:
         """Assemble monitoring configuration from environment variables."""
         if isinstance(v, MonitoringConfig):
             return v
         return MonitoringConfig(**(v or {}))
 
-    @validator("feature_flags", pre=True)
-    def parse_feature_flags(cls, v: str | dict[str, bool] | None) -> dict[str, bool]:
+    @field_validator("feature_flags", mode="before")
+    def parse_feature_flags(cls, v: str | dict[str, bool] | None, info: pydantic.ValidationInfo) -> dict[str, bool]:
         """Parse feature flags from environment variables."""
         if isinstance(v, dict):
             return v

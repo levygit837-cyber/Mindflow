@@ -299,24 +299,20 @@ async def _orchestrator_reflect(
 
 
 def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> _Any:
-    settings = get_settings()
-    if not settings.memory_enabled:
-        return {"context": "", "references": []}
-    if not session_id:
-        return {"context": "", "references": []}
-
+    """Retrieve memory context using the new simple memory service."""
     try:
-        # Lazy import to avoid DB dependencies in unit tests / minimal environments.
-        from mindflow_backend.storage.postgresql.connection import db_session
-        from mindflow_backend.memory import get_memory_service
-
-        with db_session() as db:
-            return get_memory_service().retrieve_context_for_query(
-                db=db,
-                session_id=session_id,
-                agent_id=agent_id,
-                query=query,
-            )
+        # Use the new memory integration
+        from mindflow_backend.orchestrator.memory_integration import get_context_for_agent
+        
+        # Get context for the agent
+        context = asyncio.run(get_context_for_agent(
+            session_id=session_id,
+            query=query,
+            limit=5
+        ))
+        
+        return {"context": context, "references": []}
+        
     except Exception as exc:
         _logger.warning("memory_retrieval_failed", error=str(exc), session_id=session_id, agent=agent_id)
         return {"context": "", "references": []}

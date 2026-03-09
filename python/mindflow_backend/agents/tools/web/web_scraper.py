@@ -28,8 +28,8 @@ except ImportError:
     requests = None
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from ..base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.web_schemas import HTTP_CLIENT_SCHEMA, WEB_SCRAPER_SCHEMA, API_CLIENT_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
@@ -53,90 +53,7 @@ class HttpClientTool(AsyncToolInterface):
         self.default_timeout = 30
         self.max_response_size = 10 * 1024 * 1024  # 10MB
         
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="web",
-            parameters=[
-                {
-                    "name": "method",
-                    "type": "string",
-                    "description": "HTTP method (GET, POST, PUT, DELETE, PATCH)",
-                    "required": True
-                },
-                {
-                    "name": "url",
-                    "type": "string",
-                    "description": "Target URL",
-                    "required": True
-                },
-                {
-                    "name": "headers",
-                    "type": "object",
-                    "description": "HTTP headers",
-                    "required": False,
-                    "default": {}
-                },
-                {
-                    "name": "params",
-                    "type": "object",
-                    "description": "Query parameters",
-                    "required": False,
-                    "default": {}
-                },
-                {
-                    "name": "data",
-                    "type": "object",
-                    "description": "Request body data (JSON)",
-                    "required": False
-                },
-                {
-                    "name": "form_data",
-                    "type": "object",
-                    "description": "Form data",
-                    "required": False
-                },
-                {
-                    "name": "timeout",
-                    "type": "integer",
-                    "description": "Request timeout in seconds",
-                    "required": False,
-                    "default": 30
-                },
-                {
-                    "name": "verify_ssl",
-                    "type": "boolean",
-                    "description": "Verify SSL certificates",
-                    "required": False,
-                    "default": True
-                },
-                {
-                    "name": "follow_redirects",
-                    "type": "boolean",
-                    "description": "Follow HTTP redirects",
-                    "required": False,
-                    "default": True
-                },
-                {
-                    "name": "max_redirects",
-                    "type": "integer",
-                    "description": "Maximum redirects to follow",
-                    "required": False,
-                    "default": 5
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "HTTP response data",
-                "properties": {
-                    "status_code": {"type": "integer", "description": "HTTP status code"},
-                    "headers": {"type": "object", "description": "Response headers"},
-                    "body": {"type": "string", "description": "Response body"},
-                    "url": {"type": "string", "description": "Final URL after redirects"},
-                    "elapsed": {"type": "float", "description": "Request time in seconds"}
-                }
-            }
-        )
+        self._schema = HTTP_CLIENT_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -370,79 +287,7 @@ class WebScraperTool(AsyncToolInterface):
             self.BEAUTIFULSOUP_AVAILABLE = False
             self.BeautifulSoup = None
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="web",
-            parameters=[
-                {
-                    "name": "url",
-                    "type": "string",
-                    "description": "URL to scrape",
-                    "required": True
-                },
-                {
-                    "name": "selectors",
-                    "type": "array",
-                    "description": "CSS selectors to extract",
-                    "required": False,
-                    "default": []
-                },
-                {
-                    "name": "headers",
-                    "type": "object",
-                    "description": "HTTP headers",
-                    "required": False,
-                    "default": {}
-                },
-                {
-                    "name": "timeout",
-                    "type": "integer",
-                    "description": "Request timeout in seconds",
-                    "required": False,
-                    "default": 30
-                },
-                {
-                    "name": "wait_for_selector",
-                    "type": "string",
-                    "description": "CSS selector to wait for (JavaScript sites)",
-                    "required": False
-                },
-                {
-                    "name": "extract_links",
-                    "type": "boolean",
-                    "description": "Extract all links from page",
-                    "required": False,
-                    "default": False
-                },
-                {
-                    "name": "extract_images",
-                    "type": "boolean",
-                    "description": "Extract all images from page",
-                    "required": False,
-                    "default": False
-                },
-                {
-                    "name": "extract_text",
-                    "type": "boolean",
-                    "description": "Extract clean text content",
-                    "required": False,
-                    "default": True
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "Scraped content",
-                "properties": {
-                    "title": {"type": "string", "description": "Page title"},
-                    "content": {"type": "string", "description": "Clean text content"},
-                    "extracted_data": {"type": "object", "description": "Extracted data by selectors"},
-                    "links": {"type": "array", "description": "Extracted links"},
-                    "images": {"type": "array", "description": "Extracted images"},
-                    "metadata": {"type": "object", "description": "Page metadata"}
-                }
-            }
-        )
+        self._schema = WEB_SCRAPER_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -604,93 +449,7 @@ class ApiClientTool(AsyncToolInterface):
         self.name = "api_client"
         self.description = "REST API client with authentication and retry logic"
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="web",
-            parameters=[
-                {
-                    "name": "api_url",
-                    "type": "string",
-                    "description": "Base API URL",
-                    "required": True
-                },
-                {
-                    "name": "endpoint",
-                    "type": "string",
-                    "description": "API endpoint",
-                    "required": True
-                },
-                {
-                    "name": "method",
-                    "type": "string",
-                    "description": "HTTP method",
-                    "required": False,
-                    "default": "GET"
-                },
-                {
-                    "name": "headers",
-                    "type": "object",
-                    "description": "API headers",
-                    "required": False,
-                    "default": {}
-                },
-                {
-                    "name": "auth_type",
-                    "type": "string",
-                    "description": "Authentication type (bearer, basic, api_key)",
-                    "required": False
-                },
-                {
-                    "name": "auth_token",
-                    "type": "string",
-                    "description": "Authentication token",
-                    "required": False
-                },
-                {
-                    "name": "username",
-                    "type": "string",
-                    "description": "Username for basic auth",
-                    "required": False
-                },
-                {
-                    "name": "password",
-                    "type": "string",
-                    "description": "Password for basic auth",
-                    "required": False
-                },
-                {
-                    "name": "api_key_header",
-                    "type": "string",
-                    "description": "API key header name",
-                    "required": False,
-                    "default": "X-API-Key"
-                },
-                {
-                    "name": "data",
-                    "type": "object",
-                    "description": "Request data",
-                    "required": False
-                },
-                {
-                    "name": "params",
-                    "type": "object",
-                    "description": "Query parameters",
-                    "required": False,
-                    "default": {}
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "API response",
-                "properties": {
-                    "status_code": {"type": "integer", "description": "HTTP status code"},
-                    "data": {"type": "object", "description": "Response data"},
-                    "headers": {"type": "object", "description": "Response headers"},
-                    "success": {"type": "boolean", "description": "Request success"}
-                }
-            }
-        )
+        self._schema = API_CLIENT_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

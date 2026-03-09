@@ -142,8 +142,53 @@ class EnhancedGrpcAgentClient(GrpcClient):
             try:
                 # Create channel
                 if self.secure:
-                    # TODO: Implement TLS credentials
-                    self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
+                    # Implement TLS credentials
+                    try:
+                        # Read TLS certificates
+                        with open(self.config.tls_cert_path, 'rb') as f:
+                            cert_chain = f.read()
+                        with open(self.config.tls_key_path, 'rb') as f:
+                            private_key = f.read()
+                        with open(self.config.tls_ca_path, 'rb') as f:
+                            ca_cert = f.read()
+                        
+                        # Create SSL credentials
+                        credentials = grpc.ssl_channel_credentials(
+                            root_certificates=ca_cert,
+                            private_key=private_key,
+                            certificate_chain=cert_chain
+                        )
+                        
+                        self._channel = grpc.aio.secure_channel(
+                            f"{self.host}:{self.port}", 
+                            credentials
+                        )
+                        
+                        _logger.info(
+                            "grpc_secure_channel_created",
+                            host=self.host,
+                            port=self.port,
+                            cert_path=self.config.tls_cert_path
+                        )
+                        
+                    except FileNotFoundError as e:
+                        _logger.error(
+                            "grpc_tls_certificate_not_found",
+                            error=str(e),
+                            cert_path=getattr(self.config, 'tls_cert_path', 'not_set')
+                        )
+                        # Fallback to insecure channel for development
+                        self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
+                        _logger.warning("grpc_fallback_insecure_channel")
+                        
+                    except Exception as e:
+                        _logger.error(
+                            "grpc_tls_configuration_failed",
+                            error=str(e)
+                        )
+                        # Fallback to insecure channel
+                        self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
+                        _logger.warning("grpc_fallback_insecure_channel")
                 else:
                     self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
                 

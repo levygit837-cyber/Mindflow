@@ -1,11 +1,16 @@
 import logging
 import signal
 import sys
+import time
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from mindflow_backend.agents._registry import register_all_specialists
 from mindflow_backend.api.router import router
@@ -88,6 +93,11 @@ setup_documentation_routes(app)
 # Add operation examples
 add_operation_examples(app)
 
+# Set up rate limiting
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 def _parse_csv(value: str) -> list[str]:
     return [part.strip() for part in value.split(",") if part.strip()]
@@ -118,6 +128,9 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+# Add SlowAPI middleware for rate limiting (add first)
+app.add_middleware(SlowAPIMiddleware)
 
 # Performance and caching middleware (add first for maximum effect)
 cache_backend = MemoryCacheBackend(max_size=1000)
@@ -182,6 +195,13 @@ def api_info():
     """Get comprehensive API information."""
     from mindflow_backend.api.docs import create_api_info
     return create_api_info()
+
+
+@app.get("/test-rate-limit")
+@limiter.limit("5/minute")
+async def test_rate_limit(request: Request):
+    """Test endpoint for rate limiting."""
+    return {"message": "Rate limiting test successful", "timestamp": time.time()}
 
 
 def run() -> None:

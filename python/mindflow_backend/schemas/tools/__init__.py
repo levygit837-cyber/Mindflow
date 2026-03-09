@@ -60,6 +60,44 @@ from .model_config import (
     create_recommendation,
 )
 
+# Category-specific schemas
+from .web_schemas import (
+    API_CLIENT_SCHEMA,
+    HTTP_CLIENT_SCHEMA,
+    WEB_SCRAPER_SCHEMA,
+    BROWSER_SEARCH_SCHEMA,
+    WEB_SCHEMAS
+)
+from .system_schemas import (
+    PROCESS_MANAGER_SCHEMA,
+    RESOURCE_MONITOR_SCHEMA,
+    SANDBOX_SCHEMA,
+    SHELL_EXECUTOR_SCHEMA,
+    SYSTEM_INFO_SCHEMA,
+    SYSTEM_SCHEMAS
+)
+from .filesystem_schemas import (
+    READ_FILE_SCHEMA,
+    WRITE_FILE_SCHEMA,
+    EDIT_FILE_SCHEMA,
+    DELETE_FILE_SCHEMA,
+    LIST_DIRECTORY_SCHEMA,
+    GREP_SEARCH_SCHEMA,
+    GLOB_SEARCH_SCHEMA,
+    FILE_FINDER_SCHEMA,
+    FILESYSTEM_SCHEMAS
+)
+from .integration_schemas import (
+    GIT_SCHEMA,
+    DOCKER_SCHEMA,
+    INTEGRATION_SCHEMAS
+)
+from .data_schemas import (
+    DATABASE_SCHEMA,
+    CSV_PROCESSOR_SCHEMA,
+    DATA_SCHEMAS
+)
+
 __all__ = [
     # Tool configuration
     "ToolParameter",
@@ -106,4 +144,32 @@ __all__ = [
     "create_model_info",
     "create_model_config",
     "create_recommendation",
+    
+    # Category-specific schemas
+    "API_CLIENT_SCHEMA",
+    "HTTP_CLIENT_SCHEMA",
+    "WEB_SCRAPER_SCHEMA",
+    "BROWSER_SEARCH_SCHEMA",
+    "WEB_SCHEMAS",
+    "PROCESS_MANAGER_SCHEMA",
+    "RESOURCE_MONITOR_SCHEMA",
+    "SANDBOX_SCHEMA",
+    "SHELL_EXECUTOR_SCHEMA",
+    "SYSTEM_INFO_SCHEMA",
+    "SYSTEM_SCHEMAS",
+    "READ_FILE_SCHEMA",
+    "WRITE_FILE_SCHEMA",
+    "EDIT_FILE_SCHEMA",
+    "DELETE_FILE_SCHEMA",
+    "LIST_DIRECTORY_SCHEMA",
+    "GREP_SEARCH_SCHEMA",
+    "GLOB_SEARCH_SCHEMA",
+    "FILE_FINDER_SCHEMA",
+    "FILESYSTEM_SCHEMAS",
+    "GIT_SCHEMA",
+    "DOCKER_SCHEMA",
+    "INTEGRATION_SCHEMAS",
+    "DATABASE_SCHEMA",
+    "CSV_PROCESSOR_SCHEMA",
+    "DATA_SCHEMAS"
 ]

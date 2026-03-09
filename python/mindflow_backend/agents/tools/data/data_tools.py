@@ -35,7 +35,7 @@ except ImportError:
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from mindflow_backend.schemas.tools.data_schemas import DATABASE_SCHEMA, CSV_PROCESSOR_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
@@ -297,60 +297,7 @@ class CSVProcessorTool(AsyncToolInterface):
         self.name = "csv_processor"
         self.description = "CSV file processing and analysis"
         
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="data",
-            parameters=[
-                {
-                    "name": "action",
-                    "type": "string",
-                    "description": "Action to perform (read, write, analyze, transform, info)",
-                    "required": True
-                },
-                {
-                    "name": "file_path",
-                    "type": "string",
-                    "description": "CSV file path",
-                    "required": False
-                },
-                {
-                    "name": "data",
-                    "type": "array",
-                    "description": "Data to write to CSV",
-                    "required": False
-                },
-                {
-                    "name": "delimiter",
-                    "type": "string",
-                    "description": "CSV delimiter",
-                    "required": False,
-                    "default": ","
-                },
-                {
-                    "name": "encoding",
-                    "type": "string",
-                    "description": "File encoding",
-                    "required": False,
-                    "default": "utf-8"
-                },
-                {
-                    "name": "headers",
-                    "type": "boolean",
-                    "description": "Whether CSV has headers",
-                    "required": False,
-                    "default": True
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "CSV operation result",
-                "properties": {
-                    "action": {"type": "string", "description": "Action performed"},
-                    "result": {"type": "object", "description": "Operation result"}
-                }
-            }
-        )
+        self._schema = CSV_PROCESSOR_SCHEMA
     
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """Execute CSV operation.

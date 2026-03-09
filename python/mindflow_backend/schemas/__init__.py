@@ -16,7 +16,6 @@ from .orchestration.specialists import SpecialistType, TaskComplexity, Specializ
 
 # Session schemas
 from .session.contracts import SessionMode, RelationshipType, RetrievalMode
-from .session.review import ReviewTriggerType, WindowSize, ReviewPriority
 from .session.chunk import ChunkType, ChunkEdgeType
 from .session.governance import ContextScope
 
@@ -26,6 +25,29 @@ from .chat.agent import AgentChatRequest, ChatMessageSchema, ChatSessionSchema, 
 # Config schemas
 from .config.settings import AppSettings, SettingsUpdate
 from .config.normalization import NormalizationConfig
+
+# Memory schemas
+from .memory import (
+    MemoryType, MemoryStatus, RetrievalStrategy,
+    MemoryEntry, ContextWindow, MemoryCursor, MemoryEvent,
+    MemoryFact, MemoryEmbedding,
+    MemoryStoreRequest, MemoryRetrieveRequest, MemorySearchRequest,
+    MemoryStoreResponse, MemoryRetrieveResponse, MemorySearchResponse,
+)
+
+# Skills schemas
+from .skills import (
+    # Base schemas
+    SkillType, SkillCategory, SkillStatus, SkillPriority, SkillMetadata, SkillConfiguration, SkillInput, SkillOutput, SkillResult,
+    # Core schemas
+    CoreSkillType, AnalysisSkillConfig, CodingSkillConfig, ResearchSkillConfig,
+    # Specialized schemas
+    SpecializedSkillType, SecuritySkillConfig, ArchitectureSkillConfig, TestingSkillConfig, DocumentationSkillConfig,
+    # Registry schemas
+    SkillRegistration, SkillDiscovery, SkillRegistryEntry, SkillQuery, SkillFilter,
+    # Execution schemas
+    ExecutionContext, ExecutionStatus, ExecutionResult, SkillExecution, ExecutionMetrics, PerformanceMetrics
+)
 
 __all__ = [
     # Core
@@ -44,7 +66,6 @@ __all__ = [
     
     # Session
     "SessionMode", "RelationshipType", "RetrievalMode",
-    "ReviewTriggerType", "WindowSize", "ReviewPriority",
     "ChunkType", "ChunkEdgeType",
     "ContextScope",
     
@@ -53,4 +74,23 @@ __all__ = [
     
     # Config
     "AppSettings", "SettingsUpdate", "NormalizationConfig",
+    
+    # Memory
+    "MemoryType", "MemoryStatus", "RetrievalStrategy",
+    "MemoryEntry", "ContextWindow", "MemoryCursor", "MemoryEvent",
+    "MemoryFact", "MemoryEmbedding",
+    "MemoryStoreRequest", "MemoryRetrieveRequest", "MemorySearchRequest",
+    "MemoryStoreResponse", "MemoryRetrieveResponse", "MemorySearchResponse",
+    
+    # Skills
+    # Base schemas
+    "SkillType", "SkillCategory", "SkillStatus", "SkillPriority", "SkillMetadata", "SkillConfiguration", "SkillInput", "SkillOutput", "SkillResult",
+    # Core schemas
+    "CoreSkillType", "AnalysisSkillConfig", "CodingSkillConfig", "ResearchSkillConfig",
+    # Specialized schemas
+    "SpecializedSkillType", "SecuritySkillConfig", "ArchitectureSkillConfig", "TestingSkillConfig", "DocumentationSkillConfig",
+    # Registry schemas
+    "SkillRegistration", "SkillDiscovery", "SkillRegistryEntry", "SkillQuery", "SkillFilter",
+    # Execution schemas
+    "ExecutionContext", "ExecutionStatus", "ExecutionResult", "SkillExecution", "ExecutionMetrics", "PerformanceMetrics",
 ]

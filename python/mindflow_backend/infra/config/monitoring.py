@@ -7,7 +7,7 @@ health checks, alerting, and observability settings.
 from __future__ import annotations
 
 from typing import Optional, Dict, Any, List
-from pydantic import Field, validator
+from pydantic import field_validator,  Field, validator
 from pydantic_settings import BaseSettings
 
 
@@ -123,14 +123,14 @@ class MonitoringConfig(BaseSettings):
     export_interval: int = Field(default=3600, description="Export interval in seconds")
     export_path: Optional[str] = Field(default=None, description="Export file path")
 
-    @validator("tracing_sample_rate")
+    @field_validator("tracing_sample_rate")
     def validate_tracing_sample_rate(cls, v: float) -> float:
         """Validate tracing sample rate."""
         if not 0.0 <= v <= 1.0:
             raise ValueError("Tracing sample rate must be between 0.0 and 1.0")
         return v
 
-    @validator("otel_exporter")
+    @field_validator("otel_exporter")
     def validate_otel_exporter(cls, v: str) -> str:
         """Validate OpenTelemetry exporter type."""
         valid_exporters = ["otlp", "jaeger", "zipkin", "prometheus"]
@@ -138,7 +138,7 @@ class MonitoringConfig(BaseSettings):
             raise ValueError(f"OpenTelemetry exporter must be one of: {valid_exporters}")
         return v
 
-    @validator("export_format")
+    @field_validator("export_format")
     def validate_export_format(cls, v: str) -> str:
         """Validate export format."""
         valid_formats = ["json", "csv", "prometheus", "influx"]
@@ -146,7 +146,7 @@ class MonitoringConfig(BaseSettings):
             raise ValueError(f"Export format must be one of: {valid_formats}")
         return v
 
-    @validator("monitoring_log_level")
+    @field_validator("monitoring_log_level")
     def validate_monitoring_log_level(cls, v: str) -> str:
         """Validate monitoring log level."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -154,21 +154,21 @@ class MonitoringConfig(BaseSettings):
             raise ValueError(f"Monitoring log level must be one of: {valid_levels}")
         return v
 
-    @validator("alert_cpu_threshold", "alert_memory_threshold", "alert_disk_threshold")
+    @field_validator("alert_cpu_threshold", "alert_memory_threshold", "alert_disk_threshold")
     def validate_percentage_thresholds(cls, v: float) -> float:
         """Validate percentage thresholds."""
         if not 0.0 <= v <= 100.0:
             raise ValueError("Percentage thresholds must be between 0.0 and 100.0")
         return v
 
-    @validator("slow_query_threshold_ms", "slow_request_threshold_ms", "alert_response_time_threshold")
+    @field_validator("slow_query_threshold_ms", "slow_request_threshold_ms", "alert_response_time_threshold")
     def validate_time_thresholds(cls, v: float) -> float:
         """Validate time thresholds."""
         if v <= 0:
             raise ValueError("Time thresholds must be positive")
         return v
 
-    @validator("anomaly_threshold")
+    @field_validator("anomaly_threshold")
     def validate_anomaly_threshold(cls, v: float) -> float:
         """Validate anomaly detection threshold."""
         if v <= 0:
