@@ -4,17 +4,13 @@ collecting system information including hardware, software, network, and environ
 """
 
 from __future__ import annotations
-import platform
 import os
 import socket
 from typing import Any, Dict, List, Optional, Union
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
+from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.system_schemas import SYSTEM_INFO_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -29,38 +25,7 @@ class SystemInfoTool(AsyncToolInterface):
         self.name = "system_info"
         self.description = "Collect comprehensive system information"
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="system",
-            parameters=[
-                create_parameter(
-                    name="info_type",
-                    param_type=ParameterType.STRING,
-                    description="Type of information to collect (all, hardware, software, network, environment)",
-                    required=False,
-                    default="all"
-                ),
-                create_parameter(
-                    name="include_sensitive",
-                    param_type=ParameterType.BOOLEAN,
-                    description="Include potentially sensitive information",
-                    required=False,
-                    default=False
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "System information results",
-                "properties": {
-                    "hardware": {"type": "object", "description": "Hardware information"},
-                    "software": {"type": "object", "description": "Software information"},
-                    "network": {"type": "object", "description": "Network information"},
-                    "environment": {"type": "object", "description": "Environment variables"},
-                    "timestamp": {"type": "string", "description": "Collection timestamp"}
-                }
-            }
-        )
+        self._schema = SYSTEM_INFO_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

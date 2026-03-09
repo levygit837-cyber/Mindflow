@@ -12,11 +12,9 @@ from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.filesystem_schemas import GREP_SEARCH_SCHEMA, GLOB_SEARCH_SCHEMA, FILE_FINDER_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import AsyncToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
 
 _logger = get_logger(__name__)
 
@@ -31,63 +29,7 @@ class GrepSearchTool(AsyncToolInterface):
         self.name = "grep_search"
         self.description = "Search file contents with pattern matching"
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                create_parameter(
-                    name="pattern",
-                    param_type=ParameterType.STRING,
-                    description="Search pattern (regex or string)",
-                    required=True
-                ),
-                create_parameter(
-                    name="directory",
-                    param_type=ParameterType.STRING,
-                    description="Directory to search in",
-                    required=False,
-                    default="."
-                ),
-                create_parameter(
-                    name="file_pattern",
-                    param_type=ParameterType.STRING,
-                    description="File pattern to match (glob)",
-                    required=False,
-                    default="*"
-                ),
-                create_parameter(
-                    name="recursive",
-                    param_type=ParameterType.BOOLEAN,
-                    description="Search recursively",
-                    required=False,
-                    default=True
-                ),
-                create_parameter(
-                    name="case_sensitive",
-                    param_type=ParameterType.BOOLEAN,
-                    description="Case sensitive search",
-                    required=False,
-                    default=False
-                ),
-                create_parameter(
-                    name="max_results",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum number of results",
-                    required=False,
-                    default=100
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "Search results",
-                "properties": {
-                    "matches": {"type": "array", "description": "Found matches"},
-                    "total_files": {"type": "integer", "description": "Total files searched"},
-                    "total_matches": {"type": "integer", "description": "Total matches found"}
-                }
-            }
-        )
+        self._schema = GREP_SEARCH_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -192,41 +134,7 @@ class GlobSearchTool(AsyncToolInterface):
         super().__init__()
         self.name = "glob_search"
         self.description = "Find files matching a glob pattern"
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                create_parameter(
-                    name="pattern",
-                    param_type=ParameterType.STRING,
-                    description="Glob pattern (e.g. **/*.py)",
-                    required=True,
-                ),
-                create_parameter(
-                    name="directory",
-                    param_type=ParameterType.STRING,
-                    description="Directory to search in",
-                    required=False,
-                    default=".",
-                ),
-                create_parameter(
-                    name="max_results",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum number of results",
-                    required=False,
-                    default=200,
-                ),
-            ],
-            returns={
-                "type": "object",
-                "description": "Glob results",
-                "properties": {
-                    "files": {"type": "array"},
-                    "total_count": {"type": "integer"},
-                },
-            },
-        )
+        self._schema = GLOB_SEARCH_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         try:
@@ -257,65 +165,7 @@ class FileFinderTool(AsyncToolInterface):
         self.name = "file_finder"
         self.description = "Find files by name, size, date, and other criteria"
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="filesystem",
-            parameters=[
-                create_parameter(
-                    name="pattern",
-                    param_type=ParameterType.STRING,
-                    description="File name pattern (glob)",
-                    required=True
-                ),
-                create_parameter(
-                    name="directory",
-                    param_type=ParameterType.STRING,
-                    description="Directory to search in",
-                    required=False,
-                    default="."
-                ),
-                create_parameter(
-                    name="min_size",
-                    param_type=ParameterType.INTEGER,
-                    description="Minimum file size in bytes",
-                    required=False
-                ),
-                create_parameter(
-                    name="max_size",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum file size in bytes",
-                    required=False
-                ),
-                create_parameter(
-                    name="min_date",
-                    param_type=ParameterType.STRING,
-                    description="Minimum modification date (YYYY-MM-DD)",
-                    required=False
-                ),
-                create_parameter(
-                    name="max_date",
-                    param_type=ParameterType.STRING,
-                    description="Maximum modification date (YYYY-MM-DD)",
-                    required=False
-                ),
-                create_parameter(
-                    name="max_results",
-                    param_type=ParameterType.INTEGER,
-                    description="Maximum number of results",
-                    required=False,
-                    default=100
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "File finder results",
-                "properties": {
-                    "files": {"type": "array", "description": "Found files"},
-                    "total_count": {"type": "integer", "description": "Total files found"}
-                }
-            }
-        )
+        self._schema = FILE_FINDER_SCHEMA
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """

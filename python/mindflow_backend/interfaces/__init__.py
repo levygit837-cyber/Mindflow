@@ -21,8 +21,6 @@ from .agents import (
     AgentInterface,
     StreamingContract,
     SessionManagerContract,
-    ContextRetriever,
-    VectorStore,
     Cache,
     SpecialistSelector,
     RuleEngine,
@@ -46,7 +44,6 @@ from .services import (
     MonitoringServiceInterface,
     HealthServiceInterface,
     MetricsServiceInterface,
-    ReviewServiceInterface,
     OrchestrationServiceInterface,
     TaskServiceInterface,
     RoutingServiceInterface,
@@ -100,6 +97,21 @@ from .tools import (
     WebSecurityTool,
 )
 
+# Skills interfaces - skill system contracts
+from .skills import (
+    # Base interfaces
+    SkillInterface, SkillLifecycleInterface, SkillConfigurableInterface, SkillValidatableInterface,
+    # Executor interfaces
+    SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSkillExecutorInterface,
+    # Registry interfaces
+    SkillRegistryInterface, SkillDiscoveryInterface, SkillRecommendationInterface,
+    # Specialized interfaces
+    CoreSkillInterface, AnalysisSkillInterface, CodingSkillInterface, ResearchSkillInterface,
+    SecuritySkillInterface, ArchitectureSkillInterface, TestingSkillInterface, DocumentationSkillInterface,
+    # Lifecycle interfaces
+    SkillManagerInterface, SkillOrchestratorInterface, SkillMonitoringInterface,
+)
+
 __all__ = [
     # Core interfaces
     "BaseComponentInterface",
@@ -115,8 +127,6 @@ __all__ = [
     "AgentInterface",
     "StreamingContract",
     "SessionManagerContract",
-    "ContextRetriever",
-    "VectorStore",
     "Cache",
     "SpecialistSelector",
     "RuleEngine",
@@ -138,7 +148,6 @@ __all__ = [
     "MonitoringServiceInterface",
     "HealthServiceInterface",
     "MetricsServiceInterface",
-    "ReviewServiceInterface",
     "OrchestrationServiceInterface",
     "TaskServiceInterface",
     "RoutingServiceInterface",
@@ -184,4 +193,17 @@ __all__ = [
     "WebhookTool",
     "RssFeedTool",
     "WebSecurityTool",
+    
+    # Skills interfaces
+    # Base interfaces
+    "SkillInterface", "SkillLifecycleInterface", "SkillConfigurableInterface", "SkillValidatableInterface",
+    # Executor interfaces
+    "SkillExecutorInterface", "AsyncSkillExecutorInterface", "BatchSkillExecutorInterface",
+    # Registry interfaces
+    "SkillRegistryInterface", "SkillDiscoveryInterface", "SkillRecommendationInterface",
+    # Specialized interfaces
+    "CoreSkillInterface", "AnalysisSkillInterface", "CodingSkillInterface", "ResearchSkillInterface",
+    "SecuritySkillInterface", "ArchitectureSkillInterface", "TestingSkillInterface", "DocumentationSkillInterface",
+    # Lifecycle interfaces
+    "SkillManagerInterface", "SkillOrchestratorInterface", "SkillMonitoringInterface",
 ]

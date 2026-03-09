@@ -19,7 +19,7 @@ from datetime import datetime
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from mindflow_backend.schemas.tools.system_schemas import SHELL_EXECUTOR_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
@@ -41,72 +41,7 @@ class ShellExecutorTool(AsyncToolInterface):
         self.default_timeout = 120  # 2 minutes
         self.max_output_bytes = 100_000  # 100KB
         
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="system",
-            parameters=[
-                {
-                    "name": "command",
-                    "type": "string",
-                    "description": "Shell command to execute",
-                    "required": True
-                },
-                {
-                    "name": "timeout",
-                    "type": "integer",
-                    "description": "Timeout in seconds",
-                    "required": False,
-                    "default": 120
-                },
-                {
-                    "name": "working_dir",
-                    "type": "string",
-                    "description": "Working directory",
-                    "required": False,
-                    "format": "file-path"
-                },
-                {
-                    "name": "environment",
-                    "type": "object",
-                    "description": "Environment variables",
-                    "required": False
-                },
-                {
-                    "name": "capture_output",
-                    "type": "boolean",
-                    "description": "Capture command output",
-                    "required": False,
-                    "default": True
-                },
-                {
-                    "name": "shell",
-                    "type": "boolean",
-                    "description": "Use system shell",
-                    "required": False,
-                    "default": True
-                },
-                {
-                    "name": "check_return_code",
-                    "type": "boolean",
-                    "description": "Check return code for success",
-                    "required": False,
-                    "default": False
-                }
-            ],
-            returns={
-                "type": "object",
-                "description": "Command execution result",
-                "properties": {
-                    "output": {"type": "string", "description": "Command output"},
-                    "stderr": {"type": "string", "description": "Standard error"},
-                    "return_code": {"type": "integer", "description": "Process return code"},
-                    "pid": {"type": "integer", "description": "Process ID"},
-                    "execution_time": {"type": "float", "description": "Execution time in seconds"},
-                    "timeout": {"type": "boolean", "description": "Whether command timed out"}
-                }
-            }
-        )
+        self._schema = SHELL_EXECUTOR_SCHEMA
     
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """Execute shell command.

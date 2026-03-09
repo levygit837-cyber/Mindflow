@@ -10,16 +10,13 @@ import time
 from typing import Any, Dict, List, Optional, Union
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import ToolInterface
-from ..base.tool_schemas import (
-    ToolSchema, ToolParameter, ParameterType, create_tool_schema, create_parameter
-)
+from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.tools.system_schemas import PROCESS_MANAGER_SCHEMA
 
 _logger = get_logger(__name__)
 
 
-class ProcessManagerTool(ToolInterface):
+class ProcessManagerTool(AsyncToolInterface):
     """
     Process management tool for system operations. Provides secure process management capabilities 
     including monitoring, termination, and resource tracking with proper security controls.
@@ -37,53 +34,7 @@ class ProcessManagerTool(ToolInterface):
         }
         self.allowed_users = {'root', 'admin', 'mindflow'}  # Configurable
 
-        self._schema = create_tool_schema(
-            name=self.name,
-            description=self.description,
-            category="system",
-            parameters=[
-                create_parameter(
-                    name="action",
-                    param_type=ParameterType.STRING,
-                    description="Action to perform (list, kill, monitor)",
-                    required=True
-                ),
-                create_parameter(
-                    name="pid",
-                    param_type=ParameterType.INTEGER,
-                    description="Process ID (for kill action)",
-                    required=False
-                ),
-                create_parameter(
-                    name="signal",
-                    param_type=ParameterType.STRING,
-                    description="Signal to send (SIGTERM, SIGKILL, etc.)",
-                    required=False,
-                    default="SIGTERM"
-                ),
-                create_parameter(
-                    name="filter_name",
-                    param_type=ParameterType.STRING,
-                    description="Filter processes by name",
-                    required=False
-                ),
-                create_parameter(
-                    name="filter_user",
-                    param_type=ParameterType.STRING,
-                    description="Filter processes by user",
-                    required=False
-                )
-            ],
-            returns={
-                "type": "object",
-                "description": "Process management result",
-                "properties": {
-                    "processes": {"type": "array", "description": "List of processes"},
-                    "action_result": {"type": "object", "description": "Result of the action"},
-                    "timestamp": {"type": "string", "description": "Operation timestamp"}
-                }
-            }
-        )
+        self._schema = PROCESS_MANAGER_SCHEMA
 
     def execute(self, **kwargs) -> Dict[str, Any]:
         """

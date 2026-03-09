@@ -106,7 +106,7 @@ class QueryPlan(BaseModel):
     """Research query plan with multiple query variants."""
     
     intent: QueryIntent
-    queries: list[str] = Field(min_items=1)
+    queries: list[str] = Field(min_length=1)
     search_engines: list[str] = Field(default_factory=lambda: ["google.com"])
     max_results_per_browser: int = Field(default=3, ge=1, le=10)
     parallel_execution: bool = True

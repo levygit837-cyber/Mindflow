@@ -1,29 +1,13 @@
-from collections.abc import AsyncGenerator
-from typing import Any
+"""Agent runtime service for gRPC communication.
 
-from mindflow_backend.runtime.stream import AgentRuntime
-from mindflow_backend.grpc.generated import mindflow_backend_pb2_grpc as pb2_grpc
-from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
+DEPRECATED: This module has been moved to mindflow_backend.services.communication.agent_runtime_service
+This file is maintained for backward compatibility during migration.
 
+Use: from mindflow_backend.services.communication import get_agent_runtime_service
+"""
 
-class AgentRuntimeServiceImpl(pb2_grpc.AgentRuntimeServiceServicer):
-    def __init__(self) -> None:
-        self.runtime = AgentRuntime()
+# Forward compatibility alias - import from centralized location
+from mindflow_backend.services.communication.agent_runtime_service import AgentRuntimeService
 
-    async def StreamChat(
-        self,
-        request: Any,
-        context: Any,
-    ) -> AsyncGenerator[Any, None]:
-        payload = AgentChatRequest(
-            message=request.message,
-            provider=request.provider or None,
-            model=request.model or None,
-            orchestrate=getattr(request, "orchestrate", False),
-            debugSteps=getattr(request, "debug_steps", False),
-            agent_type=getattr(request, "agent_type", None) or None,
-        )
-        session_id = getattr(request, "session_id", "")
-        run_id = getattr(request, "run_id", "")
-        async for event in self.runtime.stream_chat(payload, session_id, run_id=run_id):
-            yield event
+# Maintain backward compatibility
+__all__ = ["AgentRuntimeService"]

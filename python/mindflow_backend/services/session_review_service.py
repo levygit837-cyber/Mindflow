@@ -26,7 +26,8 @@ from mindflow_backend.schemas.session.review import (
     WindowProgressInfo,
     WindowSize,
 )
-from mindflow_backend.storage.repositories import ChatRepository
+from mindflow_backend.storage.postgresql.repositories import ChatRepository
+from mindflow_backend.storage.postgresql.review_repository import ReviewRepository
 
 _logger = get_logger(__name__)
 
@@ -37,6 +38,7 @@ class SessionReviewService:
     def __init__(self) -> None:
         self.settings = get_settings()
         self.chat_repo = ChatRepository()
+        self.review_repo = None  # Will be initialized with db session
         self.review_agent = get_session_review_agent()
         self._active_trackers: dict[str, TokenWindowTracker] = {}
     
@@ -196,16 +198,38 @@ class SessionReviewService:
         self,
         session_id: str,
         limit: int = 10,
+        db: Session | None = None
     ) -> list[SessionReviewResult]:
         """Get previous review results for a session."""
-        # TODO: Implement database retrieval of previous reviews
-        # For now, return empty list
-        _logger.info(
-            "retrieving_previous_reviews",
-            session_id=session_id,
-            limit=limit,
-        )
-        return []
+        if not self.review_repo:
+            self.review_repo = ReviewRepository(db)
+        
+        return await self.review_repo.get_reviews_by_session(session_id, limit)
+    
+    async def _get_previous_reviews_dict(
+        self,
+        session_id: str,
+        limit: int = 10,
+        db: Session | None = None
+    ) -> list[dict[str, Any]]:
+        """Get previous review results for a session."""
+        if not self.review_repo:
+            self.review_repo = ReviewRepository(db)
+        
+        reviews = await self.review_repo.get_reviews_by_session(session_id, limit)
+        
+        # Convert to dict format for compatibility
+        return [
+            {
+                "id": str(review.id),
+                "session_id": review.session_id,
+                "window_range": (review.window_start, review.window_end),
+                "review_data": review.review_data,
+                "priority": review.priority,
+                "created_at": review.created_at.isoformat(),
+            }
+            for review in reviews
+        ]
     
     async def _trigger_review(self, session_id: str, tracker: TokenWindowTracker) -> None:
         """Trigger automatic review when threshold is reached."""
@@ -315,9 +339,20 @@ class SessionReviewService:
             
             return message_dicts
     
-    async def _store_review_result(self, result: SessionReviewResult) -> None:
+    async def _store_review_result(self, result: SessionReviewResult, db: Session | None = None) -> None:
         """Store review result in database."""
-        # TODO: Implement database storage
+        if not self.review_repo:
+            self.review_repo = ReviewRepository(db)
+        
+        await self.review_repo.create_review(
+            review_id=str(result.review_id),
+            session_id=str(result.session_id),
+            window_range=result.window_range,
+            review_data=result.review_data,
+            priority=result.priority,
+            created_at=result.created_at
+        )
+        
         _logger.info(
             "storing_review_result",
             review_id=str(result.review_id),

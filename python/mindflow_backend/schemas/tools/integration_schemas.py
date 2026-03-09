@@ -153,8 +153,16 @@ DOCKER_SCHEMA = ToolSchema(
 )
 
 
+# Dictionary of all integration tool schemas
+INTEGRATION_SCHEMAS = {
+    "git_tool": GIT_SCHEMA,
+    "docker_tool": DOCKER_SCHEMA
+}
+
+
 # Export schemas for easy import
 __all__ = [
     "GIT_SCHEMA",
     "DOCKER_SCHEMA",
+    "INTEGRATION_SCHEMAS"
 ]
