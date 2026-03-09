@@ -18,12 +18,17 @@ from .core import (
 
 # Agent interfaces - specialized agent contracts
 from .agents import (
-    AgentInterface,
+    AgentInterface as AgentsAgentInterface,
     StreamingContract,
     SessionManagerContract,
     Cache,
     SpecialistSelector,
     RuleEngine,
+    CorePersonalityContract,
+    PersonalitySpecialistSelector,
+    PersonalityRuleEngine,
+    EnhancedResearcher,
+    TaskRagAgent,
 )
 
 # Service interfaces - service layer contracts
@@ -124,12 +129,17 @@ __all__ = [
     "LoggableInterface",
     
     # Agent interfaces
-    "AgentInterface",
+    "AgentsAgentInterface",
     "StreamingContract",
     "SessionManagerContract",
     "Cache",
     "SpecialistSelector",
     "RuleEngine",
+    "CorePersonalityContract",
+    "PersonalitySpecialistSelector",
+    "PersonalityRuleEngine",
+    "EnhancedResearcher",
+    "TaskRagAgent",
     
     # Service interfaces
     "BaseServiceInterface",
