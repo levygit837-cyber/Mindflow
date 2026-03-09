@@ -1,11 +1,10 @@
 """Memory-specific database models."""
 
 from datetime import UTC, datetime
-from uuid import uuid4
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 def utcnow() -> datetime:
@@ -40,9 +39,6 @@ class AgentMemoryCursor(Base):
     tokens_since_summary: Mapped[int] = mapped_column(Integer, default=0)
     window_index: Mapped[int] = mapped_column(Integer, default=0)
     last_summarized_event_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    tokens_since_chunk: Mapped[int] = mapped_column(Integer, default=0)
-    last_chunked_event_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    chunk_sequence: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
@@ -66,6 +62,10 @@ class AgentMemoryWindow(Base):
 
 
 class AgentMemoryFact(Base):
+    """Legacy fact table — new facts are written to LangGraph AsyncPostgresStore.
+
+    Kept for backwards compatibility. New code should use AgenticMemoryStore instead.
+    """
     __tablename__ = "agent_memory_facts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -87,27 +87,7 @@ class AgentMemoryEmbedding(Base):
     source_type: Mapped[str] = mapped_column(String(16))
     source_id: Mapped[int] = mapped_column(Integer)
     content_excerpt: Mapped[str] = mapped_column(Text)
-    vector: Mapped[list[float]] = mapped_column(JSON, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
-
-class SessionChunk(Base):
-    __tablename__ = "session_chunks"
-    __table_args__ = (
-        UniqueConstraint("session_id", "agent_id", "sequence", name="uq_session_chunk"),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(64), index=True)
-    agent_id: Mapped[str] = mapped_column(String(64), index=True)
-    sequence: Mapped[int] = mapped_column(Integer)
-    chunk_type: Mapped[str] = mapped_column(String(32), default="discussion")
-    content_summary: Mapped[str] = mapped_column(Text)
-    topic_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
-    token_count: Mapped[int] = mapped_column(Integer)
-    event_start_id: Mapped[int] = mapped_column(Integer)
-    event_end_id: Mapped[int] = mapped_column(Integer)
-    confidence: Mapped[float] = mapped_column(Float, default=0.5)
+    vector: Mapped[list[float]] = mapped_column(Vector(768))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -117,6 +97,6 @@ class SessionEmbedding(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(64), index=True)
     content: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[list[float]] = mapped_column(JSON, default=list)
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
     session_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

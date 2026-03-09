@@ -10,13 +10,7 @@ from .core import CoreServiceInterface, AgentServiceInterface, SessionServiceInt
 from .memory import MemoryServiceInterface as MemoryServiceInterfaceNew, ContextMemoryInterface, VectorMemoryInterface
 from .monitoring import MonitoringServiceInterface, HealthServiceInterface, MetricsServiceInterface, ReviewServiceInterface
 from .orchestration import OrchestrationServiceInterface, TaskServiceInterface, RoutingServiceInterface
-
-# Import context interfaces from services
-from mindflow_backend.services.interfaces.context_interfaces import (
-    RetrievalServiceInterface as ContextRetrievalServiceInterface,
-    EmbeddingServiceInterface as ContextEmbeddingServiceInterface,
-    VectorServiceInterface as ContextVectorServiceInterface,
-)
+from .context import RetrievalServiceInterface as ContextRetrievalServiceInterface, EmbeddingServiceInterface as ContextEmbeddingServiceInterface, VectorStoreInterface as ContextVectorServiceInterface
 
 __all__ = [
     # Base service interfaces

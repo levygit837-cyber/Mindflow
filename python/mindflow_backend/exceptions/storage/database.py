@@ -6,7 +6,7 @@ and migration failures.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core_simple import InfrastructureError
+from mindflow_backend.exceptions.base.core_new import InfrastructureError
 
 
 class DatabaseError(InfrastructureError):
