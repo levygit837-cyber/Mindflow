@@ -6,7 +6,7 @@ and connectivity issues.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import NetworkError as BaseNetworkError
+from mindflow_backend.exceptions.base.core_new import NetworkError as BaseNetworkError
 
 
 class NetworkError(BaseNetworkError):

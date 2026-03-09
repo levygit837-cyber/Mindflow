@@ -226,10 +226,27 @@ class MemoryEmbedding(BaseModel):
         }
 
 
+class MemoryRetrievalResult(BaseModel):
+    """Result of a memory retrieval operation.
+
+    Used by memory services when returning context to callers.
+    """
+
+    context: str = Field(description="Formatted context string ready to prepend to LLM messages")
+    references: List[str] = Field(default_factory=list, description="Source references for the context")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional retrieval metadata")
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            UUID: lambda v: str(v),
+        }
+
+
 # Export all contracts
 __all__ = [
     "MemoryType",
-    "MemoryStatus", 
+    "MemoryStatus",
     "RetrievalStrategy",
     "MemoryEntry",
     "ContextWindow",
@@ -237,4 +254,5 @@ __all__ = [
     "MemoryEvent",
     "MemoryFact",
     "MemoryEmbedding",
+    "MemoryRetrievalResult",
 ]

@@ -117,26 +117,6 @@ class AgentMemoryEmbedding(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class SessionChunk(Base):
-    __tablename__ = "session_chunks"
-    __table_args__ = (
-        UniqueConstraint("session_id", "agent_id", "sequence", name="uq_session_chunk"),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(64), index=True)
-    agent_id: Mapped[str] = mapped_column(String(64), index=True)
-    sequence: Mapped[int] = mapped_column(Integer)
-    chunk_type: Mapped[str] = mapped_column(String(32), default="discussion")
-    content_summary: Mapped[str] = mapped_column(Text)
-    topic_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
-    token_count: Mapped[int] = mapped_column(Integer)
-    event_start_id: Mapped[int] = mapped_column(Integer)
-    event_end_id: Mapped[int] = mapped_column(Integer)
-    confidence: Mapped[float] = mapped_column(Float, default=0.5)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
-
 class Setting(Base):
     __tablename__ = "settings"
 

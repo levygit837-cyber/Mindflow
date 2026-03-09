@@ -27,7 +27,7 @@ from mindflow_backend.services.interfaces.orchestration_interfaces import (
 from mindflow_backend.services.interfaces.context_interfaces import (
     RetrievalServiceInterface,
     EmbeddingServiceInterface,
-    VectorServiceInterface,
+    VectorStoreInterface,
 )
 
 from mindflow_backend.services.interfaces.monitoring_interfaces import (
@@ -60,7 +60,7 @@ __all__ = [
     # Context interfaces
     "RetrievalServiceInterface",
     "EmbeddingServiceInterface",
-    "VectorServiceInterface",
+    "VectorStoreInterface",
     
     # Monitoring interfaces
     "HealthServiceInterface",

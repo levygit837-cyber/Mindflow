@@ -6,7 +6,7 @@ and system resource constraints.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import ResourceError as BaseResourceError
+from mindflow_backend.exceptions.base.core_new import ResourceError as BaseResourceError
 
 
 class ResourceError(BaseResourceError):

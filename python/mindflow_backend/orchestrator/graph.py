@@ -111,28 +111,57 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     # 0. Chain Execution Mode (explicit orchestrator strategy)
     if getattr(decision, "execution_strategy", ExecutionStrategy.SINGLE_AGENT) == ExecutionStrategy.CHAIN:
         memory_context = ""
-        chain_id = getattr(decision, "chain_id", None) or "coding_task"
+        chain_id = getattr(decision, "chain_id", None)
+        
+        # Use enhanced chain integration if available
         try:
-            from mindflow_backend.chains.catalog import get_chain
-            chain = get_chain(chain_id)
-            chain_result = await chain.execute(
-                {
+            from mindflow_backend.orchestrator.chain_integration import execute_chain_with_intelligence
+            
+            result = await execute_chain_with_intelligence(
+                message=state["message"],
+                complexity_score=state.get("complexity_score", 0.5),
+                context={
                     "message": state["message"],
                     "session_id": session_id,
                     "provider": provider,
                     "model": model,
                     "memory_context": memory_context,
                     "decision": decision.model_dump() if hasattr(decision, "model_dump") else {},
-                }
+                },
+                session_id=session_id,
             )
+            
             return {
-                "response": chain_result.get("response", ""),
-                "error": chain_result.get("error"),
-                "chain_result": chain_result,
+                "response": result.get("response", ""),
+                "error": result.get("error"),
+                "chain_result": result,
+                "chain_metadata": result.get("execution_metadata"),
             }
-        except Exception as exc:
-            _logger.error("chain_execution_failed", chain_id=chain_id, error=str(exc))
-            return {"response": "", "error": f"Chain execution failed ({chain_id}): {exc}"}
+            
+        except ImportError:
+            # Fallback to simple chain execution
+            chain_id = chain_id or "coding_task"
+            try:
+                from mindflow_backend.chains.catalog import get_chain
+                chain = get_chain(chain_id)
+                chain_result = await chain.execute(
+                    {
+                        "message": state["message"],
+                        "session_id": session_id,
+                        "provider": provider,
+                        "model": model,
+                        "memory_context": memory_context,
+                        "decision": decision.model_dump() if hasattr(decision, "model_dump") else {},
+                    }
+                )
+                return {
+                    "response": chain_result.get("response", ""),
+                    "error": chain_result.get("error"),
+                    "chain_result": chain_result,
+                }
+            except Exception as exc:
+                _logger.error("chain_execution_failed", chain_id=chain_id, error=str(exc))
+                return {"response": "", "error": f"Chain execution failed ({chain_id}): {exc}"}
 
     memory_result = _retrieve_memory_context(
         query=state["message"],

@@ -20,7 +20,6 @@ from mindflow_backend.memory.storage.models import (
     AgentMemoryEvent,
     AgentMemoryFact,
     AgentMemoryWindow,
-    SessionChunk,
     SessionEmbedding,
 )
 
@@ -201,18 +200,7 @@ class AgentMemoryService:
         selected = [row for _, row in ranked[: self.retrieval_top_k] if row.content_excerpt.strip()]
 
         if not selected:
-            # Try session chunks fallback if enabled
-            from mindflow_backend.infra.config import get_settings
-            if get_settings().enable_session_chunks:
-                chunks = list(db.scalars(
-                    select(SessionChunk)
-                    .where(SessionChunk.session_id == session_id, SessionChunk.agent_id == agent_id)
-                    .order_by(SessionChunk.id.desc())
-                    .limit(self.retrieval_top_k)
-                ))
-                if chunks:
-                    context = "\n\n".join(f"[chunk:{c.sequence}] {c.content_summary}" for c in chunks)
-                    return MemoryRetrievalResult(context=context, references=[f"chunk:{c.sequence}" for c in chunks])
+            # session_chunks table removed — retrieval uses embeddings only
             
             # Fallback to memory windows
             windows = list(
@@ -665,21 +653,7 @@ Focus on extracting the main topics, conversation type, and key themes."""
             # Parse tags
             topic_tags = [tag.strip() for tag in tags_raw.split(",") if tag.strip()] if tags_raw else []
             
-            # Create session chunk
-            chunk = SessionChunk(
-                session_id=session_id,
-                agent_id=agent_id,
-                sequence=cursor.chunk_sequence + 1,
-                chunk_type=chunk_type,
-                content_summary=content_summary,
-                topic_tags=topic_tags,
-                token_count=sum(event.token_count for event in events),
-                event_start_id=start_event_id,
-                event_end_id=event_end_id,
-                confidence=confidence,
-            )
-            db.add(chunk)
-            db.flush()
+            # session_chunks table removed — skip chunk persistence
             
             # Store embedding for the chunk
             self._store_embedding(

@@ -6,7 +6,7 @@ and time limit errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.core import TimeoutError as BaseTimeoutError
+from mindflow_backend.exceptions.base.core_new import TimeoutError as BaseTimeoutError
 
 
 class TimeoutError(BaseTimeoutError):

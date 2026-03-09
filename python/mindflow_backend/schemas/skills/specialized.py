@@ -1,11 +1,12 @@
 """Specialized skill schemas."""
 
 from typing import Dict, List, Optional, Any
+from enum import Enum
 from pydantic import BaseModel, Field
 from .base import SkillConfiguration
 
 
-class SpecializedSkillType(str):
+class SpecializedSkillType(str, Enum):
     """Specialized skill types enumeration."""
     SECURITY = "security"
     ARCHITECTURE = "architecture"

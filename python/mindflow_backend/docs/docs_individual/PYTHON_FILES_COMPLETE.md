@@ -1,7 +1,7 @@
 # Lista Completa de Arquivos Python
 ========================================
 
-Total: 682 arquivos Python
+Total: 772 arquivos Python
 
 ## agents
 
@@ -321,6 +321,7 @@ Total: 682 arquivos Python
 
 @python/config/__init__.py
 @python/config/agents.py
+@python/config/mcp.py
 @python/config/specialist_rules.py
 
 ## decomposition
@@ -655,15 +656,29 @@ Total: 682 arquivos Python
 ## interfaces/agents
 
 @python/interfaces/agents/__init__.py
+@python/interfaces/agents/analyst.py
+@python/interfaces/agents/coder.py
 @python/interfaces/agents/context.py
+@python/interfaces/agents/core_personality.py
+@python/interfaces/agents/personality.py
+@python/interfaces/agents/researcher.py
 @python/interfaces/agents/session.py
 @python/interfaces/agents/specialist.py
 @python/interfaces/agents/streaming.py
+@python/interfaces/agents/task_rag_agent.py
+
+## interfaces/agents/enhanced
+
+@python/interfaces/agents/enhanced/analyst.py
+@python/interfaces/agents/enhanced/coder.py
+@python/interfaces/agents/enhanced/researcher.py
 
 ## interfaces/api
 
 @python/interfaces/api/__init__.py
 @python/interfaces/api/controllers.py
+@python/interfaces/api/legacy.py
+@python/interfaces/api/services.py
 
 ## interfaces/core
 
@@ -673,19 +688,70 @@ Total: 682 arquivos Python
 @python/interfaces/core/lifecycle.py
 @python/interfaces/core/logging.py
 
+## interfaces/errors
+
+@python/interfaces/errors/validation.py
+
 ## interfaces/infrastructure
 
 @python/interfaces/infrastructure/__init__.py
+@python/interfaces/infrastructure/backend.py
 @python/interfaces/infrastructure/grpc.py
+
+## interfaces/mcp
+
+@python/interfaces/mcp/__init__.py
+
+## interfaces/mcp/client
+
+@python/interfaces/mcp/client/__init__.py
+@python/interfaces/mcp/client/client.py
+
+## interfaces/mcp/handlers
+
+@python/interfaces/mcp/handlers/__init__.py
+@python/interfaces/mcp/handlers/errors.py
+@python/interfaces/mcp/handlers/message.py
+@python/interfaces/mcp/handlers/resources.py
+@python/interfaces/mcp/handlers/tools.py
+
+## interfaces/mcp/server
+
+@python/interfaces/mcp/server/__init__.py
+@python/interfaces/mcp/server/handler.py
+@python/interfaces/mcp/server/server.py
+
+## interfaces/mcp/transport
+
+@python/interfaces/mcp/transport/__init__.py
+@python/interfaces/mcp/transport/base.py
+@python/interfaces/mcp/transport/http.py
+@python/interfaces/mcp/transport/stdio.py
+@python/interfaces/mcp/transport/websocket.py
+
+## interfaces/orchestrator
+
+@python/interfaces/orchestrator/personality.py
 
 ## interfaces/services
 
 @python/interfaces/services/__init__.py
 @python/interfaces/services/base.py
 @python/interfaces/services/communication.py
+@python/interfaces/services/context.py
 @python/interfaces/services/core.py
+@python/interfaces/services/memory.py
 @python/interfaces/services/monitoring.py
 @python/interfaces/services/orchestration.py
+
+## interfaces/skills
+
+@python/interfaces/skills/__init__.py
+@python/interfaces/skills/base.py
+@python/interfaces/skills/executor.py
+@python/interfaces/skills/lifecycle.py
+@python/interfaces/skills/registry.py
+@python/interfaces/skills/specialized.py
 
 ## interfaces/tools
 
@@ -816,6 +882,8 @@ Total: 682 arquivos Python
 @python/orchestrator/delegation_engine.py
 @python/orchestrator/graph.py
 @python/orchestrator/intelligent_router.py
+@python/orchestrator/memory_integration.py
+@python/orchestrator/response_node.py
 @python/orchestrator/router.py
 
 ## orchestrator/context
@@ -901,6 +969,12 @@ Total: 682 arquivos Python
 @python/schemas/agents/research.py
 @python/schemas/agents/security_guard.py
 
+## schemas/api
+
+@python/schemas/api/common.py
+@python/schemas/api/requests.py
+@python/schemas/api/responses.py
+
 ## schemas/chat
 
 @python/schemas/chat/__init__.py
@@ -934,6 +1008,38 @@ Total: 682 arquivos Python
 @python/schemas/grpc/requests.py
 @python/schemas/grpc/responses.py
 
+## schemas/mcp
+
+@python/schemas/mcp/__init__.py
+
+## schemas/mcp/base
+
+@python/schemas/mcp/base/__init__.py
+@python/schemas/mcp/base/message.py
+
+## schemas/mcp/resources
+
+@python/schemas/mcp/resources/__init__.py
+@python/schemas/mcp/resources/resource.py
+
+## schemas/mcp/tools
+
+@python/schemas/mcp/tools/__init__.py
+@python/schemas/mcp/tools/tool.py
+
+## schemas/mcp/transport
+
+@python/schemas/mcp/transport/__init__.py
+@python/schemas/mcp/transport/config.py
+
+## schemas/memory
+
+@python/schemas/memory/__init__.py
+@python/schemas/memory/api.py
+@python/schemas/memory/contracts.py
+@python/schemas/memory/requests.py
+@python/schemas/memory/responses.py
+
 ## schemas/orchestration
 
 @python/schemas/orchestration/__init__.py
@@ -956,20 +1062,34 @@ Total: 682 arquivos Python
 @python/schemas/session/governance.py
 @python/schemas/session/review.py
 
+## schemas/skills
+
+@python/schemas/skills/__init__.py
+@python/schemas/skills/base.py
+@python/schemas/skills/core.py
+@python/schemas/skills/execution.py
+@python/schemas/skills/registry.py
+@python/schemas/skills/specialized.py
+
 ## schemas/tools
 
 @python/schemas/tools/__init__.py
 @python/schemas/tools/ai_schemas.py
+@python/schemas/tools/base.py
 @python/schemas/tools/data_schemas.py
+@python/schemas/tools/filesystem_schemas.py
 @python/schemas/tools/integration_schemas.py
 @python/schemas/tools/model_config.py
+@python/schemas/tools/system_schemas.py
 @python/schemas/tools/tool_config.py
 @python/schemas/tools/tool_execution.py
 @python/schemas/tools/tool_permissions.py
+@python/schemas/tools/web_schemas.py
 
 ## services
 
 @python/services/__init__.py
+@python/services/mcp.py
 @python/services/multilingual_embeddings.py
 @python/services/session_retriever.py
 @python/services/session_review_service.py
@@ -978,6 +1098,7 @@ Total: 682 arquivos Python
 ## services/communication
 
 @python/services/communication/__init__.py
+@python/services/communication/agent_runtime_service.py
 @python/services/communication/grpc_service.py
 @python/services/communication/streaming_service.py
 
@@ -993,6 +1114,7 @@ Total: 682 arquivos Python
 @python/services/core/__init__.py
 @python/services/core/agent_service.py
 @python/services/core/container.py
+@python/services/core/pinchtab_service.py
 @python/services/core/provider_service.py
 @python/services/core/session_service.py
 
@@ -1006,6 +1128,14 @@ Total: 682 arquivos Python
 @python/services/interfaces/monitoring_interfaces.py
 @python/services/interfaces/orchestration_interfaces.py
 
+## services/memory
+
+@python/services/memory/__init__.py
+@python/services/memory/agent_memory_service.py
+@python/services/memory/context_retriever.py
+@python/services/memory/context_storage.py
+@python/services/memory/memory_service.py
+
 ## services/monitoring
 
 @python/services/monitoring/__init__.py
@@ -1013,12 +1143,45 @@ Total: 682 arquivos Python
 @python/services/monitoring/metrics_service.py
 @python/services/monitoring/review_service.py
 
+## services/nlp_embeddings
+
+@python/services/nlp_embeddings/__init__.py
+@python/services/nlp_embeddings/hybrid_embeddings.py
+@python/services/nlp_embeddings/nlp_embedding_service.py
+@python/services/nlp_embeddings/tfidf_embeddings.py
+
 ## services/orchestration
 
 @python/services/orchestration/__init__.py
 @python/services/orchestration/orchestration_service.py
 @python/services/orchestration/routing_service.py
 @python/services/orchestration/task_service.py
+
+## skills
+
+@python/skills/__init__.py
+
+## skills/base
+
+@python/skills/base/__init__.py
+@python/skills/base/executor.py
+@python/skills/base/skill.py
+
+## skills/core
+
+@python/skills/core/__init__.py
+
+## skills/registry
+
+@python/skills/registry/__init__.py
+
+## skills/specialized
+
+@python/skills/specialized/__init__.py
+
+## skills/utils
+
+@python/skills/utils/__init__.py
 
 ## storage
 
@@ -1056,12 +1219,17 @@ Total: 682 arquivos Python
 @python/storage/postgresql/migrations/versions/20260302_0005_agent_memory_tables.py
 @python/storage/postgresql/migrations/versions/20260304_0006_research_tables.py
 @python/storage/postgresql/migrations/versions/20260304_0007_session_chunks.py
+@python/storage/postgresql/migrations/versions/20260308_0008_session_reviews.py
 @python/storage/postgresql/migrations/versions/__init__.py
 
 ## storage/utils
 
 @python/storage/utils/__init__.py
 @python/storage/utils/migration_helpers.py
+
+## tests
+
+@python/tests/test_memory_integration.py
 
 ## tools_backup
 

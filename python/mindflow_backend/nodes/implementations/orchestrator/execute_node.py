@@ -232,12 +232,36 @@ class ExecuteNode(StreamableNode, BaseNode):
             
             for contract in ordered:
                 _logger.info("dt_resolving", component=contract.title)
+
+                # Enrich memory_context with cross-task context from previously completed components
+                enriched_memory = memory_context
+                if prior_results:
+                    try:
+                        from mindflow_backend.memory.task_memory.api import get_cross_task_api
+                        from mindflow_backend.storage.postgresql.connection import db_session
+                        cross_task_api = get_cross_task_api()
+                        with db_session() as db:
+                            ctx = await cross_task_api.get_context_for_subtask(
+                                db=db,
+                                requesting_task_id=str(contract.component_id),
+                                query=contract.title,
+                                sibling_task_ids=list(prior_results.keys()),
+                            )
+                        if ctx.has_content:
+                            enriched_memory = (
+                                f"{memory_context}\n\n{ctx.formatted_context}"
+                                if memory_context
+                                else ctx.formatted_context
+                            )
+                    except Exception as _cross_exc:
+                        _logger.debug("cross_task_context_skip", error=str(_cross_exc))
+
                 comp_state = await resolver.resolve(
-                    contract, prior_results, provider=provider, model=model, memory_context=memory_context,
+                    contract, prior_results, provider=provider, model=model, memory_context=enriched_memory,
                 )
                 score = scorer.score(comp_state, consistency=1.0, agent_confidence=0.8)
                 _logger.info("dt_scored", component=contract.title, score=score)
-                
+
                 if scorer.is_validated(score):
                     notes = comp_state.evidence.agent_notes if comp_state.evidence else ""
                     validated.append(
@@ -250,6 +274,19 @@ class ExecuteNode(StreamableNode, BaseNode):
                         )
                     )
                     prior_results[str(contract.component_id)] = notes
+                    # Store result in task memory for future sibling retrieval (best-effort)
+                    try:
+                        from mindflow_backend.memory.task_memory.api import get_cross_task_api
+                        from mindflow_backend.storage.postgresql.connection import db_session
+                        with db_session() as db:
+                            await get_cross_task_api().store_subtask_result(
+                                db=db,
+                                task_id=str(contract.component_id),
+                                result_content=notes,
+                            )
+                            db.commit()
+                    except Exception as _store_exc:
+                        _logger.debug("cross_task_store_skip", error=str(_store_exc))
             
             # Step D: Synthesize
             try:

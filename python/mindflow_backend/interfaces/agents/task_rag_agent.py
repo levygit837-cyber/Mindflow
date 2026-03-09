@@ -20,7 +20,7 @@ from mindflow_backend.schemas.memory.api import (
 )
 from mindflow_backend.schemas.agents.research import (
     QueryPlan,
-    SearchResult,
+    ResearchResult,
 )
 
 
@@ -64,7 +64,7 @@ class TaskRagAgent(CorePersonalityContract, Protocol):
         self, 
         query: str, 
         task_id: str | None = None
-    ) -> list[SearchResult]:
+    ) -> list[ResearchResult]:
         """Search semantic memory for relevant information.
         
         Args:

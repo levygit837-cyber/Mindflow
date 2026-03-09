@@ -18,9 +18,7 @@ from mindflow_backend.schemas.agents.research import (
     BrowserActionResponse,
     QueryPlan,
     ResearchConfig,
-    SearchResult,
-    ResearchSession,
-    SynthesisResult,
+    ResearchResult,
 )
 
 
@@ -51,22 +49,22 @@ class EnhancedResearcher(CorePersonalityContract, Protocol):
     async def execute_web_search(
         self, 
         plan: QueryPlan
-    ) -> SearchResult:
+    ) -> ResearchResult:
         """Execute web search according to plan.
         
         Args:
-            plan: Query plan with search strategy
+            plan: Structured query plan with sources and strategy
             
         Returns:
-            Search results with relevance scoring
+            ResearchResult: Search results with metadata and synthesis
         """
         ...
     
     async def synthesize_results(
         self, 
-        results: list[SearchResult], 
+        results: list[ResearchResult], 
         original_query: str
-    ) -> SynthesisResult:
+    ) -> ResearchResult:
         """Synthesize multiple search results into coherent response.
         
         Args:
