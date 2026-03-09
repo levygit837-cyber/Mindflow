@@ -1,57 +1,19 @@
 """Personality management interfaces.
 
-Defines contracts for personality selection, rule evaluation,
-and personality-based task configuration.
+DEPRECATED: This module has been moved to mindflow_backend.interfaces.agents.personality
+This file is maintained for backward compatibility during migration.
+
+Use: from mindflow_backend.interfaces.agents import PersonalitySpecialistSelector, PersonalityRuleEngine
 """
 
-from __future__ import annotations
+# Forward compatibility aliases - import from new location
+from mindflow_backend.interfaces.agents.personality import (
+    PersonalitySpecialistSelector,
+    PersonalityRuleEngine,
+)
 
-from typing import Any, Protocol, runtime_checkable
-
-from mindflow_backend.schemas.orchestration.personality import SpecialistDecisionResult
-
-
-@runtime_checkable
-class SpecialistSelector(Protocol):
-    """Contract for personality selection implementations."""
-    
-    def select_specialist(
-        self,
-        task_id: str,
-        task_description: str,
-        task_complexity: str,
-        context_requirements: list[str] | None = None,
-        current_specialist: str | None = None,
-    ) -> SpecialistDecisionResult:
-        """Select optimal personality for a task."""
-        ...
-
-    def create_switch_context(
-        self,
-        session_id: str,
-        from_personality: str,
-        to_personality: str,
-        trigger: str,
-        rationale: str,
-        carry_over_context: str = "",
-    ) -> dict[str, Any]:
-        """Create context for personality switching."""
-        ...
-
-
-@runtime_checkable
-class RuleEngine(Protocol):
-    """Contract for rule evaluation implementations."""
-    
-    def evaluate(
-        self,
-        task_description: str,
-        task_complexity: str,
-        specialization: str | None,
-    ) -> list[dict[str, Any]]:
-        """Evaluate rules and return candidates."""
-        ...
-
-    def add_rule(self, rule: dict[str, Any]) -> None:
-        """Add new rule to engine."""
-        ...
+# Maintain backward compatibility
+__all__ = [
+    "PersonalitySpecialistSelector",
+    "PersonalityRuleEngine",
+]
