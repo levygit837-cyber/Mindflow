@@ -106,7 +106,7 @@ class StreamEventMeta(BaseModel):
     turnRunId: str | None = None
     insertBefore: str | None = None
     firstResponseMarker: str | None = None
-    category: Literal["explanation", "decision", "code_result", "summary", "response"] | None = None
+    category: str | None = None  # open-ended: "text", "explanation", "decision", "code_result", "summary", "response", etc.
     agent: str | None = None  # Current agent (orchestrator, coder, analyst, researcher) for UI
 
 

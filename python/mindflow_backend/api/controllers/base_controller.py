@@ -17,7 +17,7 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.middleware.auth import require_api_key
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
-from mindflow_backend.storage.postgresql.connection import db_session
+from mindflow_backend.storage import db_session
 
 _logger = get_logger(__name__)
 T = TypeVar("T")

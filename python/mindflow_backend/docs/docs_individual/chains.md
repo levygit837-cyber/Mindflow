@@ -4,10 +4,11 @@
 ## Caminho
 @python/chains
 
-## Arquivos Python (2)
+## Arquivos Python (3)
 
 @python/chains/__init__.py
 @python/chains/catalog.py
+@python/chains/factory.py
 
 ## Subdiretórios (4)
 

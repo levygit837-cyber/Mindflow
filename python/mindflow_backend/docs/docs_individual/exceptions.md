@@ -4,16 +4,18 @@
 ## Caminho
 @python/exceptions
 
-## Arquivos Python (2)
+## Arquivos Python (3)
 
 @python/exceptions/__init__.py
 @python/exceptions/agents.py
+@python/exceptions/migration_status.py
 
-## Subdiretórios (9)
+## Subdiretórios (10)
 
 @python/exceptions/agents
 @python/exceptions/api
 @python/exceptions/base
+@python/exceptions/examples
 @python/exceptions/external
 @python/exceptions/infrastructure
 @python/exceptions/orchestrator

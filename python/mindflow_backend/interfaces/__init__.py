@@ -1,10 +1,6 @@
-"""Global interfaces for MindFlow backend.
+"""Global interfaces for MindFlow backend."""
 
-This directory contains the centralized interface definitions for the entire MindFlow system,
-providing consistency, testability, and maintainability across all components.
-"""
-
-# Core interfaces - fundamental for all components
+# Core interfaces
 from .core import (
     BaseComponentInterface,
     ServiceInterface,
@@ -16,7 +12,7 @@ from .core import (
     LoggableInterface,
 )
 
-# Agent interfaces - specialized agent contracts
+# Agent interfaces
 from .agents import (
     AgentInterface as AgentsAgentInterface,
     StreamingContract,
@@ -25,53 +21,50 @@ from .agents import (
     SpecialistSelector,
     RuleEngine,
     CorePersonalityContract,
-    PersonalitySpecialistSelector,
-    PersonalityRuleEngine,
-    EnhancedResearcher,
-    TaskRagAgent,
 )
 
-# Service interfaces - service layer contracts
-from .services import (
-    BaseServiceInterface,
-    ServiceLifecycleInterface,
-    CacheableServiceInterface,
-    ConfigurableServiceInterface,
-    BaseAbstractService,
-    CommunicationServiceInterface,
-    GrpcServiceInterface,
-    StreamingServiceInterface,
-    CoreServiceInterface,
-    AgentServiceInterface,
-    SessionServiceInterface,
-    MemoryServiceInterface,
-    ProviderServiceInterface,
-    MonitoringServiceInterface,
-    HealthServiceInterface,
-    MetricsServiceInterface,
-    OrchestrationServiceInterface,
-    TaskServiceInterface,
-    RoutingServiceInterface,
-)
+# Service layer interfaces
+from .services.base import BaseServiceInterface, ServiceLifecycleInterface, CacheableServiceInterface, ConfigurableServiceInterface
+from .services.communication import CommunicationServiceInterface, GrpcServiceInterface, StreamingServiceInterface
+from .services.context import RetrievalServiceInterface, EmbeddingServiceInterface
+from .services.core import CoreServiceInterface, AgentServiceInterface, SessionServiceInterface, MemoryServiceInterface, ProviderServiceInterface
+from .services.monitoring import MonitoringServiceInterface, HealthServiceInterface, MetricsServiceInterface
+from .services.orchestration import OrchestrationServiceInterface, TaskServiceInterface, RoutingServiceInterface
 
-# API interfaces - API layer contracts
-from .api import (
+# API layer interfaces
+from .api.controllers import (
+    BaseControllerInterface,
     AgentControllerInterface,
     SessionControllerInterface,
     OrchestrationControllerInterface,
     ProviderControllerInterface,
-    MemoryControllerInterface,
-    BaseControllerInterface,
 )
 
-# Infrastructure interfaces - infrastructure component contracts
-from .infrastructure import (
-    GrpcClient,
-    GrpcServer,
-    GrpcConnectionManager,
+# Infrastructure interfaces
+from .infrastructure.grpc import GrpcClient, GrpcServer, GrpcConnectionManager
+GrpcClientInterface = GrpcClient
+GrpcServerInterface = GrpcServer
+from .infrastructure.backend import BackendProtocol
+
+# Storage interfaces
+from .storage import (
+    StorageBackendInterface,
+    StorageOperationInterface,
+    StorageQueryInterface,
+    StorageTransactionInterface,
+    StorageIndexInterface,
+    StorageBackupInterface,
+    StorageMigrationInterface,
+    StorageMonitoringInterface,
 )
 
-# Tool interfaces - agent tool contracts
+# Storage specialized interfaces
+from .storage_specialized.database import DatabaseRepositoryInterface
+from .storage_specialized.vector import VectorStoreInterface
+from .storage_specialized.cache import CacheManagerInterface
+from .storage_specialized.memory import MemoryStoreInterface
+
+# Tool interfaces
 from .tools import (
     ToolInterface as ToolBaseInterface,
     AsyncToolInterface,
@@ -102,118 +95,12 @@ from .tools import (
     WebSecurityTool,
 )
 
-# Skills interfaces - skill system contracts
+# Skills interfaces
 from .skills import (
-    # Base interfaces
     SkillInterface, SkillLifecycleInterface, SkillConfigurableInterface, SkillValidatableInterface,
-    # Executor interfaces
     SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSkillExecutorInterface,
-    # Registry interfaces
     SkillRegistryInterface, SkillDiscoveryInterface, SkillRecommendationInterface,
-    # Specialized interfaces
     CoreSkillInterface, AnalysisSkillInterface, CodingSkillInterface, ResearchSkillInterface,
     SecuritySkillInterface, ArchitectureSkillInterface, TestingSkillInterface, DocumentationSkillInterface,
-    # Lifecycle interfaces
     SkillManagerInterface, SkillOrchestratorInterface, SkillMonitoringInterface,
 )
-
-__all__ = [
-    # Core interfaces
-    "BaseComponentInterface",
-    "ServiceInterface",
-    "AgentInterface",
-    "ToolInterface",
-    "InfrastructureInterface",
-    "LifecycleInterface",
-    "ConfigurableInterface",
-    "LoggableInterface",
-    
-    # Agent interfaces
-    "AgentsAgentInterface",
-    "StreamingContract",
-    "SessionManagerContract",
-    "Cache",
-    "SpecialistSelector",
-    "RuleEngine",
-    "CorePersonalityContract",
-    "PersonalitySpecialistSelector",
-    "PersonalityRuleEngine",
-    "EnhancedResearcher",
-    "TaskRagAgent",
-    
-    # Service interfaces
-    "BaseServiceInterface",
-    "ServiceLifecycleInterface",
-    "CacheableServiceInterface",
-    "ConfigurableServiceInterface",
-    "BaseAbstractService",
-    "CommunicationServiceInterface",
-    "GrpcServiceInterface",
-    "StreamingServiceInterface",
-    "CoreServiceInterface",
-    "AgentServiceInterface",
-    "SessionServiceInterface",
-    "MemoryServiceInterface",
-    "ProviderServiceInterface",
-    "MonitoringServiceInterface",
-    "HealthServiceInterface",
-    "MetricsServiceInterface",
-    "OrchestrationServiceInterface",
-    "TaskServiceInterface",
-    "RoutingServiceInterface",
-    
-    # API interfaces
-    "AgentControllerInterface",
-    "SessionControllerInterface",
-    "OrchestrationControllerInterface",
-    "ProviderControllerInterface",
-    "MemoryControllerInterface",
-    "BaseControllerInterface",
-    
-    # Infrastructure interfaces
-    "GrpcClient",
-    "GrpcServer",
-    "GrpcConnectionManager",
-    
-    # Tool interfaces
-    "ToolBaseInterface",
-    "AsyncToolInterface",
-    "StatefulToolInterface",
-    "ToolSchema",
-    "ToolPermission",
-    "FileReadTool",
-    "FileWriteTool",
-    "FileEditTool",
-    "DirectoryListTool",
-    "FileDeleteTool",
-    "DirectoryCreateTool",
-    "GrepSearchTool",
-    "GlobSearchTool",
-    "FindFilesTool",
-    "SystemToolInterface",
-    "ProcessManagerTool",
-    "SandboxTool",
-    "SystemMonitorTool",
-    "EnvironmentTool",
-    "PermissionTool",
-    "WebToolInterface",
-    "HttpClientTool",
-    "ApiClientTool",
-    "BrowserSearchTool",
-    "WebhookTool",
-    "RssFeedTool",
-    "WebSecurityTool",
-    
-    # Skills interfaces
-    # Base interfaces
-    "SkillInterface", "SkillLifecycleInterface", "SkillConfigurableInterface", "SkillValidatableInterface",
-    # Executor interfaces
-    "SkillExecutorInterface", "AsyncSkillExecutorInterface", "BatchSkillExecutorInterface",
-    # Registry interfaces
-    "SkillRegistryInterface", "SkillDiscoveryInterface", "SkillRecommendationInterface",
-    # Specialized interfaces
-    "CoreSkillInterface", "AnalysisSkillInterface", "CodingSkillInterface", "ResearchSkillInterface",
-    "SecuritySkillInterface", "ArchitectureSkillInterface", "TestingSkillInterface", "DocumentationSkillInterface",
-    # Lifecycle interfaces
-    "SkillManagerInterface", "SkillOrchestratorInterface", "SkillMonitoringInterface",
-]

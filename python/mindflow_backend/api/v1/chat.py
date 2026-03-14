@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from mindflow_backend.schemas.chat.agent import ChatMessageSchema, ChatSessionSchema
-from mindflow_backend.storage.postgresql.connection import db_session
-from mindflow_backend.storage.postgresql.repositories import ChatRepository
+from mindflow_backend.storage import db_session, ChatRepository
 from mindflow_backend.api.controllers.session_controller import SessionController
 from mindflow_backend.api.schemas.requests import SessionCreateRequest, SessionUpdateRequest
 from mindflow_backend.api.schemas.common import PaginationParams

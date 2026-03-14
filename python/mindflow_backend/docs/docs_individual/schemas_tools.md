@@ -18,3 +18,8 @@
 @python/schemas/tools/tool_execution.py
 @python/schemas/tools/tool_permissions.py
 @python/schemas/tools/web_schemas.py
+
+## Subdiretórios (2)
+
+@python/schemas/tools/core
+@python/schemas/tools/specialist

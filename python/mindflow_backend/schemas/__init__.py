@@ -35,6 +35,19 @@ from .memory import (
     MemoryStoreResponse, MemoryRetrieveResponse, MemorySearchResponse,
 )
 
+# Storage schemas (NEW)
+from .storage import (
+    StorageType, StorageConfig, StorageOperation, StorageStats,
+    StorageHealthCheck, StorageMigration, StorageBackup,
+    StorageRequest, StorageResponse,
+)
+
+# Storage specialized schemas
+from .storage_specialized.database import DatabaseType, ConnectionConfig, PoolConfig, HealthCheckConfig, MigrationConfig
+from .storage_specialized.vector import VectorConfig, VectorCollection, VectorSearchRequest, VectorSearchResponse, VectorMetadata
+from .storage_specialized.cache import CacheConfig, CacheEntry, CacheStats
+from .storage_specialized.memory import StorageMemoryEntry, StorageMemoryWindow, StorageMemoryStats
+
 # Skills schemas
 from .skills import (
     # Base schemas
@@ -81,6 +94,11 @@ __all__ = [
     "MemoryFact", "MemoryEmbedding",
     "MemoryStoreRequest", "MemoryRetrieveRequest", "MemorySearchRequest",
     "MemoryStoreResponse", "MemoryRetrieveResponse", "MemorySearchResponse",
+    
+    # Storage (NEW)
+    "StorageType", "StorageConfig", "StorageOperation", "StorageStats",
+    "StorageHealthCheck", "StorageMigration", "StorageBackup",
+    "StorageRequest", "StorageResponse",
     
     # Skills
     # Base schemas

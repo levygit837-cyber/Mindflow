@@ -7,10 +7,11 @@ then makes informed delegation decisions based on structured findings.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.infra.config import get_settings
@@ -37,7 +38,7 @@ _logger = get_logger(__name__)
 
 class IntentAnalysis(BaseModel):
     """Result of LLM intent analysis."""
-    
+
     user_intent: str = Field(description="Clear interpretation of what user wants to accomplish")
     needs_code_context: bool = Field(description="Whether we need codebase context to decide")
     context_needed: str = Field(description="What specific context we need from Analyst")
@@ -47,6 +48,16 @@ class IntentAnalysis(BaseModel):
     confidence: float = Field(description="Confidence in this analysis (0-1)")
     is_multi_agent: bool = Field(default=False, description="Requires multiple agents")
     agent_sequence: list[AgentType] = Field(default_factory=list, description="Sequence of agents needed")
+
+    @field_validator("recommended_agent", mode="before")
+    @classmethod
+    def normalize_agent(cls, v: str) -> str:
+        return v.lower() if isinstance(v, str) else v
+
+    @field_validator("agent_sequence", mode="before")
+    @classmethod
+    def normalize_agent_sequence(cls, v: list) -> list:
+        return [x.lower() if isinstance(x, str) else x for x in (v or [])]
     execution_strategy: ExecutionStrategy = Field(
         default=ExecutionStrategy.SINGLE_AGENT,
         description="How to execute: single agent, chain, or graph",
@@ -163,19 +174,101 @@ Respond with a JSON object following this schema:
                 confidence=0.3,
             )
     
+    # -----------------------------------------------------------------------
+    # Heuristic fast-path — avoids LLM call for common, unambiguous intents
+    # -----------------------------------------------------------------------
+
+    _RESEARCHER_RE = re.compile(
+        r"\b(pesquise|search|procure|busque|notícia|noticias|news|latest|"
+        r"docs|documentation|o que é|o que é|what is|explain|explique|"
+        r"como funciona|how does|tutorial|guia)\b",
+        re.IGNORECASE,
+    )
+    _ANALYST_RE = re.compile(
+        r"\b(analise|analyze|review|revisar|audit|auditoria|"
+        r"trace|rastrear|map|mapear|diagrama|diagram|"
+        r"code review|revisar código|entenda o código)\b",
+        re.IGNORECASE,
+    )
+    _CODER_RE = re.compile(
+        r"\b(implement|implemente|crie|create|escreva|write|"
+        r"fix|corrija|refactor|refatore|bug|erro|error|"
+        r"função|function|class|classe|test|teste|deploy|"
+        r"migrat|script|código|code)\b",
+        re.IGNORECASE,
+    )
+
+    def _try_fast_route(self, message: str) -> OrchestratorDecision | None:
+        """Return a routing decision via keywords without an LLM call.
+
+        Returns None when the message is ambiguous and needs LLM routing.
+        """
+        text = message.strip()
+        words = text.split()
+
+        # Greetings / very short conversational messages → CODER (concise assistant)
+        # RESEARCHER generates long reports; CODER responds pragmatically to chat.
+        if len(words) <= 4:
+            return OrchestratorDecision(
+                rationale="Short conversational message — routing directly without LLM",
+                agent=AgentType.CODER,
+                task=text,
+                thinking=ThinkingLevel.LOW,
+                tools=[],
+                priority=Priority.NORMAL,
+            )
+
+        if self._ANALYST_RE.search(text):
+            return OrchestratorDecision(
+                rationale="Keyword match: analysis/review task",
+                agent=AgentType.ANALYST,
+                task=text,
+                thinking=ThinkingLevel.HIGH,
+                tools=[],
+                priority=Priority.NORMAL,
+            )
+
+        if self._RESEARCHER_RE.search(text):
+            return OrchestratorDecision(
+                rationale="Keyword match: research/documentation task",
+                agent=AgentType.RESEARCHER,
+                task=text,
+                thinking=ThinkingLevel.MEDIUM,
+                tools=[],
+                priority=Priority.NORMAL,
+            )
+
+        if self._CODER_RE.search(text):
+            return OrchestratorDecision(
+                rationale="Keyword match: coding/implementation task",
+                agent=AgentType.CODER,
+                task=text,
+                thinking=ThinkingLevel.HIGH,
+                tools=[],
+                priority=Priority.NORMAL,
+            )
+
+        return None  # ambiguous → fall through to LLM
+
     async def route_message_intelligently(
         self,
         message: str,
         session: OrchestratorSession | None = None,
     ) -> OrchestratorDecision:
         """Route message using intelligent LLM analysis and delegation."""
-        
+
         # Create or get session
         if session is None:
             session = OrchestratorSession(
                 user_intent=message,
             )
-        
+
+        # Fast-path: skip LLM for unambiguous intents
+        fast_decision = self._try_fast_route(message)
+        if fast_decision is not None:
+            _logger.info("fast_route_hit", agent=fast_decision.agent.value, message_len=len(message))
+            return fast_decision
+
         analyst_result = None
 
         # Step 1: Analyze intent with LLM

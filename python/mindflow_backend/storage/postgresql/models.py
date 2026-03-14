@@ -277,13 +277,13 @@ class SessionReview(Base):
     __tablename__ = "session_reviews"
     
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    session_id: Mapped[str] = mapped_column(String(64), ForeignKey("chat_sessions.id"), index=True)
     window_start: Mapped[int] = mapped_column(Integer)
     window_end: Mapped[int] = mapped_column(Integer)
     review_data: Mapped[dict[str, Any]] = mapped_column(JSON)
     priority: Mapped[str] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    
+
     # Relationships
     session: Mapped["ChatSession"] = relationship("ChatSession")
     review_results: Mapped[list["SessionReviewResult"]] = relationship(

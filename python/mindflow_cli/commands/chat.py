@@ -7,14 +7,43 @@ from mindflow_cli.client import MindFlowCliClient
 from mindflow_cli.render.chat_stream import ChatStreamRenderer
 from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
 from mindflow_cli.render.theme import MINDFLOW_THEME
+from mindflow_cli.commands.settings import get_settings
 
 console = Console(theme=MINDFLOW_THEME)
 EXIT_COMMANDS = {"/exit", "/quit", "/q", "/sair"}
 RESET_COMMANDS = {"/reset", "/clear", "/limpar"}
+SETTINGS_COMMANDS = {"/settings", "/config"}
 
 
 def build_client(base_url: str | None) -> MindFlowCliClient:
-    return MindFlowCliClient(base_url=base_url)
+    settings = get_settings()
+    api_url = base_url or settings.get("api_url")
+    return MindFlowCliClient(base_url=api_url)
+
+
+def _show_settings_help() -> None:
+    """Show quick settings help in chat."""
+    from mindflow_cli.commands.settings import load_settings
+    
+    settings = load_settings()
+    
+    console.print()
+    console.print(Panel(
+        "⚙️ Quick Settings",
+        title="Current Configuration",
+        border_style="cyan"
+    ))
+    
+    console.print(f"[bold]🔗 API:[/] {settings.get('api_url', 'Not set')}")
+    console.print(f"[bold]🤖 Agent:[/] {settings.get('default_agent', 'auto')}")
+    console.print(f"[bold]🔄 Auto-Orchestrate:[/] {settings.get('auto_orchestrate', True)}")
+    console.print(f"[bold]🐛 Debug:[/] {settings.get('debug_mode', False)}")
+    
+    console.print("\n[bold cyan]Commands:[/]")
+    console.print("  /settings show - Show all settings")
+    console.print("  /settings set <key> <value> - Change setting")
+    console.print("  /settings reset - Reset to defaults")
+    console.print("\n[dim]Use 'mindflow settings' for full configuration.[/]")
 
 
 def _compose_message_with_history(history: list[tuple[str, str]], user_message: str) -> str:
@@ -74,6 +103,20 @@ def _run_chat(
     debug_steps: bool,
     orchestrate: bool = False,
 ) -> None:
+    settings = get_settings()
+    
+    # Use settings defaults if not provided
+    if not provider:
+        provider = settings.get("default_provider", "vertexai")
+    if not model:
+        model = settings.get("default_model", "gemini-3-flash")
+    if not base_url:
+        base_url = settings.get("api_url")
+    
+    # Auto-orchestration based on settings
+    if orchestrate is None:
+        orchestrate = settings.get("auto_orchestrate", True)
+    
     client = build_client(base_url)
     renderer: ChatStreamRenderer | OrchestratorStreamRenderer = (
         OrchestratorStreamRenderer(console) if orchestrate else ChatStreamRenderer(console)
@@ -86,7 +129,7 @@ def _run_chat(
             message=message,
             provider=provider,
             model=model,
-            debug_steps=debug_steps,
+            debug_steps=debug_steps or settings.get("debug_mode", False),
             orchestrate=orchestrate,
         )
     except Exception as exc:
@@ -125,6 +168,7 @@ def register_chat_commands(app: typer.Typer) -> None:
         provider: str = typer.Option("vertexai", "--provider", help="Provider override"),
         model: str = typer.Option("gemini-3-flash-preview", "--model", help="Model override"),
         debug_steps: bool = typer.Option(False, "--debug-steps", help="Enable debug-oriented stream flags"),
+        orchestrate: bool = typer.Option(False, "--orchestrate", "-o", help="Usar orquestrador inteligente (roteia para agente especialista)"),
         base_url: str | None = typer.Option(
             None,
             "--base-url",
@@ -132,6 +176,7 @@ def register_chat_commands(app: typer.Typer) -> None:
             help="MindFlow backend base URL",
         ),
     ) -> None:
+        settings = get_settings()
         client = build_client(base_url)
         try:
             health_payload = client.get_health()
@@ -141,10 +186,15 @@ def register_chat_commands(app: typer.Typer) -> None:
 
         status = str(health_payload.get("status", "unknown"))
         console.print(f"[green]Conexao estabelecida[/] (backend status: {status})")
-        console.print(f"Modo: [bold]Agente Direto ({agent})[/] via {provider} / {model}")
+        if orchestrate:
+            console.print(f"Modo: [bold]Orquestrador Inteligente[/] via {provider} / {model}")
+        else:
+            console.print(f"Modo: [bold]Agente Direto ({agent})[/] via {provider} / {model}")
         console.print("Comandos: /sair para encerrar, /reset para limpar contexto local.")
 
-        renderer = ChatStreamRenderer(console)
+        renderer: ChatStreamRenderer | OrchestratorStreamRenderer = (
+            OrchestratorStreamRenderer(console) if orchestrate else ChatStreamRenderer(console)
+        )
         history: list[tuple[str, str]] = []
 
         while True:
@@ -162,17 +212,27 @@ def register_chat_commands(app: typer.Typer) -> None:
                 console.print("[yellow]Contexto local limpo.[/]")
                 continue
 
-            composed_message = _compose_message_with_history(history, user_message)
+            if lowered in SETTINGS_COMMANDS:
+                _show_settings_help()
+                continue
+
+            # In orchestrator mode, send raw message (orchestrator handles context);
+            # in direct mode, include local history for continuity.
+            if orchestrate:
+                send_message = user_message
+            else:
+                send_message = _compose_message_with_history(history, user_message)
+
             try:
                 assistant_text = _stream_chat_once(
                     client=client,
                     renderer=renderer,
-                    message=composed_message,
+                    message=send_message,
                     provider=provider,
                     model=model,
-                    debug_steps=debug_steps,
-                    agent_type=agent,
-                    orchestrate=False,
+                    debug_steps=debug_steps or settings.get("debug_mode", False),
+                    agent_type=None if orchestrate else agent,
+                    orchestrate=orchestrate,
                 )
             except Exception as exc:
                 console.print(f"[bold red]Chat failed:[/] {exc}")

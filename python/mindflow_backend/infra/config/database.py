@@ -92,25 +92,29 @@ class DatabaseConfig(BaseSettings):
     password: Optional[str] = Field(default=None, description="Database password")
 
     @field_validator("url", mode="before")
+    @classmethod
     def build_url_from_components(cls, v: str, info: pydantic.ValidationInfo) -> str:
         """Build database URL from individual components if URL not provided."""
         if v:
             return v
             
         # Build URL from components
-        host = values.get("host") or "localhost"
-        port = values.get("port") or 5432
-        database = values.get("database") or "mindflow_v1"
-        username = values.get("username") or "mindflow_app"
-        password = values.get("password") or "mindflow_dev_local_2026"
+        data = info.data if hasattr(info, 'data') else {}
+        host = data.get("host") or "localhost"
+        port = data.get("port") or 5432
+        database = data.get("database") or "mindflow_v1"
+        username = data.get("username") or "mindflow_app"
+        password = data.get("password") or "mindflow_dev_local_2026"
         
         return f"postgresql+psycopg://{username}:{password}@{host}:{port}/{database}"
 
     @field_validator("max_overflow")
+    @classmethod
     def validate_max_overflow(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate max_overflow against max_connections."""
-        max_connections = values.get("max_connections", 100)
-        pool_size = values.get("pool_size", 20)
+        data = info.data if hasattr(info, 'data') else {}
+        max_connections = data.get("max_connections", 100)
+        pool_size = data.get("pool_size", 20)
         
         if pool_size + v > max_connections:
             raise ValueError(
@@ -120,18 +124,21 @@ class DatabaseConfig(BaseSettings):
         return v
 
     @field_validator("min_connections")
+    @classmethod
     def validate_min_connections(cls, v: int, info: pydantic.ValidationInfo) -> int:
-        """Validate min_connections against pool_size."""
-        pool_size = values.get("pool_size", 20)
+        """Validate min_connections against max_connections."""
+        data = info.data if hasattr(info, 'data') else {}
+        max_connections = data.get("max_connections", 100)
         
-        if v > pool_size:
+        if v > max_connections:
             raise ValueError(
-                f"min_connections ({v}) cannot exceed pool_size ({pool_size})"
+                f"min_connections ({v}) cannot exceed max_connections ({max_connections})"
             )
             
         return v
 
     @field_validator("retry_delay", "retry_max_delay")
+    @classmethod
     def validate_retry_delays(cls, v: float) -> float:
         """Validate retry delay values."""
         if v <= 0:

@@ -338,8 +338,6 @@ class SequentialWorkflowGraph(BaseGraph):
                     raise ValueError(f"Node not found: {node_ref}")
             else:
                 node_instance = node_ref
-            else:
-                node_instance = node_ref
             
             node_instances.append(node_instance)
         

@@ -5,8 +5,8 @@ from typing import Dict, List, Optional, Any
 from uuid import UUID
 
 from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, audit_log
-from mindflow_backend.api.schemas.requests import TaskCancelRequest, TaskRetryRequest
-from mindflow_backend.api.schemas.responses import (
+from mindflow_backend.api.schemas.task_requests import TaskCancelRequest, TaskRetryRequest
+from mindflow_backend.api.schemas.task_responses import (
     TaskInfoResponse,
     TaskListResponse,
     TaskCancelResponse,

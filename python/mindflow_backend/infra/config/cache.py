@@ -165,25 +165,27 @@ class CacheConfig(BaseSettings):
     @field_validator("max_ttl")
     def validate_max_ttl_greater_than_min(cls, v: int, info: pydantic.ValidationInfo) -> int:
         """Validate max_ttl is greater than min_ttl."""
-        min_ttl = values.get("min_ttl", 60)
+        min_ttl = info.data.get("min_ttl", 60)
         if v <= min_ttl:
             raise ValueError(f"max_ttl ({v}) must be greater than min_ttl ({min_ttl})")
         return v
 
     @field_validator("default_ttl")
-    def validate_default_ttl_range(cls, v: int, info: pydantic.ValidationInfo) -> int:
+    @classmethod
+    def validate_default_ttl_within_range(cls, v: int, info) -> int:
         """Validate default_ttl is within min/max range."""
-        min_ttl = values.get("min_ttl", 60)
-        max_ttl = values.get("max_ttl", 86400)
+        min_ttl = info.data.get("min_ttl", 60)
+        max_ttl = info.data.get("max_ttl", 86400)
         
         if not (min_ttl <= v <= max_ttl):
             raise ValueError(f"default_ttl ({v}) must be between min_ttl ({min_ttl}) and max_ttl ({max_ttl})")
         return v
 
     @field_validator("l1_cache_ttl")
-    def validate_l1_ttl_less_than_l2(cls, v: int, info: pydantic.ValidationInfo) -> int:
+    @classmethod
+    def validate_l1_ttl_less_than_l2(cls, v: int, info) -> int:
         """Validate L1 cache TTL is less than L2 cache TTL."""
-        l2_ttl = values.get("l2_cache_ttl", 3600)
+        l2_ttl = info.data.get("l2_cache_ttl", 3600)
         if v >= l2_ttl:
             raise ValueError(f"l1_cache_ttl ({v}) should be less than l2_cache_ttl ({l2_ttl})")
         return v

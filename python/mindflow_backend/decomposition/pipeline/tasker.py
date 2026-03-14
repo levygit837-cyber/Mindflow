@@ -82,7 +82,15 @@ class EnhancedTasker(TaskDecomposer):
             ]
 
             response = await llm.ainvoke(messages)
-            content = response.content if hasattr(response, "content") else str(response)
+            raw_content = response.content if hasattr(response, "content") else str(response)
+            # VertexAI / some providers return a list of content blocks
+            if isinstance(raw_content, list):
+                content = " ".join(
+                    item.get("text", str(item)) if isinstance(item, dict) else str(item)
+                    for item in raw_content
+                )
+            else:
+                content = raw_content
 
             data = self._validate_and_parse_response(content)
 

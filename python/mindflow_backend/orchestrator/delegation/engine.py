@@ -68,24 +68,46 @@ class DelegationEngine:
                 tools = []
             else:
                 tools = tool_registry.get_tools_for_agent(agent.agent_type)
-            
+
+            # Inject root_dir into system prompt when tools are available
+            if sandbox.cwd and tools:
+                messages.insert(
+                    1,
+                    {
+                        "role": "system",
+                        "content": (
+                            f"Your working directory (root_dir) is: {sandbox.cwd}\n"
+                            "Use this path as the base for all filesystem operations "
+                            "unless the user specifies an absolute path."
+                        ),
+                    },
+                )
+
             # Get LLM instance
             llm = get_model_for_provider(
                 self.settings.default_provider,
-                task.model or self.settings.default_model
+                getattr(task, "model", None) or self.settings.default_model
             )
-            
-            # Bind tools if available
+
+            # Bind tools and run with tool invocation loop if tools are available
+            response_text = ""
             if tools:
-                llm = llm.bind_tools(tools)
-            
-            # Execute the task
-            full_response = []
-            tokens_consumed = 0
-            
-            # Simple streaming implementation without langchain events for now
-            response = await llm.ainvoke(messages)
-            response_text = response.content if hasattr(response, 'content') else str(response)
+                from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+                from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+
+                lc_tools = to_langchain_tools(tools)
+                if lc_tools:
+                    llm_with_tools = llm.bind_tools(lc_tools)
+                    response_text = await invoke_with_tools(
+                        llm=llm_with_tools,
+                        messages=messages,
+                        lc_tools=lc_tools,
+                    )
+
+            if not response_text:
+                # Fallback: no tools or tool conversion failed
+                response = await llm.ainvoke(messages)
+                response_text = response.content if hasattr(response, "content") else str(response)
             
             # Estimate token consumption (rough approximation)
             tokens_consumed = len(response_text.split()) + len(messages) * 10  # Rough estimate

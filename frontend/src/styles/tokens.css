@@ -1,52 +1,95 @@
 :root {
-  /* Brand Colors - Blue Modern Theme */
-  --brand-primary: #2563eb;
-  --brand-primary-light: #3b82f6;
-  --brand-primary-dark: #1e40af;
-  --brand-secondary: #2e2e32;
-  --brand-accent: #60a5fa;
-  --brand-accent-light: #93c5fd;
+  /* MindFlow Design System Colors */
+  --mindflow-bg-primary: #080614;
+  --mindflow-bg-sidebar: #0C0820;
+  --mindflow-bg-card: #130F28;
+  --mindflow-bg-new-chat: #160D36;
+  --mindflow-bg-active-session: #1D1840;
+  --mindflow-bg-workflow: #0F1B2D;
+  --mindflow-bg-model: #130F28;
+  --mindflow-border: #1A1545;
+  --mindflow-border-workflow: #1A3A5C;
+  --mindflow-border-model: #2A1F50;
   
-  /* Background Colors */
-  --background: #0a0a0b;
-  --surface: #121214;
-  --surface-elevated: #1a1a1e;
-  --surface-glass: rgba(93, 63, 211, 0.08);
-
-  /* Text Colors */
-  --text-primary: #e1e1e6;
-  --text-secondary: #a8a8b3;
-  --text-disabled: #737380;
-  --text-inverse: #0a0a0b;
-  --text-accent: #b388ff;
-
+  /* Text Colors - MindFlow Design */
+  --text-primary: #EDE9FF;
+  --text-secondary: #8B81C0;
+  --text-meta: #4D4575;
+  --text-accent: #A78BFA;
+  --text-inverse: #FFFFFF;
+  --text-disabled: #4D4575;
+  
+  /* Brand Colors - MindFlow Gradients */
+  --brand-primary: #7C3AFF;
+  --brand-secondary: #22D3EE;
+  --brand-accent: #A78BFA;
+  
+  /* Gradients - MindFlow Design */
+  --gradient-brand: linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%);
+  --gradient-button: linear-gradient(160deg, #4C1D95 0%, #1D4ED8 100%);
+  --gradient-avatar: linear-gradient(135deg, #4C1D95 0%, #1E40AF 100%);
+  --gradient-surface: linear-gradient(135deg, #080614 0%, #130F28 100%);
+  
   /* State Colors */
-  --state-thinking: #5d3fd3;
-  --state-action: #ffbf00;
-  --state-success: #04d361;
-  --state-error: #e83f5b;
-  --state-warning: #ffcd33;
-  --state-info: #2196f3;
+  --state-thinking: #22D3EE;
+  --state-action: #7C3AFF;
+  --state-success: #10B981;
+  --state-error: #EF4444;
+  --state-warning: #F59E0B;
+  --state-info: #3B82F6;
+  
+  /* Agent Colors - MindFlow Design Palette */
+  --agent-orchestrator: #7C3AFF;
+  --agent-coder: #4ADE80;
+  --agent-analyst: #F59E0B;
+  --agent-researcher: #22D3EE;
+  --agent-arch-tech: #B0BEC5;
+  --agent-critic: #FF7043;
+  --agent-creative: #FFAB40;
+  --agent-security-guard: #EF5350;
 
-  /* Agent Colors - Enhanced Purple Palette */
-  --agent-coder: #00ff41;
-  --agent-analyst: #00e5ff;
-  --agent-researcher: #7c4dff;
-  --agent-arch-tech: #b0bec5;
-  --agent-critic: #ff7043;
-  --agent-creative: #ffab40;
-  --agent-security-guard: #ef5350;
+  /* Agent Avatar backgrounds (dark solid) */
+  --agent-orchestrator-avatar: linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%);
+  --agent-analyst-avatar: #1C1208;
+  --agent-coder-avatar: #071A0C;
+  --agent-researcher-avatar: #04151B;
+
+  /* Agent Thinking backgrounds */
+  --agent-orchestrator-thinking: #110A2E;
+  --agent-analyst-thinking: #150D04;
+  --agent-coder-thinking: #041208;
+  --agent-researcher-thinking: #031118;
+
+  /* Agent Bubble backgrounds */
+  --agent-orchestrator-bubble: #130F28;
+  --agent-analyst-bubble: #170D05;
+  --agent-coder-bubble: #040F07;
+  --agent-researcher-bubble: #031118;
+
+  /* Agent Badge backgrounds */
+  --agent-orchestrator-badge: #1E1040;
+  --agent-analyst-badge: #2A1800;
+  --agent-coder-badge: #071A0C;
+  --agent-researcher-badge: #031118;
   
   /* Agent Status Colors */
-  --agent-online: #10b981;
-  --agent-thinking: #2563eb;
-  --agent-busy: #f59e0b;
+  --agent-online: #10B981;
+  --agent-thinking: #22D3EE;
+  --agent-busy: #F59E0B;
   --agent-offline: #737380;
-  --agent-error: #ef4444;
+  --agent-error: #EF4444;
 
-  /* Typography */
+  /* Legacy Colors (for compatibility) */
+  --background: var(--mindflow-bg-primary);
+  --surface: var(--mindflow-bg-card);
+  --surface-elevated: var(--mindflow-bg-active-session);
+  --surface-glass: rgba(124, 58, 255, 0.08);
+
+  /* Typography - MindFlow Design */
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-sans: 'Inter', 'Segoe UI', sans-serif;
+  --font-brand: 'Space Grotesk', 'Inter', sans-serif;
+  --font-meta: 'Inter', 'Segoe UI', sans-serif;
   --base-font-size: 16px;
   --line-height-base: 1.5;
   
@@ -80,22 +123,25 @@
   --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  /* Effects */
+  /* Effects - MindFlow Design */
   --glass-blur: blur(12px);
   --glass-opacity: 0.72;
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-border: 1px solid rgba(124, 58, 255, 0.1);
   
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-purple: 0 0 20px rgba(37, 99, 235, 0.3);
+  /* Shadows - MindFlow Enhanced */
+  --shadow-sm: 0 1px 2px 0 rgba(8, 6, 20, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(8, 6, 20, 0.4), 0 2px 4px -1px rgba(8, 6, 20, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(8, 6, 20, 0.4), 0 4px 6px -2px rgba(8, 6, 20, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(8, 6, 20, 0.4), 0 10px 10px -5px rgba(8, 6, 20, 0.3);
+  --shadow-purple: 0 0 20px rgba(124, 58, 255, 0.3);
+  --shadow-cyan: 0 0 20px rgba(34, 211, 238, 0.2);
   
-  /* Gradients */
-  --gradient-blue: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-  --gradient-blue-dark: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-  --gradient-surface: linear-gradient(135deg, #121214 0%, #1a1a1e 100%);
+  /* Gradients - MindFlow Complete */
+  --gradient-brand: linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%);
+  --gradient-button: linear-gradient(160deg, #4C1D95 0%, #1D4ED8 100%);
+  --gradient-avatar: linear-gradient(135deg, #4C1D95 0%, #1E40AF 100%);
+  --gradient-surface: linear-gradient(135deg, #080614 0%, #130F28 100%);
+  --gradient-card-hover: linear-gradient(135deg, #1D1840 0%, #160D36 100%);
   
   /* Transitions */
   --transition-fast: 150ms ease;

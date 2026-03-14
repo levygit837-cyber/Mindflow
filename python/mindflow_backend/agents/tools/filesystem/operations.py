@@ -29,7 +29,11 @@ class DirectoryListTool(AsyncToolInterface):
         )
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
-        path = Path(kwargs["path"])
+        raw_path = kwargs["path"]
+        # Resolve relative paths against root_dir (agent working directory)
+        if self.root_dir and not Path(raw_path).is_absolute():
+            raw_path = str(Path(self.root_dir) / raw_path)
+        path = Path(raw_path)
         if not path.exists() or not path.is_dir():
             return {"success": False, "error": f"Not a directory: {path}"}
         return {"success": True, "entries": [p.name for p in path.iterdir()]}

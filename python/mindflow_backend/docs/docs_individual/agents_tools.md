@@ -19,6 +19,6 @@
 @python/agents/tools/data
 @python/agents/tools/filesystem
 @python/agents/tools/integration
-@python/agents/tools/research
+@python/agents/tools/specialist
 @python/agents/tools/system
 @python/agents/tools/web

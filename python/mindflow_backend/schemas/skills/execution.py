@@ -29,7 +29,7 @@ class ExecutionContext(BaseModel):
     constraints: Dict[str, Any] = Field(default_factory=dict, description="Execution constraints")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "execution_id": "exec_123456_001",
                 "skill_name": "CodeAnalyzer",
@@ -68,7 +68,7 @@ class ExecutionMetrics(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "start_time": "2024-01-01T10:00:00Z",
                 "end_time": "2024-01-01T10:00:05Z",
@@ -104,7 +104,7 @@ class PerformanceMetrics(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill_name": "CodeAnalyzer",
                 "total_executions": 1000,
@@ -135,7 +135,7 @@ class ExecutionResult(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "execution_id": "exec_123456_001",
                 "status": "completed",
@@ -178,7 +178,7 @@ class ExecutionRequest(BaseModel):
     async_execution: bool = Field(default=False, description="Execute asynchronously")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill_name": "CodeAnalyzer",
                 "input_data": {"code": "def example(): pass"},
@@ -199,7 +199,7 @@ class BatchExecutionRequest(BaseModel):
     max_concurrent: int = Field(default=5, description="Maximum concurrent executions")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "executions": [
                     {

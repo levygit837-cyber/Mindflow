@@ -15,13 +15,11 @@ Core Services:
 """
 
 from .service import AgentMemoryService
-from .checkpointer import LangGraphCheckpointer
-from .windows import RollingWindows
-from .facts import FactExtractor
+from .checkpointer import langgraph_checkpointer
+from .windows import RollingWindow
 
 __all__ = [
     "AgentMemoryService",
-    "LangGraphCheckpointer",
-    "RollingWindows",
-    "FactExtractor",
+    "langgraph_checkpointer",
+    "RollingWindow",
 ]

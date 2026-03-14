@@ -4,12 +4,13 @@
 ## Caminho
 @python/schemas
 
-## Arquivos Python (2)
+## Arquivos Python (3)
 
 @python/schemas/__init__.py
 @python/schemas/agent.py
+@python/schemas/storage.py
 
-## Subdiretórios (13)
+## Subdiretórios (14)
 
 @python/schemas/agents
 @python/schemas/api
@@ -23,4 +24,5 @@
 @python/schemas/orchestration
 @python/schemas/session
 @python/schemas/skills
+@python/schemas/storage_specialized
 @python/schemas/tools

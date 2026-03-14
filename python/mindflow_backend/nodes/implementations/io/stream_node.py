@@ -367,16 +367,6 @@ class BatchStreamNode(StreamNode):
         # Process remaining items
         if batch:
             yield batch
-        
-        return {
-            "result": None,  # Stream nodes typically don't return final result
-            "stream_data": None,
-            "metadata": {
-                "stream_type": "batch",
-                "batch_size": self.batch_size,
-                "items_processed": self._stream_stats["items_processed"]
-            }
-        }
 
 
 class SplitStreamNode(StreamNode):
@@ -384,9 +374,9 @@ class SplitStreamNode(StreamNode):
     
     def __init__(
         self,
-        node_id: str = "split_stream",
         split_function: Callable[[Any], List[Any]],
         output_streams: List[Callable[[Any], None]],
+        node_id: str = "split_stream",
         description: str = "Split stream processing"
     ) -> None:
         super().__init__(

@@ -29,7 +29,7 @@ class SecuritySkillConfig(SkillConfiguration):
     include_dast: bool = Field(default=False, description="Include dynamic application security testing")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "high",
@@ -53,7 +53,7 @@ class ArchitectureSkillConfig(SkillConfiguration):
     include_performance: bool = Field(default=True, description="Include performance considerations")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "medium",
@@ -80,7 +80,7 @@ class TestingSkillConfig(SkillConfiguration):
     include_security_tests: bool = Field(default=False, description="Include security tests")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "medium",
@@ -107,7 +107,7 @@ class DocumentationSkillConfig(SkillConfiguration):
     target_audience: str = Field(default="developers", description="Target audience: developers, users, business")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "low",
@@ -135,7 +135,7 @@ class SpecializedSkillDefinition(BaseModel):
     configuration: Optional[Dict[str, Any]] = Field(None, description="Default configuration")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill_type": "security",
                 "name": "Security Vulnerability Scanner",

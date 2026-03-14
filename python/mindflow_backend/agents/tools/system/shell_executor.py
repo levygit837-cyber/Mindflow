@@ -60,12 +60,13 @@ class ShellExecutorTool(AsyncToolInterface):
         """
         try:
             command = kwargs["command"]
-            timeout = kwargs.get("timeout", self.default_timeout)
-            working_dir = kwargs.get("working_dir")
-            environment = kwargs.get("environment", {})
-            capture_output = kwargs.get("capture_output", True)
-            shell = kwargs.get("shell", True)
-            check_return_code = kwargs.get("check_return_code", False)
+            timeout = kwargs.get("timeout") or self.default_timeout
+            working_dir = kwargs.get("working_dir") or None
+            # Use `or {}` instead of default= so None from Pydantic optional fields is handled
+            environment = kwargs.get("environment") or {}
+            capture_output = kwargs.get("capture_output") if kwargs.get("capture_output") is not None else True
+            shell = kwargs.get("shell") if kwargs.get("shell") is not None else True
+            check_return_code = kwargs.get("check_return_code") or False
             
             start_time = time.time()
             

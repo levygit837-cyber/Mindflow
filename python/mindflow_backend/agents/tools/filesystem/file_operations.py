@@ -61,6 +61,10 @@ class FileReadTool(AsyncToolInterface):
             encoding = kwargs.get("encoding", "utf-8")
             max_lines = kwargs.get("max_lines")
 
+            # Resolve relative paths against root_dir (agent working directory)
+            if self.root_dir and not Path(file_path).is_absolute():
+                file_path = str(Path(self.root_dir) / file_path)
+
             # Security validation
             validation_result = self._validate_path(file_path)
             if not validation_result["valid"]:
@@ -274,6 +278,10 @@ class FileWriteTool(AsyncToolInterface):
             encoding = kwargs.get("encoding", "utf-8")
             create_dirs = kwargs.get("create_dirs", True)
 
+            # Resolve relative paths against root_dir (agent working directory)
+            if self.root_dir and not Path(file_path).is_absolute():
+                file_path = str(Path(self.root_dir) / file_path)
+
             # Security validation
             validation_result = self._validate_path(file_path)
             if not validation_result["valid"]:
@@ -396,6 +404,10 @@ class DirectoryListTool(AsyncToolInterface):
             show_hidden = kwargs.get("show_hidden", False)
             recursive = kwargs.get("recursive", False)
             pattern = kwargs.get("pattern")
+
+            # Resolve relative paths against root_dir (agent working directory)
+            if self.root_dir and not Path(directory_path).is_absolute():
+                directory_path = str(Path(self.root_dir) / directory_path)
 
             # Security validation
             validation_result = self._validate_path(directory_path)

@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     """
     
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
+        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".env"),
         env_file_encoding="utf-8", 
         extra="ignore",
         case_sensitive=False,
@@ -99,6 +99,7 @@ class Settings(BaseSettings):
     vertexai_credentials_path: str | None = Field(default=None, alias="VERTEXAI_CREDENTIALS_PATH")
     google_cloud_project: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
+    kuzudb_url: str = Field(default="http://localhost:8001", alias="KUZUDB_URL")
 
     # Context Governance Configuration
     enable_input_normalization: bool = Field(default=False, alias="ENABLE_INPUT_NORMALIZATION")

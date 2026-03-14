@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.schemas.session.review import SessionReviewResult, ReviewPriority
-from mindflow_backend.storage.postgresql.models import SessionReview
+from mindflow_backend.storage import SessionReview
 
 
 class ReviewRepository:

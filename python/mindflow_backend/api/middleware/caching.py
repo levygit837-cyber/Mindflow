@@ -342,11 +342,16 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
             cached_data = await self.cache_backend.get(cache_key)
             if cached_data is None:
                 return None
-            
+
+            # Exclude content-length: JSONResponse recalculates it correctly
+            headers = {
+                k: v for k, v in cached_data["headers"].items()
+                if k.lower() not in ("content-length",)
+            }
             return JSONResponse(
                 content=cached_data["content"],
                 status_code=cached_data["status_code"],
-                headers=cached_data["headers"]
+                headers=headers,
             )
         except Exception as e:
             _logger.error(f"Cache get error: {str(e)}")
@@ -376,9 +381,13 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
     async def _cache_response(self, cache_key: str, response: Response, strategy: Dict[str, Any]) -> None:
         """Cache response."""
         try:
-            # Extract response data
-            content = response.body.decode() if hasattr(response, 'body') else "{}"
-            
+            # Extract response data - body may not be available on streaming responses
+            try:
+                body = response.body if hasattr(response, 'body') and isinstance(response.body, bytes) else b""
+                content = body.decode("utf-8") if body else "{}"
+            except Exception:
+                content = "{}"
+
             try:
                 parsed_content = json.loads(content)
             except json.JSONDecodeError:

@@ -136,7 +136,7 @@ class DatabaseHealthChecker(HealthChecker):
     async def _check_implementation(self) -> Dict[str, Any]:
         """Check database connectivity."""
         try:
-            from mindflow_backend.storage.postgresql.connection import engine
+            from mindflow_backend.storage import engine
             
             # Try to execute a simple query
             with engine.connect() as conn:

@@ -1,7 +1,7 @@
 # Lista Completa de Arquivos Python
 ========================================
 
-Total: 772 arquivos Python
+Total: 910 arquivos Python
 
 ## agents
 
@@ -10,6 +10,7 @@ Total: 772 arquivos Python
 @python/agents/_registry.py
 @python/agents/node_registry.py
 @python/agents/output_categorizer.py
+@python/agents/research.py
 @python/agents/session_review_agent.py
 @python/agents/stream_event_queue.py
 @python/agents/tools.py
@@ -143,18 +144,6 @@ Total: 772 arquivos Python
 @python/agents/prompts/specialized/security_analysis.py
 @python/agents/prompts/specialized/tasker.py
 
-## agents/research
-
-@python/agents/research/__init__.py
-@python/agents/research/action_trail.py
-@python/agents/research/enhanced_query_planner.py
-@python/agents/research/enhanced_researcher.py
-@python/agents/research/pinchtab_service.py
-@python/agents/research/pitchtab_monitor.py
-@python/agents/research/query_engine.py
-@python/agents/research/result_synthesizer.py
-@python/agents/research/source_trust_engine.py
-
 ## agents/specialists
 
 @python/agents/specialists/__init__.py
@@ -206,9 +195,91 @@ Total: 772 arquivos Python
 @python/agents/tools/integration/__init__.py
 @python/agents/tools/integration/integration_tools.py
 
-## agents/tools/research
+## agents/tools/specialist
 
-@python/agents/tools/research/__init__.py
+@python/agents/tools/specialist/__init__.py
+
+## agents/tools/specialist/analyst
+
+@python/agents/tools/specialist/analyst/__init__.py
+
+## agents/tools/specialist/analyst/code_analysis
+
+@python/agents/tools/specialist/analyst/code_analysis/__init__.py
+
+## agents/tools/specialist/coder
+
+@python/agents/tools/specialist/coder/__init__.py
+@python/agents/tools/specialist/coder/sandbox.py
+
+## agents/tools/specialist/coder/filesystem
+
+@python/agents/tools/specialist/coder/filesystem/__init__.py
+@python/agents/tools/specialist/coder/filesystem/file_operations.py
+@python/agents/tools/specialist/coder/filesystem/operations.py
+@python/agents/tools/specialist/coder/filesystem/search_tools.py
+
+## agents/tools/specialist/common
+
+@python/agents/tools/specialist/common/__init__.py
+
+## agents/tools/specialist/common/ai
+
+@python/agents/tools/specialist/common/ai/__init__.py
+@python/agents/tools/specialist/common/ai/model_tools.py
+
+## agents/tools/specialist/common/data
+
+@python/agents/tools/specialist/common/data/__init__.py
+@python/agents/tools/specialist/common/data/data_tools.py
+
+## agents/tools/specialist/common/integration
+
+@python/agents/tools/specialist/common/integration/__init__.py
+@python/agents/tools/specialist/common/integration/integration_tools.py
+
+## agents/tools/specialist/common/system
+
+@python/agents/tools/specialist/common/system/__init__.py
+@python/agents/tools/specialist/common/system/process_manager.py
+@python/agents/tools/specialist/common/system/resource_monitor.py
+@python/agents/tools/specialist/common/system/sandbox.py
+@python/agents/tools/specialist/common/system/shell_executor.py
+@python/agents/tools/specialist/common/system/system_info.py
+
+## agents/tools/specialist/common/web
+
+@python/agents/tools/specialist/common/web/__init__.py
+@python/agents/tools/specialist/common/web/api_client.py
+@python/agents/tools/specialist/common/web/browser_search.py
+@python/agents/tools/specialist/common/web/http_client.py
+@python/agents/tools/specialist/common/web/web_scraper.py
+
+## agents/tools/specialist/research
+
+@python/agents/tools/specialist/research/__init__.py
+@python/agents/tools/specialist/research/browser_search.py
+@python/agents/tools/specialist/research/search_web.py
+
+## agents/tools/specialist/research/analysis
+
+@python/agents/tools/specialist/research/analysis/__init__.py
+@python/agents/tools/specialist/research/analysis/result_synthesizer.py
+@python/agents/tools/specialist/research/analysis/source_trust_engine.py
+
+## agents/tools/specialist/research/core
+
+@python/agents/tools/specialist/research/core/__init__.py
+@python/agents/tools/specialist/research/core/enhanced_query_planner.py
+@python/agents/tools/specialist/research/core/enhanced_researcher.py
+@python/agents/tools/specialist/research/core/query_engine.py
+
+## agents/tools/specialist/research/monitoring
+
+@python/agents/tools/specialist/research/monitoring/__init__.py
+@python/agents/tools/specialist/research/monitoring/action_trail.py
+@python/agents/tools/specialist/research/monitoring/pinchtab_service.py
+@python/agents/tools/specialist/research/monitoring/pitchtab_monitor.py
 
 ## agents/tools/system
 
@@ -259,9 +330,13 @@ Total: 772 arquivos Python
 ## api/schemas
 
 @python/api/schemas/__init__.py
+@python/api/schemas/chain_requests.py
+@python/api/schemas/chain_responses.py
 @python/api/schemas/common.py
 @python/api/schemas/requests.py
 @python/api/schemas/responses.py
+@python/api/schemas/task_requests.py
+@python/api/schemas/task_responses.py
 
 ## api/services
 
@@ -275,6 +350,7 @@ Total: 772 arquivos Python
 
 @python/api/v1/__init__.py
 @python/api/v1/agent.py
+@python/api/v1/chains.py
 @python/api/v1/chat.py
 @python/api/v1/config.py
 @python/api/v1/health.py
@@ -285,11 +361,13 @@ Total: 772 arquivos Python
 @python/api/v1/performance.py
 @python/api/v1/providers.py
 @python/api/v1/resilience.py
+@python/api/v1/tasks.py
 
 ## chains
 
 @python/chains/__init__.py
 @python/chains/catalog.py
+@python/chains/factory.py
 
 ## chains/base
 
@@ -313,8 +391,10 @@ Total: 772 arquivos Python
 ## chains/templates
 
 @python/chains/templates/__init__.py
+@python/chains/templates/analysis_chain.py
 @python/chains/templates/coding_chain.py
 @python/chains/templates/coding_task_chain.py
+@python/chains/templates/conditional_workflow_chain.py
 @python/chains/templates/research_chain.py
 
 ## config
@@ -358,6 +438,7 @@ Total: 772 arquivos Python
 
 @python/exceptions/__init__.py
 @python/exceptions/agents.py
+@python/exceptions/migration_status.py
 
 ## exceptions/agents
 
@@ -376,9 +457,17 @@ Total: 772 arquivos Python
 
 @python/exceptions/base/__init__.py
 @python/exceptions/base/business.py
+@python/exceptions/base/business_new.py
 @python/exceptions/base/core.py
+@python/exceptions/base/core_new.py
 @python/exceptions/base/core_simple.py
 @python/exceptions/base/patterns.py
+@python/exceptions/base/patterns_new.py
+
+## exceptions/examples
+
+@python/exceptions/examples/schema_integration_demo.py
+@python/exceptions/examples/simplified_exceptions_demo.py
 
 ## exceptions/external
 
@@ -444,6 +533,8 @@ Total: 772 arquivos Python
 ## graphs/implementations/orchestrator
 
 @python/graphs/implementations/orchestrator/__init__.py
+@python/graphs/implementations/orchestrator/decomposition.py
+@python/graphs/implementations/orchestrator/multi_agent.py
 @python/graphs/implementations/orchestrator/simple_flow.py
 
 ## graphs/implementations/specialized
@@ -652,6 +743,7 @@ Total: 772 arquivos Python
 ## interfaces
 
 @python/interfaces/__init__.py
+@python/interfaces/storage.py
 
 ## interfaces/agents
 
@@ -753,6 +845,14 @@ Total: 772 arquivos Python
 @python/interfaces/skills/registry.py
 @python/interfaces/skills/specialized.py
 
+## interfaces/storage_specialized
+
+@python/interfaces/storage_specialized/__init__.py
+@python/interfaces/storage_specialized/cache.py
+@python/interfaces/storage_specialized/database.py
+@python/interfaces/storage_specialized/memory.py
+@python/interfaces/storage_specialized/vector.py
+
 ## interfaces/tools
 
 @python/interfaces/tools/__init__.py
@@ -764,9 +864,25 @@ Total: 772 arquivos Python
 @python/interfaces/tools/system.py
 @python/interfaces/tools/web.py
 
+## interfaces/tools/core
+
+@python/interfaces/tools/core/__init__.py
+
+## interfaces/tools/specialist
+
+@python/interfaces/tools/specialist/__init__.py
+
 ## memory
 
 @python/memory/__init__.py
+
+## memory/agent_memory
+
+@python/memory/agent_memory/__init__.py
+@python/memory/agent_memory/checkpointer.py
+@python/memory/agent_memory/service.py
+@python/memory/agent_memory/store.py
+@python/memory/agent_memory/windows.py
 
 ## memory/api
 
@@ -786,9 +902,6 @@ Total: 772 arquivos Python
 ## memory/embeddings
 
 @python/memory/embeddings/__init__.py
-@python/memory/embeddings/providers.py
-@python/memory/embeddings/similarity.py
-@python/memory/embeddings/vector_store.py
 
 ## memory/retrieval
 
@@ -797,6 +910,44 @@ Total: 772 arquivos Python
 @python/memory/retrieval/ranking.py
 @python/memory/retrieval/semantic.py
 
+## memory/session_memory
+
+@python/memory/session_memory/__init__.py
+@python/memory/session_memory/models.py
+@python/memory/session_memory/service.py
+@python/memory/session_memory/storage.py
+
+## memory/shared
+
+@python/memory/shared/__init__.py
+
+## memory/shared/core
+
+@python/memory/shared/core/__init__.py
+@python/memory/shared/core/exceptions.py
+@python/memory/shared/core/interfaces.py
+@python/memory/shared/core/types.py
+
+## memory/shared/embeddings
+
+@python/memory/shared/embeddings/__init__.py
+@python/memory/shared/embeddings/factory.py
+@python/memory/shared/embeddings/similarity.py
+@python/memory/shared/embeddings/vector_store.py
+
+## memory/shared/retrieval
+
+@python/memory/shared/retrieval/__init__.py
+@python/memory/shared/retrieval/context.py
+@python/memory/shared/retrieval/ranking.py
+@python/memory/shared/retrieval/semantic.py
+
+## memory/shared/storage
+
+@python/memory/shared/storage/__init__.py
+@python/memory/shared/storage/database.py
+@python/memory/shared/storage/vector_db.py
+
 ## memory/storage
 
 @python/memory/storage/__init__.py
@@ -804,10 +955,19 @@ Total: 772 arquivos Python
 @python/memory/storage/models.py
 @python/memory/storage/vector_db.py
 
+## memory/task_memory
+
+@python/memory/task_memory/__init__.py
+@python/memory/task_memory/api.py
+@python/memory/task_memory/decomposer.py
+@python/memory/task_memory/integration.py
+@python/memory/task_memory/models.py
+@python/memory/task_memory/retriever.py
+@python/memory/task_memory/service.py
+
 ## memory/windows
 
 @python/memory/windows/__init__.py
-@python/memory/windows/chunks.py
 @python/memory/windows/rolling.py
 @python/memory/windows/summary.py
 
@@ -858,6 +1018,7 @@ Total: 772 arquivos Python
 ## nodes/implementations/orchestrator
 
 @python/nodes/implementations/orchestrator/__init__.py
+@python/nodes/implementations/orchestrator/decomposition_nodes.py
 @python/nodes/implementations/orchestrator/execute_node.py
 @python/nodes/implementations/orchestrator/respond_node.py
 @python/nodes/implementations/orchestrator/route_node.py
@@ -879,12 +1040,17 @@ Total: 772 arquivos Python
 ## orchestrator
 
 @python/orchestrator/__init__.py
+@python/orchestrator/chain_integration.py
+@python/orchestrator/complexity.py
+@python/orchestrator/context_control_arch.py
 @python/orchestrator/delegation_engine.py
 @python/orchestrator/graph.py
 @python/orchestrator/intelligent_router.py
 @python/orchestrator/memory_integration.py
+@python/orchestrator/orchestrator_chain_control_demo.py
 @python/orchestrator/response_node.py
 @python/orchestrator/router.py
+@python/orchestrator/semantic_context_manager.py
 
 ## orchestrator/context
 
@@ -960,6 +1126,7 @@ Total: 772 arquivos Python
 
 @python/schemas/__init__.py
 @python/schemas/agent.py
+@python/schemas/storage.py
 
 ## schemas/agents
 
@@ -1071,6 +1238,14 @@ Total: 772 arquivos Python
 @python/schemas/skills/registry.py
 @python/schemas/skills/specialized.py
 
+## schemas/storage_specialized
+
+@python/schemas/storage_specialized/__init__.py
+@python/schemas/storage_specialized/cache.py
+@python/schemas/storage_specialized/database.py
+@python/schemas/storage_specialized/memory.py
+@python/schemas/storage_specialized/vector.py
+
 ## schemas/tools
 
 @python/schemas/tools/__init__.py
@@ -1085,6 +1260,14 @@ Total: 772 arquivos Python
 @python/schemas/tools/tool_execution.py
 @python/schemas/tools/tool_permissions.py
 @python/schemas/tools/web_schemas.py
+
+## schemas/tools/core
+
+@python/schemas/tools/core/__init__.py
+
+## schemas/tools/specialist
+
+@python/schemas/tools/specialist/__init__.py
 
 ## services
 
@@ -1186,6 +1369,19 @@ Total: 772 arquivos Python
 ## storage
 
 @python/storage/__init__.py
+@python/storage/interfaces.py
+@python/storage/schemas.py
+
+## storage/core
+
+@python/storage/core/__init__.py
+@python/storage/core/exceptions.py
+@python/storage/core/interfaces.py
+
+## storage/database
+
+@python/storage/database/__init__.py
+@python/storage/database/connection.py
 
 ## storage/kuzudb
 
@@ -1220,6 +1416,7 @@ Total: 772 arquivos Python
 @python/storage/postgresql/migrations/versions/20260304_0006_research_tables.py
 @python/storage/postgresql/migrations/versions/20260304_0007_session_chunks.py
 @python/storage/postgresql/migrations/versions/20260308_0008_session_reviews.py
+@python/storage/postgresql/migrations/versions/20260309_0009_pgvector_embeddings.py
 @python/storage/postgresql/migrations/versions/__init__.py
 
 ## storage/utils
@@ -1276,6 +1473,67 @@ Total: 772 arquivos Python
 
 @python/tools_backup/web/__init__.py
 @python/tools_backup/web/web_tools.py
+
+## tools_migration_backup_20260313_175943
+
+@python/tools_migration_backup_20260313_175943/__init__.py
+@python/tools_migration_backup_20260313_175943/browser_search.py
+@python/tools_migration_backup_20260313_175943/sandbox.py
+@python/tools_migration_backup_20260313_175943/search_web.py
+
+## tools_migration_backup_20260313_175943/ai
+
+@python/tools_migration_backup_20260313_175943/ai/__init__.py
+@python/tools_migration_backup_20260313_175943/ai/model_tools.py
+
+## tools_migration_backup_20260313_175943/base
+
+@python/tools_migration_backup_20260313_175943/base/__init__.py
+@python/tools_migration_backup_20260313_175943/base/tool_interface.py
+@python/tools_migration_backup_20260313_175943/base/tool_registry.py
+@python/tools_migration_backup_20260313_175943/base/tool_schemas.py
+
+## tools_migration_backup_20260313_175943/code
+
+@python/tools_migration_backup_20260313_175943/code/__init__.py
+
+## tools_migration_backup_20260313_175943/data
+
+@python/tools_migration_backup_20260313_175943/data/__init__.py
+@python/tools_migration_backup_20260313_175943/data/data_tools.py
+
+## tools_migration_backup_20260313_175943/filesystem
+
+@python/tools_migration_backup_20260313_175943/filesystem/__init__.py
+@python/tools_migration_backup_20260313_175943/filesystem/file_operations.py
+@python/tools_migration_backup_20260313_175943/filesystem/operations.py
+@python/tools_migration_backup_20260313_175943/filesystem/search_tools.py
+
+## tools_migration_backup_20260313_175943/integration
+
+@python/tools_migration_backup_20260313_175943/integration/__init__.py
+@python/tools_migration_backup_20260313_175943/integration/integration_tools.py
+
+## tools_migration_backup_20260313_175943/research
+
+@python/tools_migration_backup_20260313_175943/research/__init__.py
+
+## tools_migration_backup_20260313_175943/system
+
+@python/tools_migration_backup_20260313_175943/system/__init__.py
+@python/tools_migration_backup_20260313_175943/system/process_manager.py
+@python/tools_migration_backup_20260313_175943/system/resource_monitor.py
+@python/tools_migration_backup_20260313_175943/system/sandbox.py
+@python/tools_migration_backup_20260313_175943/system/shell_executor.py
+@python/tools_migration_backup_20260313_175943/system/system_info.py
+
+## tools_migration_backup_20260313_175943/web
+
+@python/tools_migration_backup_20260313_175943/web/__init__.py
+@python/tools_migration_backup_20260313_175943/web/api_client.py
+@python/tools_migration_backup_20260313_175943/web/browser_search.py
+@python/tools_migration_backup_20260313_175943/web/http_client.py
+@python/tools_migration_backup_20260313_175943/web/web_scraper.py
 
 ## utils
 

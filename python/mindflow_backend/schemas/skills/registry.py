@@ -17,7 +17,7 @@ class SkillRegistration(BaseModel):
     dependencies: List[str] = Field(default_factory=list, description="Skill dependencies")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill_name": "CodeAnalyzer",
                 "skill_type": "analysis",
@@ -53,7 +53,7 @@ class SkillDiscovery(BaseModel):
     offset: Optional[int] = Field(default=0, description="Results offset for pagination")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "query": "code analysis",
                 "skill_types": ["analysis"],
@@ -80,7 +80,7 @@ class SkillRegistryEntry(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": "skill_code_analyzer_001",
                 "registration": {
@@ -105,7 +105,7 @@ class SkillQuery(BaseModel):
     constraints: Optional[Dict[str, Any]] = Field(None, description="Execution constraints")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "requirements": {
                     "skill_type": "analysis",
@@ -142,7 +142,7 @@ class SkillFilter(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill_types": ["analysis", "coding"],
                 "categories": ["core"],
@@ -161,7 +161,7 @@ class SkillRecommendation(BaseModel):
     alternatives: List[SkillRegistryEntry] = Field(default_factory=list, description="Alternative skills")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill": {
                     "id": "skill_code_analyzer_001",

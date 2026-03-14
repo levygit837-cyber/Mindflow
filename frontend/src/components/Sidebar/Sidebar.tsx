@@ -1,125 +1,315 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Plus, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { 
-  Brain, 
-  MessageSquare, 
-  Settings, 
-  X,
-  Home
-} from 'lucide-react';
-import { useUIState, useSettings, useAppStore } from '../../stores/appStore';
-import { Button } from '../common';
+
+interface Session {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const BASE_URL = '/v1';
+
+function timeAgo(dateStr: string): string {
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(ms / 86400000);
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return 'há muito tempo';
+}
 
 export const Sidebar: React.FC = () => {
-  const location = useLocation();
-  const { sidebarOpen } = useUIState();
-  const { language } = useSettings();
-  const { setSidebarOpen } = useAppStore();
+  const navigate = useNavigate();
+  const { sessionId: activeSessionId } = useParams();
+  const [sessions, setSessions] = useState<Session[]>([]);
 
-  const menuItems = [
-    {
-      path: '/',
-      icon: Home,
-      label: language === 'pt' ? 'Início' : 'Dashboard',
-      description: language === 'pt' ? 'Visão geral' : 'Overview',
-    },
-    {
-      path: '/chat',
-      icon: MessageSquare,
-      label: language === 'pt' ? 'Chat' : 'Chat',
-      description: language === 'pt' ? 'Conversar com agentes' : 'Chat with agents',
-    },
-    {
-      path: '/settings',
-      icon: Settings,
-      label: language === 'pt' ? 'Configurações' : 'Settings',
-      description: language === 'pt' ? 'Preferências do sistema' : 'System preferences',
-    },
-  ];
-
-  const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
+  const fetchSessions = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/chat/sessions`);
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // Backend offline — sidebar shows empty
     }
-    return location.pathname.startsWith(path);
+  }, []);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions, activeSessionId]);
+
+  const handleNewChat = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/chat/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New Chat' }),
+      });
+      if (res.ok) {
+        const session: Session = await res.json();
+        await fetchSessions();
+        navigate(`/chat/${session.id}`);
+      } else {
+        navigate('/chat');
+      }
+    } catch {
+      navigate('/chat');
+    }
   };
 
   return (
-    <>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <motion.div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div
+      className="flex flex-col flex-shrink-0 h-full"
+      style={{
+        width: 280,
+        backgroundColor: '#0C0820',
+        borderRight: '1px solid #1A1545',
+      }}
+    >
+      {/* ── Top: Logo + New Chat ──────────────────────── */}
+      <div style={{ padding: '24px 20px 16px' }}>
+        {/* Logo row */}
+        <div className="flex items-center" style={{ gap: 10, marginBottom: 20 }}>
+          {/* M icon */}
+          <div
+            className="flex items-center justify-center flex-shrink-0"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              background: 'linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%)',
+            }}
+          >
+            <span
+              style={{
+                color: '#fff',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: 17,
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+            >
+              M
+            </span>
+          </div>
 
-      {/* Sidebar */}
-      <motion.div
-        className={`fixed top-0 left-0 h-full w-64 bg-surface border-r border-border z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        initial={false}
+          <span
+            style={{
+              color: '#EDE9FF',
+              fontFamily: 'Space Grotesk, sans-serif',
+              fontSize: 17,
+              fontWeight: 700,
+            }}
+          >
+            MindFlow
+          </span>
+
+          <div
+            style={{
+              backgroundColor: '#2D1F6E',
+              borderRadius: 4,
+              padding: '3px 7px',
+            }}
+          >
+            <span
+              style={{
+                color: '#A78BFA',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+              }}
+            >
+              BETA
+            </span>
+          </div>
+        </div>
+
+        {/* New Chat button */}
+        <motion.button
+          onClick={handleNewChat}
+          className="w-full flex items-center"
+          style={{
+            backgroundColor: '#160D36',
+            borderRadius: 8,
+            padding: '10px 14px',
+            gap: 8,
+            border: 'none',
+            cursor: 'pointer',
+          }}
+          whileHover={{ backgroundColor: '#1D1260' }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.15 }}
+        >
+          <Plus size={15} color="#7C3AFF" strokeWidth={2.5} />
+          <span
+            style={{
+              color: '#A78BFA',
+              fontFamily: 'Space Grotesk, sans-serif',
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            New Chat
+          </span>
+        </motion.button>
+      </div>
+
+      {/* ── RECENT divider ────────────────────────────── */}
+      <div
+        className="flex items-center"
+        style={{ gap: 10, padding: '0 20px 8px' }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center space-x-2">
-            <Brain className="h-8 w-8 text-brand-primary" />
-            <span className="text-lg font-bold text-text-primary">MindFlow</span>
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<X className="h-4 w-4" />}
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden"
-          />
-        </div>
+        <span
+          style={{
+            color: '#4D4575',
+            fontFamily: 'Space Grotesk, sans-serif',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            flexShrink: 0,
+          }}
+        >
+          RECENT
+        </span>
+        <div style={{ flex: 1, height: 1, backgroundColor: '#1A1545' }} />
+      </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            
+      {/* ── Session List ──────────────────────────────── */}
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{ padding: '0 8px' }}
+      >
+        {sessions.length === 0 ? (
+          <div
+            style={{
+              padding: '12px 12px',
+              color: '#4D4575',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 12,
+            }}
+          >
+            No sessions yet
+          </div>
+        ) : (
+          sessions.map((session) => {
+            const isActive = session.id === activeSessionId;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
+              <motion.button
+                key={session.id}
+                onClick={() => navigate(`/chat/${session.id}`)}
+                className="w-full text-left"
+                style={{
+                  backgroundColor: isActive ? '#1D1840' : 'transparent',
+                  borderRadius: 8,
+                  borderLeft: isActive ? '2px solid #7C3AFF' : '2px solid transparent',
+                  padding: '10px 12px',
+                  marginBottom: 1,
+                  cursor: 'pointer',
+                  border: 'none',
+                  display: 'block',
+                }}
+                whileHover={{ backgroundColor: isActive ? '#1D1840' : '#130F28' }}
+                transition={{ duration: 0.15 }}
               >
-                <motion.div
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    active
-                      ? 'bg-brand-primary text-white'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <div
+                  style={{
+                    color: isActive ? '#EDE9FF' : '#8B81C0',
+                    fontFamily: 'Space Grotesk, sans-serif',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    marginBottom: 3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
                 >
-                  <Icon className="h-5 w-5" />
-                  <div>
-                    <div className="font-medium">{item.label}</div>
-                    <div className="text-xs opacity-75">{item.description}</div>
-                  </div>
-                </motion.div>
-              </Link>
+                  {session.title || 'Untitled Chat'}
+                </div>
+                <div
+                  style={{
+                    color: '#4D4575',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 11,
+                    fontWeight: 400,
+                  }}
+                >
+                  {timeAgo(session.updated_at || session.created_at)}
+                </div>
+              </motion.button>
             );
-          })}
-        </nav>
+          })
+        )}
+      </div>
 
-        {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
-          <div className="text-xs text-text-disabled">
-            {language === 'pt' ? 'Sistema Multi-Agentes IA' : 'Multi-Agent AI System'}
+      {/* ── Bottom: User Info ─────────────────────────── */}
+      <div
+        className="flex items-center"
+        style={{
+          padding: '14px 16px',
+          borderTop: '1px solid #1A1545',
+          gap: 10,
+        }}
+      >
+        {/* Avatar */}
+        <div
+          className="flex items-center justify-center flex-shrink-0"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, #4C1D95 0%, #1E40AF 100%)',
+          }}
+        >
+          <span
+            style={{
+              color: '#fff',
+              fontFamily: 'Space Grotesk, sans-serif',
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            L
+          </span>
+        </div>
+
+        {/* User info */}
+        <div className="flex-1 min-w-0">
+          <div
+            style={{
+              color: '#EDE9FF',
+              fontFamily: 'Space Grotesk, sans-serif',
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            Levy Bonito
+          </div>
+          <div
+            style={{
+              color: '#4D4575',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 11,
+            }}
+          >
+            Admin · Pro
           </div>
         </div>
-      </motion.div>
-    </>
+
+        {/* Settings */}
+        <button
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          onClick={() => navigate('/settings')}
+        >
+          <Settings size={16} color="#4D4575" />
+        </button>
+      </div>
+    </div>
   );
 };

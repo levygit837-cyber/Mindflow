@@ -173,7 +173,7 @@ class ExecuteNode(StreamableNode, BaseNode):
             return ""
         
         try:
-            from mindflow_backend.storage.postgresql.connection import db_session
+            from mindflow_backend.storage import db_session
             with db_session() as db:
                 result = get_memory_service().retrieve_context_for_query(
                     db=db,
@@ -238,7 +238,7 @@ class ExecuteNode(StreamableNode, BaseNode):
                 if prior_results:
                     try:
                         from mindflow_backend.memory.task_memory.api import get_cross_task_api
-                        from mindflow_backend.storage.postgresql.connection import db_session
+                        from mindflow_backend.storage import db_session
                         cross_task_api = get_cross_task_api()
                         with db_session() as db:
                             ctx = await cross_task_api.get_context_for_subtask(
@@ -277,7 +277,7 @@ class ExecuteNode(StreamableNode, BaseNode):
                     # Store result in task memory for future sibling retrieval (best-effort)
                     try:
                         from mindflow_backend.memory.task_memory.api import get_cross_task_api
-                        from mindflow_backend.storage.postgresql.connection import db_session
+                        from mindflow_backend.storage import db_session
                         with db_session() as db:
                             await get_cross_task_api().store_subtask_result(
                                 db=db,

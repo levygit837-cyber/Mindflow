@@ -33,7 +33,7 @@ class TaskMemory(Base):
     status: Mapped[str] = mapped_column(String(32), default="active")
     priority: Mapped[float] = mapped_column(Float, default=1.0)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
-    metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    task_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

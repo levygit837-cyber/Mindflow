@@ -14,3 +14,8 @@
 @python/interfaces/tools/integration.py
 @python/interfaces/tools/system.py
 @python/interfaces/tools/web.py
+
+## Subdiretórios (2)
+
+@python/interfaces/tools/core
+@python/interfaces/tools/specialist

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { devtools, persist } from 'zustand/middleware';
 import type { 
   AppState, 
@@ -265,14 +266,14 @@ export const useAgentStatus = () => useAppStore((state) => state.agentStatus);
 export const useSessions = () => useAppStore((state) => state.sessions);
 export const useCurrentSession = () => useAppStore((state) => state.currentSession);
 export const useMessages = () => useAppStore((state) => state.messages);
-export const useStreamingState = () => useAppStore((state) => ({
+export const useStreamingState = () => useAppStore(useShallow((state) => ({
   isStreaming: state.isStreaming,
   streamingEvents: state.streamingEvents,
-}));
-export const useUIState = () => useAppStore((state) => ({
+})));
+export const useUIState = () => useAppStore(useShallow((state) => ({
   sidebarOpen: state.sidebarOpen,
   reasoningPanelOpen: state.reasoningPanelOpen,
   settingsPanelOpen: state.settingsPanelOpen,
   theme: state.theme,
-}));
+})));
 export const useSettings = () => useAppStore((state) => state.settings);

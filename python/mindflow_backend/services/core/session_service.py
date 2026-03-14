@@ -11,9 +11,7 @@ from datetime import datetime, UTC
 import uuid
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.storage.postgresql.repositories import ChatRepository
-from mindflow_backend.storage.postgresql.connection import async_db_session
-from mindflow_backend.storage.postgresql.models import ChatSession, ChatMessage
+from mindflow_backend.storage import ChatRepository, async_db_session, ChatSession, ChatMessage
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.core_interfaces import SessionServiceInterface
 

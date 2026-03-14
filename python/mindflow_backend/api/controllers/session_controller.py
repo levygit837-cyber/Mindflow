@@ -11,7 +11,7 @@ from mindflow_backend.api.schemas.requests import SessionCreateRequest, SessionU
 from mindflow_backend.api.schemas.responses import SessionResponse, SessionListResponse
 from mindflow_backend.api.schemas.common import PaginationParams
 from mindflow_backend.services import get_session_service
-from mindflow_backend.storage.postgresql.connection import db_session
+from mindflow_backend.storage import db_session
 
 
 class SessionController(BaseController):

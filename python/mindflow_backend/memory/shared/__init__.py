@@ -13,16 +13,15 @@ Submodules:
 - core: Interfaces base, tipos e exceções compartilhadas
 """
 
-from .embeddings import EmbeddingProvider, VectorStore, cosine_similarity
-from .storage import MemoryDatabase, MemoryVectorDB
+from .embeddings import IEmbeddingProvider
+from .storage import MemoryDatabase, MemoryVectorDB, VectorStore
 from .retrieval import SemanticRetriever, ContextRetriever, ResultRanker
 from .core import MemoryServiceInterface, MemoryRetrievalResult
 
 __all__ = [
     # Embeddings
-    "EmbeddingProvider",
-    "VectorStore", 
-    "cosine_similarity",
+    "IEmbeddingProvider",
+    "VectorStore",
     
     # Storage
     "MemoryDatabase",

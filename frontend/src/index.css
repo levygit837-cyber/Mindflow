@@ -1,4 +1,56 @@
+@import "tailwindcss";
 @import './styles/tokens.css';
+
+@theme inline {
+  /* Brand colors */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-light: #3b82f6;
+  --color-brand-primary-dark: #1e40af;
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+
+  /* Surface colors */
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-glass: var(--surface-glass);
+  --color-background: var(--background);
+
+  /* MindFlow bg colors */
+  --color-mindflow-bg-primary: var(--mindflow-bg-primary);
+  --color-mindflow-bg-sidebar: var(--mindflow-bg-sidebar);
+  --color-mindflow-bg-card: var(--mindflow-bg-card);
+  --color-mindflow-bg-new-chat: var(--mindflow-bg-new-chat);
+  --color-mindflow-bg-active-session: var(--mindflow-bg-active-session);
+  --color-mindflow-bg-workflow: var(--mindflow-bg-workflow);
+  --color-mindflow-bg-model: var(--mindflow-bg-model);
+
+  /* Border colors */
+  --color-border: var(--mindflow-border);
+  --color-border-workflow: var(--mindflow-border-workflow);
+  --color-border-model: var(--mindflow-border-model);
+
+  /* Text colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-meta: var(--text-meta);
+  --color-text-accent: var(--text-accent);
+  --color-text-inverse: var(--text-inverse);
+  --color-text-disabled: var(--text-disabled);
+
+  /* State colors */
+  --color-state-error: var(--state-error);
+  --color-state-success: var(--state-success);
+  --color-state-warning: var(--state-warning);
+  --color-state-info: var(--state-info);
+  --color-state-thinking: var(--state-thinking);
+  --color-state-action: var(--state-action);
+
+  /* Agent colors */
+  --color-agent-orchestrator: var(--agent-orchestrator);
+  --color-agent-coder: var(--agent-coder);
+  --color-agent-analyst: var(--agent-analyst);
+  --color-agent-researcher: var(--agent-researcher);
+}
 
 * {
   box-sizing: border-box;

@@ -73,8 +73,8 @@ class ParallelWorkflowGraph(BaseGraph):
     def add_synchronization_point(
         self,
         point_id: str,
-        sync_type: str = "barrier",  # barrier, semaphore, mutex
         participants: List[str],  # Branch IDs that must sync
+        sync_type: str = "barrier",  # barrier, semaphore, mutex
         description: str = ""
     ) -> None:
         """Add a synchronization point to the workflow."""
@@ -306,10 +306,10 @@ class ParallelWorkflowGraph(BaseGraph):
     def _apply_first_join(self, branch_results: Dict[str, Any], workflow_state: Dict[str, Any]) -> Any:
         """Apply first-to-complete join logic."""
         # Sort by weight if available, then by order
+        branch_list = list(self.branches)
         sorted_branches = sorted(
             branch_results.items(),
-            key=lambda x: x[1].get("weight", 1.0),
-            key=lambda x: list(self.branches).index(x[0])  # Preserve original order for equal weights
+            key=lambda x: (-(x[1].get("weight", 1.0)), branch_list.index(x[0]) if x[0] in branch_list else 0)
         )
         
         # Return first successful result

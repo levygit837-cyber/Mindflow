@@ -19,6 +19,9 @@ class ToolInterface(ABC):
         self.description = ""
         self.version = "1.0.0"
         self.backend = None
+        # Optional working directory propagated from the agent sandbox (root_dir feature).
+        # Filesystem tools use this as base path when a relative path is supplied.
+        self.root_dir: str | None = None
 
     @abstractmethod
     def execute(self, **kwargs) -> Dict[str, Any]:

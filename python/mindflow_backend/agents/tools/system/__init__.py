@@ -14,18 +14,18 @@ from .resource_monitor import (
     ResourceMonitorTool,
 )
 from .system_info import (
-    SystemInfoCollector,
+    SystemInfoTool,
 )
 
 # Original system tools
-from .sandbox import MindFlowSandbox
+from ..sandbox import MindFlowSandbox  # Import from parent directory
 from .process_manager import ProcessManagerTool
 
 __all__ = [
     # System tools (unified)
     "ShellExecutorTool",
     "ResourceMonitorTool",
-    "SystemInfoCollector",
+    "SystemInfoTool",
     
     # Original system tools
     "MindFlowSandbox",

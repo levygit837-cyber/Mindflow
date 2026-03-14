@@ -156,7 +156,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         
         try:
             # Test database connection
-            from mindflow_backend.storage.postgresql.connection import db_session
+            from mindflow_backend.storage import db_session
             
             connection_test = {
                 "connection_time_ms": 0,

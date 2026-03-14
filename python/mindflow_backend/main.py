@@ -28,8 +28,7 @@ from mindflow_backend.infra.middleware.security_headers import SecurityHeadersMi
 from mindflow_backend.api.middleware.validation import ValidationMiddleware
 from mindflow_backend.api.middleware.performance import PerformanceMiddleware
 from mindflow_backend.api.middleware.caching import AdvancedCacheMiddleware, MemoryCacheBackend
-from mindflow_backend.storage.postgresql.connection import engine
-from mindflow_backend.storage.postgresql.models import Base
+from mindflow_backend.storage import Base
 
 settings = get_settings()
 configure_logging(logging.DEBUG if settings.app_env == "development" else logging.INFO)
@@ -43,26 +42,33 @@ async def lifespan(app: FastAPI):
     # Base.metadata.create_all(bind=engine)
     # Phase 2: Boot agent registry.
     register_all_specialists()
-    
+
+    # Initialize database
+    from mindflow_backend.infra.database.connection import initialize_database
+    try:
+        await initialize_database()
+        _logger.info("database_initialized")
+    except Exception as exc:
+        _logger.error("database_initialization_failed", error=str(exc))
+
     # Initialize dynamic configuration system
-    config_manager = get_config_manager()
+    config_manager = await get_config_manager()
     await config_manager.initialize()
-    
-    # Load dynamic gRPC configuration
-    from mindflow_backend.grpc.config import GrpcConfig
-    grpc_config = await GrpcConfig.load_dynamic()
-    app.state.grpc_config = grpc_config
     app.state.config_manager = config_manager
-    
-    # Start gRPC server if enabled
-    if grpc_config.enabled and grpc_config.auto_start:
+
+    # Start gRPC server only if explicitly enabled in settings
+    if settings.grpc_enabled and settings.grpc_auto_start:
         try:
+            from mindflow_backend.grpc.config import GrpcConfig
+            grpc_config = await GrpcConfig.load_dynamic()
+            app.state.grpc_config = grpc_config
             grpc_server = await start_grpc_server(grpc_config)
             app.state.grpc_server = grpc_server
             _logger.info("grpc_server_started_in_lifespan", port=grpc_server.get_port())
         except Exception as exc:
             _logger.error("grpc_server_startup_failed", error=str(exc))
-            # Continue without gRPC if it fails to start
+    else:
+        _logger.info("grpc_server_disabled")
     
     yield
     
@@ -79,6 +85,7 @@ app = FastAPI(
     title="MindFlow API",
     description="Advanced AI agent orchestration and management platform",
     version="2.0.0",
+    lifespan=lifespan,
     docs_url=None,  # We'll set up custom docs
     redoc_url=None,  # We'll set up custom docs
     openapi_url="/openapi.json"
@@ -132,9 +139,7 @@ app.include_router(router)
 # Add SlowAPI middleware for rate limiting (add first)
 app.add_middleware(SlowAPIMiddleware)
 
-# Performance and caching middleware (add first for maximum effect)
-cache_backend = MemoryCacheBackend(max_size=1000)
-app.add_middleware(AdvancedCacheMiddleware, cache_backend=cache_backend, default_ttl=300)
+# Performance middleware (AdvancedCacheMiddleware disabled: body unreadable in BaseHTTPMiddleware)
 app.add_middleware(PerformanceMiddleware, cache_ttl=300, max_cache_size=1000)
 
 # Security and validation middleware

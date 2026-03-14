@@ -6,8 +6,8 @@ from typing import Dict, List, Optional, Any
 from mindflow_backend.chains.factory import get_chain_factory, ChainRequest
 from mindflow_backend.chains.catalog import list_available_chains, get_chain_info, find_chains_for_task
 from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, audit_log
-from mindflow_backend.api.schemas.requests import ChainExecuteRequest, ChainCreateRequest
-from mindflow_backend.api.schemas.responses import (
+from mindflow_backend.api.schemas.chain_requests import ChainExecuteRequest, ChainCreateRequest
+from mindflow_backend.api.schemas.chain_responses import (
     ChainListResponse,
     ChainInfoResponse,
     ChainExecuteResponse,

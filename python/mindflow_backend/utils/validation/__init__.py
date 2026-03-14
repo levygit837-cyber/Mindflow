@@ -15,6 +15,34 @@ from .validators import (
     validate_date_string,
 )
 
+
+def validate_task_dependencies(components: list) -> list[str]:
+    """Check for cyclic dependencies in task components. Returns list of error messages."""
+    errors: list[str] = []
+    id_map = {c.task_id: c for c in components}
+    visited: set = set()
+
+    def has_cycle(task_id, path: set) -> bool:
+        if task_id in path:
+            return True
+        if task_id in visited:
+            return False
+        path.add(task_id)
+        component = id_map.get(task_id)
+        if component:
+            for dep_id in component.dependencies:
+                if has_cycle(dep_id, path):
+                    return True
+        path.discard(task_id)
+        visited.add(task_id)
+        return False
+
+    for component in components:
+        if has_cycle(component.task_id, set()):
+            errors.append(f"Cyclic dependency detected involving task: {component.title}")
+
+    return errors
+
 from .sanitizers import (
     sanitize_input,
     sanitize_html,
@@ -29,6 +57,8 @@ from .sanitizers import (
 )
 
 __all__ = [
+    # Task validation
+    "validate_task_dependencies",
     # Validators
     "validate_memory_data",
     "validate_search_query",

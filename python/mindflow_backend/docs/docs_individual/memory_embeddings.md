@@ -4,9 +4,6 @@
 ## Caminho
 @python/memory/embeddings
 
-## Arquivos Python (4)
+## Arquivos Python (1)
 
 @python/memory/embeddings/__init__.py
-@python/memory/embeddings/providers.py
-@python/memory/embeddings/similarity.py
-@python/memory/embeddings/vector_store.py

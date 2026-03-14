@@ -3,9 +3,9 @@
 
 ## Resumo
 
-- **Total de Diretórios**: 215
-- **Total de Arquivos Python**: 772
-- **Total de Arquivos**: 1197
+- **Total de Diretórios**: 263
+- **Total de Arquivos Python**: 910
+- **Total de Arquivos**: 1194
 
 ## Diretórios Documentados
 
@@ -24,7 +24,6 @@
     - [agents/prompts/composite](agents_prompts_composite.md)
     - [agents/prompts/core](agents_prompts_core.md)
     - [agents/prompts/specialized](agents_prompts_specialized.md)
-  - [agents/research](agents_research.md)
   - [agents/specialists](agents_specialists.md)
   - [agents/tools](agents_tools.md)
     - [agents/tools/ai](agents_tools_ai.md)
@@ -33,7 +32,7 @@
     - [agents/tools/data](agents_tools_data.md)
     - [agents/tools/filesystem](agents_tools_filesystem.md)
     - [agents/tools/integration](agents_tools_integration.md)
-    - [agents/tools/research](agents_tools_research.md)
+    - [agents/tools/specialist](agents_tools_specialist.md)
     - [agents/tools/system](agents_tools_system.md)
     - [agents/tools/web](agents_tools_web.md)
 - [api](api.md)
@@ -60,6 +59,7 @@
   - [exceptions/agents](exceptions_agents.md)
   - [exceptions/api](exceptions_api.md)
   - [exceptions/base](exceptions_base.md)
+  - [exceptions/examples](exceptions_examples.md)
   - [exceptions/external](exceptions_external.md)
   - [exceptions/infrastructure](exceptions_infrastructure.md)
   - [exceptions/orchestrator](exceptions_orchestrator.md)
@@ -118,13 +118,24 @@
   - [interfaces/orchestrator](interfaces_orchestrator.md)
   - [interfaces/services](interfaces_services.md)
   - [interfaces/skills](interfaces_skills.md)
+  - [interfaces/storage_specialized](interfaces_storage_specialized.md)
   - [interfaces/tools](interfaces_tools.md)
+    - [interfaces/tools/core](interfaces_tools_core.md)
+    - [interfaces/tools/specialist](interfaces_tools_specialist.md)
 - [memory](memory.md)
+  - [memory/agent_memory](memory_agent_memory.md)
   - [memory/api](memory_api.md)
   - [memory/core](memory_core.md)
   - [memory/embeddings](memory_embeddings.md)
   - [memory/retrieval](memory_retrieval.md)
+  - [memory/session_memory](memory_session_memory.md)
+  - [memory/shared](memory_shared.md)
+    - [memory/shared/core](memory_shared_core.md)
+    - [memory/shared/embeddings](memory_shared_embeddings.md)
+    - [memory/shared/retrieval](memory_shared_retrieval.md)
+    - [memory/shared/storage](memory_shared_storage.md)
   - [memory/storage](memory_storage.md)
+  - [memory/task_memory](memory_task_memory.md)
   - [memory/windows](memory_windows.md)
 - [memory_backup](memory_backup.md)
 - [nodes](nodes.md)
@@ -171,7 +182,10 @@
     - [schemas/orchestration/decomposition](schemas_orchestration_decomposition.md)
   - [schemas/session](schemas_session.md)
   - [schemas/skills](schemas_skills.md)
+  - [schemas/storage_specialized](schemas_storage_specialized.md)
   - [schemas/tools](schemas_tools.md)
+    - [schemas/tools/core](schemas_tools_core.md)
+    - [schemas/tools/specialist](schemas_tools_specialist.md)
 - [services](services.md)
   - [services/communication](services_communication.md)
   - [services/context](services_context.md)
@@ -188,6 +202,8 @@
   - [skills/specialized](skills_specialized.md)
   - [skills/utils](skills_utils.md)
 - [storage](storage.md)
+  - [storage/core](storage_core.md)
+  - [storage/database](storage_database.md)
   - [storage/kuzudb](storage_kuzudb.md)
   - [storage/langgraph](storage_langgraph.md)
   - [storage/postgresql](storage_postgresql.md)
@@ -202,6 +218,16 @@
   - [tools_backup/integration](tools_backup_integration.md)
   - [tools_backup/system](tools_backup_system.md)
   - [tools_backup/web](tools_backup_web.md)
+- [tools_migration_backup_20260313_175943](tools_migration_backup_20260313_175943.md)
+  - [tools_migration_backup_20260313_175943/ai](tools_migration_backup_20260313_175943_ai.md)
+  - [tools_migration_backup_20260313_175943/base](tools_migration_backup_20260313_175943_base.md)
+  - [tools_migration_backup_20260313_175943/code](tools_migration_backup_20260313_175943_code.md)
+  - [tools_migration_backup_20260313_175943/data](tools_migration_backup_20260313_175943_data.md)
+  - [tools_migration_backup_20260313_175943/filesystem](tools_migration_backup_20260313_175943_filesystem.md)
+  - [tools_migration_backup_20260313_175943/integration](tools_migration_backup_20260313_175943_integration.md)
+  - [tools_migration_backup_20260313_175943/research](tools_migration_backup_20260313_175943_research.md)
+  - [tools_migration_backup_20260313_175943/system](tools_migration_backup_20260313_175943_system.md)
+  - [tools_migration_backup_20260313_175943/web](tools_migration_backup_20260313_175943_web.md)
 - [utils](utils.md)
   - [utils/collections](utils_collections.md)
   - [utils/core](utils_core.md)

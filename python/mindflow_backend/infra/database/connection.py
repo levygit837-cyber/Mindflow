@@ -268,22 +268,17 @@ class DatabaseManager:
             # Async engine for async operations
             self._engine = create_async_engine(
                 database_config.get_connection_string(),
-                poolclass=QueuePool,
                 pool_size=database_config.pool_size,
                 max_overflow=database_config.max_overflow,
                 pool_pre_ping=database_config.pool_pre_ping,
                 pool_recycle=database_config.pool_recycle,
                 pool_timeout=database_config.pool_timeout,
                 echo=settings.app_env == "development",
-                future=True,
-                # Enhanced pool configuration
-                pool_reset_on_return="commit",
-                pool_lifo=True,  # Use LIFO for better reuse
                 connect_args={
                     "command_timeout": database_config.statement_timeout // 1000,
                     "server_settings": {
                         "application_name": settings.app_name,
-                        "jit": "off",  # Disable JIT for simple queries
+                        "jit": "off",
                     },
                 },
             )
@@ -621,28 +616,6 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-# Global database manager instance
-_database_manager: Optional[DatabaseManager] = None
-
-
-def get_db_manager() -> DatabaseManager:
-    """Get global database manager instance."""
-    global _db_manager
-    if _db_manager is None:
-        _db_manager = DatabaseManager()
-    return _db_manager
-
-
-@asynccontextmanager
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Convenience function to get database session.
-    
-    Yields:
-        AsyncSession: Database session with automatic lifecycle management.
-    """
-    db_manager = get_db_manager()
-    async with db_manager.get_session() as session:
-        yield session
 
 
 async def initialize_database() -> None:

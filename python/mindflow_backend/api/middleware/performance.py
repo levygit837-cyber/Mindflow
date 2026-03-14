@@ -157,11 +157,15 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         # Update access time for LRU
         self._cache_access_times[cache_key] = current_time
         
-        # Recreate response from cached data
+        # Recreate response — exclude content-length so JSONResponse calculates it correctly
+        headers = {
+            k: v for k, v in cached_item["headers"].items()
+            if k.lower() not in ("content-length",)
+        }
         return JSONResponse(
             content=cached_item["content"],
             status_code=cached_item["status_code"],
-            headers=cached_item["headers"]
+            headers=headers,
         )
     
     def _store_in_cache(self, cache_key: str, response: Response) -> None:
@@ -211,14 +215,9 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         return content_length >= self.compression_threshold
     
     def _compress_response(self, response: Response) -> Response:
-        """Apply compression to response."""
-        # This is a placeholder for compression logic
-        # In production, you'd use gzip or brotli compression
-        
-        # Add compression header
-        response.headers["content-encoding"] = "gzip"
-        
-        _logger.debug("Applied compression to response")
+        """Apply compression to response (placeholder — no-op until real gzip is wired)."""
+        # NOTE: Do NOT set content-encoding without actually compressing the body.
+        _logger.debug("Compression skipped (not yet implemented)")
         return response
     
     def _add_performance_headers(self, response: Response, response_time: float) -> Response:

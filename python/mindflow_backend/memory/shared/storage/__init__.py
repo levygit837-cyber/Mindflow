@@ -7,12 +7,11 @@ Camada de abstração de banco de dados para suporte a:
 - Transações e consistência de dados
 """
 
-from .database import MemoryDatabase
+from .database import MemoryDatabase, VectorStore
 from .vector_db import MemoryVectorDB
-from .models import Base
 
 __all__ = [
     "MemoryDatabase",
     "MemoryVectorDB", 
-    "Base",
+    "VectorStore",
 ]

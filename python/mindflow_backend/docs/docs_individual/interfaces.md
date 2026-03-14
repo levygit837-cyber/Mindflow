@@ -4,11 +4,12 @@
 ## Caminho
 @python/interfaces
 
-## Arquivos Python (1)
+## Arquivos Python (2)
 
 @python/interfaces/__init__.py
+@python/interfaces/storage.py
 
-## Subdiretórios (10)
+## Subdiretórios (11)
 
 @python/interfaces/agents
 @python/interfaces/api
@@ -19,4 +20,5 @@
 @python/interfaces/orchestrator
 @python/interfaces/services
 @python/interfaces/skills
+@python/interfaces/storage_specialized
 @python/interfaces/tools

@@ -282,7 +282,7 @@ class ChainFactory:
             ],
             complexity=ChainComplexity.HIGH,
             estimated_execution_time=120.0,
-            required_agents=[AgentType.ANALYST, AgentType.GENERALIST, AgentType.RESEARCHER],
+            required_agents=[AgentType.ANALYST, AgentType.RESEARCHER],
             default_config={"enable_parallel_paths": True, "confidence_threshold": 0.7},
         )
         

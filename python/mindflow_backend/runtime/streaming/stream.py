@@ -16,8 +16,8 @@ from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
-from mindflow_backend.storage.postgresql.connection import db_session
-from mindflow_backend.storage.postgresql.repositories import ChatRepository
+from mindflow_backend.infra.database.connection import get_db_session as db_session
+from mindflow_backend.storage import ChatRepository
 
 _logger = get_logger(__name__)
 
@@ -46,11 +46,11 @@ class AgentRuntime:
 
         # 1. Save user message to database
         try:
-            with db_session() as db:
+            async with db_session() as db:
                 message = self._chat_repo.add_message(
-                    db, 
-                    session_id=session_id, 
-                    role="user", 
+                    db,
+                    session_id=session_id,
+                    role="user",
                     content=payload.message
                 )
                 self._record_memory_message(
@@ -101,11 +101,11 @@ class AgentRuntime:
         full_response = "".join(assistant_content)
         if full_response:
             try:
-                with db_session() as db:
+                async with db_session() as db:
                     message = self._chat_repo.add_message(
-                        db, 
-                        session_id=session_id, 
-                        role="assistant", 
+                        db,
+                        session_id=session_id,
+                        role="assistant",
                         content=full_response,
                         provider=provider,
                         model=model

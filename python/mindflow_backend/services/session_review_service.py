@@ -26,7 +26,7 @@ from mindflow_backend.schemas.session.review import (
     WindowProgressInfo,
     WindowSize,
 )
-from mindflow_backend.storage.postgresql.repositories import ChatRepository
+from mindflow_backend.storage import ChatRepository
 from mindflow_backend.storage.postgresql.review_repository import ReviewRepository
 
 _logger = get_logger(__name__)

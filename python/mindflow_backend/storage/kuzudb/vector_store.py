@@ -352,7 +352,7 @@ class KuzuDBVectorManager:
     def __init__(self):
         settings = get_settings()
         self.vector_store = KuzuDBVectorStore(
-            database_path=settings.kuzudb_url.replace("http://localhost:8000", "data/mindflow_vectors"),
+            database_path="data/mindflow_vectors",
             dimension=256  # Default dimension, can be made configurable
         )
     

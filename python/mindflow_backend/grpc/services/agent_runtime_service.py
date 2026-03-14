@@ -7,7 +7,7 @@ Use: from mindflow_backend.services.communication import get_agent_runtime_servi
 """
 
 # Forward compatibility alias - import from centralized location
-from mindflow_backend.services.communication.agent_runtime_service import AgentRuntimeService
+from mindflow_backend.services.communication.agent_runtime_service import AgentRuntimeServiceImpl
 
 # Maintain backward compatibility
-__all__ = ["AgentRuntimeService"]
+__all__ = ["AgentRuntimeServiceImpl"]

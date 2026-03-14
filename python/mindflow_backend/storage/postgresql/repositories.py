@@ -45,14 +45,7 @@ class ChatRepository:
             model=model,
         )
         db.add(message)
-        
-        # Update session timestamp
-        session = db.get(ChatSession, session_id)
-        if session:
-            from datetime import UTC, datetime
-            session.updated_at = datetime.now(UTC)
-            
-        db.flush()
+        db.commit()  # Use commit instead of flush for sync context
         return message
 
     def get_messages(self, db: Session, session_id: str) -> list[ChatMessage]:

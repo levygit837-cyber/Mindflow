@@ -13,6 +13,7 @@ This module now provides backward compatibility while using the new graph archit
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, TypedDict
 
 # New architecture imports
@@ -29,6 +30,7 @@ from mindflow_backend.infra.logging import get_logger
 from typing import Any as _Any
 from mindflow_backend.orchestrator.router import route_message
 from mindflow_backend.runtime import get_model_for_provider, extract_ai_message_content
+from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, SandboxMode
 
 _logger = get_logger(__name__)
@@ -108,7 +110,20 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
     session_id = str(state.get("session_id", ""))
     from mindflow_backend.schemas.orchestration.orchestrator import ExecutionStrategy, ThinkingMode
 
-    # 0. Chain Execution Mode (explicit orchestrator strategy)
+    # 0. Decomposition Thinking Mode takes priority over chain execution
+    if decision.thinking_mode == ThinkingMode.DECOMPOSITION and settings.enable_decomposition_thinking:
+        memory_result = await _retrieve_memory_context(
+            query=state["message"],
+            session_id=session_id,
+            agent_id=decision.agent.value,
+        )
+        if isinstance(memory_result, dict):
+            memory_context = memory_result.get("context", "")
+        else:
+            memory_context = getattr(memory_result, "context", "")
+        return await _run_task_pipeline(state, provider, model, memory_context)
+
+    # 1. Chain Execution Mode (explicit orchestrator strategy)
     if getattr(decision, "execution_strategy", ExecutionStrategy.SINGLE_AGENT) == ExecutionStrategy.CHAIN:
         memory_context = ""
         chain_id = getattr(decision, "chain_id", None)
@@ -138,32 +153,11 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
                 "chain_metadata": result.get("execution_metadata"),
             }
             
-        except ImportError:
-            # Fallback to simple chain execution
-            chain_id = chain_id or "coding_task"
-            try:
-                from mindflow_backend.chains.catalog import get_chain
-                chain = get_chain(chain_id)
-                chain_result = await chain.execute(
-                    {
-                        "message": state["message"],
-                        "session_id": session_id,
-                        "provider": provider,
-                        "model": model,
-                        "memory_context": memory_context,
-                        "decision": decision.model_dump() if hasattr(decision, "model_dump") else {},
-                    }
-                )
-                return {
-                    "response": chain_result.get("response", ""),
-                    "error": chain_result.get("error"),
-                    "chain_result": chain_result,
-                }
-            except Exception as exc:
-                _logger.error("chain_execution_failed", chain_id=chain_id, error=str(exc))
-                return {"response": "", "error": f"Chain execution failed ({chain_id}): {exc}"}
+        except (ImportError, ValueError):
+            # No suitable chain found or not available — fall through to single-agent execution
+            _logger.warning("chain_not_available_falling_through", chain_id=chain_id)
 
-    memory_result = _retrieve_memory_context(
+    memory_result = await _retrieve_memory_context(
         query=state["message"],
         session_id=session_id,
         agent_id=decision.agent.value,
@@ -172,10 +166,6 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
         memory_context = memory_result.get("context", "")
     else:
         memory_context = getattr(memory_result, "context", "")
-
-    # 1. Check for Decomposition Thinking Mode
-    if decision.thinking_mode == ThinkingMode.DECOMPOSITION and settings.enable_decomposition_thinking:
-        return await _run_task_pipeline(state, provider, model, memory_context)
 
     # 2. Standard Execution Mode
     agent = get_agent(decision.agent)
@@ -200,56 +190,96 @@ async def execute_node(state: OrchestratorState) -> dict[str, Any]:
         ThinkingMode = None
     
     try:
-        # Enforce sandbox mode based on agent personality
-        sandbox_root = settings.working_path if hasattr(settings, "working_path") else None
+        # Enforce sandbox mode based on agent personality.
+        # Prefer agent.root_dir (explicit), then settings.working_path, then None.
+        sandbox_root = (
+            agent.root_dir
+            or (settings.working_path if hasattr(settings, "working_path") else None)
+        )
         sandbox = MindFlowSandbox(
             root_dir=sandbox_root,
             read_only=(agent.sandbox == SandboxMode.READ_ONLY),
         )
         registry = create_default_registry(sandbox)
 
-        # Get authorized tools for this agent (no tools for NONE sandbox agents)
+        # Get authorized tools for this agent (none for NONE sandbox agents)
         if agent.sandbox == SandboxMode.NONE:
             tools = []
         else:
             tools = registry.get_tools_for_agent(agent.agent_type)
-        
-        llm = get_model_for_provider(provider, model)
-        
-        # Bind tools if available
-        if tools:
-            llm = llm.bind_tools(tools)
-            
-        # Use streaming even if returning a full response at the end
-        full_response = []
-        response = await llm.ainvoke(messages)
-        
-        # Extract thinking and text content separately
-        content = extract_ai_message_content(response, include_thinking=True)
-        response_text = content["text"]
-        thinking = content["thinking"]
-        
-        # Capture thoughts for debugging/analysis
-        if thinking:
-            _logger.debug("agent_thinking", thinking=thinking[:200])  # Log first 200 chars
-            # TODO: Emit thinking as custom event when event system is ready
-            # await adispatch_custom_event("agent_thought", {"thought": thinking})
 
-        if response_text:
-            # response_text is now a clean string from extract_ai_message_content
-            full_response.append(response_text)
-            # TODO: Emit response as custom event when event system is ready
-            # await adispatch_custom_event("agent_response", {"chunk": response_text})
-        
-        # Note: Skipping tool call events for now
-        # # Capture tool calls
-        # if hasattr(response, "tool_call_chunks") and response.tool_call_chunks:
-        #     for tc in response.tool_call_chunks:
-        #         await adispatch_custom_event("agent_tool_call", {"chunk": tc})
+        # Inject root_dir context into the system prompt so the LLM knows
+        # where its working directory is (root_dir feature).
+        if sandbox_root and tools:
+            messages = list(messages)
+            messages.insert(
+                1,  # after system prompt
+                {
+                    "role": "system",
+                    "content": (
+                        f"Your working directory (root_dir) is: {sandbox_root}\n"
+                        "Use this path as the base for all filesystem operations "
+                        "unless the user specifies an absolute path."
+                    ),
+                },
+            )
+
+        llm = get_model_for_provider(provider, model)
+
+        from langchain_core.callbacks.manager import adispatch_custom_event
+
+        # --- Tool-aware execution path ---
+        if tools:
+            from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+            from mindflow_backend.agents.tools.base.tool_invocation import stream_with_tools
+
+            lc_tools = to_langchain_tools(tools)
+
+            if lc_tools:
+                llm_with_tools = llm.bind_tools(lc_tools)
+
+                async def _chunk_dispatch(text: str) -> None:
+                    await adispatch_custom_event("agent_response", {"chunk": text})
+
+                async def _event_dispatch(event_name: str, payload: dict) -> None:
+                    await adispatch_custom_event(event_name, payload)
+
+                response_text = await stream_with_tools(
+                    llm=llm_with_tools,
+                    messages=messages,
+                    lc_tools=lc_tools,
+                    chunk_dispatcher=_chunk_dispatch,
+                    event_dispatcher=_event_dispatch,
+                )
+                _logger.info(
+                    f"Tool-aware response length: {len(response_text)}, "
+                    f"preview: {response_text[:200] if response_text else 'EMPTY'}"
+                )
+                if not response_text.strip():
+                    response_text = "No response generated."
+                    _logger.warning("LLM returned empty response after tool loop, using fallback")
+                return {"response": response_text, "error": None}
+
+        # --- Fallback: no tools (or no lc_tools after conversion) ---
+        full_response = []
+        async for chunk in llm.astream(messages):
+            _logger.debug(f"Received chunk: {chunk}")
+            thought, texts = extract_chunk_parts(chunk)
+            if thought:
+                _logger.debug("agent_thinking", thinking=thought[:200])
+                await adispatch_custom_event("agent_thought", {"thought": thought})
+            for text in texts:
+                full_response.append(text)
+                await adispatch_custom_event("agent_response", {"chunk": text})
 
         response_text = "".join(full_response)
+        _logger.info(
+            f"Final response length: {len(response_text)}, "
+            f"content preview: {response_text[:200] if response_text else 'EMPTY'}"
+        )
         if not response_text.strip():
             response_text = "No response generated."
+            _logger.warning("LLM returned empty response, using fallback")
 
         return {"response": response_text, "error": None}
 
@@ -327,21 +357,16 @@ async def _orchestrator_reflect(
     return "\n\n".join(parts)
 
 
-def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> _Any:
+async def _retrieve_memory_context(*, query: str, session_id: str, agent_id: str) -> _Any:
     """Retrieve memory context using the new simple memory service."""
     try:
-        # Use the new memory integration
         from mindflow_backend.orchestrator.memory_integration import get_context_for_agent
-        
-        # Get context for the agent
-        context = asyncio.run(get_context_for_agent(
+        context = await get_context_for_agent(
             session_id=session_id,
             query=query,
-            limit=5
-        ))
-        
+            limit=5,
+        )
         return {"context": context, "references": []}
-        
     except Exception as exc:
         _logger.warning("memory_retrieval_failed", error=str(exc), session_id=session_id, agent=agent_id)
         return {"context": "", "references": []}
@@ -525,17 +550,23 @@ def respond_node(state: OrchestratorState) -> dict[str, Any]:
 
 
 def build_simple_orchestrator_flow() -> Any:
-    """Build a simple orchestrator flow using the new graph architecture.
-    
-    Returns a function that can be invoked with::
-    
-        result = await simple_orchestrate({"message": "...", "provider": "...", "model": "..."})
-    
-    This function now uses the new graph architecture while maintaining backward compatibility.
+    """Build a simple orchestrator flow as a compiled LangGraph StateGraph.
+
+    Returns a CompiledStateGraph with .astream_events() support.
     """
-    # Use the new architecture from the graphs module
-    from mindflow_backend.graphs.orchestrator.simple_flow import build_simple_orchestrator_flow as _build_flow
-    return _build_flow()
+    from langgraph.graph import StateGraph, END
+
+    builder = StateGraph(OrchestratorState)
+    builder.add_node("route", route_node)
+    builder.add_node("execute", execute_node)
+    builder.add_node("respond", respond_node)
+
+    builder.set_entry_point("route")
+    builder.add_edge("route", "execute")
+    builder.add_edge("execute", "respond")
+    builder.add_edge("respond", END)
+
+    return builder.compile()
 
 
 def create_orchestrator_graph(graph_id: str = "orchestrator"):

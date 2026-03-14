@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Type
 
 from mindflow_backend.graphs.base.graph import BaseGraph
 from mindflow_backend.graphs.base.types import GraphConfig, GraphType
-from mindflow_backend.graphs.orchestrator.simple_flow import SimpleOrchestratorGraph
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import SimpleOrchestratorGraph
 from mindflow_backend.infra.logging import get_logger
 
 

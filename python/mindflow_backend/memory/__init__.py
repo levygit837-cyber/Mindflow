@@ -3,7 +3,7 @@
 # Session Memory - Memória Semântica de Sessões
 from .session_memory import (
     SessionMemoryService,
-    SessionStorage,
+    MemoryDatabase,
 )
 
 # Task Memory - Memória Semântica de Tasks
@@ -17,9 +17,8 @@ from .task_memory import (
 # Agent Memory - Memória Agêntica (LangGraph)
 from .agent_memory import (
     AgentMemoryService,
-    LangGraphCheckpointer,
-    RollingWindows,
-    FactExtractor,
+    langgraph_checkpointer,
+    RollingWindow,
 )
 
 # Shared Components - Componentes Compartilhados
@@ -40,17 +39,18 @@ from .agent_memory.store import AgenticMemoryStore
 # Cross-task API
 from .task_memory.api import CrossTaskContextAPI, get_cross_task_api
 
-# API
-from .api.controller import MemoryController
-from .api.routes import router
-
 # Utils
 from mindflow_backend.utils.core import estimate_token_count
+
+
+def get_memory_service():
+    """Get the main memory service instance."""
+    return SessionMemoryService()
 
 __all__ = [
     # Session Memory
     "SessionMemoryService",
-    "SessionStorage",
+    "MemoryDatabase",
 
     # Task Memory
     "TaskMemoryService",
@@ -60,9 +60,8 @@ __all__ = [
 
     # Agent Memory
     "AgentMemoryService",
-    "LangGraphCheckpointer",
-    "RollingWindows",
-    "FactExtractor",
+    "langgraph_checkpointer",
+    "RollingWindow",
 
     # Shared Components
     "SemanticRetriever",
@@ -83,10 +82,7 @@ __all__ = [
     "CrossTaskContextAPI",
     "get_cross_task_api",
 
-    # API
-    "MemoryController",
-    "router",
-
     # Utils
     "estimate_token_count",
+    "get_memory_service",
 ]

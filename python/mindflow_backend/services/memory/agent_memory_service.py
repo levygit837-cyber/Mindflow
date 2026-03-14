@@ -30,7 +30,7 @@ from mindflow_backend.memory.storage.models import (
     AgentMemoryWindow,
     SessionEmbedding,
 )
-from mindflow_backend.storage.postgresql.connection import db_session
+from mindflow_backend.storage import db_session
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.memory.core.interfaces import MemoryServiceInterface
 

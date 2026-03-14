@@ -89,3 +89,8 @@ class BaseAgent:
     thinking_level: ThinkingLevel = ThinkingLevel.MEDIUM
     sandbox: SandboxMode = SandboxMode.NONE
     keep_context: bool = True
+    # Root working directory for filesystem operations.
+    # When set, tools use this as the base path for relative paths and the
+    # agent's system prompt is augmented with a "your working directory is …"
+    # instruction so the LLM knows where to work.
+    root_dir: str | None = None

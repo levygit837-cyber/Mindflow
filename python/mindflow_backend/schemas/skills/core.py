@@ -21,7 +21,7 @@ class AnalysisSkillConfig(SkillConfiguration):
     export_format: str = Field(default="json", description="Export format: json, yaml, markdown")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "medium",
@@ -45,7 +45,7 @@ class CodingSkillConfig(SkillConfiguration):
     auto_format: bool = Field(default=True, description="Auto-format generated code")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "high",
@@ -73,7 +73,7 @@ class ResearchSkillConfig(SkillConfiguration):
     synthesis_mode: str = Field(default="comprehensive", description="Synthesis mode: quick, balanced, comprehensive")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "enabled": True,
                 "priority": "medium",
@@ -99,7 +99,7 @@ class CoreSkillDefinition(BaseModel):
     configuration: Optional[Dict[str, Any]] = Field(None, description="Default configuration")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "skill_type": "analysis",
                 "name": "Code Analysis",
