@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { GitBranch, Cpu, ChevronDown } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ChevronDown, Dot } from 'lucide-react';
 
 interface TopBarProps {
   title: string;
@@ -12,10 +12,10 @@ interface TopBarProps {
 }
 
 const WORKFLOW_LABELS: Record<string, string> = {
-  parallel: 'Parallel',
-  sequential: 'Sequential',
-  orchestrator: 'Orchestrator',
-  chain: 'Chain',
+  parallel: 'parallel',
+  sequential: 'sequential',
+  orchestrator: 'orchestrator',
+  chain: 'chain',
 };
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -28,162 +28,112 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const [modelOpen, setModelOpen] = useState(false);
 
+  const activeLabel = useMemo(() => {
+    if (agentCount <= 0) return 'idle';
+    return `${agentCount} ativo${agentCount > 1 ? 's' : ''}`;
+  }, [agentCount]);
+
   return (
     <div
-      className="flex items-center flex-shrink-0"
+      className="flex flex-wrap items-center gap-3 border-b px-4 py-4 md:px-6"
       style={{
-        padding: '14px 24px',
-        borderBottom: '1px solid #1A1545',
-        gap: 12,
-        backgroundColor: '#080614',
+        background: 'rgba(7, 8, 10, 0.92)',
+        borderColor: 'var(--line-primary)',
       }}
     >
-      {/* ── Left: Title + agents badge ────────────────── */}
-      <div className="flex items-center flex-1 min-w-0" style={{ gap: 10 }}>
-        <h1
-          style={{
-            color: '#EDE9FF',
-            fontFamily: 'Space Grotesk, sans-serif',
-            fontSize: 16,
-            fontWeight: 600,
-            margin: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {title}
-        </h1>
-
-        {agentCount > 0 && (
-          <div
-            className="flex items-center flex-shrink-0"
+      <div className="min-w-0 flex-1">
+        <div className="mono-label mb-2">chat / live trace</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1
+            className="truncate"
             style={{
-              backgroundColor: '#0A1520',
-              borderRadius: 20,
-              padding: '4px 10px',
-              gap: 6,
+              color: 'var(--text-primary)',
+              fontSize: 18,
+              fontWeight: 600,
+              letterSpacing: '-0.03em',
             }}
           >
-            <div
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: '#22D3EE',
-              }}
-            />
-            <span
-              style={{
-                color: '#22D3EE',
-                fontFamily: 'Space Grotesk, sans-serif',
-                fontSize: 11,
-                fontWeight: 500,
-              }}
-            >
-              {agentCount} {agentCount === 1 ? 'agent' : 'agents'} active
-            </span>
-          </div>
-        )}
-      </div>
+            {title}
+          </h1>
 
-      {/* ── Right: Workflow badge + Model selector ──── */}
-      <div className="flex items-center flex-shrink-0" style={{ gap: 8 }}>
-        {workflowType && (
-          <div
-            className="flex items-center"
-            style={{
-              backgroundColor: '#0F1B2D',
-              border: '1px solid #1A3A5C',
-              borderRadius: 6,
-              padding: '6px 10px',
-              gap: 6,
-            }}
-          >
-            <GitBranch size={12} color="#22D3EE" />
-            <span
-              style={{
-                color: '#22D3EE',
-                fontFamily: 'Space Grotesk, sans-serif',
-                fontSize: 12,
-                fontWeight: 500,
-              }}
-            >
+          <span className="mono-chip">
+            <span className={`signal-dot ${agentCount > 0 ? '' : 'idle'}`} />
+            {activeLabel}
+          </span>
+
+          {workflowType && (
+            <span className="mono-chip">
+              <span style={{ color: 'var(--text-meta)' }}>---</span>
               {WORKFLOW_LABELS[workflowType] ?? workflowType}
             </span>
-          </div>
-        )}
-
-        {/* Model selector */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setModelOpen((o) => !o)}
-            className="flex items-center"
-            style={{
-              backgroundColor: '#130F28',
-              border: '1px solid #2A1F50',
-              borderRadius: 8,
-              padding: '7px 12px',
-              gap: 6,
-              cursor: 'pointer',
-            }}
-          >
-            <Cpu size={13} color="#A78BFA" />
-            <span
-              style={{
-                color: '#A78BFA',
-                fontFamily: 'Space Grotesk, sans-serif',
-                fontSize: 12,
-                fontWeight: 500,
-                maxWidth: 160,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {selectedModel}
-            </span>
-            <ChevronDown size={12} color="#4D4575" />
-          </button>
-
-          {modelOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 6px)',
-                backgroundColor: '#130F28',
-                border: '1px solid #2A1F50',
-                borderRadius: 8,
-                overflow: 'hidden',
-                zIndex: 50,
-                minWidth: 200,
-              }}
-            >
-              {availableModels.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { onModelChange(m); setModelOpen(false); }}
-                  className="w-full text-left"
-                  style={{
-                    padding: '9px 14px',
-                    backgroundColor: m === selectedModel ? '#1D1840' : 'transparent',
-                    color: m === selectedModel ? '#A78BFA' : '#8B81C0',
-                    fontFamily: 'Space Grotesk, sans-serif',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'block',
-                    width: '100%',
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
           )}
         </div>
+      </div>
+
+      <div className="relative">
+        <button
+          type="button"
+          className="subtle-button"
+          onClick={() => setModelOpen((value) => !value)}
+        >
+          <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
+            model
+          </span>
+          <span
+            className="truncate"
+            style={{
+              maxWidth: 180,
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+            }}
+          >
+            {selectedModel}
+          </span>
+          <ChevronDown size={14} />
+        </button>
+
+        {modelOpen && (
+          <div
+            className="panel-surface-strong absolute right-0 top-[calc(100%+10px)] z-50 min-w-[240px] overflow-hidden p-2"
+          >
+            {availableModels.map((model) => {
+              const selected = model === selectedModel;
+
+              return (
+                <button
+                  key={model}
+                  type="button"
+                  onClick={() => {
+                    onModelChange(model);
+                    setModelOpen(false);
+                  }}
+                  className="panel-hover flex w-full items-center gap-3 rounded-[14px] border px-3 py-3 text-left"
+                  style={{
+                    marginBottom: 6,
+                    borderColor: selected ? 'var(--line-strong)' : 'transparent',
+                    background: selected ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+                  }}
+                >
+                  <Dot
+                    size={18}
+                    style={{ color: selected ? 'var(--text-primary)' : 'var(--text-ghost)' }}
+                  />
+                  <span
+                    style={{
+                      color: selected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {model}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

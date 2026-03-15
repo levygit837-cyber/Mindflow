@@ -1,8 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import {
-  Network, Zap, Search, Code2, BarChart2,
-} from 'lucide-react';
 
 type AgentType = 'orchestrator' | 'coder' | 'analyst' | 'researcher' | 'default';
 
@@ -10,142 +7,104 @@ interface ThinkingNotifierProps {
   agentType?: AgentType;
   agentName?: string;
   status?: 'thinking' | 'processing' | 'analyzing' | 'waiting';
+  lastThought?: string;
   className?: string;
 }
 
-const CONFIGS: Record<string, {
-  avatarBg: string;
-  avatarBorder: string;
-  Icon: React.FC<{ size: number; color: string }>;
-  accentColor: string;
-  bubbleBg: string;
-  bubbleBorder: string;
-  label: string;
-}> = {
-  orchestrator: {
-    avatarBg: '#1C1208',
-    avatarBorder: '#F59E0B',
-    Icon: ({ size, color }) => <Zap size={size} color={color} fill={color} />,
-    accentColor: '#F59E0B',
-    bubbleBg: '#120D04',
-    bubbleBorder: '#2D1F00',
-    label: 'está pensando',
-  },
-  analyst: {
-    avatarBg: '#1C1208',
-    avatarBorder: '#F59E0B',
-    Icon: ({ size, color }) => <BarChart2 size={size} color={color} />,
-    accentColor: '#F59E0B',
-    bubbleBg: '#120D04',
-    bubbleBorder: '#2D1F00',
-    label: 'analisando',
-  },
-  coder: {
-    avatarBg: '#071A0C',
-    avatarBorder: '#4ADE80',
-    Icon: ({ size, color }) => <Code2 size={size} color={color} />,
-    accentColor: '#4ADE80',
-    bubbleBg: '#041208',
-    bubbleBorder: '#0D3018',
-    label: 'escrevendo código',
-  },
-  researcher: {
-    avatarBg: '#04151B',
-    avatarBorder: '#22D3EE',
-    Icon: ({ size, color }) => <Search size={size} color={color} />,
-    accentColor: '#22D3EE',
-    bubbleBg: '#031118',
-    bubbleBorder: '#0A2F3A',
-    label: 'pesquisando',
-  },
-  default: {
-    avatarBg: '#110A2E',
-    avatarBorder: '#7C3AFF',
-    Icon: ({ size, color }) => <Network size={size} color={color} />,
-    accentColor: '#A78BFA',
-    bubbleBg: '#110A2E',
-    bubbleBorder: '#2A1F5A',
-    label: 'processando',
-  },
+const STATUS_LABELS: Record<AgentType, string> = {
+  orchestrator: 'routing',
+  analyst: 'analyzing',
+  coder: 'building',
+  researcher: 'searching',
+  default: 'processing',
 };
 
 export const ThinkingNotifier: React.FC<ThinkingNotifierProps> = ({
   agentType = 'orchestrator',
   agentName,
+  lastThought,
   className = '',
 }) => {
-  const cfg = CONFIGS[agentType] ?? CONFIGS.default;
-  const displayName = agentName ?? (agentType.charAt(0).toUpperCase() + agentType.slice(1));
-  const { Icon } = cfg;
+  const displayName = agentName ?? 'Orchestrator';
 
   return (
     <motion.div
-      className={`flex items-center ${className}`}
-      style={{ gap: 14 }}
+      className={`flex w-full gap-4 ${className}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
-      transition={{ duration: 0.22, ease: 'easeOut' }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      {/* Avatar */}
-      <div
-        className="flex items-center justify-center flex-shrink-0"
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 10,
-          backgroundColor: cfg.avatarBg,
-          border: `1px solid ${cfg.avatarBorder}`,
-        }}
-      >
-        <Icon size={15} color={cfg.accentColor} />
+      <div className="flex w-4 flex-col items-center shrink-0">
+        <motion.span
+          className="signal-dot"
+          animate={{ opacity: [0.9, 0.4, 0.9] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <span className="trace-rail mt-2 flex-1" />
       </div>
 
-      {/* Thinking bubble */}
-      <div
-        className="flex items-center"
-        style={{
-          backgroundColor: cfg.bubbleBg,
-          border: `1px solid ${cfg.bubbleBorder}`,
-          borderRadius: '4px 14px 14px 14px',
-          padding: '10px 16px',
-          gap: 10,
-        }}
-      >
-        <span
-          style={{
-            color: cfg.accentColor,
-            fontFamily: 'Space Grotesk, sans-serif',
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
-          {displayName} {cfg.label}
-        </span>
+      <div className="rail-panel min-w-0 flex-1 px-5 py-4 md:px-6" style={{ paddingLeft: 36 }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            style={{
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+            }}
+          >
+            --- Thinking
+          </span>
 
-        {/* 3 animated dots */}
-        <div className="flex items-center" style={{ gap: 5 }}>
-          {[0, 1, 2].map((i) => (
-            <motion.span
-              key={i}
-              style={{
-                display: 'inline-block',
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                backgroundColor: cfg.accentColor,
-              }}
-              animate={{ opacity: [1, 0.25, 1] }}
-              transition={{
-                duration: 1.4,
-                repeat: Infinity,
-                repeatType: 'loop',
-                ease: 'easeInOut',
-                delay: i * 0.22,
-              }}
-            />
-          ))}
+          <span
+            style={{
+              color: 'var(--text-primary)',
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            {displayName}
+          </span>
+
+          <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
+            {STATUS_LABELS[agentType] ?? STATUS_LABELS.default}
+          </span>
+
+          <div className="ml-auto flex items-center gap-2">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                style={{
+                  width: index === 2 ? 18 : 8,
+                  height: 1,
+                  background: index === 2
+                    ? 'linear-gradient(90deg, rgba(255,255,255,0.88) 0%, rgba(139,92,246,0.8) 100%)'
+                    : 'rgba(255,255,255,0.36)',
+                  borderRadius: 999,
+                }}
+                animate={{ opacity: [0.35, 1, 0.35] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: index * 0.16 }}
+              />
+            ))}
+          </div>
         </div>
+
+        {lastThought && (
+          <p
+            style={{
+              marginTop: 12,
+              color: 'var(--text-meta)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              lineHeight: 1.7,
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {lastThought}
+          </p>
+        )}
       </div>
     </motion.div>
   );

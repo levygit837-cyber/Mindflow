@@ -1,99 +1,81 @@
 :root {
-  /* MindFlow Design System Colors */
-  --mindflow-bg-primary: #080614;
-  --mindflow-bg-sidebar: #0C0820;
-  --mindflow-bg-card: #130F28;
-  --mindflow-bg-new-chat: #160D36;
-  --mindflow-bg-active-session: #1D1840;
-  --mindflow-bg-workflow: #0F1B2D;
-  --mindflow-bg-model: #130F28;
-  --mindflow-border: #1A1545;
-  --mindflow-border-workflow: #1A3A5C;
-  --mindflow-border-model: #2A1F50;
-  
-  /* Text Colors - MindFlow Design */
-  --text-primary: #EDE9FF;
-  --text-secondary: #8B81C0;
-  --text-meta: #4D4575;
-  --text-accent: #A78BFA;
-  --text-inverse: #FFFFFF;
-  --text-disabled: #4D4575;
-  
-  /* Brand Colors - MindFlow Gradients */
-  --brand-primary: #7C3AFF;
-  --brand-secondary: #22D3EE;
-  --brand-accent: #A78BFA;
-  
-  /* Gradients - MindFlow Design */
-  --gradient-brand: linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%);
-  --gradient-button: linear-gradient(160deg, #4C1D95 0%, #1D4ED8 100%);
-  --gradient-avatar: linear-gradient(135deg, #4C1D95 0%, #1E40AF 100%);
-  --gradient-surface: linear-gradient(135deg, #080614 0%, #130F28 100%);
-  
-  /* State Colors */
-  --state-thinking: #22D3EE;
-  --state-action: #7C3AFF;
-  --state-success: #10B981;
-  --state-error: #EF4444;
-  --state-warning: #F59E0B;
-  --state-info: #3B82F6;
-  
-  /* Agent Colors - MindFlow Design Palette */
-  --agent-orchestrator: #7C3AFF;
-  --agent-coder: #4ADE80;
-  --agent-analyst: #F59E0B;
-  --agent-researcher: #22D3EE;
-  --agent-arch-tech: #B0BEC5;
-  --agent-critic: #FF7043;
-  --agent-creative: #FFAB40;
-  --agent-security-guard: #EF5350;
+  /* Core surfaces */
+  --background: #060709;
+  --surface: rgba(13, 14, 18, 0.92);
+  --surface-elevated: rgba(17, 19, 24, 0.96);
+  --surface-glass: rgba(255, 255, 255, 0.03);
 
-  /* Agent Avatar backgrounds (dark solid) */
-  --agent-orchestrator-avatar: linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%);
-  --agent-analyst-avatar: #1C1208;
-  --agent-coder-avatar: #071A0C;
-  --agent-researcher-avatar: #04151B;
+  --mindflow-bg-primary: var(--background);
+  --mindflow-bg-sidebar: #090a0d;
+  --mindflow-bg-card: var(--surface);
+  --mindflow-bg-new-chat: #0f1115;
+  --mindflow-bg-active-session: #11131a;
+  --mindflow-bg-workflow: #0d0f14;
+  --mindflow-bg-model: #0f1116;
 
-  /* Agent Thinking backgrounds */
-  --agent-orchestrator-thinking: #110A2E;
-  --agent-analyst-thinking: #150D04;
-  --agent-coder-thinking: #041208;
-  --agent-researcher-thinking: #031118;
+  /* Lines and rails */
+  --mindflow-border: rgba(255, 255, 255, 0.09);
+  --mindflow-border-workflow: rgba(255, 255, 255, 0.14);
+  --mindflow-border-model: rgba(176, 140, 255, 0.24);
+  --line-soft: rgba(255, 255, 255, 0.05);
+  --line-primary: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.2);
 
-  /* Agent Bubble backgrounds */
-  --agent-orchestrator-bubble: #130F28;
-  --agent-analyst-bubble: #170D05;
-  --agent-coder-bubble: #040F07;
-  --agent-researcher-bubble: #031118;
+  /* Text */
+  --text-primary: #f5f7fb;
+  --text-secondary: #c7cdd8;
+  --text-meta: #8d93a1;
+  --text-accent: #b08cff;
+  --text-inverse: #050608;
+  --text-disabled: #616775;
+  --text-ghost: #4f5563;
 
-  /* Agent Badge backgrounds */
-  --agent-orchestrator-badge: #1E1040;
-  --agent-analyst-badge: #2A1800;
-  --agent-coder-badge: #071A0C;
-  --agent-researcher-badge: #031118;
-  
-  /* Agent Status Colors */
-  --agent-online: #10B981;
-  --agent-thinking: #22D3EE;
-  --agent-busy: #F59E0B;
-  --agent-offline: #737380;
-  --agent-error: #EF4444;
+  /* Signals */
+  --brand-primary: #b08cff;
+  --brand-secondary: #ffffff;
+  --brand-accent: #8b5cf6;
+  --signal-white: #fbfcff;
+  --signal-synapse: #8b5cf6;
+  --signal-synapse-soft: rgba(139, 92, 246, 0.24);
 
-  /* Legacy Colors (for compatibility) */
-  --background: var(--mindflow-bg-primary);
-  --surface: var(--mindflow-bg-card);
-  --surface-elevated: var(--mindflow-bg-active-session);
-  --surface-glass: rgba(124, 58, 255, 0.08);
+  --gradient-brand: linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0%, rgba(176, 140, 255, 0.88) 100%);
+  --gradient-button: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0%, rgba(176, 140, 255, 0.1) 100%);
+  --gradient-avatar: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(176, 140, 255, 0.08) 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --gradient-card-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(176, 140, 255, 0.05) 100%);
 
-  /* Typography - MindFlow Design */
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --font-sans: 'Inter', 'Segoe UI', sans-serif;
-  --font-brand: 'Space Grotesk', 'Inter', sans-serif;
-  --font-meta: 'Inter', 'Segoe UI', sans-serif;
+  /* State */
+  --state-thinking: var(--signal-white);
+  --state-action: var(--signal-white);
+  --state-success: #86efac;
+  --state-error: #fda4af;
+  --state-warning: #fcd34d;
+  --state-info: #d8b4fe;
+
+  /* Agents kept neutral on purpose */
+  --agent-orchestrator: var(--signal-white);
+  --agent-coder: var(--signal-white);
+  --agent-analyst: var(--signal-white);
+  --agent-researcher: var(--signal-white);
+  --agent-arch-tech: var(--signal-white);
+  --agent-critic: var(--signal-white);
+  --agent-creative: var(--signal-white);
+  --agent-security-guard: var(--signal-white);
+  --agent-online: var(--signal-white);
+  --agent-thinking: var(--signal-white);
+  --agent-busy: var(--signal-white);
+  --agent-offline: var(--text-disabled);
+  --agent-error: var(--state-error);
+
+  /* Typography */
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', 'SFMono-Regular', 'Consolas', monospace;
+  --font-sans: 'Avenir Next', 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-brand: 'Avenir Next', 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-meta: 'IBM Plex Mono', 'JetBrains Mono', monospace;
   --base-font-size: 16px;
-  --line-height-base: 1.5;
-  
-  /* Font Sizes */
+  --line-height-base: 1.55;
+
+  /* Font scale */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -114,41 +96,32 @@
   --spacing-7: 64px;
   --spacing-8: 96px;
   --spacing-9: 128px;
-  
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 24px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
   --radius-full: 9999px;
 
-  /* Effects - MindFlow Design */
-  --glass-blur: blur(12px);
-  --glass-opacity: 0.72;
-  --glass-border: 1px solid rgba(124, 58, 255, 0.1);
-  
-  /* Shadows - MindFlow Enhanced */
-  --shadow-sm: 0 1px 2px 0 rgba(8, 6, 20, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(8, 6, 20, 0.4), 0 2px 4px -1px rgba(8, 6, 20, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(8, 6, 20, 0.4), 0 4px 6px -2px rgba(8, 6, 20, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(8, 6, 20, 0.4), 0 10px 10px -5px rgba(8, 6, 20, 0.3);
-  --shadow-purple: 0 0 20px rgba(124, 58, 255, 0.3);
-  --shadow-cyan: 0 0 20px rgba(34, 211, 238, 0.2);
-  
-  /* Gradients - MindFlow Complete */
-  --gradient-brand: linear-gradient(135deg, #7C3AFF 0%, #22D3EE 100%);
-  --gradient-button: linear-gradient(160deg, #4C1D95 0%, #1D4ED8 100%);
-  --gradient-avatar: linear-gradient(135deg, #4C1D95 0%, #1E40AF 100%);
-  --gradient-surface: linear-gradient(135deg, #080614 0%, #130F28 100%);
-  --gradient-card-hover: linear-gradient(135deg, #1D1840 0%, #160D36 100%);
-  
+  /* Effects */
+  --glass-blur: blur(18px);
+  --glass-opacity: 0.82;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.06);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 18px 40px rgba(0, 0, 0, 0.22);
+  --shadow-lg: 0 32px 80px rgba(0, 0, 0, 0.28);
+  --shadow-xl: 0 48px 120px rgba(0, 0, 0, 0.34);
+  --shadow-purple: 0 0 28px rgba(139, 92, 246, 0.18);
+  --shadow-cyan: 0 0 0 rgba(0, 0, 0, 0);
+
   /* Transitions */
   --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
-  --transition-slow: 350ms ease;
-  
-  /* Z-Index */
+  --transition-base: 240ms ease;
+  --transition-slow: 360ms ease;
+
+  /* Z index */
   --z-dropdown: 1000;
   --z-sticky: 1020;
   --z-fixed: 1030;

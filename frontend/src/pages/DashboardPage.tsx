@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Users, MessageSquare, Activity } from 'lucide-react';
 import { Card } from '../components/common';
 import { useAgents, useSessions } from '../stores/appStore';
 
@@ -8,110 +7,92 @@ export const DashboardPage: React.FC = () => {
   const agents = useAgents();
   const sessions = useSessions();
 
-  const stats = {
-    totalAgents: agents.length,
-    activeAgents: agents.filter(a => a.status === 'online').length,
-    totalSessions: sessions.length,
-    recentSessions: sessions.filter(s => {
-      const sessionDate = new Date(s.updatedAt);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return sessionDate > weekAgo;
-    }).length,
-  };
+  const stats = [
+    { label: 'agentes totais', value: agents.length, detail: 'mapa de especialistas disponíveis' },
+    { label: 'agentes ativos', value: agents.filter((agent) => agent.status === 'online').length, detail: 'sinais simultâneos em execução' },
+    { label: 'sessões', value: sessions.length, detail: 'histórico persistido no trilho' },
+    {
+      label: 'sessões recentes',
+      value: sessions.filter((session) => {
+        const sessionDate = new Date(session.updatedAt);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return sessionDate > weekAgo;
+      }).length,
+      detail: 'atividade dos últimos 7 dias',
+    },
+  ];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      className="page-shell space-y-6"
+      initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
+      transition={{ duration: 0.28, ease: 'easeOut' }}
     >
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-text-primary mb-2">
-          Welcome to MindFlow
+      <div className="space-y-3">
+        <div className="mono-label">overview / minimal rail</div>
+        <h1
+          style={{
+            color: 'var(--text-primary)',
+            fontSize: 32,
+            fontWeight: 600,
+            letterSpacing: '-0.04em',
+          }}
+        >
+          Painel de coordenação
         </h1>
-        <p className="text-text-secondary">
-          Your multi-agent AI assistant system
+        <p style={{ color: 'var(--text-secondary)', maxWidth: 620, lineHeight: 1.7 }}>
+          O dashboard agora segue a mesma lógica do chat: menos cor, mais direção. Cada número existe como um ponto de controle na trilha.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card elevation="md" padding="md">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-brand-primary/10 rounded-lg">
-              <Brain className="h-6 w-6 text-brand-primary" />
+      <div className="page-grid md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <Card key={stat.label} padding="lg" hover>
+            <div className="mono-label mb-3">{stat.label}</div>
+            <div
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 34,
+                lineHeight: 1,
+              }}
+            >
+              {stat.value}
             </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.totalAgents}</p>
-              <p className="text-sm text-text-secondary">Total Agents</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card elevation="md" padding="md">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-state-success/10 rounded-lg">
-              <Users className="h-6 w-6 text-state-success" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.activeAgents}</p>
-              <p className="text-sm text-text-secondary">Active Agents</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card elevation="md" padding="md">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-state-info/10 rounded-lg">
-              <MessageSquare className="h-6 w-6 text-state-info" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.totalSessions}</p>
-              <p className="text-sm text-text-secondary">Total Sessions</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card elevation="md" padding="md">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-state-action/10 rounded-lg">
-              <Activity className="h-6 w-6 text-state-action" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.recentSessions}</p>
-              <p className="text-sm text-text-secondary">Recent Sessions</p>
-            </div>
-          </div>
-        </Card>
+            <p style={{ marginTop: 14, color: 'var(--text-meta)', fontSize: 13, lineHeight: 1.6 }}>
+              {stat.detail}
+            </p>
+          </Card>
+        ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card elevation="md" padding="lg" hover clickable>
-          <h3 className="text-lg font-semibold text-text-primary mb-3">
-            Start New Chat
-          </h3>
-          <p className="text-text-secondary mb-4">
-            Begin a conversation with any of our specialized AI agents
+      <div className="page-grid lg:grid-cols-2">
+        <Card padding="lg" hover clickable>
+          <div className="mono-label mb-3">quick start</div>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 600 }}>
+            Abrir novo chat
+          </h2>
+          <p style={{ marginTop: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            Inicia um novo fluxo de delegação com o orchestrator no centro e notifiers visíveis.
           </p>
-          <button className="w-full bg-gradient-to-r from-brand-primary to-brand-primary-light text-white py-2 px-4 rounded-lg hover:from-brand-primary-dark hover:to-brand-primary transition-all">
-            Start Chatting
-          </button>
+          <div className="mt-6 mono-chip" style={{ width: 'fit-content' }}>
+            --- iniciar
+          </div>
         </Card>
 
-        <Card elevation="md" padding="lg" hover clickable>
-          <h3 className="text-lg font-semibold text-text-primary mb-3">
-            View Agents
-          </h3>
-          <p className="text-text-secondary mb-4">
-            Explore all available AI agents and their capabilities
+        <Card padding="lg" hover clickable>
+          <div className="mono-label mb-3">audit</div>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 600 }}>
+            Revisar agentes
+          </h2>
+          <p style={{ marginTop: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            Usa a mesma linguagem mínima do restante da interface para identificar gargalos e agentes disponíveis.
           </p>
-          <button className="w-full bg-surface-elevated text-text-primary py-2 px-4 rounded-lg hover:bg-surface transition-all border border-border">
-            View All Agents
-          </button>
+          <div className="mt-6 mono-chip" style={{ width: 'fit-content' }}>
+            --- mapear
+          </div>
         </Card>
       </div>
     </motion.div>

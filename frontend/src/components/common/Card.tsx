@@ -12,40 +12,30 @@ const Card: React.FC<CardProps> = ({
   onClick,
   testId,
 }) => {
-  const baseClasses = [
-    'bg-surface rounded-lg transition-all duration-200',
-  ];
+  const baseClasses = ['panel-surface'];
 
   const elevationClasses = {
     none: [],
     sm: ['shadow-sm'],
     md: ['shadow-md'],
     lg: ['shadow-lg'],
-  };
+  } as const;
 
   const paddingClasses = {
     none: [],
     sm: ['p-3'],
     md: ['p-4'],
     lg: ['p-6'],
-  };
+  } as const;
 
-  const hoverClasses = hover
-    ? [
-        'hover:shadow-lg hover:scale-[1.02] cursor-pointer',
-        clickable ? 'cursor-pointer' : '',
-      ]
-    : [];
-
-  const clickableClasses = clickable
-    ? ['cursor-pointer active:scale-[0.98]']
-    : [];
+  const interactiveClasses = hover || clickable ? ['panel-hover'] : [];
+  const clickableClasses = clickable ? ['cursor-pointer'] : [];
 
   const classes = [
     ...baseClasses,
     ...elevationClasses[elevation],
     ...paddingClasses[padding],
-    ...hoverClasses,
+    ...interactiveClasses,
     ...clickableClasses,
     className,
   ].join(' ');
@@ -59,9 +49,9 @@ const Card: React.FC<CardProps> = ({
   const MotionComponent = clickable || hover ? motion.div : 'div';
   const motionProps = clickable || hover
     ? {
-        whileHover: hover ? { scale: 1.02 } : undefined,
-        whileTap: clickable ? { scale: 0.98 } : undefined,
-        transition: { duration: 0.15 },
+        whileHover: hover ? { y: -2 } : undefined,
+        whileTap: clickable ? { y: 1 } : undefined,
+        transition: { duration: 0.18 },
         onClick: handleClick,
       }
     : {};
