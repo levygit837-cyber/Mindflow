@@ -20,6 +20,7 @@ class AgentChatRequest(BaseModel):
     agent_type: Optional[str] = Field(default=None, description="Agent type to use")
     orchestrate: bool = Field(default=False, description="Whether to use orchestration")
     debug_steps: bool = Field(default=False, alias="debugSteps", description="Enable debug steps")
+    folder_path: Optional[str] = Field(default=None, description="Working directory for filesystem tools")
 
 
 class SessionCreateRequest(BaseModel):

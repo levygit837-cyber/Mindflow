@@ -266,6 +266,7 @@ class EnhancedGrpcAgentClient(GrpcClient):
         orchestrate: bool = False,
         agent_type: str | None = None,
         debug_steps: bool = False,
+        folder_path: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         """Stream chat response from gRPC server with enhanced error handling."""
         if not self.is_connected():
@@ -277,7 +278,7 @@ class EnhancedGrpcAgentClient(GrpcClient):
         async def streaming_operation():
             return self._execute_stream_chat(
                 session_id, message, provider, model, run_id,
-                orchestrate, agent_type, debug_steps
+                orchestrate, agent_type, debug_steps, folder_path
             )
         
         try:
@@ -320,7 +321,8 @@ class EnhancedGrpcAgentClient(GrpcClient):
     
     async def _execute_stream_chat(self, session_id: str, message: str, provider: LLMProvider | None,
                                  model: str | None, run_id: str | None, orchestrate: bool,
-                                 agent_type: str | None, debug_steps: bool) -> AsyncGenerator[StreamEvent, None]:
+                                 agent_type: str | None, debug_steps: bool,
+                                 folder_path: str | None) -> AsyncGenerator[StreamEvent, None]:
         """Execute the actual streaming chat operation."""
         # Import protobuf types
         from mindflow_backend.grpc.generated import mindflow_backend_pb2 as pb2
@@ -335,6 +337,7 @@ class EnhancedGrpcAgentClient(GrpcClient):
             orchestrate=orchestrate,
             agent_type=agent_type or "",
             debug_steps=debug_steps,
+            folder_path=folder_path or "",
         )
         
         # Create gRPC options
@@ -482,6 +485,7 @@ class LocalAgentClient:
         run_id: str | None = None,
         orchestrate: bool = False,
         agent_type: str | None = None,
+        folder_path: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         payload = AgentChatRequest(
             message=message,
@@ -489,6 +493,7 @@ class LocalAgentClient:
             model=model,
             orchestrate=orchestrate,
             agent_type=agent_type,
+            folder_path=folder_path,
         )
         async for event in self._service.runtime.stream_chat(
             payload,

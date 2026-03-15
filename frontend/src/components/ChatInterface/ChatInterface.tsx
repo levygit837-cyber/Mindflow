@@ -8,6 +8,7 @@ import { DelegationCard } from '../common/DelegationCard';
 import { FolderPathBar } from '../common/FolderPathBar';
 import { ToolCallBlock, parseToolCallEvent, parseToolResultEvent } from '../ToolCall/ToolCallBlock';
 import { FSNotifier, isFSTool } from '../ToolCall/FSNotifier';
+import { ShellTabsPanel } from './ShellTabsPanel';
 import type { ToolCallData } from '../ToolCall/ToolCallBlock';
 import { useOmniStream } from '../../hooks/useOmniStream';
 import { useAppStore } from '../../stores/appStore';
@@ -49,8 +50,8 @@ function resolveAgentType(raw: string | undefined | null): AgentType {
   return map[raw?.toLowerCase() ?? ''] ?? 'default';
 }
 
-function eventKey(prefix: string, seqOrIndex: number | string) {
-  return `${prefix}-${seqOrIndex}`;
+function eventKey(prefix: string, primary: number | string, secondary?: number | string) {
+  return secondary == null ? `${prefix}-${primary}` : `${prefix}-${primary}-${secondary}`;
 }
 
 function parseDelegationEvent(eventData: string): {
@@ -86,7 +87,7 @@ function buildDisplayMessagesFromEvents(
 
     if (event.type === 'thought') {
       displayMessages.push({
-        id: eventKey('thought', seq),
+        id: eventKey('thought', seq, index),
         role: 'thought',
         agentType,
         agentName,
@@ -100,7 +101,7 @@ function buildDisplayMessagesFromEvents(
       if (!delegation) return;
 
       displayMessages.push({
-        id: eventKey('delegation', seq),
+        id: eventKey('delegation', seq, index),
         role: 'delegation',
         title: 'Orchestrator',
         subtitle: delegation.task || 'Delegou tarefa para especialista.',
@@ -124,7 +125,7 @@ function buildDisplayMessagesFromEvents(
 
       toolMessageIndex.set(toolCall.id, displayMessages.length);
       displayMessages.push({
-        id: eventKey('tool', toolCall.id),
+        id: eventKey('tool', toolCall.id, index),
         role: 'tool_call',
         toolCall,
       });
@@ -168,7 +169,7 @@ function buildDisplayMessagesFromEvents(
       }
 
       displayMessages.push({
-        id: eventKey('agent', seq),
+        id: eventKey('agent', seq, index),
         role: 'agent',
         agentType,
         agentName,
@@ -402,39 +403,49 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const canSend = inputValue.trim().length > 0 && !isStreaming;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" style={{ backgroundColor: 'var(--background)' }}>
+    <div className="diagram-canvas flex min-h-0 flex-1 flex-col" style={{ backgroundColor: 'var(--background)' }}>
       <div className="flex-1 overflow-y-auto px-4 py-5 md:px-8 md:py-7">
-        <div className="mx-auto flex w-full max-w-[980px] flex-col gap-5">
+        <div className="chat-column mx-auto flex w-full max-w-[980px] flex-col gap-7">
           {isLoadingHistory ? (
-            <div className="panel-surface px-5 py-5">
-              <span className="mono-label">carregando histórico</span>
+            <div className="event-shell w-full">
+              <div className="event-track">
+                <span className="signal-dot idle" />
+              </div>
+              <div className="event-node-lab">
+                <span className="mono-label">carregando histórico</span>
+              </div>
             </div>
           ) : messages.length === 0 && !isStreaming ? (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="rail-panel px-6 py-6 md:px-7 md:py-7"
-              style={{ paddingLeft: 40 }}
+              className="event-shell w-full"
             >
-              <div className="mono-label mb-3">chat / minimal trace</div>
-              <h2
-                style={{
-                  color: 'var(--text-primary)',
-                  fontSize: 24,
-                  fontWeight: 600,
-                  letterSpacing: '-0.04em',
-                }}
-              >
-                Descreva a tarefa.
-              </h2>
-              <p style={{ marginTop: 14, maxWidth: 620, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                O orchestrator aparece como linha principal. Delegações, tool calls e retornos passam a ser mostrados como trilhos finos, setas e pontos de ação.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="mono-chip">--- thinking &gt; expandir</span>
-                <span className="mono-chip">orchestrator ── delega</span>
-                <span className="mono-chip">tool call ● sinapse roxa</span>
+              <div className="event-track">
+                <span className="signal-dot idle" />
+              </div>
+
+              <div className="event-node-lab">
+                <div className="mono-label mb-3">chat / minimal trace</div>
+                <h2
+                  style={{
+                    color: 'var(--text-primary)',
+                    fontSize: 24,
+                    fontWeight: 600,
+                    letterSpacing: '-0.04em',
+                  }}
+                >
+                  Descreva a tarefa.
+                </h2>
+                <p style={{ marginTop: 14, maxWidth: 620, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+                  O orchestrator aparece como linha principal. Delegações, tool calls e retornos passam a ser mostrados como trilhos finos, setas e pontos de ação.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="event-badge">--- thinking &gt; expandir</span>
+                  <span className="event-badge">orchestrator ── delega</span>
+                  <span className="event-badge">tool call ● sinapse roxa</span>
+                </div>
               </div>
             </motion.div>
           ) : (
@@ -442,49 +453,32 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               {messages.map((message) => {
                 if (message.role === 'user') {
                   return (
-                    <motion.div
+                    <motion.section
                       key={message.id}
-                      className="ml-auto w-full max-w-[720px]"
+                      className="user-event"
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div
-                        className="panel-surface px-5 py-4 md:px-6"
-                        style={{
-                          borderColor: 'var(--line-strong)',
-                          background: 'rgba(255, 255, 255, 0.03)',
-                        }}
-                      >
-                        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-                          <span className="mono-label">you</span>
-                          <span className="mono-label">-&gt; task</span>
-                          <span
-                            style={{
-                              color: 'var(--text-meta)',
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: 11,
-                            }}
-                          >
-                            {message.timestamp.toLocaleTimeString('pt-BR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </div>
-
-                        <p
+                      <div className="event-header justify-end">
+                        <span
                           style={{
-                            color: 'var(--text-primary)',
-                            fontSize: 14,
-                            lineHeight: 1.75,
-                            whiteSpace: 'pre-wrap',
+                            color: 'var(--text-meta)',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 11,
                           }}
                         >
-                          {message.content}
-                        </p>
+                          {message.timestamp.toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <span className="mono-label">you</span>
+                        <span className="mono-label">-&gt; task</span>
                       </div>
-                    </motion.div>
+
+                      <p className="user-event-copy">{message.content}</p>
+                    </motion.section>
                   );
                 }
 
@@ -594,9 +588,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
           {error && (
             <div
-              className="panel-surface px-4 py-4"
+              className="event-expand"
               style={{
-                borderColor: 'rgba(253, 164, 175, 0.3)',
                 color: 'var(--state-error)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 12,
@@ -614,11 +607,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         className="border-t px-4 py-4 md:px-6 md:py-5"
         style={{
           borderColor: 'var(--line-primary)',
-          background: 'rgba(7, 8, 10, 0.92)',
+          background: 'linear-gradient(180deg, rgba(8, 9, 11, 0.72) 0%, rgba(7, 8, 10, 0.9) 100%)',
         }}
       >
         <div className="mx-auto flex w-full max-w-[980px] flex-col gap-3">
           <FolderPathBar value={folderPath} onChange={setFolderPath} />
+          <ShellTabsPanel sessionId={sessionId} isStreaming={isStreaming} />
 
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className="subtle-button">
@@ -638,7 +632,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </span>
           </div>
 
-          <div className="rail-panel px-4 py-4 md:px-5 md:py-5" style={{ paddingLeft: 28 }}>
+          <div className="chat-compose-shell px-4 py-4 md:px-5 md:py-5" style={{ paddingLeft: 30 }}>
             <div className="flex items-end gap-3">
               <textarea
                 ref={textareaRef}

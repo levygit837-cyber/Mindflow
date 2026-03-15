@@ -1,116 +1,195 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+"""Chat session endpoints — clean async implementation using SQLAlchemy AsyncSession."""
 
-from mindflow_backend.schemas.chat.agent import ChatMessageSchema, ChatSessionSchema
-from mindflow_backend.storage import db_session, ChatRepository
-from mindflow_backend.api.controllers.session_controller import SessionController
-from mindflow_backend.api.schemas.requests import SessionCreateRequest, SessionUpdateRequest
-from mindflow_backend.api.schemas.common import PaginationParams
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, HTTPException
+from sqlalchemy import select
+
+from mindflow_backend.infra.database.connection import get_db_session
+from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Initialize controller
-session_controller = SessionController()
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+def _session_dict(s: ChatSession) -> dict:
+    return {
+        "id": s.id,
+        "title": s.title or "Untitled Chat",
+        "created_at": s.created_at.isoformat(),
+        "updated_at": s.updated_at.isoformat(),
+    }
 
 
-def get_db():
-    with db_session() as db:
-        yield db
+def _message_dict(m: ChatMessage) -> dict:
+    return {
+        "id": m.id,
+        "role": m.role,
+        "content": m.content,
+        "provider": m.provider,
+        "model": m.model,
+        "created_at": m.created_at.isoformat(),
+    }
 
 
-# New controller-based endpoints
+# ── session CRUD ──────────────────────────────────────────────────────────────
+
 @router.post("/sessions")
-async def create_session(request: SessionCreateRequest, db: Session = Depends(get_db)):
-    """Create a new session using controller."""
-    return await session_controller.create_session(request, db)
+async def create_session(body: dict = {}):
+    import uuid
+    session_id = f"sess-{uuid.uuid4()}"
+    title = body.get("title", "New Chat") if body else "New Chat"
+
+    async with get_db_session() as db:
+        sess = ChatSession(id=session_id, title=title)
+        db.add(sess)
+        await db.commit()
+        await db.refresh(sess)
+        return _session_dict(sess)
 
 
 @router.get("/sessions")
-async def list_sessions(
-    pagination: PaginationParams = PaginationParams(),
-    db: Session = Depends(get_db)
-):
-    """List sessions using controller."""
-    return await session_controller.list_sessions(pagination, db)
+async def list_sessions():
+    async with get_db_session() as db:
+        result = await db.execute(
+            select(ChatSession).order_by(ChatSession.updated_at.desc()).limit(100)
+        )
+        sessions = result.scalars().all()
+        return [_session_dict(s) for s in sessions]
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: str, db: Session = Depends(get_db)):
-    """Get session using controller."""
-    return await session_controller.get_session(session_id, db)
+async def get_session(session_id: str):
+    async with get_db_session() as db:
+        sess = await db.get(ChatSession, session_id)
+        if not sess:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        result = await db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc())
+        )
+        messages = result.scalars().all()
+
+        data = _session_dict(sess)
+        data["messages"] = [_message_dict(m) for m in messages]
+        return data
 
 
 @router.put("/sessions/{session_id}")
-async def update_session(
-    session_id: str, 
-    request: SessionUpdateRequest, 
-    db: Session = Depends(get_db)
-):
-    """Update session using controller."""
-    return await session_controller.update_session(session_id, request, db)
+async def update_session(session_id: str, body: dict):
+    async with get_db_session() as db:
+        sess = await db.get(ChatSession, session_id)
+        if not sess:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        if "title" in body:
+            sess.title = body["title"]
+        sess.updated_at = datetime.now(UTC)
+        await db.commit()
+        return _session_dict(sess)
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: str, db: Session = Depends(get_db)):
-    """Delete session using controller."""
-    return await session_controller.delete_session(session_id, db)
+async def delete_session(session_id: str):
+    async with get_db_session() as db:
+        sess = await db.get(ChatSession, session_id)
+        if sess:
+            await db.delete(sess)
+            await db.commit()
+        return {"success": True, "session_id": session_id}
 
 
-@router.post("/sessions/{session_id}/messages")
-async def add_message(
-    session_id: str,
-    role: str,
-    content: str,
-    provider: str = None,
-    model: str = None,
-    db: Session = Depends(get_db)
-):
-    """Add message to session using controller."""
-    return await session_controller.add_message(
-        session_id, role, content, provider, model, db
-    )
+# ── message persistence ────────────────────────────────────────────────────────
 
+@router.post("/sessions/{session_id}/save-message")
+async def save_message(session_id: str, body: dict):
+    """Save a single message (user or assistant) to a session."""
+    role = body.get("role", "user")
+    content = body.get("content", "")
+    model = body.get("model")
+    provider = body.get("provider")
 
-# Legacy endpoints - maintained for backward compatibility
-@router.get("/sessions", response_model=list[ChatSessionSchema])
-async def list_sessions_legacy(db: Session = Depends(get_db)):
-    """Legacy session listing - maintained for compatibility."""
-    repo = ChatRepository()
-    sessions = repo.list_sessions(db)
-    return [
-        ChatSessionSchema(
-            id=s.id,
-            title=s.title,
-            created_at=s.created_at.isoformat(),
-            updated_at=s.updated_at.isoformat(),
+    if not content:
+        raise HTTPException(status_code=400, detail="content is required")
+
+    async with get_db_session() as db:
+        # Ensure session exists
+        sess = await db.get(ChatSession, session_id)
+        if not sess:
+            sess = ChatSession(id=session_id, title="New Chat")
+            db.add(sess)
+
+        msg = ChatMessage(
+            session_id=session_id,
+            role=role,
+            content=content,
+            model=model,
+            provider=provider,
         )
-        for s in sessions
-    ]
+        db.add(msg)
+        sess.updated_at = datetime.now(UTC)
+        await db.commit()
+        return {"success": True, "id": msg.id}
 
 
-@router.get("/sessions/{session_id}", response_model=ChatSessionSchema)
-async def get_session_history_legacy(session_id: str, db: Session = Depends(get_db)):
-    """Legacy session history - maintained for compatibility."""
-    repo = ChatRepository()
-    session = repo.get_session(db, session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+# ── Ollama title generation ────────────────────────────────────────────────────
 
-    messages = repo.get_messages(db, session_id)
-    return ChatSessionSchema(
-        id=session.id,
-        title=session.title,
-        created_at=session.created_at.isoformat(),
-        updated_at=session.updated_at.isoformat(),
-        messages=[
-            ChatMessageSchema(
-                id=m.id,
-                role=m.role,
-                content=m.content,
-                provider=m.provider,
-                model=m.model,
-                created_at=m.created_at.isoformat(),
+@router.post("/sessions/{session_id}/generate-title")
+async def generate_session_title(session_id: str, body: dict):
+    """Generate a short session title via local Ollama model and persist it."""
+    first_message = (body.get("message") or "")[:300]
+
+    # Default fallback title
+    title = (first_message[:40] + "…") if len(first_message) > 40 else first_message or "New Chat"
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                "http://localhost:11434/api/chat",
+                json={
+                    "model": "Qwen36:latest",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": (
+                                "Gere um título curto (máximo 5 palavras, sem aspas, sem pontuação final) "
+                                f"para uma conversa que começa com: '{first_message}'. "
+                                "Responda APENAS com o título, sem explicações."
+                            ),
+                        }
+                    ],
+                    "stream": False,
+                },
             )
-            for m in messages
-        ],
-    )
+        if resp.status_code == 200:
+            data = resp.json()
+            generated = data.get("message", {}).get("content", "").strip()
+            if generated:
+                # Strip <think>...</think> blocks (chain-of-thought models)
+                import re as _re
+                generated = _re.sub(r"<think>[\s\S]*?</think>", "", generated).strip()
+                # Remove surrounding quotes, take first non-empty line only
+                for line in generated.split("\n"):
+                    line = line.strip("\"' \t")
+                    if line:
+                        title = line[:60]
+                        break
+    except Exception:
+        pass  # Use fallback title
+
+    # Persist title to DB
+    async with get_db_session() as db:
+        sess = await db.get(ChatSession, session_id)
+        if sess:
+            sess.title = title
+            sess.updated_at = datetime.now(UTC)
+        else:
+            sess = ChatSession(id=session_id, title=title)
+            db.add(sess)
+        await db.commit()
+
+    return {"title": title, "session_id": session_id}

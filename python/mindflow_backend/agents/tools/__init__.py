@@ -26,8 +26,9 @@ _logger = get_logger(__name__)
 class _DefaultRegistry:
     """Enhanced registry that maps ToolScope to concrete tool implementations."""
 
-    def __init__(self, sandbox: MindFlowSandbox) -> None:
+    def __init__(self, sandbox: MindFlowSandbox, session_id: str | None = None) -> None:
         self.sandbox = sandbox
+        self.session_id = session_id
         self._tool_mapping = self._build_tool_mapping()
         self._initialized_tools = {}  # Cache for tool instances
 
@@ -38,7 +39,7 @@ class _DefaultRegistry:
             
             return {
                 AgentType.CODER: [ToolScope.FILESYSTEM, ToolScope.SHELL],
-                AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+                AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
                 AgentType.RESEARCHER: [ToolScope.WEB_SEARCH, ToolScope.BROWSER_SEARCH],
                 AgentType.ORCHESTRATOR: [],  # Orchestrator delegates, doesn't use tools directly
             }
@@ -73,10 +74,11 @@ class _DefaultRegistry:
             # Propagate root_dir from sandbox to all tool instances (root_dir feature).
             # Tools that are aware of root_dir will use it as their base working path.
             root_dir = str(self.sandbox.cwd) if hasattr(self.sandbox, "cwd") else None
-            if root_dir:
-                for tool in tools:
-                    if hasattr(tool, "root_dir"):
-                        tool.root_dir = root_dir
+            for tool in tools:
+                if root_dir and hasattr(tool, "root_dir"):
+                    tool.root_dir = root_dir
+                if self.session_id and hasattr(tool, "session_id"):
+                    tool.session_id = self.session_id
 
             # Cache the tools
             self._initialized_tools[cache_key] = tools
@@ -124,14 +126,26 @@ class _DefaultRegistry:
                 ShellExecutorTool,
                 ResourceMonitorTool,
                 SystemInfoTool,  # Corrigido: SystemInfoCollector → SystemInfoTool
-                ProcessManagerTool
+                ProcessManagerTool,
+                ShellTabOpenTool,
+                ShellTabListTool,
+                ShellTabStatusTool,
+                ShellTabExecTool,
+                ShellTabReadTool,
+                ShellTabCloseTool,
             )
             
             tools = [
                 ShellExecutorTool(),
                 ResourceMonitorTool(),
                 SystemInfoTool(),
-                ProcessManagerTool()
+                ProcessManagerTool(),
+                ShellTabOpenTool(),
+                ShellTabListTool(),
+                ShellTabStatusTool(),
+                ShellTabExecTool(),
+                ShellTabReadTool(),
+                ShellTabCloseTool(),
             ]
             _logger.info(f"Loaded {len(tools)} shell tools")
             
@@ -297,9 +311,12 @@ class _DefaultRegistry:
             return []
 
 
-def create_default_registry(sandbox: MindFlowSandbox) -> _DefaultRegistry:
+def create_default_registry(
+    sandbox: MindFlowSandbox,
+    session_id: str | None = None,
+) -> _DefaultRegistry:
     """Create a default tool registry for an agent sandbox."""
-    return _DefaultRegistry(sandbox)
+    return _DefaultRegistry(sandbox, session_id=session_id)
 
 
 __all__ = [

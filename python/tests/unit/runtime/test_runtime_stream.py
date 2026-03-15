@@ -44,10 +44,9 @@ class _DummyModelWithThinkingList:
 @pytest.mark.asyncio
 async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
     from unittest.mock import MagicMock
-    monkeypatch.setattr("mindflow_backend.runtime.stream.db_session", MagicMock())
-    monkeypatch.setattr("mindflow_backend.runtime.stream.ChatRepository", MagicMock())
+    monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
     monkeypatch.setattr(
-        "mindflow_backend.runtime.stream.get_model_for_provider",
+        "mindflow_backend.runtime.streaming.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
     )
 
@@ -82,14 +81,14 @@ async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None:
     monkeypatch.setattr(
-        "mindflow_backend.runtime.stream.get_model_for_provider",
+        "mindflow_backend.runtime.streaming.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModel(),
     )
 
     async def _fake_search(_query: str) -> str:
         return "fresh web context"
 
-    monkeypatch.setattr("mindflow_backend.runtime.stream.search_web", _fake_search)
+    monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.search_web", _fake_search)
 
     runtime = AgentRuntime()
     payload = AgentChatRequest(message="search latest docs", provider="openai", model="stub")
@@ -104,10 +103,9 @@ async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None
 async def test_stream_contract_extracts_thought_and_response_from_list_content(monkeypatch) -> None:
     from unittest.mock import MagicMock
 
-    monkeypatch.setattr("mindflow_backend.runtime.stream.db_session", MagicMock())
-    monkeypatch.setattr("mindflow_backend.runtime.stream.ChatRepository", MagicMock())
+    monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
     monkeypatch.setattr(
-        "mindflow_backend.runtime.stream.get_model_for_provider",
+        "mindflow_backend.runtime.streaming.stream.get_model_for_provider",
         lambda _provider, _model: _DummyModelWithThinkingList(),
     )
 
@@ -120,3 +118,53 @@ async def test_stream_contract_extracts_thought_and_response_from_list_content(m
 
     assert any("reasoning summary" in evt.data for evt in thought_events)
     assert any("final answer" in evt.data for evt in response_events)
+
+
+@pytest.mark.asyncio
+async def test_direct_analyst_with_folder_path_uses_structured_flow(monkeypatch) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
+
+    runtime = AgentRuntime()
+    direct_called = False
+    orchestrated_called = False
+
+    async def _fake_direct(*_args, **_kwargs):
+        nonlocal direct_called
+        direct_called = True
+        if False:
+            yield None
+
+    async def _fake_orchestrated(*_args, **_kwargs):
+        nonlocal orchestrated_called
+        orchestrated_called = True
+        yield type(
+            "Evt",
+            (),
+            {
+                "id": "evt-1",
+                "seq": 1,
+                "type": "done",
+                "mode": "messages",
+                "data": "",
+                "meta": None,
+            },
+        )()
+
+    monkeypatch.setattr(runtime, "_stream_chat_direct_agent", _fake_direct)
+    monkeypatch.setattr(runtime, "_stream_chat_orchestrated", _fake_orchestrated)
+    monkeypatch.setattr(runtime, "_save_message_bg", AsyncMock())
+
+    payload = AgentChatRequest(
+        message="analise esta codebase",
+        provider="openai",
+        model="stub",
+        agent_type="analyst",
+        folder_path="/tmp/project",
+    )
+
+    _ = [event async for event in runtime.stream_chat(payload, session_id="session-4", run_id="run-4")]
+
+    assert orchestrated_called is True
+    assert direct_called is False

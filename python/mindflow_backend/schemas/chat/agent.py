@@ -19,6 +19,10 @@ class AgentChatRequest(BaseModel):
         validation_alias=AliasChoices("agent_type", "agent"),
         serialization_alias="agent_type",
     )
+    folder_path: str | None = Field(
+        default=None,
+        description="Working directory for filesystem tools (root_dir for sandboxed operations)",
+    )
 
 class ChatMessageSchema(BaseModel):
     id: int | None = None

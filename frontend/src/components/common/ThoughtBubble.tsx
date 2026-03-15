@@ -30,45 +30,34 @@ export const ThoughtBubble: React.FC<ThoughtBubbleProps> = ({
   }, [content, isStreaming]);
 
   return (
-    <motion.div
-      className={`flex w-full gap-4 ${className}`}
+    <motion.section
+      layout
+      className={`event-shell w-full ${className}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      <div className="flex w-4 flex-col items-center shrink-0">
+      <div className="event-track">
         <span className="signal-dot" />
-        <span className="trace-rail mt-2 flex-1" />
       </div>
 
-      <div className="rail-panel min-w-0 flex-1 px-5 py-4 md:px-6" style={{ paddingLeft: 36 }}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            style={{
-              color: 'var(--text-secondary)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            --- Thinking
-          </span>
+      <motion.div layout className="event-node-lab">
+        <div className="event-header">
+          <span className="mono-label">--- Thinking</span>
 
-          <span style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 600 }}>
+          <span className="event-title">
             {displayName}
           </span>
 
-          <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
+          <span className="event-badge">
             {collapsed ? 'expandir' : 'aberto'}
           </span>
 
           <button
             type="button"
             onClick={() => setCollapsed((value) => !value)}
-            className="subtle-button ml-auto"
-            style={{ minHeight: 30, paddingInline: 12 }}
+            className="event-toggle ml-auto"
           >
             <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
               {collapsed ? '> abrir' : 'v fechar'}
@@ -79,30 +68,34 @@ export const ThoughtBubble: React.FC<ThoughtBubbleProps> = ({
 
         <AnimatePresence initial={false}>
           {!collapsed && (
-            <motion.pre
+            <motion.div
+              layout
               key="content"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              style={{
-                marginTop: 14,
-                overflow: 'hidden',
-                whiteSpace: 'pre-wrap',
-                color: 'var(--text-meta)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-                lineHeight: 1.7,
-                maxHeight: 280,
-                overflowY: 'auto',
-              }}
+              className="event-expand event-expand-block"
+              initial={{ opacity: 0, height: 0, y: -6 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -4 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             >
-              {content}
-            </motion.pre>
+              <pre
+                style={{
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  color: 'var(--text-meta)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  lineHeight: 1.78,
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                }}
+              >
+                {content}
+              </pre>
+            </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </motion.div>
+      </motion.div>
+    </motion.section>
   );
 };
 

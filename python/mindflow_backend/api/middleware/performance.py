@@ -46,9 +46,16 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with performance optimizations."""
+        # SSE / streaming endpoints: pass through immediately.
+        # BaseHTTPMiddleware wraps the response body, which would buffer the
+        # entire SSE stream before delivering it to the client — eliminating
+        # all streaming benefit. Skip ALL body-touching logic for these.
+        if "text/event-stream" in request.headers.get("accept", ""):
+            return await call_next(request)
+
         start_time = time.time()
         self._request_count += 1
-        
+
         # Check if request is cacheable
         cache_key = self._get_cache_key(request)
         cached_response = None
@@ -111,16 +118,8 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         return hashlib.md5(key_string.encode()).hexdigest()
     
     def _is_cacheable_request(self, request: Request) -> bool:
-        """Determine if request should be cached."""
-        # Only cache GET requests by default
-        if request.method != "GET":
-            return False
-        
-        # Don't cache health checks or admin endpoints
-        path = request.url.path
-        no_cache_paths = ["/health", "/metrics", "/admin", "/debug"]
-        
-        return not any(path.startswith(no_cache_path) for no_cache_path in no_cache_paths)
+        """Caching disabled — BaseHTTPMiddleware exhausts the response body iterator."""
+        return False
     
     def _is_cacheable_response(self, response: Response) -> bool:
         """Determine if response should be cached."""

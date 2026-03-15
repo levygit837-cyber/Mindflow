@@ -33,7 +33,11 @@ from mindflow_backend.graphs.factory import (
 )
 
 # Backward compatibility
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import build_simple_orchestrator_flow
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+    SimpleOrchestratorGraph,
+    build_simple_orchestrator_flow,
+)
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import OrchestratorState
 
 __all__ = [
     # Base classes
@@ -54,4 +58,7 @@ __all__ = [
     "get_graph_factory",
     "create_orchestrator_graph",
     "build_simple_orchestrator_flow",
+    
+    # Legacy state
+    "OrchestratorState",
 ]

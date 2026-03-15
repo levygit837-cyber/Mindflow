@@ -35,9 +35,8 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-3 border-b px-4 py-4 md:px-6"
+      className="topbar-shell flex flex-wrap items-center gap-3 border-b px-4 py-4 md:px-6"
       style={{
-        background: 'rgba(7, 8, 10, 0.92)',
         borderColor: 'var(--line-primary)',
       }}
     >
@@ -56,13 +55,13 @@ export const TopBar: React.FC<TopBarProps> = ({
             {title}
           </h1>
 
-          <span className="mono-chip">
+          <span className="event-badge">
             <span className={`signal-dot ${agentCount > 0 ? '' : 'idle'}`} />
             {activeLabel}
           </span>
 
           {workflowType && (
-            <span className="mono-chip">
+            <span className="event-badge">
               <span style={{ color: 'var(--text-meta)' }}>---</span>
               {WORKFLOW_LABELS[workflowType] ?? workflowType}
             </span>
@@ -95,7 +94,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {modelOpen && (
           <div
-            className="panel-surface-strong absolute right-0 top-[calc(100%+10px)] z-50 min-w-[240px] overflow-hidden p-2"
+            className="lab-dropdown absolute right-0 top-[calc(100%+10px)] z-50 min-w-[240px] overflow-hidden p-2"
           >
             {availableModels.map((model) => {
               const selected = model === selectedModel;
@@ -108,7 +107,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     onModelChange(model);
                     setModelOpen(false);
                   }}
-                  className="panel-hover flex w-full items-center gap-3 rounded-[14px] border px-3 py-3 text-left"
+                  className="lab-dropdown-option flex w-full items-center gap-3 rounded-[14px] border px-3 py-3 text-left"
                   style={{
                     marginBottom: 6,
                     borderColor: selected ? 'var(--line-strong)' : 'transparent',

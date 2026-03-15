@@ -48,8 +48,9 @@ def create_analyst_agent() -> BaseAgent:
     return BaseAgent(
         agent_type=AgentType.ANALYST,
         system_prompt=ANALYST_SYSTEM_PROMPT,
-        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.MEDIUM,
+        sandbox=SandboxMode.READ_ONLY,
         keep_context=True,
     )
 
@@ -73,6 +74,7 @@ def create_researcher_agent() -> BaseAgent:
         system_prompt=RESEARCHER_SYSTEM_PROMPT,
         tools=[ToolScope.WEB_SEARCH, ToolScope.BROWSER_SEARCH],
         thinking_level=ThinkingLevel.HIGH,
+        sandbox=SandboxMode.READ_ONLY,
         keep_context=True,
     )
 
@@ -95,8 +97,9 @@ def create_security_agent() -> BaseAgent:
     return BaseAgent(
         agent_type=AgentType.ANALYST,  # Uses analyst base type
         system_prompt=compose_analyst_prompt("core", "security_guard"),
-        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.HIGH,
+        sandbox=SandboxMode.READ_ONLY,
         keep_context=True,
     )
 
@@ -106,8 +109,9 @@ def create_review_agent() -> BaseAgent:
     return BaseAgent(
         agent_type=AgentType.ANALYST,  # Uses analyst base type
         system_prompt=compose_analyst_prompt("core", "critic"),
-        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.MEDIUM,
+        sandbox=SandboxMode.READ_ONLY,
         keep_context=True,
     )
 
@@ -129,8 +133,9 @@ def create_creative_agent() -> BaseAgent:
     return BaseAgent(
         agent_type=AgentType.ANALYST,  # Uses analyst base type
         system_prompt=compose_analyst_prompt("core", "brainstorm"),
-        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.MEDIUM,
+        sandbox=SandboxMode.READ_ONLY,
         keep_context=True,
     )
 
@@ -140,7 +145,8 @@ def create_deep_analysis_agent() -> BaseAgent:
     return BaseAgent(
         agent_type=AgentType.ANALYST,  # Uses analyst base type
         system_prompt=ANALYST_SYSTEM_PROMPT,
-        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+        tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.HIGH,
+        sandbox=SandboxMode.READ_ONLY,
         keep_context=True,
     )

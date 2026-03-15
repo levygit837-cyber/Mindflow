@@ -32,6 +32,7 @@ from mindflow_backend.services.core import (
     get_session_service,
     get_provider_service,
     get_pinchtab_service,
+    get_shell_tab_service,
 )
 
 # Orchestration domain services
@@ -102,6 +103,7 @@ __all__ = [
     "get_session_service",
     "get_provider_service",
     "get_pinchtab_service",
+    "get_shell_tab_service",
     
     # Orchestration services
     "get_orchestration_service",

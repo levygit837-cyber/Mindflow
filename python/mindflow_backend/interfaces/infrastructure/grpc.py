@@ -35,6 +35,7 @@ class GrpcClient(Protocol):
         orchestrate: bool = False,
         agent_type: str | None = None,
         debug_steps: bool = False,
+        folder_path: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         """Stream chat response from gRPC server."""
         ...

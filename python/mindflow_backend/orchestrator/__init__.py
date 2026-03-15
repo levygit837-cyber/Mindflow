@@ -15,27 +15,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mindflow_backend.orchestrator.graph import (
+    from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
         OrchestratorState as OrchestratorState,
-        build_orchestrator_graph as build_orchestrator_graph,
+        build_simple_orchestrator_flow as build_simple_orchestrator_flow,
     )
     from mindflow_backend.orchestrator.router import route_message as route_message
 
 __all__ = [
     "OrchestratorState",
-    "build_orchestrator_graph",
+    "build_simple_orchestrator_flow",
     "route_message",
     "context_validation",
 ]
 
 
 def __getattr__(name: str) -> object:
-    if name in ("OrchestratorState", "build_orchestrator_graph", "build_simple_orchestrator_flow"):
-        from mindflow_backend.orchestrator.graph import (
+    if name in ("OrchestratorState", "build_simple_orchestrator_flow"):
+        from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
             OrchestratorState,
-            build_orchestrator_graph,
+            build_simple_orchestrator_flow,
         )
-        return {"OrchestratorState": OrchestratorState, "build_orchestrator_graph": build_orchestrator_graph, "build_simple_orchestrator_flow": build_orchestrator_graph}[name]
+        return {"OrchestratorState": OrchestratorState, "build_simple_orchestrator_flow": build_simple_orchestrator_flow}[name]
     if name == "route_message":
         from mindflow_backend.orchestrator.router import route_message
         return route_message

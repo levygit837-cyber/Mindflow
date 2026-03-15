@@ -11,6 +11,7 @@ message ChatStreamRequest {
   bool orchestrate = 6;
   string agent_type = 7;
   bool debug_steps = 8;
+  string folder_path = 9;
 }
 
 message StreamEvent {

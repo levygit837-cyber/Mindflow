@@ -34,6 +34,21 @@ from mindflow_backend.chains.templates.coding_task_chain import (
     CodingTaskChain,
     CodingTaskChainConfig,
 )
+from mindflow_backend.chains.templates.file_analysis_chain import (
+    FileAnalysisChain,
+    FileAnalysisChainConfig,
+    create_file_analysis_chain,
+)
+from mindflow_backend.chains.templates.conditional_file_chain import (
+    ConditionalFileChain,
+    ConditionalFileChainConfig,
+    create_conditional_file_chain,
+)
+from mindflow_backend.chains.templates.parallel_file_chain import (
+    ParallelFileChain,
+    ParallelFileChainConfig,
+    create_parallel_file_chain,
+)
 
 
 ChainFactory = Callable[[], Any]
@@ -51,11 +66,26 @@ def _conditional_workflow_factory() -> ConditionalWorkflowChain:
     return create_conditional_workflow_chain(ConditionalWorkflowConfig(chain_id="conditional_workflow"))
 
 
+def _file_analysis_factory() -> FileAnalysisChain:
+    return create_file_analysis_chain(FileAnalysisChainConfig())
+
+
+def _conditional_file_analysis_factory() -> ConditionalFileChain:
+    return create_conditional_file_chain(ConditionalFileChainConfig())
+
+
+def _parallel_file_analysis_factory() -> ParallelFileChain:
+    return create_parallel_file_chain(ParallelFileChainConfig())
+
+
 # Legacy catalog for backward compatibility
 CHAIN_CATALOG: dict[str, ChainFactory] = {
     "coding_task": _coding_task_chain_factory,
     "analysis_task": _analysis_chain_factory,
     "conditional_workflow": _conditional_workflow_factory,
+    "file_analysis": _file_analysis_factory,
+    "conditional_file_analysis": _conditional_file_analysis_factory,
+    "parallel_file_analysis": _parallel_file_analysis_factory,
 }
 
 

@@ -29,7 +29,7 @@ export const FolderPathBar: React.FC<FolderPathBarProps> = ({ value, onChange })
   };
 
   return (
-    <div className="panel-surface flex items-center gap-3 rounded-[18px] px-4 py-3">
+    <div className="composer-path flex items-center gap-3 px-4 py-3">
       <span className={value ? 'signal-dot' : 'signal-dot idle'} />
 
       <div className="hidden md:flex items-center" style={{ color: value ? 'var(--text-primary)' : 'var(--text-meta)' }}>

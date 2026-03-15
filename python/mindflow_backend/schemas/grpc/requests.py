@@ -16,5 +16,6 @@ class GrpcChatStreamRequest(BaseModel):
     orchestrate: bool = Field(default=False, description="Whether to orchestrate the response")
     agent_type: str | None = Field(default=None, description="Type of agent to use")
     debug_steps: bool = Field(default=False, description="Whether to include debug steps")
+    folder_path: str | None = Field(default=None, description="Workspace root for filesystem-aware analysis")
     timeout_seconds: int = Field(default=300, description="Request timeout in seconds")
     metadata: dict[str, str] = Field(default_factory=dict, description="Additional metadata")

@@ -22,6 +22,7 @@ class AgentRuntimeServiceImpl(pb2_grpc.AgentRuntimeServiceServicer):
             orchestrate=getattr(request, "orchestrate", False),
             debugSteps=getattr(request, "debug_steps", False),
             agent_type=getattr(request, "agent_type", None) or None,
+            folder_path=getattr(request, "folder_path", None) or None,
         )
         session_id = getattr(request, "session_id", "")
         run_id = getattr(request, "run_id", "")

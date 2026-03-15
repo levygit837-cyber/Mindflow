@@ -167,7 +167,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
                 provider=provider,
                 model=model,
                 agent_type=agent_type,
-                orchestrate=False
+                orchestrate=False,
             ):
                 if event.data:
                     response_chunks.append(event.data)

@@ -41,9 +41,40 @@ class RouteNode(StatefulNode, BaseNode):
         session = OrchestratorSession(
             user_intent=state["message"],
         )
+
+        if state.get("agent_type") == "analyst" and state.get("folder_path"):
+            from mindflow_backend.schemas.orchestration.orchestrator import (
+                AgentType,
+                ChainType,
+                ExecutionStrategy,
+                Priority,
+                ThinkingLevel,
+            )
+
+            scorer = ComplexityScorer()
+            score = await scorer.get_complexity_score(
+                state["message"],
+                provider=state.get("provider"),
+                model=state.get("model"),
+            )
+            decision = OrchestratorDecision(
+                rationale="Forced file analysis for analyst request with workspace root.",
+                agent=AgentType.ANALYST,
+                task=state["message"],
+                thinking=ThinkingLevel.HIGH,
+                priority=Priority.HIGH,
+                execution_strategy=ExecutionStrategy.CHAIN,
+                chain_id="file_analysis",
+                chain_type=ChainType.FILE_ANALYSIS,
+            )
+            return {"decision": decision, "complexity_score": score}
         
         # Use intelligent routing
-        decision = await route_message_intelligently(state["message"], session)
+        decision = await route_message_intelligently(
+            state["message"],
+            session,
+            folder_path=state.get("folder_path"),
+        )
         
         # Calculate complexity score
         scorer = ComplexityScorer()

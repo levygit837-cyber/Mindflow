@@ -1,9 +1,10 @@
+import asyncio
 import contextlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from mindflow_backend.utils.formatting import format_sse
@@ -11,6 +12,8 @@ from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEventMeta
 from mindflow_backend.api.controllers.agent_controller import AgentController
+from mindflow_backend.schemas.tools.shell_tabs import ShellTabCreateRequest, ShellTabExecRequest
+from mindflow_backend.services import get_shell_tab_service
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -49,6 +52,90 @@ async def validate_agent_request(request_data: dict):
     return await agent_controller.validate_request(request_data)
 
 
+@router.get("/shell-tabs/{session_id}")
+async def list_shell_tabs(session_id: str):
+    service = get_shell_tab_service()
+    tabs = await service.list_tabs(session_id=session_id)
+    return [tab.model_dump(mode="json") for tab in tabs]
+
+
+@router.post("/shell-tabs/{session_id}")
+async def open_shell_tab(session_id: str, payload: ShellTabCreateRequest):
+    service = get_shell_tab_service()
+    created = await service.create_tab(
+        session_id=session_id,
+        cwd=payload.cwd,
+        title=payload.title,
+    )
+    return created.model_dump(mode="json")
+
+
+@router.get("/shell-tabs/{session_id}/events")
+async def stream_shell_tab_events(session_id: str, request: Request) -> StreamingResponse:
+    service = get_shell_tab_service()
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        async for event in service.subscribe(session_id=session_id):
+            if await request.is_disconnected():
+                break
+            yield format_sse(event)
+            await asyncio.sleep(0)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@router.get("/shell-tabs/{session_id}/{tab_id}")
+async def get_shell_tab_status(session_id: str, tab_id: str):
+    service = get_shell_tab_service()
+    try:
+        status = await service.get_tab_status(session_id=session_id, tab_id=tab_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return status.model_dump(mode="json")
+
+
+@router.post("/shell-tabs/{session_id}/{tab_id}/exec")
+async def exec_shell_tab(session_id: str, tab_id: str, payload: ShellTabExecRequest):
+    service = get_shell_tab_service()
+    try:
+        updated = await service.exec_in_tab(
+            session_id=session_id,
+            tab_id=tab_id,
+            command=payload.command,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return updated.model_dump(mode="json")
+
+
+@router.get("/shell-tabs/{session_id}/{tab_id}/buffer")
+async def read_shell_tab_buffer(session_id: str, tab_id: str):
+    service = get_shell_tab_service()
+    try:
+        snapshot = await service.read_tab_buffer(session_id=session_id, tab_id=tab_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return snapshot.model_dump(mode="json")
+
+
+@router.delete("/shell-tabs/{session_id}/{tab_id}")
+async def close_shell_tab(session_id: str, tab_id: str):
+    service = get_shell_tab_service()
+    try:
+        closed = await service.close_tab(session_id=session_id, tab_id=tab_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return closed.model_dump(mode="json")
+
+
 # Legacy endpoints - maintained for backward compatibility
 @router.post("/chat/stream/legacy")
 async def stream_chat_legacy(payload: AgentChatRequest, request: Request) -> StreamingResponse:
@@ -67,13 +154,14 @@ async def stream_chat_legacy(payload: AgentChatRequest, request: Request) -> Str
 
     async def event_generator() -> AsyncGenerator[str, None]:
         async for event in grpc_client.stream_chat(
-            session_id=session_id,  # Now passing the session_id for persistence
+            session_id=session_id,
             message=payload.message,
             provider=payload.provider,
             model=payload.model,
             run_id=run_id,
             orchestrate=payload.orchestrate,
             agent_type=payload.agent_type,
+            folder_path=getattr(payload, "folder_path", None),
         ):
             if await request.is_disconnected():
                 break
@@ -91,8 +179,18 @@ async def stream_chat_legacy(payload: AgentChatRequest, request: Request) -> Str
                     json.loads(event.data)
 
             yield format_sse(event.model_dump())
+            # Give the event loop a chance to flush the TCP write buffer.
+            await asyncio.sleep(0)
 
             if event.type == "done":
                 break
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )

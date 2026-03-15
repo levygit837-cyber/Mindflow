@@ -16,6 +16,14 @@ from .resource_monitor import (
 from .system_info import (
     SystemInfoTool,
 )
+from .shell_tabs import (
+    ShellTabOpenTool,
+    ShellTabListTool,
+    ShellTabStatusTool,
+    ShellTabExecTool,
+    ShellTabReadTool,
+    ShellTabCloseTool,
+)
 
 # Original system tools
 from ..sandbox import MindFlowSandbox  # Import from parent directory
@@ -26,6 +34,12 @@ __all__ = [
     "ShellExecutorTool",
     "ResourceMonitorTool",
     "SystemInfoTool",
+    "ShellTabOpenTool",
+    "ShellTabListTool",
+    "ShellTabStatusTool",
+    "ShellTabExecTool",
+    "ShellTabReadTool",
+    "ShellTabCloseTool",
     
     # Original system tools
     "MindFlowSandbox",

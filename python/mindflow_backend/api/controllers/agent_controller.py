@@ -14,6 +14,17 @@ from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
+# ── Module-level singleton — avoids re-creating AgentRuntime / recompiling the
+# LangGraph graph on every HTTP request (build_simple_orchestrator_flow is slow).
+_local_agent_client: LocalAgentClient | None = None
+
+
+def _get_local_agent_client() -> LocalAgentClient:
+    global _local_agent_client
+    if _local_agent_client is None:
+        _local_agent_client = LocalAgentClient()
+    return _local_agent_client
+
 
 class AgentController(BaseController):
     """Controller for agent operations and chat interactions."""
@@ -49,11 +60,14 @@ class AgentController(BaseController):
             turn_id = f"turn-{uuid.uuid4()}"
             run_id = str(uuid.uuid4())
             
-            # Create gRPC client
-            grpc_client = LocalAgentClient()
+            # Reuse the cached client (avoids rebuilding AgentRuntime / LangGraph per request)
+            grpc_client = _get_local_agent_client()
             
             async def event_generator():
                 """Generate streaming events."""
+                import asyncio
+                import json
+                from mindflow_backend.utils.formatting import format_sse
                 try:
                     async for event in grpc_client.stream_chat(
                         session_id=session_id,
@@ -63,10 +77,11 @@ class AgentController(BaseController):
                         run_id=run_id,
                         orchestrate=payload.orchestrate,
                         agent_type=payload.agent_type,
+                        folder_path=getattr(payload, 'folder_path', None),
                     ):
                         if await request.is_disconnected():
                             break
-                        
+
                         # Add metadata
                         meta = event.meta or StreamEventMeta()
                         if not meta.runId:
@@ -74,23 +89,23 @@ class AgentController(BaseController):
                         if not meta.turnRunId:
                             meta.turnRunId = turn_id
                         event.meta = meta
-                        
+
                         # Validate tool payload
                         if event.type in {"tool_call", "tool_result"}:
                             try:
-                                import json
                                 json.loads(event.data)
                             except json.JSONDecodeError:
                                 self.logger.warning(f"Invalid tool payload in event: {event.type}")
                                 continue
-                        
-                        # Format and yield SSE event
-                        from mindflow_backend.utils.formatting import format_sse
+
                         yield format_sse(event.model_dump())
-                        
+                        # Yield control to the event loop so uvicorn can drain the TCP
+                        # write buffer and send this chunk before processing the next event.
+                        await asyncio.sleep(0)
+
                         if event.type == "done":
                             break
-                            
+
                 except Exception as e:
                     self.logger.error(f"Error in stream generation: {str(e)}", exc_info=True)
                     error_event = StreamEvent(
@@ -101,10 +116,17 @@ class AgentController(BaseController):
                         data=str(e),
                         meta=StreamEventMeta(runId=run_id, turnRunId=turn_id)
                     )
-                    from mindflow_backend.utils.formatting import format_sse
                     yield format_sse(error_event.model_dump())
-            
-            return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+            return StreamingResponse(
+                event_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Connection": "keep-alive",
+                },
+            )
             
         except SanitizationError as e:
             raise self.handle_error(e, "agent_chat_stream")

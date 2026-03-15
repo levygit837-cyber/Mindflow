@@ -1,0 +1,95 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: MindFlow / rail
+          - generic [ref=e11]:
+            - generic [ref=e12]: Agentes em trilho
+            - generic [ref=e13]: notificadores, setas e precisão
+        - button [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+      - button "Nova conversa start" [ref=e18] [cursor=pointer]:
+        - generic [ref=e19]:
+          - img [ref=e20]
+          - generic [ref=e21]: Nova conversa
+        - generic [ref=e22]: start
+    - generic [ref=e23]:
+      - generic [ref=e25]: Sessões
+      - generic [ref=e28]:
+        - button "registro olá no mundo --- 18m" [ref=e195]:
+          - generic [ref=e101]:
+            - generic [ref=e102]: registro
+            - generic [ref=e103]: olá no mundo
+            - generic [ref=e104]:
+              - generic [ref=e105]: "---"
+              - generic [ref=e106]: 18m
+          - img [ref=e107]
+        - button "registro olá mundo --- 1h" [ref=e109]:
+          - generic [ref=e113]:
+            - generic [ref=e114]: registro
+            - generic [ref=e115]: olá mundo
+            - generic [ref=e116]:
+              - generic [ref=e117]: "---"
+              - generic [ref=e118]: 1h
+          - img [ref=e119]
+        - button "registro olá dia --- 1h" [ref=e121]:
+          - generic [ref=e125]:
+            - generic [ref=e126]: registro
+            - generic [ref=e127]: olá dia
+            - generic [ref=e128]:
+              - generic [ref=e129]: "---"
+              - generic [ref=e130]: 1h
+          - img [ref=e131]
+        - button "ativo Sistema Orchestrator para Agentes Especialistas --- 1h" [active] [ref=e196]:
+          - generic [ref=e137]:
+            - generic [ref=e138]: ativo
+            - generic [ref=e139]: Sistema Orchestrator para Agentes Especialistas
+            - generic [ref=e140]:
+              - generic [ref=e141]: "---"
+              - generic [ref=e142]: 1h
+          - img [ref=e143]
+    - generic [ref=e31]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: Levy Bonito
+        - generic [ref=e35]: admin / pencil
+      - button [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]: chat / live trace
+        - generic [ref=e45]:
+          - heading "Sistema Orchestrator para Agentes Especialistas" [level=1] [ref=e197]
+          - generic [ref=e47]: idle
+          - generic [ref=e49]:
+            - generic [ref=e50]: "---"
+            - text: orchestrator
+      - button "model gemini-3.1-flash-lite-preview" [ref=e52] [cursor=pointer]:
+        - generic [ref=e53]: model
+        - generic [ref=e54]: gemini-3.1-flash-lite-preview
+        - img [ref=e55]
+    - generic [ref=e198]:
+      - generic [ref=e201]:
+        - generic [ref=e202]:
+          - generic [ref=e203]: 14:13
+          - generic [ref=e204]: you
+          - generic [ref=e205]: "-> task"
+        - paragraph [ref=e206]: hello test
+      - generic [ref=e208]:
+        - generic [ref=e209]:
+          - img [ref=e212]
+          - textbox "/caminho/do/projeto" [ref=e214]
+          - button "abrir" [ref=e215] [cursor=pointer]:
+            - generic [ref=e216]: abrir
+        - generic [ref=e217]:
+          - button "anexar" [ref=e218] [cursor=pointer]:
+            - img [ref=e219]
+            - generic [ref=e221]: anexar
+          - generic [ref=e222]: gemini-3.1-flash-lite-preview
+          - generic [ref=e224]: orchestrator / live
+        - generic [ref=e226]:
+          - textbox "descreva a tarefa, a estética ou a próxima decisão" [ref=e227]
+          - button [disabled] [ref=e228] [cursor=pointer]:
+            - img [ref=e229]
+        - paragraph [ref=e232]: verifique resultados críticos antes de executar algo sensível.

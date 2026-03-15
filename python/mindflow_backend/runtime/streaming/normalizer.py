@@ -143,6 +143,7 @@ class AgentChatStreamNormalizer:
         args: dict[str, Any],
         *,
         run_id: str | None = None,
+        extra_meta: dict[str, Any] | None = None,
     ) -> StreamEvent:
         return StreamEvent(
             id=f"evt-{seq}",
@@ -158,6 +159,7 @@ class AgentChatStreamNormalizer:
                 user_visible=True,
                 tool_call_id=tool_call_id,
                 status="start",
+                extra_meta=extra_meta,
             ),
         )
 
@@ -169,6 +171,7 @@ class AgentChatStreamNormalizer:
         result: str,
         *,
         run_id: str | None = None,
+        extra_meta: dict[str, Any] | None = None,
     ) -> StreamEvent:
         return StreamEvent(
             id=f"evt-{seq}",
@@ -184,5 +187,6 @@ class AgentChatStreamNormalizer:
                 user_visible=True,
                 tool_call_id=tool_call_id,
                 status="end",
+                extra_meta=extra_meta,
             ),
         )

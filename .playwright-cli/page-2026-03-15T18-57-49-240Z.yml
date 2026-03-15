@@ -1,0 +1,58 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: MindFlow / rail
+          - generic [ref=e11]:
+            - generic [ref=e12]: Agentes em trilho
+            - generic [ref=e13]: notificadores, setas e precisão
+        - button [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+      - button "Nova conversa start" [ref=e18] [cursor=pointer]:
+        - generic [ref=e19]:
+          - img [ref=e20]
+          - generic [ref=e21]: Nova conversa
+        - generic [ref=e22]: start
+    - generic [ref=e23]:
+      - generic [ref=e25]: Sessões
+      - generic [ref=e29]: sem histórico ainda
+    - generic [ref=e31]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: Levy Bonito
+        - generic [ref=e35]: admin / pencil
+      - button [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]: chat / live trace
+        - generic [ref=e45]:
+          - heading "New Chat" [level=1] [ref=e46]
+          - generic [ref=e47]: idle
+          - generic [ref=e49]:
+            - generic [ref=e50]: "---"
+            - text: orchestrator
+      - button "model gemini-3.1-flash-lite-preview" [ref=e52] [cursor=pointer]:
+        - generic [ref=e53]: model
+        - generic [ref=e54]: gemini-3.1-flash-lite-preview
+        - img [ref=e55]
+    - generic [ref=e57]:
+      - generic [ref=e63]: carregando histórico
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - img [ref=e69]
+          - textbox "/caminho/do/projeto" [ref=e71]
+          - button "abrir" [ref=e72] [cursor=pointer]:
+            - generic [ref=e73]: abrir
+        - generic [ref=e74]:
+          - button "anexar" [ref=e75] [cursor=pointer]:
+            - img [ref=e76]
+            - generic [ref=e78]: anexar
+          - generic [ref=e79]: gemini-3.1-flash-lite-preview
+          - generic [ref=e81]: orchestrator / live
+        - generic [ref=e83]:
+          - textbox "descreva a tarefa, a estética ou a próxima decisão" [ref=e84]
+          - button [disabled] [ref=e85] [cursor=pointer]:
+            - img [ref=e86]
+        - paragraph [ref=e89]: verifique resultados críticos antes de executar algo sensível.

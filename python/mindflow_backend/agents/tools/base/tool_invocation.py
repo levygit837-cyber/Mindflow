@@ -9,7 +9,7 @@ tool-use loop:
 3. Repeat until no more tool calls or ``max_iterations`` is reached.
 4. Return the final text response.
 
-This module is imported by ``orchestrator/graph.py`` (execute_node) and
+This module is imported by ``graphs/implementations/orchestrator/simple_flow.py`` (execute_node) and
 ``orchestrator/delegation/engine.py`` (delegate_task).
 """
 
@@ -64,22 +64,11 @@ async def invoke_with_tools(
 
         if not tool_calls:
             # No tool calls → extract text and exit the loop.
-            # Handles Gemini thinking model output where content is a list of
-            # {type: "text"|"thinking", text|thinking: "..."} dicts.
-            content = getattr(response, "content", "")
-            if isinstance(content, str):
-                final_text = content
-            elif isinstance(content, list):
-                parts: list[str] = []
-                for part in content:
-                    if isinstance(part, str):
-                        parts.append(part)
-                    elif isinstance(part, dict):
-                        if part.get("type") == "text":
-                            parts.append(part.get("text", ""))
-                final_text = "".join(parts)
-            else:
-                final_text = str(content) if content else ""
+            # Use extract_chunk_parts which handles both plain dicts and Pydantic objects
+            # (Gemini returns list content items as Pydantic objects, not plain dicts).
+            from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
+            _, texts = extract_chunk_parts(response)
+            final_text = "".join(texts)
 
             # If still empty, try the MindFlow response parser as last resort
             if not final_text:
@@ -107,6 +96,20 @@ async def invoke_with_tools(
                 iteration=iteration,
             )
 
+            # Dispatch tool_call_start so the UI shows the tool as 'calling' immediately
+            if event_dispatcher is not None:
+                try:
+                    await event_dispatcher(
+                        "tool_call_start",
+                        {
+                            "tool": tool_name,
+                            "args": tool_args,
+                            "tool_call_id": tool_call_id,
+                        },
+                    )
+                except Exception:
+                    pass
+
             if tool_name in tools_by_name:
                 try:
                     tool = tools_by_name[tool_name]
@@ -127,7 +130,7 @@ async def invoke_with_tools(
                 )
                 _logger.warning(f"tool_not_found name={tool_name}")
 
-            # Optionally surface the tool call to the streaming event system
+            # Dispatch tool_call with result (tool_call_id included for matching in stream.py)
             if event_dispatcher is not None:
                 try:
                     await event_dispatcher(
@@ -136,6 +139,7 @@ async def invoke_with_tools(
                             "tool": tool_name,
                             "args": tool_args,
                             "result_preview": tool_result_str[:300],
+                            "tool_call_id": tool_call_id,
                         },
                     )
                 except Exception:
@@ -200,12 +204,20 @@ async def stream_with_tools(
     full_response: list[str] = []
 
     # --- Tool call rounds (non-streaming) ---
+    last_text_response: str = ""
+
     for iteration in range(max_iterations):
         response = await llm.ainvoke(working_messages)
         tool_calls: list[dict] = getattr(response, "tool_calls", []) or []
 
         if not tool_calls:
-            # No tool calls — proceed to final streaming pass below
+            # The LLM produced a text answer — capture it directly here instead of
+            # discarding it and making a redundant second LLM call (which would still
+            # have tools bound and could produce more tool calls instead of text).
+            # Use extract_chunk_parts which handles both plain dicts and Pydantic objects
+            # (Gemini returns list content items as Pydantic objects, not plain dicts).
+            _, texts = extract_chunk_parts(response)
+            last_text_response = "".join(texts)
             break
 
         working_messages.append(response)
@@ -216,6 +228,16 @@ async def stream_with_tools(
             tool_call_id: str = tool_call.get("id", "")
 
             _logger.info("stream_tool_invoked", tool=tool_name, iteration=iteration)
+
+            # Notify UI that tool is starting (shows 'calling' state immediately)
+            if event_dispatcher is not None:
+                try:
+                    await event_dispatcher(
+                        "tool_call_start",
+                        {"tool": tool_name, "args": tool_args, "tool_call_id": tool_call_id},
+                    )
+                except Exception:
+                    pass
 
             if tool_name in tools_by_name:
                 try:
@@ -230,11 +252,12 @@ async def stream_with_tools(
             else:
                 tool_result_str = json.dumps({"error": f"Unknown tool: {tool_name}"})
 
+            # Notify UI that tool completed (shows result)
             if event_dispatcher is not None:
                 try:
                     await event_dispatcher(
                         "tool_call",
-                        {"tool": tool_name, "args": tool_args, "result_preview": tool_result_str[:300]},
+                        {"tool": tool_name, "args": tool_args, "result_preview": tool_result_str[:300], "tool_call_id": tool_call_id},
                     )
                 except Exception:
                     pass
@@ -243,20 +266,31 @@ async def stream_with_tools(
                 ToolMessage(content=tool_result_str, tool_call_id=tool_call_id)
             )
 
-    # --- Final streaming pass ---
-    async for chunk in llm.astream(working_messages):
-        thought, texts = extract_chunk_parts(chunk)
-        if thought and event_dispatcher:
+    # --- Dispatch captured text response or fall back to a fresh stream ---
+    if last_text_response.strip():
+        # Use the text the LLM already produced during the tool loop — no extra LLM call.
+        full_response.append(last_text_response)
+        if chunk_dispatcher is not None:
             try:
-                await event_dispatcher("agent_thought", {"thought": thought})
+                await chunk_dispatcher(last_text_response)
             except Exception:
                 pass
-        for text in texts:
-            full_response.append(text)
-            if chunk_dispatcher is not None:
+    else:
+        # Fallback: tool loop exhausted max_iterations without a text answer.
+        # Make one more streaming call (without bound tools if possible).
+        async for chunk in llm.astream(working_messages):
+            thought, texts = extract_chunk_parts(chunk)
+            if thought and event_dispatcher:
                 try:
-                    await chunk_dispatcher(text)
+                    await event_dispatcher("agent_thought", {"thought": thought})
                 except Exception:
                     pass
+            for text in texts:
+                full_response.append(text)
+                if chunk_dispatcher is not None:
+                    try:
+                        await chunk_dispatcher(text)
+                    except Exception:
+                        pass
 
     return "".join(full_response)

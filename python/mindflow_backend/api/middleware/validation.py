@@ -48,26 +48,35 @@ class ValidationMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next) -> Response:
         """Process request through validation pipeline."""
+        is_sse = "text/event-stream" in request.headers.get("accept", "")
+        # SSE streaming: bypass ALL middleware processing to prevent BaseHTTPMiddleware
+        # from introducing buffering or head-of-line blocking on the response stream.
+        if is_sse:
+            return await call_next(request)
+
         try:
             # 1. Size validation
             await self._validate_request_size(request)
-            
+
             # 2. Rate limiting check
             await self._check_rate_limit(request)
-            
-            # 3. Content validation
+
+            # 3. Content validation (safe to run even on SSE requests —
+            #    validates the *request* body, not the response)
             if request.method in ["POST", "PUT", "PATCH"]:
                 await self._validate_request_body(request)
-            
+
             # 4. Header validation
             self._validate_headers(request)
-            
+
             # Process request
             response = await call_next(request)
-            
-            # 5. Response security headers
-            response = self._add_security_headers(response)
-            
+
+            # 5. Response security headers — skip for SSE to avoid any
+            #    interaction with the streaming response object.
+            if not is_sse:
+                response = self._add_security_headers(response)
+
             return response
             
         except HTTPException:

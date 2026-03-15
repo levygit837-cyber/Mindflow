@@ -55,7 +55,7 @@ async def test_routes_coding_requests_to_coding_task_chain(monkeypatch: pytest.M
     assert decision.execution_strategy == ExecutionStrategy.CHAIN
     assert decision.chain_id == "coding_task"
     assert decision.chain_type == ChainType.CODING_TASK
-    assert decision.agent == AgentType.ORCHESTRATOR
+    assert decision.agent == AgentType.CODER
 
 
 @pytest.mark.asyncio
@@ -107,3 +107,53 @@ async def test_routes_non_coding_to_single_agent_without_llm_execution(monkeypat
     decision = await route_message("What is dependency injection?")
     assert decision.execution_strategy == ExecutionStrategy.SINGLE_AGENT
     assert decision.agent in {AgentType.ANALYST, AgentType.CODER, AgentType.RESEARCHER, AgentType.ORCHESTRATOR}
+
+
+@pytest.mark.asyncio
+async def test_router_can_select_file_analysis_when_folder_path_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _FakeEngine:
+        async def delegate_task(self, *_args, **_kwargs):  # noqa: ANN001
+            raise AssertionError("delegate_task should not be called for routing-only test")
+
+    monkeypatch.setattr(
+        "mindflow_backend.orchestrator.routing.intelligent_router.get_settings",
+        lambda: type("S", (), {"default_provider": "test", "default_model": "test"})(),
+        raising=True,
+    )
+    router = IntelligentRouter(_FakeEngine())
+
+    async def _fake_analyze(
+        _self,
+        message: str,
+        session_context: str = "",
+        folder_path: str | None = None,
+        has_folder_path: bool = False,
+    ) -> IntentAnalysis:
+        assert folder_path == "/repo"
+        assert has_folder_path is True
+        return IntentAnalysis(
+            user_intent=message,
+            needs_code_context=True,
+            context_needed="workspace",
+            suggested_scope=[],
+            recommended_agent=AgentType.ANALYST,
+            formulated_objective="Mapear a codebase",
+            confidence=0.92,
+            is_multi_agent=False,
+            agent_sequence=[],
+            execution_strategy=ExecutionStrategy.CHAIN,
+            suggested_chain_id="file_analysis",
+            suggested_chain_type=ChainType.FILE_ANALYSIS,
+        )
+
+    monkeypatch.setattr(IntelligentRouter, "analyze_intent_with_llm", _fake_analyze, raising=True)
+
+    decision = await router.route_message_intelligently(
+        "analise esta codebase",
+        folder_path="/repo",
+    )
+
+    assert decision.execution_strategy == ExecutionStrategy.CHAIN
+    assert decision.chain_id == "file_analysis"
+    assert decision.chain_type == ChainType.FILE_ANALYSIS
+    assert decision.agent == AgentType.ANALYST

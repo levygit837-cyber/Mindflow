@@ -73,14 +73,13 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className="flex h-full flex-col border-r px-3 py-4 md:px-4 md:py-5"
+      className="sidebar-shell flex h-full flex-col border-r px-3 py-4 md:px-4 md:py-5"
       style={{
         width: 'clamp(88px, 24vw, 304px)',
-        background: 'linear-gradient(180deg, rgba(9, 10, 13, 0.98) 0%, rgba(7, 8, 10, 0.98) 100%)',
         borderColor: 'var(--line-primary)',
       }}
     >
-      <div className="panel-surface-strong flex flex-col gap-4 p-3 md:p-4">
+      <div className="sidebar-section flex flex-col gap-4 px-1 pb-2 md:px-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="mono-label mb-2">MindFlow / rail</div>
@@ -142,87 +141,85 @@ export const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      <div className="mt-4 flex items-center gap-3 px-2">
-        <span className="mono-label">Sessões</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--line-soft)' }} />
-      </div>
+      <div className="sidebar-section flex min-h-0 flex-1 flex-col px-1 md:px-2">
+        <div className="flex items-center gap-3">
+          <span className="mono-label">Sessões</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--line-soft)' }} />
+        </div>
 
-      <div className="mt-3 flex-1 overflow-y-auto pr-1">
-        <div className="flex flex-col gap-2">
-          {sessions.length === 0 ? (
-            <div
-              className="panel-surface px-4 py-4"
-              style={{
-                color: 'var(--text-meta)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-              }}
-            >
-              sem histórico ainda
-            </div>
-          ) : (
-            sessions.map((session, index) => {
-              const isActive = session.id === activeSessionId;
-              const updatedAt = session.updated_at || session.created_at;
+        <div className="mt-3 flex-1 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-2">
+            {sessions.length === 0 ? (
+              <div
+                className="px-1 py-4"
+                style={{
+                  color: 'var(--text-meta)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                }}
+              >
+                sem histórico ainda
+              </div>
+            ) : (
+              sessions.map((session, index) => {
+                const isActive = session.id === activeSessionId;
+                const updatedAt = session.updated_at || session.created_at;
 
-              return (
-                <motion.button
-                  key={session.id}
-                  type="button"
-                  onClick={() => navigate(`/chat/${session.id}`)}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.03 }}
-                  className="panel-hover relative flex w-full items-start gap-3 overflow-hidden rounded-[18px] border px-3 py-3 text-left"
-                  style={{
-                    borderColor: isActive ? 'var(--line-strong)' : 'var(--line-primary)',
-                    background: isActive ? 'var(--gradient-card-hover)' : 'rgba(255, 255, 255, 0.02)',
-                  }}
-                >
-                  <div className="flex flex-col items-center self-stretch pt-1">
-                    <span className={`signal-dot ${isActive ? '' : 'idle'}`} />
-                    <span className="trace-rail mt-2 flex-1" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="mono-label mb-2 hidden md:block">
-                      {isActive ? 'ativo' : 'registro'}
+                return (
+                  <motion.button
+                    key={session.id}
+                    type="button"
+                    onClick={() => navigate(`/chat/${session.id}`)}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.03 }}
+                    className={`sidebar-session relative flex items-start gap-3 overflow-hidden text-left ${isActive ? 'active' : ''}`}
+                  >
+                    <div className="flex flex-col items-center self-stretch pt-1">
+                      <span className={`signal-dot ${isActive ? '' : 'idle'}`} />
+                      <span className="trace-rail mt-2 flex-1" />
                     </div>
-                    <div
-                      className="truncate"
-                      style={{
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontSize: 13,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {session.title || 'sem título'}
-                    </div>
-                    <div
-                      className="mt-1 flex items-center gap-2"
-                      style={{
-                        color: 'var(--text-meta)',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 11,
-                      }}
-                    >
-                      <span>---</span>
-                      <span>{timeAgo(updatedAt)}</span>
-                    </div>
-                  </div>
 
-                  <ChevronRight
-                    size={14}
-                    style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-ghost)' }}
-                  />
-                </motion.button>
-              );
-            })
-          )}
+                    <div className="min-w-0 flex-1">
+                      <div className="mono-label mb-2 hidden md:block">
+                        {isActive ? 'ativo' : 'registro'}
+                      </div>
+                      <div
+                        className="truncate"
+                        style={{
+                          color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          fontSize: 13,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {session.title || 'sem título'}
+                      </div>
+                      <div
+                        className="mt-1 flex items-center gap-2"
+                        style={{
+                          color: 'var(--text-meta)',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 11,
+                        }}
+                      >
+                        <span>---</span>
+                        <span>{timeAgo(updatedAt)}</span>
+                      </div>
+                    </div>
+
+                    <ChevronRight
+                      size={14}
+                      style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-ghost)' }}
+                    />
+                  </motion.button>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 panel-surface px-3 py-3">
+      <div className="sidebar-footer mt-4 px-1 py-3 md:px-2">
         <div className="flex items-center gap-3">
           <span className="signal-dot idle" />
           <div className="min-w-0 flex-1">

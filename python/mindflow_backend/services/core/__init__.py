@@ -32,6 +32,18 @@ def get_pinchtab_service():
     from mindflow_backend.services.core.pinchtab_service import PinchTabService
     return PinchTabService()
 
+
+_shell_tab_service = None
+
+
+def get_shell_tab_service():
+    """Factory function for the session-scoped in-memory ShellTabService."""
+    global _shell_tab_service
+    if _shell_tab_service is None:
+        from mindflow_backend.services.core.shell_tab_service import ShellTabService
+        _shell_tab_service = ShellTabService()
+    return _shell_tab_service
+
 # Public exports
 __all__ = [
     "get_agent_service",
@@ -39,4 +51,5 @@ __all__ = [
     "get_memory_service",
     "get_provider_service",
     "get_pinchtab_service",
+    "get_shell_tab_service",
 ]

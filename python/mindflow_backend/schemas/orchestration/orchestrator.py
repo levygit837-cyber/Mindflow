@@ -75,6 +75,7 @@ class Priority(StrEnum):
 class ExecutionStrategy(StrEnum):
     """How the orchestrator intends to execute a request."""
 
+    DIRECT_RESPONSE = "direct_response"  # Orchestrator responds directly without delegating
     SINGLE_AGENT = "single_agent"
     CHAIN = "chain"
     GRAPH = "graph"
@@ -84,6 +85,8 @@ class ChainType(StrEnum):
     """High-level chain categories (used for routing/analytics)."""
 
     CODING_TASK = "coding_task"
+    ANALYSIS_TASK = "analysis_task"
+    FILE_ANALYSIS = "file_analysis"
     RESEARCH = "research"
     REVIEW_ONLY = "review_only"
 

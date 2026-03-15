@@ -1,15 +1,14 @@
 """Intelligent Orchestrator Router — LLM-powered intent analysis and delegation.
 
-Replaces keyword-based routing with intelligent intent analysis using LLM.
-Orchestrator analyzes user message, delegates to Analyst for context when needed,
-then makes informed delegation decisions based on structured findings.
+The Orchestrator is a first-class entity: it can respond directly to the user
+OR delegate to specialist agents. All routing decisions are LLM-driven — no
+keyword matching is used anywhere in this module.
 """
 
 from __future__ import annotations
 
-import re
+import json
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -40,14 +39,20 @@ class IntentAnalysis(BaseModel):
     """Result of LLM intent analysis."""
 
     user_intent: str = Field(description="Clear interpretation of what user wants to accomplish")
-    needs_code_context: bool = Field(description="Whether we need codebase context to decide")
-    context_needed: str = Field(description="What specific context we need from Analyst")
+    needs_code_context: bool = Field(default=False, description="Unused — kept for schema compatibility")
+    context_needed: str = Field(default="", description="Unused — kept for schema compatibility")
     suggested_scope: list[str] = Field(default_factory=list, description="Suggested files/modules to analyze")
     recommended_agent: AgentType = Field(description="Which agent should handle this")
     formulated_objective: str = Field(description="Precise objective for the target agent")
     confidence: float = Field(description="Confidence in this analysis (0-1)")
     is_multi_agent: bool = Field(default=False, description="Requires multiple agents")
     agent_sequence: list[AgentType] = Field(default_factory=list, description="Sequence of agents needed")
+    execution_strategy: ExecutionStrategy = Field(
+        default=ExecutionStrategy.SINGLE_AGENT,
+        description="How to execute: direct_response, single_agent, chain, or graph",
+    )
+    suggested_chain_id: str | None = Field(default=None, description="Chain identifier if using CHAIN")
+    suggested_chain_type: ChainType | None = Field(default=None, description="Chain type/category")
 
     @field_validator("recommended_agent", mode="before")
     @classmethod
@@ -58,391 +63,265 @@ class IntentAnalysis(BaseModel):
     @classmethod
     def normalize_agent_sequence(cls, v: list) -> list:
         return [x.lower() if isinstance(x, str) else x for x in (v or [])]
-    execution_strategy: ExecutionStrategy = Field(
-        default=ExecutionStrategy.SINGLE_AGENT,
-        description="How to execute: single agent, chain, or graph",
-    )
-    suggested_chain_id: str | None = Field(default=None, description="Chain identifier if using CHAIN")
-    suggested_chain_type: ChainType | None = Field(default=None, description="Chain type/category")
+
+    @field_validator("suggested_chain_type", "suggested_chain_id", mode="before")
+    @classmethod
+    def nullify_null_string(cls, v):
+        """Convert the literal string 'null' returned by LLMs to Python None."""
+        if isinstance(v, str) and v.lower() in ("null", "none", ""):
+            return None
+        return v
 
 
 class IntelligentRouter:
-    """LLM-powered intelligent routing with Analyst delegation."""
-    
+    """LLM-powered intelligent routing. The Orchestrator is an entity — it can
+    respond directly OR delegate to specialists. No keyword routing."""
+
     def __init__(self, delegation_engine: DelegationEngine):
         self.delegation_engine = delegation_engine
         self.settings = get_settings()
-        
+
     async def analyze_intent_with_llm(
-        self, 
-        message: str, 
-        session_context: str = ""
+        self,
+        message: str,
+        session_context: str = "",
+        folder_path: str | None = None,
+        has_folder_path: bool = False,
     ) -> IntentAnalysis:
-        """Use LLM to analyze user intent and recommend actions."""
-        
-        # Create the intent analysis prompt
-        analysis_prompt = f"""You are an intelligent orchestrator planner. Analyze this user request and determine:
-1. What the user actually wants to accomplish
-2. Whether you need codebase context to make good decisions
-3. What execution strategy to use (SINGLE_AGENT vs CHAIN vs GRAPH)
-4. If CHAIN: which chain (and its type)
-5. Which specialized agent would be responsible if SINGLE_AGENT
-6. If multi-agent is needed, in what sequence
+        """Use LLM to analyze user intent and decide execution strategy."""
+
+        analysis_prompt = f"""You are the MindFlow Orchestrator routing engine. Classify the user request into EXACTLY ONE execution strategy.
 
 User Request: {message}
 
 Session Context: {session_context if session_context else "No previous context"}
+Workspace Root: {folder_path if folder_path else "No folder_path provided"}
+Has Workspace Root: {str(has_folder_path).lower()}
 
-Available Agents:
-- CODER: Implementation, bug fixes, refactoring, code generation, testing, architecture decisions
-- ANALYST: Code analysis, structure mapping, flow tracing, security audits, code review, brainstorming
-- RESEARCHER: Web search, documentation lookup, technology comparison
-- ORCHESTRATOR: Session coordination, multi-agent task delegation
+## Strategy Selection Rules (strictly in priority order)
 
-Available Chains:
-- coding_task (CODING_TASK): Analyst (read/deep) → Coder (write) → Analyst-as-Critic (code review).
-  Use for most coding/implementation/refactor tasks where changes are expected.
+### 1. direct_response — EXTREMELY RARE. Only these exact cases qualify:
+- Pure greetings: "hi", "hello", "oi", "olá", "tudo bem?"
+- Pure thanks: "thanks", "obrigado", "valeu"
+- Ask who you are: "who are you?", "quem é você?"
+- NO other case qualifies. If the user asks anything that requires thinking, answering, explaining, coding, or researching → DO NOT use direct_response.
 
-Respond with a JSON object following this schema:
+### 2. single_agent — DEFAULT for almost everything. Use when ONE specialist can handle it alone:
+- **ANALYST** → Understanding, explaining, tracing, auditing ANY existing code or system; "how does X work"; "why does X fail"; "explain Y"; "what is Z"; "como funciona"; "por que"; "explica". Also handles general knowledge questions and conversational chat that requires reasoning.
+- **CODER** → Write, create, fix, refactor, implement, modify code; create tests; make code changes.
+- **RESEARCHER** → Web search, docs lookup, external information, "search for X", "find documentation on Y".
+
+### 3. chain — Only when the task EXPLICITLY requires multiple distinct phases:
+| chain_id | Use when |
+|---|---|
+| coding_task | Must read context AND write code (e.g., "implement feature X based on existing patterns") |
+| analysis_task | Must research AND synthesize (e.g., "compare A and B then recommend") |
+| file_analysis | User has set a folder_path and wants files analyzed, mapped, explained, audited, or traced |
+
+## Decision Examples
+- "hello" → direct_response, ORCHESTRATOR
+- "olá como você está?" → direct_response, ORCHESTRATOR
+- "como funciona o orchestrator?" → single_agent, ANALYST
+- "explica o fluxo de delegação" → single_agent, ANALYST
+- "por que o agente está lento?" → single_agent, ANALYST
+- "o que é o MindFlow?" → single_agent, ANALYST
+- "cria uma função X" → single_agent, CODER
+- "corrige o bug Y" → single_agent, CODER
+- "pesquisa sobre langchain" → single_agent, RESEARCHER
+- "implementa feature X lendo o código atual" → chain, coding_task
+- "analise esta codebase" with folder_path → chain, file_analysis
+
+## Strong Rule For Workspace Analysis
+- If `has_folder_path` is true AND the request is about understanding, mapping, tracing, auditing, explaining, or exploring a codebase/workspace, choose:
+  - execution_strategy = "chain"
+  - suggested_chain_id = "file_analysis"
+  - suggested_chain_type = "file_analysis"
+  - recommended_agent = "ANALYST"
+- If `has_folder_path` is false, do NOT force file_analysis.
+
+## Response Format — ONLY valid JSON, no markdown:
 {{
-    "user_intent": "clear interpretation of what user wants to accomplish",
-    "needs_code_context": true/false,
-    "context_needed": "what specific context we need from Analyst",
-    "suggested_scope": ["file1.py", "module2"],
-    "recommended_agent": "CODER|ANALYST|RESEARCHER",
-    "formulated_objective": "precise objective for the target agent",
-    "confidence": 0.0-1.0,
-    "is_multi_agent": true/false,
-    "agent_sequence": ["AGENT1", "AGENT2"],
-    "execution_strategy": "single_agent|chain|graph",
-    "suggested_chain_id": "coding_task|null",
-    "suggested_chain_type": "coding_task|research|review_only|null"
-}}"""
-        
+    "user_intent": "1-sentence interpretation",
+    "needs_code_context": false,
+    "context_needed": "",
+    "suggested_scope": [],
+    "recommended_agent": "CODER|ANALYST|RESEARCHER|ORCHESTRATOR",
+    "formulated_objective": "precise objective for the specialist (empty if direct_response)",
+    "confidence": 0.9,
+    "is_multi_agent": false,
+    "agent_sequence": [],
+    "execution_strategy": "direct_response|single_agent|chain",
+    "suggested_chain_id": "coding_task|analysis_task|file_analysis|null",
+    "suggested_chain_type": "coding_task|analysis_task|file_analysis|null"
+}}
+
+STRICT RULES:
+- "ORCHESTRATOR" as recommended_agent ONLY when execution_strategy is "direct_response"
+- When in doubt → single_agent + ANALYST (never direct_response for doubt cases)
+- "direct_response" is reserved for the ~5% of messages that are pure social interaction"""
+
         try:
             llm = get_model_for_provider(
                 self.settings.default_provider,
-                self.settings.default_model
+                self.settings.default_model,
             )
-            
+
             messages = [
-                {"role": "system", "content": "You are an intelligent task analyzer. Be precise and structured."},
-                {"role": "user", "content": analysis_prompt}
+                {"role": "system", "content": "You are a precise task analyzer. Respond only with valid JSON."},
+                {"role": "user", "content": analysis_prompt},
             ]
-            
+
             response = await llm.ainvoke(messages)
             response_text = normalize_response_for_json(response)
-            
-            # Parse JSON response manually for now
-            import json
+
             try:
                 data = json.loads(response_text)
                 intent_analysis = IntentAnalysis(**data)
             except (json.JSONDecodeError, TypeError) as e:
-                _logger.warning("intent_parse_failed", error=str(e))
-                # Fallback to basic analysis
-                intent_analysis = IntentAnalysis(
-                    user_intent=message,
-                    needs_code_context=True,
-                    context_needed="General codebase analysis needed",
-                    recommended_agent=AgentType.CODER,
-                    formulated_objective=message,
-                    confidence=0.3,
-                    execution_strategy=ExecutionStrategy.CHAIN,
-                    suggested_chain_id="coding_task",
-                    suggested_chain_type=ChainType.CODING_TASK,
-                )
-            
+                # Try extracting JSON from within the response (LLM may add prose)
+                import re as _re
+                json_match = _re.search(r'\{[\s\S]*\}', response_text)
+                if json_match:
+                    try:
+                        data = json.loads(json_match.group())
+                        intent_analysis = IntentAnalysis(**data)
+                        _logger.info("intent_parse_recovered_from_prose")
+                    except (json.JSONDecodeError, TypeError) as e2:
+                        _logger.warning("intent_parse_failed", raw_response=response_text[:500], error=str(e2))
+                        intent_analysis = IntentAnalysis(
+                            user_intent=message,
+                            recommended_agent=AgentType.ANALYST,
+                            formulated_objective=message,
+                            confidence=0.5,
+                            execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                        )
+                else:
+                    _logger.warning("intent_parse_failed_no_json", raw_response=response_text[:500], error=str(e))
+                    intent_analysis = IntentAnalysis(
+                        user_intent=message,
+                        recommended_agent=AgentType.ANALYST,
+                        formulated_objective=message,
+                        confidence=0.5,
+                        execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                    )
+
             _logger.info(
                 "intent_analyzed",
                 intent=intent_analysis.user_intent,
                 agent=intent_analysis.recommended_agent.value,
+                strategy=intent_analysis.execution_strategy.value,
                 confidence=intent_analysis.confidence,
             )
-            
             return intent_analysis
-            
+
         except Exception as exc:
             _logger.error("intent_analysis_failed", error=str(exc))
-            # Fallback to CODER with basic analysis
             return IntentAnalysis(
                 user_intent=message,
-                needs_code_context=True,
-                context_needed="General codebase analysis needed",
                 recommended_agent=AgentType.CODER,
                 formulated_objective=message,
                 confidence=0.3,
+                execution_strategy=ExecutionStrategy.SINGLE_AGENT,
             )
-    
-    # -----------------------------------------------------------------------
-    # Heuristic fast-path — avoids LLM call for common, unambiguous intents
-    # -----------------------------------------------------------------------
-
-    _RESEARCHER_RE = re.compile(
-        r"\b(pesquise|search|procure|busque|notícia|noticias|news|latest|"
-        r"docs|documentation|o que é|o que é|what is|explain|explique|"
-        r"como funciona|how does|tutorial|guia)\b",
-        re.IGNORECASE,
-    )
-    _ANALYST_RE = re.compile(
-        r"\b(analise|analyze|review|revisar|audit|auditoria|"
-        r"trace|rastrear|map|mapear|diagrama|diagram|"
-        r"code review|revisar código|entenda o código)\b",
-        re.IGNORECASE,
-    )
-    _CODER_RE = re.compile(
-        r"\b(implement|implemente|crie|create|escreva|write|"
-        r"fix|corrija|refactor|refatore|bug|erro|error|"
-        r"função|function|class|classe|test|teste|deploy|"
-        r"migrat|script|código|code)\b",
-        re.IGNORECASE,
-    )
-
-    def _try_fast_route(self, message: str) -> OrchestratorDecision | None:
-        """Return a routing decision via keywords without an LLM call.
-
-        Returns None when the message is ambiguous and needs LLM routing.
-        """
-        text = message.strip()
-        words = text.split()
-
-        # Greetings / very short conversational messages → CODER (concise assistant)
-        # RESEARCHER generates long reports; CODER responds pragmatically to chat.
-        if len(words) <= 4:
-            return OrchestratorDecision(
-                rationale="Short conversational message — routing directly without LLM",
-                agent=AgentType.CODER,
-                task=text,
-                thinking=ThinkingLevel.LOW,
-                tools=[],
-                priority=Priority.NORMAL,
-            )
-
-        if self._ANALYST_RE.search(text):
-            return OrchestratorDecision(
-                rationale="Keyword match: analysis/review task",
-                agent=AgentType.ANALYST,
-                task=text,
-                thinking=ThinkingLevel.HIGH,
-                tools=[],
-                priority=Priority.NORMAL,
-            )
-
-        if self._RESEARCHER_RE.search(text):
-            return OrchestratorDecision(
-                rationale="Keyword match: research/documentation task",
-                agent=AgentType.RESEARCHER,
-                task=text,
-                thinking=ThinkingLevel.MEDIUM,
-                tools=[],
-                priority=Priority.NORMAL,
-            )
-
-        if self._CODER_RE.search(text):
-            return OrchestratorDecision(
-                rationale="Keyword match: coding/implementation task",
-                agent=AgentType.CODER,
-                task=text,
-                thinking=ThinkingLevel.HIGH,
-                tools=[],
-                priority=Priority.NORMAL,
-            )
-
-        return None  # ambiguous → fall through to LLM
 
     async def route_message_intelligently(
         self,
         message: str,
         session: OrchestratorSession | None = None,
+        folder_path: str | None = None,
     ) -> OrchestratorDecision:
-        """Route message using intelligent LLM analysis and delegation."""
+        """Route message using LLM intent analysis.
 
-        # Create or get session
+        The Orchestrator decides:
+        - direct_response: it answers the user directly (no delegation)
+        - single_agent:    delegate to one specialist
+        - chain:           multi-agent pipeline (Analyst → Coder → Critic)
+
+        No keyword-based routing is used anywhere in this method.
+        """
         if session is None:
-            session = OrchestratorSession(
-                user_intent=message,
+            session = OrchestratorSession(user_intent=message)
+
+        session_context = session.session_checkpoints[-1] if session.session_checkpoints else ""
+        if folder_path:
+            intent = await self.analyze_intent_with_llm(
+                message,
+                session_context,
+                folder_path=folder_path,
+                has_folder_path=True,
+            )
+        else:
+            intent = await self.analyze_intent_with_llm(message, session_context)
+
+        # --- DIRECT_RESPONSE: Orchestrator answers itself ---
+        if intent.execution_strategy == ExecutionStrategy.DIRECT_RESPONSE:
+            _logger.info("orchestrator_direct_response", intent=intent.user_intent)
+            return OrchestratorDecision(
+                rationale="Orchestrator answering directly — no delegation needed.",
+                agent=AgentType.ORCHESTRATOR,
+                task=message,
+                thinking=ThinkingLevel.MEDIUM,
+                tools=[],
+                priority=Priority.NORMAL,
+                execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
             )
 
-        # Fast-path: skip LLM for unambiguous intents
-        fast_decision = self._try_fast_route(message)
-        if fast_decision is not None:
-            _logger.info("fast_route_hit", agent=fast_decision.agent.value, message_len=len(message))
-            return fast_decision
-
-        analyst_result = None
-
-        # Step 1: Analyze intent with LLM
-        session_context = session.session_checkpoints[-1] if session.session_checkpoints else ""
-        intent_analysis = await self.analyze_intent_with_llm(message, session_context)
-        
-        # If strategy is CHAIN, we do not execute here; execute_node will run the chain.
-        if intent_analysis.execution_strategy == ExecutionStrategy.CHAIN:
-            chain_id = intent_analysis.suggested_chain_id or "coding_task"
-            chain_type = intent_analysis.suggested_chain_type or ChainType.CODING_TASK
+        # --- CHAIN: multi-agent pipeline ---
+        if intent.execution_strategy == ExecutionStrategy.CHAIN:
+            chain_id = intent.suggested_chain_id or "coding_task"
+            chain_type = intent.suggested_chain_type or ChainType.CODING_TASK
+            # Use recommended_agent as fallback so if the chain fails it delegates
+            # to the correct specialist instead of the Orchestrator itself.
+            fallback_agent = intent.recommended_agent if intent.recommended_agent != AgentType.ORCHESTRATOR else AgentType.ANALYST
+            _logger.info("orchestrator_chain", chain_id=chain_id, fallback_agent=fallback_agent.value)
             return OrchestratorDecision(
                 rationale=(
-                    "Using chain execution for coding workflow: "
-                    "Analyst(read) → Coder(write) → Critic(review)."
+                    f"Chain execution selected: {chain_id}. "
+                    "Analyst reads context → Coder implements → Analyst reviews."
                 ),
-                agent=AgentType.ORCHESTRATOR,
-                task=intent_analysis.user_intent,
+                agent=fallback_agent,
+                task=intent.user_intent,
                 thinking=ThinkingLevel.HIGH,
-                tools=[],
+                tools=self._get_tools_for_agent(fallback_agent),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.CHAIN,
                 chain_id=chain_id,
                 chain_type=chain_type,
             )
 
-        # Step 2: Get code context if needed
-        if intent_analysis.needs_code_context:
-            analyst_task = DelegationTask(
-                agent=AgentType.ANALYST,
-                objective=intent_analysis.context_needed,
-                scope=intent_analysis.suggested_scope,
-                expected_output="Structured findings about relevant code, architecture, and dependencies",
-                context_from_session=session_context,
-                priority=Priority.HIGH,
+        # --- SINGLE_AGENT or multi-agent (both route to single_agent decision) ---
+        if intent.is_multi_agent and intent.agent_sequence:
+            target_agent = intent.agent_sequence[0]
+            rationale = (
+                f"Multi-agent task: starting with {target_agent.value}. "
+                f"Sequence: {[a.value for a in intent.agent_sequence]}"
             )
-            
-            _logger.info(
-                "delegating_to_analyst",
-                objective=analyst_task.objective,
-                scope=analyst_task.scope,
-            )
-            
-            analyst_result = await self.delegation_engine.delegate_task(analyst_task, session)
-            
-            if analyst_result.status == "completed":
-                # Integrate analyst findings into session
-                session.session_checkpoints.append(
-                    f"Analyst findings: {analyst_result.key_findings}"
-                )
-                _logger.info(
-                    "analyst_completed",
-                    findings_len=len(analyst_result.key_findings),
-                    tokens=analyst_result.tokens_consumed,
-                )
-            else:
-                _logger.warning(
-                    "analyst_failed",
-                    error=analyst_result.error_message,
-                )
-                # Continue without analyst context
-                analyst_result = None
-        
-        # Step 3: Decide on delegation strategy
-        if intent_analysis.is_multi_agent:
-            # Multi-agent coordination needed
-            return await self._handle_multi_agent_task(intent_analysis, session, analyst_result)
         else:
-            # Single agent task
-            return await self._handle_single_agent_task(intent_analysis, session, analyst_result)
-    
-    async def _handle_single_agent_task(
-        self,
-        intent_analysis: IntentAnalysis,
-        session: OrchestratorSession,
-        analyst_result: DelegationResult | None = None,
-    ) -> OrchestratorDecision:
-        """Handle delegation to a single agent."""
-        
-        # Prepare context from analyst if available
-        context_from_analyst = (
-            analyst_result.key_findings if analyst_result else ""
-        )
-        
-        # Create the main delegation task
-        main_task = DelegationTask(
-            agent=intent_analysis.recommended_agent,
-            objective=intent_analysis.formulated_objective,
-            expected_output=f"Complete solution for: {intent_analysis.user_intent}",
-            context_from_session=context_from_analyst,
-            priority=Priority.NORMAL,
-        )
-        
-        _logger.info(
-            "delegating_to_agent",
-            agent=intent_analysis.recommended_agent.value,
-            objective=main_task.objective,
-        )
-        
-        # Execute delegation
-        result = await self.delegation_engine.delegate_task(main_task, session)
-        
-        # Create decision based on result
-        decision = OrchestratorDecision(
-            rationale=f"Intelligent routing selected {intent_analysis.recommended_agent.value} "
-                     f"(confidence: {intent_analysis.confidence:.2f})",
-            agent=intent_analysis.recommended_agent,
-            task=intent_analysis.formulated_objective,
+            target_agent = intent.recommended_agent
+            rationale = (
+                f"Delegating to {target_agent.value} "
+                f"(confidence: {intent.confidence:.0%})"
+            )
+
+        _logger.info("orchestrator_single_agent", agent=target_agent.value, rationale=rationale)
+
+        return OrchestratorDecision(
+            rationale=rationale,
+            agent=target_agent,
+            task=intent.formulated_objective or message,
             thinking=ThinkingLevel.HIGH,
-            tools=self._get_tools_for_agent(intent_analysis.recommended_agent),
+            tools=self._get_tools_for_agent(target_agent),
             priority=Priority.NORMAL,
+            execution_strategy=ExecutionStrategy.SINGLE_AGENT,
         )
-        
-        # Store delegation in session
-        session.delegation_log.append({
-            "agent": intent_analysis.recommended_agent.value,
-            "objective": main_task.objective,
-            "status": result.status,
-            "tokens": result.tokens_consumed,
-        })
-        
-        return decision
-    
-    async def _handle_multi_agent_task(
-        self,
-        intent_analysis: IntentAnalysis,
-        session: OrchestratorSession,
-        analyst_result: DelegationResult | None = None,
-    ) -> OrchestratorDecision:
-        """Handle multi-agent coordination tasks."""
-        
-        # For now, start with the first agent in sequence
-        # TODO: Implement full multi-agent coordination in Phase 2
-        first_agent = intent_analysis.agent_sequence[0]
-        
-        context_from_analyst = (
-            analyst_result.key_findings if analyst_result else ""
-        )
-        
-        first_task = DelegationTask(
-            agent=first_agent,
-            objective=f"First step in multi-agent task: {intent_analysis.formulated_objective}",
-            expected_output="Partial results that will inform next agent in sequence",
-            context_from_session=context_from_analyst,
-            priority=Priority.HIGH,
-        )
-        
-        _logger.info(
-            "starting_multi_agent_sequence",
-            sequence=[a.value for a in intent_analysis.agent_sequence],
-            first_agent=first_agent.value,
-        )
-        
-        result = await self.delegation_engine.delegate_task(first_task, session)
-        
-        # Return decision for first agent
-        decision = OrchestratorDecision(
-            rationale=f"Multi-agent task started with {first_agent.value} "
-                     f"(sequence: {[a.value for a in intent_analysis.agent_sequence]})",
-            agent=first_agent,
-            task=first_task.objective,
-            thinking=ThinkingLevel.HIGH,
-            tools=self._get_tools_for_agent(first_agent),
-            priority=Priority.HIGH,
-        )
-        
-        return decision
-    
+
     def _get_tools_for_agent(self, agent_type: AgentType) -> list[ToolScope]:
-        """Get appropriate tools for an agent type."""
+        """Get appropriate tool scopes for an agent type."""
         tool_mapping = {
             AgentType.CODER: [ToolScope.FILESYSTEM, ToolScope.SHELL],
-            AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM],
+            AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
             AgentType.RESEARCHER: [ToolScope.WEB_SEARCH],
-            AgentType.ORCHESTRATOR: [],  # Orchestrator doesn't use tools directly
+            AgentType.ORCHESTRATOR: [],
         }
         return tool_mapping.get(agent_type, [])
 
@@ -463,10 +342,8 @@ def get_intelligent_router() -> IntelligentRouter:
 async def route_message_intelligently(
     message: str,
     session: OrchestratorSession | None = None,
+    folder_path: str | None = None,
 ) -> OrchestratorDecision:
-    """Route a user message using intelligent LLM analysis.
-    
-    This replaces the old keyword-based routing with intelligent intent analysis.
-    """
+    """Route a user message using LLM intent analysis (no keyword routing)."""
     router = get_intelligent_router()
-    return await router.route_message_intelligently(message, session)
+    return await router.route_message_intelligently(message, session, folder_path=folder_path)

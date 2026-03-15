@@ -22,6 +22,8 @@ class ToolInterface(ABC):
         # Optional working directory propagated from the agent sandbox (root_dir feature).
         # Filesystem tools use this as base path when a relative path is supplied.
         self.root_dir: str | None = None
+        # Optional chat session propagated by the runtime for session-scoped tools.
+        self.session_id: str | None = None
 
     @abstractmethod
     def execute(self, **kwargs) -> Dict[str, Any]:

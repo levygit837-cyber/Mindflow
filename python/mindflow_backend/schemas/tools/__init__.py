@@ -97,6 +97,20 @@ from .data_schemas import (
     CSV_PROCESSOR_SCHEMA,
     DATA_SCHEMAS
 )
+from .shell_tabs import (
+    ShellTabState,
+    ShellTabContract,
+    ShellTabSnapshot,
+    ShellTabStatusResponse,
+    ShellTabCreateRequest,
+    ShellTabExecRequest,
+    SHELL_TAB_OPEN_SCHEMA,
+    SHELL_TAB_LIST_SCHEMA,
+    SHELL_TAB_STATUS_SCHEMA,
+    SHELL_TAB_EXEC_SCHEMA,
+    SHELL_TAB_READ_SCHEMA,
+    SHELL_TAB_CLOSE_SCHEMA,
+)
 
 __all__ = [
     # Tool configuration
@@ -171,5 +185,17 @@ __all__ = [
     "INTEGRATION_SCHEMAS",
     "DATABASE_SCHEMA",
     "CSV_PROCESSOR_SCHEMA",
-    "DATA_SCHEMAS"
+    "DATA_SCHEMAS",
+    "ShellTabState",
+    "ShellTabContract",
+    "ShellTabSnapshot",
+    "ShellTabStatusResponse",
+    "ShellTabCreateRequest",
+    "ShellTabExecRequest",
+    "SHELL_TAB_OPEN_SCHEMA",
+    "SHELL_TAB_LIST_SCHEMA",
+    "SHELL_TAB_STATUS_SCHEMA",
+    "SHELL_TAB_EXEC_SCHEMA",
+    "SHELL_TAB_READ_SCHEMA",
+    "SHELL_TAB_CLOSE_SCHEMA",
 ]

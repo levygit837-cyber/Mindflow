@@ -32,3 +32,34 @@ async def test_service_streamchat_handles_optional_fields_without_attribute_erro
 
     events = [e async for e in svc.StreamChat(request, context=None)]
     assert events
+
+
+@pytest.mark.asyncio
+async def test_service_streamchat_preserves_folder_path(monkeypatch) -> None:
+    request = SimpleNamespace(
+        message="oi",
+        provider="vertexai",
+        model="gemini-3-flash-preview",
+        session_id="s1",
+        run_id="r1",
+        folder_path="/repo",
+    )
+
+    svc = AgentRuntimeServiceImpl()
+    captured = {}
+
+    async def _fake_stream_chat(payload, *_args, **_kwargs):
+        captured["folder_path"] = payload.folder_path
+        yield StreamEvent(
+            id="evt-1",
+            seq=1,
+            type="done",
+            mode="messages",
+            data="",
+            meta=None,
+        )
+
+    monkeypatch.setattr(svc.runtime, "stream_chat", _fake_stream_chat)
+
+    _ = [e async for e in svc.StreamChat(request, context=None)]
+    assert captured["folder_path"] == "/repo"

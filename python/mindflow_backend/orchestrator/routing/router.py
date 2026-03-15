@@ -45,7 +45,10 @@ _logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def route_message(message: str) -> OrchestratorDecision:
+async def route_message(
+    message: str,
+    folder_path: str | None = None,
+) -> OrchestratorDecision:
     """Route a user message using intelligent LLM analysis.
 
     This COMPLETELY replaces the old keyword-based routing with intelligent 
@@ -63,4 +66,4 @@ async def route_message(message: str) -> OrchestratorDecision:
     from mindflow_backend.orchestrator.intelligent_router import route_message_intelligently
     
     # Use intelligent routing instead of keyword matching
-    return await route_message_intelligently(message)
+    return await route_message_intelligently(message, folder_path=folder_path)

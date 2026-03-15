@@ -1,0 +1,149 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: MindFlow / rail
+          - generic [ref=e11]:
+            - generic [ref=e12]: Agentes em trilho
+            - generic [ref=e13]: notificadores, setas e precisão
+        - button [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+      - button "Nova conversa start" [ref=e18] [cursor=pointer]:
+        - generic [ref=e19]:
+          - img [ref=e20]
+          - generic [ref=e21]: Nova conversa
+        - generic [ref=e22]: start
+    - generic [ref=e23]:
+      - generic [ref=e25]: Sessões
+      - generic [ref=e28]:
+        - button "ativo olá no mundo --- 18m" [ref=e233]:
+          - generic [ref=e101]:
+            - generic [ref=e102]: ativo
+            - generic [ref=e103]: olá no mundo
+            - generic [ref=e104]:
+              - generic [ref=e105]: "---"
+              - generic [ref=e106]: 18m
+          - img [ref=e107]
+        - button "registro olá mundo --- 1h" [ref=e109]:
+          - generic [ref=e113]:
+            - generic [ref=e114]: registro
+            - generic [ref=e115]: olá mundo
+            - generic [ref=e116]:
+              - generic [ref=e117]: "---"
+              - generic [ref=e118]: 1h
+          - img [ref=e119]
+        - button "registro olá dia --- 1h" [ref=e121]:
+          - generic [ref=e125]:
+            - generic [ref=e126]: registro
+            - generic [ref=e127]: olá dia
+            - generic [ref=e128]:
+              - generic [ref=e129]: "---"
+              - generic [ref=e130]: 1h
+          - img [ref=e131]
+        - button "registro Sistema Orchestrator para Agentes Especialistas --- 1h" [ref=e234]:
+          - generic [ref=e137]:
+            - generic [ref=e138]: registro
+            - generic [ref=e139]: Sistema Orchestrator para Agentes Especialistas
+            - generic [ref=e140]:
+              - generic [ref=e141]: "---"
+              - generic [ref=e142]: 1h
+          - img [ref=e143]
+    - generic [ref=e31]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: Levy Bonito
+        - generic [ref=e35]: admin / pencil
+      - button [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]: chat / live trace
+        - generic [ref=e45]:
+          - heading "olá no mundo" [level=1] [ref=e235]
+          - generic [ref=e47]: 1 ativo
+          - generic [ref=e49]:
+            - generic [ref=e50]: "---"
+            - text: orchestrator
+      - button "model gemini-3.1-flash-lite-preview" [ref=e52] [cursor=pointer]:
+        - generic [ref=e53]: model
+        - generic [ref=e54]: gemini-3.1-flash-lite-preview
+        - img [ref=e55]
+    - generic [ref=e284]:
+      - generic [ref=e286]:
+        - generic [ref=e287]:
+          - generic [ref=e288]:
+            - generic [ref=e289]: 15:36
+            - generic [ref=e290]: you
+            - generic [ref=e291]: "-> task"
+          - paragraph [ref=e292]: olá
+        - generic [ref=e296]:
+          - generic [ref=e297]:
+            - generic [ref=e298]: agent
+            - generic [ref=e299]: Agent
+            - generic [ref=e300]:
+              - generic [ref=e301]: model
+              - text: gemini-3.1-flash-lite-preview
+            - generic [ref=e302]: 15:36
+          - generic [ref=e303]:
+            - generic [ref=e304]: "--- Agent"
+            - generic [ref=e305]: Olá! Sou oMindFlow. Estou aqui para otimizar seus processos, analisar código, conduzir pesquisas ou ajudar com qualquer desafio técnico que você precise resolver. Como posso ser útil hoje?
+        - generic [ref=e332]:
+          - generic [ref=e333]:
+            - generic [ref=e334]: 15:55
+            - generic [ref=e335]: you
+            - generic [ref=e336]: "-> task"
+          - paragraph [ref=e337]: olá, tudo bem?
+        - generic [ref=e341]:
+          - generic [ref=e342]:
+            - generic [ref=e343]: "--- Thinking"
+            - generic [ref=e344]: Default
+            - generic [ref=e345]: aberto
+            - button "v fechar" [ref=e346] [cursor=pointer]:
+              - generic [ref=e347]: v fechar
+              - img [ref=e348]
+          - generic [ref=e351]: Routing request...
+        - generic [ref=e355]:
+          - generic [ref=e356]:
+            - generic [ref=e357]: "--- Thinking"
+            - generic [ref=e358]: Default
+            - generic [ref=e359]: aberto
+            - button "v fechar" [ref=e360] [cursor=pointer]:
+              - generic [ref=e361]: v fechar
+              - img [ref=e362]
+          - generic [ref=e365]: Analisando sua solicitação e selecionando o agente mais adequado...
+        - generic [ref=e369]:
+          - generic [ref=e370]:
+            - generic [ref=e371]: "--- Thinking"
+            - generic [ref=e372]: Default
+            - generic [ref=e373]: aberto
+            - button "v fechar" [ref=e374] [cursor=pointer]:
+              - generic [ref=e375]: v fechar
+              - img [ref=e376]
+          - generic [ref=e379]: "Decisão: agente 'orchestrator' selecionado."
+        - generic [ref=e383]:
+          - generic [ref=e384]:
+            - generic [ref=e385]: "--- Thinking"
+            - generic [ref=e386]: Default
+            - generic [ref=e387]: aberto
+            - button "v fechar" [ref=e388] [cursor=pointer]:
+              - generic [ref=e389]: v fechar
+              - img [ref=e390]
+          - generic [ref=e393]: Respondendo diretamente ao usuário.
+      - generic [ref=e307]:
+        - generic [ref=e308]:
+          - img [ref=e311]
+          - textbox "/caminho/do/projeto" [ref=e313]
+          - button "abrir" [ref=e314] [cursor=pointer]:
+            - generic [ref=e315]: abrir
+        - generic [ref=e316]:
+          - button "anexar" [ref=e317] [cursor=pointer]:
+            - img [ref=e318]
+            - generic [ref=e320]: anexar
+          - generic [ref=e321]: gemini-3.1-flash-lite-preview
+          - generic [ref=e323]: orchestrator / live
+        - generic [ref=e325]:
+          - textbox "descreva a tarefa, a estética ou a próxima decisão" [active] [ref=e326]: pense em 3 passos e responda com uma tarefa simples
+          - button [disabled] [ref=e327] [cursor=pointer]:
+            - img [ref=e328]
+        - paragraph [ref=e331]: verifique resultados críticos antes de executar algo sensível.

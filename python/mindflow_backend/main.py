@@ -43,6 +43,15 @@ async def lifespan(app: FastAPI):
     # Phase 2: Boot agent registry.
     register_all_specialists()
 
+    # Pre-warm the LangGraph orchestrator graph and the LocalAgentClient so the
+    # first HTTP request does not pay the compilation cost (~300 ms).
+    try:
+        from mindflow_backend.api.controllers.agent_controller import _get_local_agent_client
+        _get_local_agent_client()
+        _logger.info("agent_runtime_pre_warmed")
+    except Exception as exc:
+        _logger.warning("agent_runtime_pre_warm_failed", error=str(exc))
+
     # Initialize database
     from mindflow_backend.infra.database.connection import initialize_database
     try:

@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     auth_master_key: str | None = Field(default=None, alias="AUTH_MASTER_KEY")
     auth_token_expiry_hours: int = Field(default=24, alias="AUTH_TOKEN_EXPIRY_HOURS")
 
+    # Filesystem sandbox configuration
+    working_path: str | None = Field(default=None, alias="WORKING_PATH")
+
     # AI/ML Configuration
     default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")

@@ -220,85 +220,94 @@ export const FSNotifier: React.FC<FSNotifierProps> = ({ toolCall }) => {
   })();
 
   return (
-    <motion.div
+    <motion.section
+      layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="rail-panel min-w-0 max-w-[760px]"
-      style={{ padding: '16px 18px 16px 34px' }}
+      className="event-shell min-w-0 max-w-[760px] w-full"
     >
-      <button
-        type="button"
-        onClick={() => hasBody && setExpanded((value) => !value)}
-        className="flex w-full items-start gap-3 text-left"
-        style={{ background: 'transparent', border: 'none', cursor: hasBody ? 'pointer' : 'default' }}
-      >
+      <div className="event-track">
         <span className={toolCall.status === 'calling' ? 'signal-dot' : 'signal-dot idle'} />
+      </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <config.Icon size={14} />
-            <span
-              style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-                letterSpacing: '0.04em',
-              }}
-            >
-              {config.label(toolCall.args)}
-            </span>
-            <span className="mono-label">filesystem</span>
-            <span className="mono-chip" style={{ minHeight: 24, paddingInline: 10, marginLeft: 'auto' }}>
-              {config.subtitle(toolCall.args, result)}
-            </span>
-            <span style={{ color: 'var(--text-meta)' }}>{statusIcon}</span>
-            {hasBody && (expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-          </div>
-
-          <div
-            style={{
-              marginTop: 10,
-              color: 'var(--text-secondary)',
-              fontSize: 13,
-              lineHeight: 1.6,
-            }}
-          >
-            --- {toolCall.name}
-          </div>
-        </div>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {hasBody && expanded && (
-          <motion.div
-            key="body"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div className="mt-4 data-surface p-4">
-              {toolCall.status === 'error' ? (
-                <pre style={{ ...preStyle, color: 'var(--state-error)' }}>
-                  {toolCall.error}
-                </pre>
-              ) : toolCall.status === 'calling' && !result ? (
-                <div className="flex items-center gap-3">
-                  <span className="signal-dot" />
-                  <span style={{ color: 'var(--text-meta)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                    aguardando leitura do notifier
-                  </span>
-                </div>
-              ) : (
-                body
+      <motion.div layout className="event-node-lab">
+        <button
+          type="button"
+          onClick={() => hasBody && setExpanded((value) => !value)}
+          className="flex w-full items-start gap-3 text-left"
+          style={{ background: 'transparent', border: 'none', cursor: hasBody ? 'pointer' : 'default' }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="event-header">
+              <config.Icon size={14} />
+              <span
+                style={{
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {config.label(toolCall.args)}
+              </span>
+              <span className="event-badge">filesystem</span>
+              <span className="event-badge" style={{ marginLeft: 'auto' }}>
+                {config.subtitle(toolCall.args, result)}
+              </span>
+              <span style={{ color: 'var(--text-meta)' }}>{statusIcon}</span>
+              {hasBody && (
+                <span className="event-toggle">
+                  {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </span>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+
+            <div
+              style={{
+                marginTop: 10,
+                color: 'var(--text-secondary)',
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}
+            >
+              --- {toolCall.name}
+            </div>
+          </div>
+        </button>
+
+        <AnimatePresence initial={false}>
+          {hasBody && expanded && (
+            <motion.div
+              layout
+              key="body"
+              className="event-expand event-expand-block"
+              initial={{ opacity: 0, height: 0, y: -6 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -4 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div>
+                {toolCall.status === 'error' ? (
+                  <pre style={{ ...preStyle, color: 'var(--state-error)' }}>
+                    {toolCall.error}
+                  </pre>
+                ) : toolCall.status === 'calling' && !result ? (
+                  <div className="flex items-center gap-3">
+                    <span className="signal-dot" />
+                    <span style={{ color: 'var(--text-meta)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                      aguardando leitura do notifier
+                    </span>
+                  </div>
+                ) : (
+                  body
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.section>
   );
 };
 

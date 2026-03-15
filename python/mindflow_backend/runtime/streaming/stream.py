@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
@@ -9,17 +10,29 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from mindflow_backend.agents.tools.search_web import search_web
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.memory import get_memory_service
-from mindflow_backend.orchestrator.graph import build_simple_orchestrator_flow
-from mindflow_backend.orchestrator.router import route_message
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import build_simple_orchestrator_flow
 from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
-from mindflow_backend.infra.database.connection import get_db_session as db_session
-from mindflow_backend.storage import ChatRepository
 
-_logger = get_logger(__name__)
+try:
+    from mindflow_backend.memory import get_memory_service as _get_memory_service
+except Exception as exc:  # pragma: no cover - import guard for lean test envs
+    _get_memory_service = None
+    _logger = get_logger(__name__)
+    _logger.warning("memory_service_import_failed", error=str(exc))
+else:
+    _logger = get_logger(__name__)
+
+try:
+    from mindflow_backend.infra.database.connection import get_db_session as db_session
+    from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
+except Exception as exc:  # pragma: no cover - import guard for lean test envs
+    db_session = None
+    ChatMessage = None
+    ChatSession = None
+    _logger.warning("runtime_db_import_failed", error=str(exc))
 
 SYSTEM_PROMPT = (
     "You are MindFlow, a pragmatic engineering assistant. "
@@ -27,11 +40,72 @@ SYSTEM_PROMPT = (
     "Always keep outputs clear and useful for software engineering context."
 )
 
+# ── Module-level singleton for the compiled LangGraph orchestrator ────────────
+# Building the graph compiles the StateGraph (LangGraph compilation) which is
+# expensive. We cache it so that it is only compiled ONCE per process, not once
+# per HTTP request.
+_ORCHESTRATOR_GRAPH: Any = None
+
+
+def _get_orchestrator_graph() -> Any:
+    global _ORCHESTRATOR_GRAPH
+    if _ORCHESTRATOR_GRAPH is None:
+        _logger.info("orchestrator_graph_compiling")
+        _ORCHESTRATOR_GRAPH = build_simple_orchestrator_flow()
+        _logger.info("orchestrator_graph_compiled_and_cached")
+    return _ORCHESTRATOR_GRAPH
+
+
 class AgentRuntime:
     def __init__(self) -> None:
-        self._orchestrator_graph = build_simple_orchestrator_flow()
-        self._chat_repo = ChatRepository()
-        self._memory_service = get_memory_service()
+        # Lazy-load the graph so direct-agent and test paths do not pay the
+        # compilation cost unless orchestration is actually requested.
+        self._orchestrator_graph = None
+        self._memory_service = _get_memory_service() if _get_memory_service else None
+
+    async def _save_message_bg(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        memory_agent_id: str,
+        provider: str | None = None,
+        model: str | None = None,
+    ) -> None:
+        """Fire-and-forget DB + memory write — runs in background task."""
+        from datetime import UTC, datetime
+        if db_session is None or ChatMessage is None or ChatSession is None:
+            return
+        try:
+            async with db_session() as db:
+                # Ensure session exists
+                sess = await db.get(ChatSession, session_id)
+                if not sess:
+                    sess = ChatSession(id=session_id, title="New Chat")
+                    db.add(sess)
+
+                msg = ChatMessage(
+                    session_id=session_id,
+                    role=role,
+                    content=content,
+                    provider=provider if role == "assistant" else None,
+                    model=model if role == "assistant" else None,
+                )
+                db.add(msg)
+                sess.updated_at = datetime.now(UTC)
+                await db.commit()
+                await db.refresh(msg)
+
+                self._record_memory_message(
+                    db=db,
+                    session_id=session_id,
+                    agent_id=memory_agent_id,
+                    role=role,
+                    content=content,
+                    source_message_id=msg.id,
+                )
+        except Exception as exc:
+            _logger.error("bg_save_message_failed", role=role, error=str(exc))
 
     async def stream_chat(
         self,
@@ -44,95 +118,51 @@ class AgentRuntime:
         model = payload.model or settings.default_model
         memory_agent_id = self._resolve_memory_agent_id(payload)
 
-        # 1. Save user message to database
-        try:
-            async with db_session() as db:
-                message = self._chat_repo.add_message(
-                    db,
-                    session_id=session_id,
-                    role="user",
-                    content=payload.message
-                )
-                self._record_memory_message(
-                    db=db,
-                    session_id=session_id,
-                    agent_id=memory_agent_id,
-                    role="user",
-                    content=payload.message,
-                    source_message_id=getattr(message, "id", None),
-                )
-        except Exception as exc:
-            _logger.error("failed_to_save_user_message", error=str(exc))
-            yield StreamEvent(
-                id=f"evt-0",
-                seq=0,
-                type="error",
-                mode="custom",
-                data=f"Database error: {str(exc)}",
-                meta=StreamEventMeta(
-                    runId=run_id or str(uuid.uuid4()),
-                    turnRunId=session_id,
-                    node="runtime",
-                    nodeCategory="RUNTIME",
-                    userVisible=True,
-                ),
+        # 1. Save user message in background — do NOT await before streaming starts
+        asyncio.create_task(
+            self._save_message_bg(
+                session_id=session_id,
+                role="user",
+                content=payload.message,
+                memory_agent_id=memory_agent_id,
             )
+        )
 
-        # 2. Track assistant response to save it at the end
+        # 2. Track assistant response to save it at the end.
+        # Use try/finally so the save fires even when the consumer closes the
+        # generator early (e.g. agent_controller breaks after "done" event,
+        # which triggers .aclose() and would skip code after the last yield).
         assistant_content = []
 
-        if payload.orchestrate:
-            async for event in self._stream_chat_orchestrated(payload, session_id, run_id):
-                if event.type == "response":
-                    assistant_content.append(event.data)
-                yield event
-        elif getattr(payload, "agent_type", None):
-            async for event in self._stream_chat_direct_agent(payload, session_id, run_id):
-                if event.type == "response":
-                    assistant_content.append(event.data)
-                yield event
-        else:
-            async for event in self._stream_chat_legacy(payload, session_id, run_id):
-                if event.type == "response":
-                    assistant_content.append(event.data)
-                yield event
-
-        # 3. Save full assistant response to database
-        full_response = "".join(assistant_content)
-        if full_response:
-            try:
-                async with db_session() as db:
-                    message = self._chat_repo.add_message(
-                        db,
+        try:
+            if payload.orchestrate or self._should_force_structured_analyst_flow(payload):
+                async for event in self._stream_chat_orchestrated(payload, session_id, run_id):
+                    if event.type == "response":
+                        assistant_content.append(event.data)
+                    yield event
+            elif getattr(payload, "agent_type", None):
+                async for event in self._stream_chat_direct_agent(payload, session_id, run_id):
+                    if event.type == "response":
+                        assistant_content.append(event.data)
+                    yield event
+            else:
+                async for event in self._stream_chat_legacy(payload, session_id, run_id):
+                    if event.type == "response":
+                        assistant_content.append(event.data)
+                    yield event
+        finally:
+            # 3. Save full assistant response — runs even if generator is closed early
+            full_response = "".join(assistant_content)
+            if full_response:
+                asyncio.create_task(
+                    self._save_message_bg(
                         session_id=session_id,
                         role="assistant",
                         content=full_response,
+                        memory_agent_id=memory_agent_id,
                         provider=provider,
-                        model=model
+                        model=model,
                     )
-                    self._record_memory_message(
-                        db=db,
-                        session_id=session_id,
-                        agent_id=memory_agent_id,
-                        role="assistant",
-                        content=full_response,
-                        source_message_id=getattr(message, "id", None),
-                    )
-            except Exception as exc:
-                _logger.error("failed_to_save_assistant_message", error=str(exc))
-                yield StreamEvent(
-                    id=f"evt-err-{str(uuid.uuid4())[:8]}",
-                    seq=999,
-                    type="error",
-                    mode="custom",
-                    data=f"Database error saving response: {str(exc)}",
-                    meta=StreamEventMeta(
-                        runId=run_id or str(uuid.uuid4()),
-                        turnRunId=session_id,
-                        node="runtime",
-                        nodeCategory="RUNTIME",
-                        userVisible=True,
-                    ),
                 )
 
     async def _stream_chat_direct_agent(
@@ -159,17 +189,76 @@ class AgentRuntime:
 
         try:
             agent = get_agent(agent_type)
-            messages = [SystemMessage(content=agent.system_prompt), HumanMessage(content=payload.message)]
             llm = get_model_for_provider(provider, model)
+            messages = [SystemMessage(content=agent.system_prompt)]
+
+            sandbox_root = (
+                getattr(payload, "folder_path", None)
+                or agent.root_dir
+                or (getattr(get_settings(), "working_path", None))
+            )
+
+            tools = []
+            if getattr(agent, "sandbox", None) != "none":
+                from mindflow_backend.agents.tools import create_default_registry
+                from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+                from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
+
+                sandbox = MindFlowSandbox(
+                    root_dir=sandbox_root,
+                    read_only=(agent.sandbox == SandboxMode.READ_ONLY),
+                )
+                registry = create_default_registry(sandbox, session_id=session_id)
+                tools = registry.get_tools_for_agent(agent.agent_type)
+
+                if sandbox_root and tools:
+                    messages.append(
+                        SystemMessage(
+                            content=(
+                                f"Your working directory (root_dir) is: {sandbox_root}\n"
+                                "Use list_directory first, read_file second, and shell only as a fallback "
+                                "for navigation or shell tab inspection."
+                            )
+                        )
+                    )
+
+            messages.append(HumanMessage(content=payload.message))
 
             emitted_response = False
-            async for chunk in llm.astream(messages):
-                thought, texts = extract_chunk_parts(chunk)
-                if thought:
-                    yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
-                for text in texts:
-                    emitted_response = True
-                    yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
+            if tools:
+                from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+
+                lc_tools = to_langchain_tools(tools)
+                if lc_tools:
+                    llm_with_tools = llm.bind_tools(lc_tools)
+                    async for event in self._stream_tool_aware_direct_agent(
+                        llm=llm_with_tools,
+                        messages=messages,
+                        lc_tools=lc_tools,
+                        normalizer=normalizer,
+                        counter=counter,
+                        run_id=run_id,
+                        agent_type=agent_type,
+                    ):
+                        if event.type == "response":
+                            emitted_response = True
+                        yield event
+                else:
+                    async for chunk in llm.astream(messages):
+                        thought, texts = extract_chunk_parts(chunk)
+                        if thought:
+                            yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
+                        for text in texts:
+                            emitted_response = True
+                            yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
+            else:
+                async for chunk in llm.astream(messages):
+                    thought, texts = extract_chunk_parts(chunk)
+                    if thought:
+                        yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
+                    for text in texts:
+                        emitted_response = True
+                        yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
 
             yield normalizer.step_event(
                 self._next_seq(counter),
@@ -195,14 +284,126 @@ class AgentRuntime:
             counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
 
+    async def _stream_tool_aware_direct_agent(
+        self,
+        *,
+        llm: Any,
+        messages: list[Any],
+        lc_tools: list[Any],
+        normalizer: AgentChatStreamNormalizer,
+        counter: list[int],
+        run_id: str,
+        agent_type: str,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        from mindflow_backend.agents.tools.base.tool_invocation import stream_with_tools
+
+        queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+        async def _chunk_dispatch(text: str) -> None:
+            await queue.put(("chunk", text))
+
+        async def _event_dispatch(name: str, payload: dict[str, Any]) -> None:
+            await queue.put(("event", (name, payload)))
+
+        async def _runner() -> None:
+            try:
+                await stream_with_tools(
+                    llm=llm,
+                    messages=messages,
+                    lc_tools=lc_tools,
+                    chunk_dispatcher=_chunk_dispatch,
+                    event_dispatcher=_event_dispatch,
+                )
+            except Exception as exc:
+                await queue.put(("error", exc))
+            finally:
+                await queue.put(("done", None))
+
+        task = asyncio.create_task(_runner())
+        agent_meta = {"agent": agent_type}
+
+        try:
+            while True:
+                event_kind, payload = await queue.get()
+                if event_kind == "done":
+                    break
+                if event_kind == "error":
+                    raise payload
+                if event_kind == "chunk":
+                    yield normalizer.response_event(
+                        self._next_seq(counter),
+                        payload,
+                        run_id=run_id,
+                        extra_meta=agent_meta,
+                    )
+                    continue
+
+                name, data = payload
+                if name == "agent_thought":
+                    thought = data.get("thought")
+                    if thought:
+                        yield normalizer.thought_event(
+                            self._next_seq(counter),
+                            thought,
+                            run_id=run_id,
+                            extra_meta=agent_meta,
+                        )
+                elif name == "tool_call_start":
+                    tool_name = data.get("tool", "")
+                    tool_args = data.get("args", {}) or {}
+                    tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                    if tool_name:
+                        yield normalizer.tool_call_event(
+                            self._next_seq(counter),
+                            tool_call_id=tool_call_id,
+                            name=tool_name,
+                            args=tool_args,
+                            run_id=run_id,
+                            extra_meta=agent_meta,
+                        )
+                elif name == "tool_call":
+                    tool_name = data.get("tool", "")
+                    tool_args = data.get("args", {}) or {}
+                    result_preview = data.get("result_preview", "")
+                    tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                    if tool_name and not data.get("tool_call_id"):
+                        yield normalizer.tool_call_event(
+                            self._next_seq(counter),
+                            tool_call_id=tool_call_id,
+                            name=tool_name,
+                            args=tool_args,
+                            run_id=run_id,
+                            extra_meta=agent_meta,
+                        )
+                    if tool_name and result_preview:
+                        yield normalizer.tool_result_event(
+                            self._next_seq(counter),
+                            tool_call_id=tool_call_id,
+                            name=tool_name,
+                            result=result_preview,
+                            run_id=run_id,
+                            extra_meta=agent_meta,
+                        )
+        finally:
+            if not task.done():
+                task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    def _should_force_structured_analyst_flow(self, payload: AgentChatRequest) -> bool:
+        return (
+            (getattr(payload, "agent_type", None) or "").lower() == "analyst"
+            and bool(getattr(payload, "folder_path", None))
+        )
+
     def _resolve_memory_agent_id(self, payload: AgentChatRequest) -> str:
+        # Return immediately without LLM call — orchestration routing
+        # determines the real agent at execution time, but for memory
+        # bucketing we use a lightweight static heuristic.
         if payload.agent_type:
             return payload.agent_type
         if payload.orchestrate:
-            try:
-                return route_message(payload.message).agent.value
-            except Exception:
-                return "coder"
+            return "orchestrator"
         return "general"
 
     def _record_memory_message(
@@ -216,7 +417,7 @@ class AgentRuntime:
         source_message_id: int | None,
     ) -> None:
         settings = get_settings()
-        if not settings.memory_enabled:
+        if not settings.memory_enabled or self._memory_service is None:
             return
         # Tests frequently patch db_session to MagicMock; skip memory in that case.
         if db.__class__.__module__.startswith("unittest.mock"):
@@ -466,6 +667,18 @@ class AgentRuntime:
             counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
 
+    def _is_direct_response(self, decision: Any) -> bool:
+        """Return True when the orchestrator will answer directly (no specialist delegation)."""
+        try:
+            from mindflow_backend.schemas.orchestration.orchestrator import ExecutionStrategy
+            if isinstance(decision, dict):
+                s = decision.get("execution_strategy", "")
+                return s == ExecutionStrategy.DIRECT_RESPONSE.value or s == "direct_response"
+            s = getattr(decision, "execution_strategy", None)
+            return s == ExecutionStrategy.DIRECT_RESPONSE
+        except Exception:
+            return False
+
     def _serialize_decision(self, decision: Any) -> str:
         """Serialize decision for orchestrator_decision event."""
         if decision is None:
@@ -509,6 +722,18 @@ class AgentRuntime:
         if name in ("edit_file", "edit"):
             path = args.get("file_path", "")
             return ("file_edit", f"Edição: {path}", details)
+        if name == "shell_tab_open":
+            title = args.get("title") or args.get("tab_id") or "shell"
+            return ("shell_tab_open", f"Shell tab: {title}", details)
+        if name == "shell_tab_exec":
+            command = args.get("command", "")
+            return ("shell_tab_exec", f"Shell exec: {command}", details)
+        if name == "shell_tab_status":
+            tab_id = args.get("tab_id", "")
+            return ("shell_tab_status", f"Shell status: {tab_id}", details)
+        if name == "shell_tab_close":
+            tab_id = args.get("tab_id", "")
+            return ("shell_tab_close", f"Shell close: {tab_id}", details)
         if name == "search_web" or "search" in name:
             q = args.get("query", args.get("q", ""))
             return ("search_done", f"Busca: {q[:60]}..." if len(str(q)) > 60 else f"Busca: {q}", details)
@@ -542,11 +767,15 @@ class AgentRuntime:
         )
 
         try:
+            if self._orchestrator_graph is None:
+                self._orchestrator_graph = _get_orchestrator_graph()
             graph_input = {
                 "message": payload.message,
                 "provider": provider,
                 "model": model,
                 "session_id": session_id,
+                "agent_type": getattr(payload, "agent_type", None),
+                "folder_path": getattr(payload, "folder_path", None),
             }
 
             async for event in self._orchestrator_graph.astream_events(graph_input, version="v2"):
@@ -566,12 +795,12 @@ class AgentRuntime:
                         )
 
                     elif name == "agent_response":
-                        # Orchestrator owns the session: attribute response to orchestrator in UI
+                        # Attribute to the actual specialist agent that produced this response.
                         yield normalizer.response_event(
                             self._next_seq(counter),
                             data["chunk"],
                             run_id=run_id,
-                            extra_meta={"agent": "orchestrator"},
+                            extra_meta={"agent": current_agent or "orchestrator"},
                         )
 
                     elif name == "task_step":
@@ -630,6 +859,49 @@ class AgentRuntime:
                             }),
                         )
 
+                    elif name == "tool_call_start":
+                        # Emitted BEFORE tool execution — shows tool as 'calling' immediately
+                        tool_name = data.get("tool", "")
+                        tool_args = data.get("args", {}) or {}
+                        tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                        if tool_name:
+                            agent_meta = {"agent": current_agent} if current_agent else None
+                            yield normalizer.tool_call_event(
+                                self._next_seq(counter),
+                                tool_call_id=tool_call_id,
+                                name=tool_name,
+                                args=tool_args,
+                                run_id=run_id,
+                                extra_meta=agent_meta,
+                            )
+
+                    elif name == "tool_call":
+                        tool_name = data.get("tool", "")
+                        tool_args = data.get("args", {}) or {}
+                        result_preview = data.get("result_preview", "")
+                        tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                        agent_meta = {"agent": current_agent} if current_agent else None
+                        if tool_name:
+                            # Only emit tool_call_event if no prior tool_call_start was sent
+                            if not data.get("tool_call_id"):
+                                yield normalizer.tool_call_event(
+                                    self._next_seq(counter),
+                                    tool_call_id=tool_call_id,
+                                    name=tool_name,
+                                    args=tool_args,
+                                    run_id=run_id,
+                                    extra_meta=agent_meta,
+                                )
+                            if result_preview:
+                                yield normalizer.tool_result_event(
+                                    self._next_seq(counter),
+                                    tool_call_id=tool_call_id,
+                                    name=tool_name,
+                                    result=result_preview,
+                                    run_id=run_id,
+                                    extra_meta=agent_meta,
+                                )
+
                 elif event_type == "on_chain_start" and event.get("name") == "route":
                     yield self._custom_event(
                         counter=counter,
@@ -668,29 +940,45 @@ class AgentRuntime:
                                 event_type="reflection_mode_start",
                                 data="",
                             )
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="agent_delegation_start",
-                                data=json.dumps({
-                                    "agent_type": agent_type,
-                                    "delegated_by": "ORCHESTRATOR",
-                                    "task": task,
-                                }),
-                            )
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="specialist_activation",
-                                data=json.dumps({"agent_type": agent_type, "is_core": True}),
-                            )
-                            yield normalizer.thought_event(
-                                self._next_seq(counter),
-                                f"Decision: {getattr(decision, 'rationale', '') or (decision.get('rationale') if isinstance(decision, dict) else '')}. Agent: {agent_type}.",
-                                run_id=run_id,
-                            )
+
+                            if self._is_direct_response(decision):
+                                # Orchestrator answers directly — no delegation card on frontend.
+                                # Emit a lightweight event so the UI can show "responding directly".
+                                current_agent = "orchestrator"
+                                yield normalizer.thought_event(
+                                    self._next_seq(counter),
+                                    "Respondendo diretamente ao usuário.",
+                                    run_id=run_id,
+                                )
+                            else:
+                                # Real specialist delegation — show the delegation card.
+                                yield self._custom_event(
+                                    counter=counter,
+                                    run_id=run_id,
+                                    session_id=session_id,
+                                    event_type="agent_delegation_start",
+                                    data=json.dumps({
+                                        "agent_type": agent_type,
+                                        "delegated_by": "ORCHESTRATOR",
+                                        "task": task,
+                                    }),
+                                )
+                                yield self._custom_event(
+                                    counter=counter,
+                                    run_id=run_id,
+                                    session_id=session_id,
+                                    event_type="specialist_activation",
+                                    data=json.dumps({"agent_type": agent_type, "is_core": True}),
+                                )
+                                rationale = (
+                                    getattr(decision, "rationale", "")
+                                    or (decision.get("rationale") if isinstance(decision, dict) else "")
+                                )
+                                yield normalizer.thought_event(
+                                    self._next_seq(counter),
+                                    f"Delegando para **{agent_type}**. {rationale}",
+                                    run_id=run_id,
+                                )
 
             yield self._custom_event(
                 counter=counter,

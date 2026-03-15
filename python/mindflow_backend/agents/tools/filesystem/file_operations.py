@@ -35,9 +35,28 @@ class FileReadTool(AsyncToolInterface):
         # Security settings
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.allowed_extensions = {
-            '.txt', '.py', '.js', '.html', '.css', '.json', '.xml',
-            '.md', '.yml', '.yaml', '.csv', '.log', '.conf',
-            '.ini', '.cfg', '.toml', '.env', '.gitignore'
+            # Web / JS ecosystem
+            '.txt', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
+            '.html', '.htm', '.css', '.scss', '.sass', '.less',
+            '.vue', '.svelte',
+            # Config / data
+            '.json', '.json5', '.xml', '.yml', '.yaml', '.toml',
+            '.ini', '.cfg', '.conf', '.env', '.envrc', '.dotenv',
+            '.gitignore', '.gitattributes', '.editorconfig',
+            # Python
+            '.py', '.pyi', '.pyw',
+            # Systems languages
+            '.c', '.h', '.cpp', '.cc', '.cxx', '.hpp', '.hxx',
+            '.rs', '.go', '.java', '.kt', '.kts', '.scala',
+            # Scripting / shell
+            '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd',
+            # Database / infra
+            '.sql', '.graphql', '.gql', '.proto', '.tf', '.hcl',
+            # Docs / markup
+            '.md', '.mdx', '.rst', '.tex', '.adoc', '.org',
+            # Misc
+            '.csv', '.tsv', '.log', '.lock', '.rb', '.php',
+            '.swift', '.dart', '.lua', '.r', '.R',
         }
         self.restricted_paths = {
             '/etc', '/usr', '/bin', '/sbin', '/boot', '/sys',
@@ -250,9 +269,28 @@ class FileWriteTool(AsyncToolInterface):
         # Security settings
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.allowed_extensions = {
-            '.txt', '.py', '.js', '.html', '.css', '.json', '.xml',
-            '.md', '.yml', '.yaml', '.csv', '.log', '.conf',
-            '.ini', '.cfg', '.toml', '.env', '.gitignore'
+            # Web / JS ecosystem
+            '.txt', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
+            '.html', '.htm', '.css', '.scss', '.sass', '.less',
+            '.vue', '.svelte',
+            # Config / data
+            '.json', '.json5', '.xml', '.yml', '.yaml', '.toml',
+            '.ini', '.cfg', '.conf', '.env', '.envrc', '.dotenv',
+            '.gitignore', '.gitattributes', '.editorconfig',
+            # Python
+            '.py', '.pyi', '.pyw',
+            # Systems languages
+            '.c', '.h', '.cpp', '.cc', '.cxx', '.hpp', '.hxx',
+            '.rs', '.go', '.java', '.kt', '.kts', '.scala',
+            # Scripting / shell
+            '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd',
+            # Database / infra
+            '.sql', '.graphql', '.gql', '.proto', '.tf', '.hcl',
+            # Docs / markup
+            '.md', '.mdx', '.rst', '.tex', '.adoc', '.org',
+            # Misc
+            '.csv', '.tsv', '.log', '.lock', '.rb', '.php',
+            '.swift', '.dart', '.lua', '.r', '.R',
         }
         self.restricted_paths = {
             '/etc', '/usr', '/bin', '/sbin', '/boot', '/sys',

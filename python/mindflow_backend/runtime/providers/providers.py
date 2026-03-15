@@ -40,7 +40,9 @@ def _vertex_location(model: str) -> str:
 
 def _is_thinking_supported(model: str) -> bool:
     m = model.lower()
-    return "thinking" in m or "gemini-2.0" in m or "gemini-3" in m
+    # Only models explicitly named "thinking" or gemini-2.5+ support thinking mode.
+    # gemini-2.0-flash and gemini-2.0-flash-lite do NOT support thinking_level.
+    return "thinking" in m or "gemini-2.5" in m or "gemini-3" in m
 
 
 def _ensure_vertex_env() -> tuple[str | None, str | None]:

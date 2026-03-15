@@ -19,7 +19,7 @@ export const ChatPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState('gemini-3.1-flash-lite-preview');
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <TopBar
         title={title}
         agentCount={agentCount}
@@ -29,6 +29,7 @@ export const ChatPage: React.FC = () => {
         onModelChange={setSelectedModel}
       />
       <ChatInterface
+        key={sessionId ?? 'new'}
         sessionId={sessionId}
         selectedModel={selectedModel}
         onTitleChange={setTitle}

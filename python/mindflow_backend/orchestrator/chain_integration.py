@@ -110,44 +110,23 @@ class ChainOrchestrator:
         return plan
     
     def _analyze_task_requirements(self, message: str, complexity_score: float) -> Dict[str, Any]:
-        """Analyze task to determine requirements."""
-        
-        # Simple heuristic analysis (can be enhanced with LLM)
-        analysis = {
-            "task_type": "general",
-            "requires_code": False,
-            "requires_analysis": False,
+        """Build task analysis from complexity score only — no keyword matching.
+
+        The routing decision (which chain to use) was already made by the LLM
+        in IntelligentRouter. This method only derives structural properties
+        from the complexity score to configure chain execution parameters.
+        """
+        is_complex = complexity_score > 0.7
+
+        return {
+            "task_type": "coding",  # CHAIN strategy is only triggered for coding_task
+            "requires_code": True,
+            "requires_analysis": True,
             "requires_research": False,
-            "requires_validation": False,
-            "is_multi_step": False,
-            "estimated_time": 60.0,
+            "requires_validation": is_complex,
+            "is_multi_step": is_complex,
+            "estimated_time": 120.0 if is_complex else 90.0,
         }
-        
-        message_lower = message.lower()
-        
-        # Task type detection
-        if any(word in message_lower for word in ["code", "implement", "program", "function"]):
-            analysis["task_type"] = "coding"
-            analysis["requires_code"] = True
-            analysis["estimated_time"] = 90.0
-        
-        elif any(word in message_lower for word in ["analyze", "research", "investigate", "study"]):
-            analysis["task_type"] = "analysis"
-            analysis["requires_analysis"] = True
-            analysis["requires_research"] = True
-            analysis["estimated_time"] = 45.0
-        
-        elif any(word in message_lower for word in ["complex", "multiple", "several", "various"]):
-            analysis["task_type"] = "complex"
-            analysis["is_multi_step"] = True
-            analysis["estimated_time"] = 120.0
-        
-        # Capability requirements
-        if complexity_score > 0.7:
-            analysis["requires_validation"] = True
-            analysis["is_multi_step"] = True
-        
-        return analysis
     
     def _find_suitable_chains(
         self,
@@ -507,28 +486,64 @@ def get_chain_orchestrator() -> ChainOrchestrator:
 
 
 # Integration function for orchestrator graph
+def _resolve_chain_id(chain_id: Optional[str], complexity_score: float) -> str:
+    """Resolve the final chain_id to execute, including automatic variant selection.
+
+    For `file_analysis`, automatically upgrades to a more capable variant based
+    on complexity_score — the LLM only needs to say "file_analysis" and the
+    system picks the right implementation:
+
+      complexity < 0.45  → file_analysis            (sequential, simple)
+      complexity < 0.65  → conditional_file_analysis (iterative, asks for more files)
+      complexity >= 0.65 → parallel_file_analysis    (parallel scopes, large codebases)
+
+    All other chain_ids are passed through unchanged.
+    """
+    if chain_id == "file_analysis":
+        if complexity_score >= 0.65:
+            _logger.info("chain_variant_selected", variant="parallel_file_analysis", score=complexity_score)
+            return "parallel_file_analysis"
+        if complexity_score >= 0.45:
+            _logger.info("chain_variant_selected", variant="conditional_file_analysis", score=complexity_score)
+            return "conditional_file_analysis"
+        _logger.info("chain_variant_selected", variant="file_analysis", score=complexity_score)
+        return "file_analysis"
+
+    return chain_id or "coding_task"
+
+
 async def execute_chain_with_intelligence(
     message: str,
     complexity_score: float,
     context: Dict[str, Any],
     session_id: Optional[str] = None,
+    chain_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Execute a chain using intelligent selection and fallback."""
-    
+    """Execute a chain using the LLM-decided chain_id (no keyword selection).
+
+    The chain_id is decided upstream by IntelligentRouter's LLM call.
+    For file_analysis chains, the specific variant is chosen automatically
+    from complexity_score so the LLM doesn't need to know about variants.
+    """
+    resolved_id = _resolve_chain_id(chain_id, complexity_score)
+
     orchestrator = get_chain_orchestrator()
-    
-    # Select appropriate chain
+    criteria = ChainSelectionCriteria(
+        task_type=resolved_id,
+        complexity_threshold=complexity_score,
+    )
+
     plan = await orchestrator.select_chain_for_task(
         message=message,
         complexity_score=complexity_score,
         session_context={"session_id": session_id} if session_id else None,
+        criteria=criteria,
     )
-    
-    # Execute the plan
+
     result = await orchestrator.execute_chain_plan(
         plan=plan,
         context=context,
         execution_id=f"orchestrator_{session_id}_{int(time.time())}" if session_id else None,
     )
-    
+
     return result

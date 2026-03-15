@@ -13,6 +13,10 @@ import type {
 } from '../types';
 
 interface AppStore extends AppState {
+  // Session refresh tick (incremented to trigger sidebar re-fetch)
+  sessionRefreshTick: number;
+  bumpSessionRefresh: () => void;
+
   // Agent actions
   setAgents: (agents: Agent[]) => void;
   setActiveAgent: (agentType: AgentType | null) => void;
@@ -93,7 +97,9 @@ export const useAppStore = create<AppStore>()(
       (set) => ({
         ...initialState,
         settings: defaultSettings,
-        
+        sessionRefreshTick: 0,
+        bumpSessionRefresh: () => set((state) => ({ sessionRefreshTick: state.sessionRefreshTick + 1 })),
+
         // Agent actions
         setAgents: (agents) => set({ agents }),
         

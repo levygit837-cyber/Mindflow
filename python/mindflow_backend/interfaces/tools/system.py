@@ -239,6 +239,44 @@ class EnvironmentTool(Protocol):
             Dictionary with operation result
         """
         ...
+
+
+@runtime_checkable
+class ShellTabManager(Protocol):
+    """Interface for session-scoped shell tab lifecycle management."""
+
+    async def create_tab(
+        self,
+        session_id: str,
+        cwd: str | None = None,
+        title: str | None = None,
+    ) -> Any:
+        """Create a new shell tab for the session."""
+        ...
+
+    async def list_tabs(self, session_id: str) -> list[Any]:
+        """List shell tabs for a session."""
+        ...
+
+    async def get_tab_status(self, session_id: str, tab_id: str) -> Any:
+        """Get the current status of a shell tab."""
+        ...
+
+    async def exec_in_tab(self, session_id: str, tab_id: str, command: str) -> Any:
+        """Execute a command inside a shell tab."""
+        ...
+
+    async def read_tab_buffer(self, session_id: str, tab_id: str) -> Any:
+        """Read accumulated stdout/stderr from a shell tab."""
+        ...
+
+    async def close_tab(self, session_id: str, tab_id: str) -> Any:
+        """Terminate a shell tab and any running process."""
+        ...
+
+    async def subscribe(self, session_id: str) -> Any:
+        """Subscribe to shell tab lifecycle events for a session."""
+        ...
     
     async def get_path_info(self) -> Dict[str, Any]:
         """Get PATH environment variable information.

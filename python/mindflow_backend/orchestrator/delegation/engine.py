@@ -107,7 +107,19 @@ class DelegationEngine:
             if not response_text:
                 # Fallback: no tools or tool conversion failed
                 response = await llm.ainvoke(messages)
-                response_text = response.content if hasattr(response, "content") else str(response)
+                content = getattr(response, "content", None)
+                if isinstance(content, str):
+                    response_text = content
+                elif isinstance(content, list):
+                    parts: list[str] = []
+                    for part in content:
+                        if isinstance(part, str):
+                            parts.append(part)
+                        elif isinstance(part, dict) and part.get("type") == "text":
+                            parts.append(part.get("text", ""))
+                    response_text = "".join(parts)
+                else:
+                    response_text = str(content) if content else ""
             
             # Estimate token consumption (rough approximation)
             tokens_consumed = len(response_text.split()) + len(messages) * 10  # Rough estimate

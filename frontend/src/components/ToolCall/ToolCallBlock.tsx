@@ -38,6 +38,12 @@ const TOOL_META: Record<string, ToolMeta> = {
   list_directory: { category: 'filesystem', Icon: ({ size }) => <Folder size={size} /> },
   list_dir: { category: 'filesystem', Icon: ({ size }) => <Folder size={size} /> },
   shell_execute: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
+  shell_tab_open: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
+  shell_tab_list: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
+  shell_tab_status: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
+  shell_tab_exec: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
+  shell_tab_read: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
+  shell_tab_close: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
   system_info: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
   browser_search: { category: 'web', Icon: ({ size }) => <Globe size={size} /> },
   api_client: { category: 'web', Icon: ({ size }) => <Globe size={size} /> },
@@ -113,129 +119,136 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
   })();
 
   return (
-    <motion.div
+    <motion.section
+      layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="rail-panel min-w-0 max-w-[760px]"
-      style={{ padding: '16px 18px 16px 34px' }}
+      className="event-shell min-w-0 max-w-[760px] w-full"
     >
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-start gap-3 text-left"
-        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-      >
+      <div className="event-track">
         <span className={toolCall.status === 'calling' ? 'signal-dot' : 'signal-dot idle'} />
+      </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <meta.Icon size={14} />
-            <span
+      <motion.div layout className="event-node-lab">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="flex w-full items-start gap-3 text-left"
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="event-header">
+              <meta.Icon size={14} />
+              <span
+                style={{
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {toolCall.name}
+              </span>
+              <span className="event-badge">{meta.category}</span>
+              <span className="event-badge" style={{ marginLeft: 'auto' }}>
+                {toolCall.status === 'calling' ? 'calling' : toolCall.status === 'success' ? 'ready' : 'error'}
+              </span>
+              <span style={{ color: 'var(--text-meta)' }}>{statusIcon}</span>
+              <span className="event-toggle">
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+            </div>
+
+            <div
               style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-                letterSpacing: '0.04em',
+                marginTop: 10,
+                color: 'var(--text-secondary)',
+                fontSize: 13,
+                lineHeight: 1.6,
               }}
             >
-              {toolCall.name}
-            </span>
-            <span className="mono-label">{meta.category}</span>
-            <span className="mono-chip" style={{ minHeight: 24, paddingInline: 10, marginLeft: 'auto' }}>
-              {toolCall.status === 'calling' ? 'calling' : toolCall.status === 'success' ? 'ready' : 'error'}
-            </span>
-            <span style={{ color: 'var(--text-meta)' }}>{statusIcon}</span>
-            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {hasArgs
+                ? `--- ${Object.keys(toolCall.args).length} parâmetro${Object.keys(toolCall.args).length > 1 ? 's' : ''}`
+                : '--- execução direta'}
+            </div>
           </div>
+        </button>
 
-          <div
-            style={{
-              marginTop: 10,
-              color: 'var(--text-secondary)',
-              fontSize: 13,
-              lineHeight: 1.6,
-            }}
-          >
-            {hasArgs
-              ? `--- ${Object.keys(toolCall.args).length} parâmetro${Object.keys(toolCall.args).length > 1 ? 's' : ''}`
-              : '--- execução direta'}
-          </div>
-        </div>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="body"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div className="mt-4 flex flex-col gap-3">
-              {hasArgs && (
-                <div className="data-surface p-4">
-                  <div className="mono-label mb-3">input</div>
-                  <pre
-                    style={{
-                      margin: 0,
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      lineHeight: 1.7,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {formatArgs(toolCall.args)}
-                  </pre>
-                </div>
-              )}
-
-              {toolCall.status === 'calling' && !hasOutput && (
-                <div className="data-surface p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="signal-dot" />
-                    <div
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              layout
+              key="body"
+              className="event-expand event-expand-block"
+              initial={{ opacity: 0, height: 0, y: -6 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -4 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex flex-col gap-4">
+                {hasArgs && (
+                  <div>
+                    <div className="mono-label mb-2">input</div>
+                    <pre
                       style={{
-                        color: 'var(--text-meta)',
+                        margin: 0,
+                        color: 'var(--text-secondary)',
                         fontFamily: 'var(--font-mono)',
                         fontSize: 12,
+                        lineHeight: 1.7,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
                       }}
                     >
-                      aguardando retorno do notifier
+                      {formatArgs(toolCall.args)}
+                    </pre>
+                  </div>
+                )}
+
+                {toolCall.status === 'calling' && !hasOutput && (
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <span className="signal-dot" />
+                      <div
+                        style={{
+                          color: 'var(--text-meta)',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 12,
+                        }}
+                      >
+                        aguardando retorno do notifier
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {hasOutput && (
-                <div className="data-surface p-4">
-                  <div className="mono-label mb-3">
-                    {toolCall.error ? 'erro' : 'output'}
+                {hasOutput && (
+                  <div>
+                    <div className="mono-label mb-2">
+                      {toolCall.error ? 'erro' : 'output'}
+                    </div>
+                    <pre
+                      style={{
+                        margin: 0,
+                        color: toolCall.error ? 'var(--state-error)' : 'var(--text-secondary)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 12,
+                        lineHeight: 1.7,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {toolCall.error ? toolCall.error : formatResult(toolCall.result!)}
+                    </pre>
                   </div>
-                  <pre
-                    style={{
-                      margin: 0,
-                      color: toolCall.error ? 'var(--state-error)' : 'var(--text-secondary)',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      lineHeight: 1.7,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {toolCall.error ? toolCall.error : formatResult(toolCall.result!)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.section>
   );
 };
 

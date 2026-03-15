@@ -28,47 +28,30 @@ export const ThinkingNotifier: React.FC<ThinkingNotifierProps> = ({
   const displayName = agentName ?? 'Orchestrator';
 
   return (
-    <motion.div
-      className={`flex w-full gap-4 ${className}`}
+    <motion.section
+      className={`event-shell w-full ${className}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      <div className="flex w-4 flex-col items-center shrink-0">
+      <div className="event-track">
         <motion.span
           className="signal-dot"
           animate={{ opacity: [0.9, 0.4, 0.9] }}
           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <span className="trace-rail mt-2 flex-1" />
       </div>
 
-      <div className="rail-panel min-w-0 flex-1 px-5 py-4 md:px-6" style={{ paddingLeft: 36 }}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            style={{
-              color: 'var(--text-secondary)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            --- Thinking
-          </span>
+      <div className="event-node-lab">
+        <div className="event-header">
+          <span className="mono-label">--- Thinking</span>
 
-          <span
-            style={{
-              color: 'var(--text-primary)',
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
+          <span className="event-title">
             {displayName}
           </span>
 
-          <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
+          <span className="event-badge">
             {STATUS_LABELS[agentType] ?? STATUS_LABELS.default}
           </span>
 
@@ -92,21 +75,23 @@ export const ThinkingNotifier: React.FC<ThinkingNotifierProps> = ({
         </div>
 
         {lastThought && (
-          <p
-            style={{
-              marginTop: 12,
-              color: 'var(--text-meta)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              lineHeight: 1.7,
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {lastThought}
-          </p>
+          <div className="event-expand">
+            <p
+              style={{
+                margin: 0,
+                color: 'var(--text-meta)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                lineHeight: 1.72,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {lastThought}
+            </p>
+          </div>
         )}
       </div>
-    </motion.div>
+    </motion.section>
   );
 };
 

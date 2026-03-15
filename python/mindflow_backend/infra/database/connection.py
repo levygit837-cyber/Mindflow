@@ -275,11 +275,7 @@ class DatabaseManager:
                 pool_timeout=database_config.pool_timeout,
                 echo=settings.app_env == "development",
                 connect_args={
-                    "command_timeout": database_config.statement_timeout // 1000,
-                    "server_settings": {
-                        "application_name": settings.app_name,
-                        "jit": "off",
-                    },
+                    "options": "-c jit=off",
                 },
             )
             

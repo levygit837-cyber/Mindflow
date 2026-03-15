@@ -28,7 +28,7 @@ _logger = get_logger(__name__)
 
 class ChainCapability(StrEnum):
     """Capabilities that chains can declare."""
-    
+
     ANALYSIS = "analysis"
     CODING = "coding"
     RESEARCH = "research"
@@ -39,6 +39,7 @@ class ChainCapability(StrEnum):
     ADAPTIVE_WORKFLOW = "adaptive_workflow"
     CONTEXT_AWARE = "context_aware"
     MULTI_AGENT = "multi_agent"
+    FILE_ANALYSIS = "file_analysis"
 
 
 class ChainComplexity(StrEnum):
@@ -290,6 +291,101 @@ class ChainFactory:
             "conditional_workflow",
             lambda config=None: create_conditional_workflow_chain(ConditionalWorkflowConfig(**(config or {}))),
             conditional_metadata
+        )
+
+        # File Analysis Chain (sequential: intent → discover → read → structure)
+        from mindflow_backend.chains.templates.file_analysis_chain import (
+            create_file_analysis_chain,
+            FileAnalysisChainConfig,
+        )
+
+        file_analysis_metadata = ChainMetadata(
+            chain_id="file_analysis",
+            name="File Analysis",
+            description="Sequential file discovery, reading, and structured analysis",
+            capabilities=[
+                ChainCapability.FILE_ANALYSIS,
+                ChainCapability.ANALYSIS,
+                ChainCapability.CONTEXT_AWARE,
+            ],
+            complexity=ChainComplexity.MEDIUM,
+            estimated_execution_time=30.0,
+            required_agents=[AgentType.ANALYST],
+            default_config={"max_files_to_read": 20, "max_file_size_chars": 8000},
+        )
+
+        self.registry.register(
+            "file_analysis",
+            lambda config=None: create_file_analysis_chain(
+                FileAnalysisChainConfig(**(config or {})) if config else None
+            ),
+            file_analysis_metadata,
+        )
+
+        # Conditional File Chain (iterative: reads more files when needed)
+        from mindflow_backend.chains.templates.conditional_file_chain import (
+            create_conditional_file_chain,
+            ConditionalFileChainConfig,
+        )
+
+        conditional_file_metadata = ChainMetadata(
+            chain_id="conditional_file_analysis",
+            name="Conditional File Analysis",
+            description=(
+                "File analysis with iterative condition loop — reads additional files "
+                "when the current analysis is incomplete"
+            ),
+            capabilities=[
+                ChainCapability.FILE_ANALYSIS,
+                ChainCapability.ANALYSIS,
+                ChainCapability.CONDITIONAL_BRANCHING,
+                ChainCapability.CONTEXT_AWARE,
+            ],
+            complexity=ChainComplexity.HIGH,
+            estimated_execution_time=60.0,
+            required_agents=[AgentType.ANALYST],
+            default_config={"max_files_to_read": 20, "max_iterations": 3},
+        )
+
+        self.registry.register(
+            "conditional_file_analysis",
+            lambda config=None: create_conditional_file_chain(
+                ConditionalFileChainConfig(**(config or {})) if config else None
+            ),
+            conditional_file_metadata,
+        )
+
+        # Parallel File Chain (concurrent reads across logical scopes)
+        from mindflow_backend.chains.templates.parallel_file_chain import (
+            create_parallel_file_chain,
+            ParallelFileChainConfig,
+        )
+
+        parallel_file_metadata = ChainMetadata(
+            chain_id="parallel_file_analysis",
+            name="Parallel File Analysis",
+            description=(
+                "Divides files into logical scopes and reads them concurrently — "
+                "ideal for large codebases with multiple independent concerns"
+            ),
+            capabilities=[
+                ChainCapability.FILE_ANALYSIS,
+                ChainCapability.ANALYSIS,
+                ChainCapability.PARALLEL_EXECUTION,
+                ChainCapability.CONTEXT_AWARE,
+            ],
+            complexity=ChainComplexity.HIGH,
+            estimated_execution_time=45.0,
+            required_agents=[AgentType.ANALYST],
+            default_config={"max_files_to_read": 40, "max_scopes": 5},
+        )
+
+        self.registry.register(
+            "parallel_file_analysis",
+            lambda config=None: create_parallel_file_chain(
+                ParallelFileChainConfig(**(config or {})) if config else None
+            ),
+            parallel_file_metadata,
         )
     
     async def create_chain(self, request: ChainRequest) -> ChainInstance:
