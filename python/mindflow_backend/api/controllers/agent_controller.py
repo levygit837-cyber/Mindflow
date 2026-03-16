@@ -10,20 +10,17 @@ from mindflow_backend.api.controllers.base_controller import BaseController, req
 from mindflow_backend.api.schemas.requests import AgentChatRequest
 from mindflow_backend.api.schemas.responses import AgentResponse
 from mindflow_backend.services import get_agent_service
-from mindflow_backend.grpc.client import LocalAgentClient
+from mindflow_backend.grpc.factory import get_runtime_client
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
-# ── Module-level singleton — avoids re-creating AgentRuntime / recompiling the
-# LangGraph graph on every HTTP request (build_simple_orchestrator_flow is slow).
-_local_agent_client: LocalAgentClient | None = None
+# ── Module-level client access ────────────────────────────────────────────────
+# Use the transport factory so the active transport mode is respected.
+# _get_local_agent_client() is kept as a backward-compat alias used in main.py.
 
-
-def _get_local_agent_client() -> LocalAgentClient:
-    global _local_agent_client
-    if _local_agent_client is None:
-        _local_agent_client = LocalAgentClient()
-    return _local_agent_client
+def _get_local_agent_client():
+    """Return the runtime client from the transport factory (cached internally)."""
+    return get_runtime_client()
 
 
 class AgentController(BaseController):

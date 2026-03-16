@@ -77,8 +77,8 @@ class Settings(BaseSettings):
     working_path: str | None = Field(default=None, alias="WORKING_PATH")
 
     # AI/ML Configuration
-    default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
-    default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")
+    default_provider: str = Field(default="google", alias="DEFAULT_PROVIDER")
+    default_model: str = Field(default="gemini-3.1-flash-lite-preview", alias="DEFAULT_MODEL")
     enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
     
     # Memory Configuration
@@ -172,6 +172,7 @@ class Settings(BaseSettings):
     grpc_retry_max_delay: int = Field(default=10, alias="GRPC_RETRY_MAX_DELAY")
     grpc_timeout_adaptive: bool = Field(default=True, alias="GRPC_TIMEOUT_ADAPTIVE")
     grpc_timeout_deadline_propagation: bool = Field(default=True, alias="GRPC_TIMEOUT_DEADLINE_PROPAGATION")
+    grpc_transport_mode: str = Field(default="local", alias="GRPC_TRANSPORT_MODE")
 
     # Feature Flags
     feature_flags: dict[str, bool] = Field(default_factory=dict)

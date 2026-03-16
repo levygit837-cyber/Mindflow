@@ -177,8 +177,8 @@ async def health() -> dict[str, str | dict]:
         
         if grpc_config.enabled:
             try:
-                from mindflow_backend.grpc.server import get_server
-                server = get_server()
+                from mindflow_backend.grpc.server import get_grpc_server
+                server = await get_grpc_server()
                 if server and server.is_running():
                     grpc_status.update({
                         "status": "running",
