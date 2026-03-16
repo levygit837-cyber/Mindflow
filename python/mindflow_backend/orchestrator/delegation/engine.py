@@ -42,7 +42,7 @@ class DelegationEngine:
         
         try:
             # Get the target agent
-            agent = get_agent(task.agent)
+            agent = get_agent(task.agent_role or task.agent, specialist=task.specialist, agent_id=task.agent_id)
             
             # Prepare messages for the agent
             messages = [
@@ -128,6 +128,9 @@ class DelegationEngine:
             result = DelegationResult(
                 task_id=task.task_id,
                 agent=task.agent,
+                agent_role=task.agent_role or task.agent,
+                specialist=task.specialist,
+                agent_id=task.agent_id,
                 status="completed",
                 key_findings=self._extract_key_findings(response_text, task.expected_output),
                 full_output=response_text,
@@ -158,6 +161,9 @@ class DelegationEngine:
             return DelegationResult(
                 task_id=task.task_id,
                 agent=task.agent,
+                agent_role=task.agent_role or task.agent,
+                specialist=task.specialist,
+                agent_id=task.agent_id,
                 status="failed",
                 key_findings="",
                 full_output="",

@@ -1,7 +1,8 @@
 """Agent registry — singleton that holds all registered personalities.
 
 Provides ``register_all_personalities()`` for startup bootstrapping and
-``get_agent()`` for runtime lookups. Updated to use new architecture.
+``get_agent()`` for runtime lookups. The canonical runtime resolves agents by
+base role, with optional specialization when the planner/delegation layer opts in.
 """
 
 from __future__ import annotations
@@ -9,9 +10,27 @@ from __future__ import annotations
 from mindflow_backend.agents._base import BaseAgent
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 from mindflow_backend.agents.core.initialization import initialize_agent_system, validate_dependencies
 
 _logger = get_logger(__name__)
+
+
+def _normalize_role(agent_type: AgentType | str) -> AgentType:
+    """Normalize legacy string lookups to canonical agent roles."""
+    if isinstance(agent_type, AgentType):
+        return agent_type
+
+    normalized = str(agent_type).strip().lower()
+    if normalized == "general":
+        return AgentType.ANALYST
+    return AgentType(normalized)
+
+
+def _normalize_specialist(specialist: SpecialistType | str | None) -> SpecialistType | None:
+    if specialist is None or isinstance(specialist, SpecialistType):
+        return specialist
+    return SpecialistType(str(specialist).strip().lower())
 
 
 class AgentRegistry:
@@ -23,23 +42,57 @@ class AgentRegistry:
     """
 
     def __init__(self) -> None:
-        self._agents: dict[AgentType, BaseAgent] = {}
+        self._agents: dict[tuple[AgentType, SpecialistType | None], BaseAgent] = {}
+        self._default_agents: dict[AgentType, BaseAgent] = {}
 
     def register(self, agent: BaseAgent) -> None:
-        """Register a personality.  Overwrites any existing entry."""
-        self._agents[agent.agent_type] = agent
-        _logger.debug("agent_registered", agent_type=str(agent.agent_type))
+        """Register a personality.
 
-    def get(self, agent_type: AgentType) -> BaseAgent:
+        Default role lookup always resolves to the base role variant
+        (``specialist is None``). Specialized variants receive their own slot.
+        """
+        key = (agent.agent_role, agent.specialist)
+        self._agents[key] = agent
+        if agent.specialist is None:
+            self._default_agents[agent.agent_role] = agent
+        _logger.debug(
+            "agent_registered",
+            agent_role=str(agent.agent_role),
+            specialist=getattr(agent.specialist, "value", None),
+            agent_id=agent.agent_id,
+        )
+
+    def get(
+        self,
+        agent_type: AgentType | str,
+        specialist: SpecialistType | str | None = None,
+    ) -> BaseAgent:
         """Retrieve an agent by type.
 
         Raises:
             KeyError: If the agent type is not registered.
         """
+        role = _normalize_role(agent_type)
+        specialization = _normalize_specialist(specialist)
+
         try:
-            return self._agents[agent_type]
+            if specialization is not None:
+                return self._agents[(role, specialization)]
+            return self._default_agents[role]
         except KeyError:
-            raise KeyError(f"Agent type '{agent_type}' is not registered.") from None
+            if specialization is not None:
+                raise KeyError(
+                    f"Agent '{role.value}' with specialist '{specialization.value}' is not registered."
+                ) from None
+            raise KeyError(f"Agent type '{role.value}' is not registered.") from None
+
+    def get_by_id(self, agent_id: str) -> BaseAgent:
+        """Retrieve an agent by its stable composite identity."""
+        normalized = agent_id.strip().lower()
+        if ":" in normalized:
+            role_value, specialist_value = normalized.split(":", 1)
+            return self.get(AgentType(role_value), SpecialistType(specialist_value))
+        return self.get(AgentType(normalized))
 
     def list_all(self) -> list[BaseAgent]:
         """Return all registered agents."""
@@ -52,15 +105,22 @@ class AgentRegistry:
     def clear(self) -> None:
         """Remove all registrations (useful for testing)."""
         self._agents.clear()
+        self._default_agents.clear()
 
 
 # Module-level singleton
 _registry = AgentRegistry()
 
 
-def get_agent(agent_type: AgentType) -> BaseAgent:
+def get_agent(
+    agent_type: AgentType | str,
+    specialist: SpecialistType | str | None = None,
+    agent_id: str | None = None,
+) -> BaseAgent:
     """Module-level shortcut to retrieve an agent from the global registry."""
-    return _registry.get(agent_type)
+    if agent_id:
+        return _registry.get_by_id(agent_id)
+    return _registry.get(agent_type, specialist=specialist)
 
 
 def get_registry() -> AgentRegistry:

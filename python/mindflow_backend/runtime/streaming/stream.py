@@ -40,10 +40,10 @@ SYSTEM_PROMPT = (
     "Always keep outputs clear and useful for software engineering context."
 )
 
-# ── Module-level singleton for the compiled LangGraph orchestrator ────────────
-# Building the graph compiles the StateGraph (LangGraph compilation) which is
-# expensive. We cache it so that it is only compiled ONCE per process, not once
-# per HTTP request.
+# ── Canonical compiled orchestrator graph singleton ───────────────────────────
+# Production orchestration enters here and uses the compiled LangGraph built by
+# `graphs/implementations/orchestrator/simple_flow.py`. Compatibility shims may
+# re-export this behavior, but they must not construct competing runtimes.
 _ORCHESTRATOR_GRAPH: Any = None
 
 
@@ -803,13 +803,14 @@ class AgentRuntime:
                             extra_meta={"agent": current_agent or "orchestrator"},
                         )
 
-                    elif name == "task_step":
+                    elif name in {"task_step", "dt_step"}:
                         task_name = data.get("task", "unknown")
                         status = data.get("status", "unknown")
+                        step_prefix = "DT" if name == "dt_step" else "Task"
                         yield normalizer.step_event(
                             self._next_seq(counter),
                             run_id=run_id,
-                            step_name=f"Task: {task_name}",
+                            step_name=f"{step_prefix}: {task_name}",
                             detail=f"Status: {status}",
                             action="start" if status == "resolving" else "complete",
                             node="task_thinker",

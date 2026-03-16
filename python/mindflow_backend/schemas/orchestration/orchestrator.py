@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Keep orchestration schemas lightweight: do not import graphs/runtime modules here.
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
@@ -124,6 +124,9 @@ class OrchestratorDecision(BaseModel):
 
     rationale: str = ""
     agent: AgentType = AgentType.CODER
+    agent_role: AgentType | None = None
+    specialist: SpecialistType | None = None
+    agent_id: str | None = None
     task: str = ""
     model: str | None = None
     thinking: ThinkingLevel = ThinkingLevel.MEDIUM
@@ -139,3 +142,16 @@ class OrchestratorDecision(BaseModel):
     graph_id: str | None = None
     graph_type: GraphType | None = None
     complexity_score: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def _normalize_identity(self) -> "OrchestratorDecision":
+        """Keep legacy ``agent`` and canonical ``agent_role`` aligned."""
+        if self.agent_role is None:
+            self.agent_role = self.agent
+        self.agent = self.agent_role
+        if self.agent_id is None:
+            if self.specialist is None:
+                self.agent_id = self.agent_role.value
+            else:
+                self.agent_id = f"{self.agent_role.value}:{self.specialist.value}"
+        return self

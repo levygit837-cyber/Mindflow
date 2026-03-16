@@ -1,4 +1,9 @@
-"""Graph factory for creating and managing graph instances."""
+"""Graph factory for the canonical orchestration runtime.
+
+Only the simple orchestrator graph is a supported production runtime here.
+Other graph construction paths are compatibility utilities until a follow-up
+cleanup removes or formalizes them.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,10 @@ from typing import Any, Dict, List, Optional, Type
 
 from mindflow_backend.graphs.base.graph import BaseGraph
 from mindflow_backend.graphs.base.types import GraphConfig, GraphType
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import SimpleOrchestratorGraph
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+    SimpleOrchestratorGraph,
+    build_simple_orchestrator_flow as _build_simple_orchestrator_flow,
+)
 from mindflow_backend.infra.logging import get_logger
 
 
@@ -47,7 +55,10 @@ class GraphFactory:
         config: Optional[GraphConfig] = None,
         **kwargs
     ) -> BaseGraph:
-        """Create a graph instance."""
+        """Create a registered graph instance.
+
+        This factory is authoritative only for registered runtime graphs.
+        """
         if graph_type not in self._graph_classes:
             raise ValueError(f"Unknown graph type: {graph_type}")
         
@@ -157,7 +168,11 @@ class GraphFactory:
         config: Optional[GraphConfig] = None,
         **kwargs
     ) -> BaseGraph:
-        """Create a custom graph instance."""
+        """Create a custom graph instance.
+
+        Compatibility surface only; custom graphs are not part of the canonical
+        production orchestration runtime.
+        """
         # Create instance directly without registration
         graph_config = config or GraphConfig()
         graph = graph_class(graph_id=graph_id, config=graph_config, **kwargs)
@@ -191,7 +206,5 @@ def create_orchestrator_graph(
 
 
 def build_simple_orchestrator_flow() -> Any:
-    """Build a simple orchestrator flow with backward compatibility."""
-    from mindflow_backend.graphs.orchestrator.simple_flow import build_simple_orchestrator_flow as _build
-    
-    return _build()
+    """Build the canonical compiled LangGraph orchestrator flow."""
+    return _build_simple_orchestrator_flow()

@@ -30,7 +30,10 @@ from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import (
     ExecutionStrategy,
     AgentType,
+    ChainType,
+    OrchestratorDecision,
 )
+from mindflow_backend.schemas.orchestration.workflow import WorkflowPlan, WorkflowRouteDecision
 
 _logger = get_logger(__name__)
 
@@ -483,6 +486,54 @@ _chain_orchestrator = ChainOrchestrator()
 def get_chain_orchestrator() -> ChainOrchestrator:
     """Get the global chain orchestrator instance."""
     return _chain_orchestrator
+
+
+def build_workflow_plan(
+    *,
+    message: str,
+    route: WorkflowRouteDecision,
+    folder_path: str | None = None,
+) -> WorkflowPlan:
+    """Resolve router output into the final executor plan.
+
+    The planner is the single authoritative place where chain variants are
+    selected. Executors consume the returned plan without re-routing.
+    """
+    plan = WorkflowPlan(route=route, tools=list(route.tools))
+
+    if route.execution_strategy != ExecutionStrategy.CHAIN:
+        return plan
+
+    if folder_path and route.agent_role == AgentType.ANALYST:
+        plan.chain_id = "file_analysis"
+        plan.chain_type = ChainType.FILE_ANALYSIS
+        plan.planner_rule = "workspace_analysis"
+        return plan
+
+    if route.agent_role == AgentType.CODER:
+        plan.chain_id = "coding_task"
+        plan.chain_type = ChainType.CODING_TASK
+        plan.planner_rule = "implementation_pipeline"
+        return plan
+
+    plan.chain_id = "analysis_task"
+    plan.chain_type = ChainType.ANALYSIS_TASK
+    plan.planner_rule = "analysis_pipeline"
+    return plan
+
+
+def plan_orchestrator_execution(
+    *,
+    message: str,
+    route: WorkflowRouteDecision,
+    folder_path: str | None = None,
+) -> OrchestratorDecision:
+    """Compatibility adapter returning the executor-facing decision payload."""
+    return build_workflow_plan(
+        message=message,
+        route=route,
+        folder_path=folder_path,
+    ).to_decision()
 
 
 # Integration function for orchestrator graph

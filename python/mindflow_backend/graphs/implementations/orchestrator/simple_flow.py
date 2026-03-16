@@ -1,7 +1,8 @@
-"""Simple orchestrator graph - route → execute → respond flow.
+"""Canonical orchestration runtime: route -> execute -> respond.
 
-This is current Phase 2 implementation migrated to new architecture.
-Enhanced with full orchestrator functionality from legacy graph.py.
+This module is the runtime source of truth used by
+``runtime/streaming/stream.py``. Compatibility adapters may import helpers from
+here, but they must not define alternative execution paths.
 """
 
 from __future__ import annotations
@@ -68,14 +69,14 @@ class SimpleOrchestratorGraph(SimpleGraph):
     - Semantic reflection and task pipeline
     """
     
-    def __init__(self, graph_id: str = "simple_orchestrator") -> None:
-        config = GraphConfig(
+    def __init__(self, graph_id: str = "simple_orchestrator", config: GraphConfig | None = None) -> None:
+        graph_config = config or GraphConfig(
             graph_type=GraphType.SIMPLE,
             enable_streaming=True,
             timeout_per_node=30.0,
         )
-        
-        super().__init__(graph_id, config)
+
+        super().__init__(graph_id, graph_config)
         
         # Create nodes
         self.route_node = RouteNode("route")
@@ -162,9 +163,9 @@ class SimpleOrchestratorGraph(SimpleGraph):
         )
     
     async def _route_node_legacy(self, state: dict[str, Any]) -> dict[str, Any]:
-        """Route node implementation with intelligent routing and complexity scoring."""
+        """Route using the canonical router + planner, plus complexity scoring."""
         from langchain_core.callbacks.manager import adispatch_custom_event
-        from mindflow_backend.orchestrator.intelligent_router import route_message_intelligently
+        from mindflow_backend.orchestrator.routing.intelligent_router import route_message_intelligently
         from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
         from mindflow_backend.orchestrator.complexity import ComplexityScorer
         from mindflow_backend.schemas.orchestration.orchestrator import ThinkingMode
@@ -179,25 +180,6 @@ class SimpleOrchestratorGraph(SimpleGraph):
 
         session = OrchestratorSession(user_intent=state["message"])
         scorer = ComplexityScorer()
-
-        if state.get("agent_type") == AgentType.ANALYST.value and state.get("folder_path"):
-            score = await scorer.get_complexity_score(
-                state["message"],
-                provider=state.get("provider"),
-                model=state.get("model"),
-            )
-            decision = OrchestratorDecision(
-                rationale="Direct analyst request with workspace root provided: forcing structured file analysis chain.",
-                agent=AgentType.ANALYST,
-                task=state["message"],
-                thinking=ThinkingLevel.HIGH,
-                priority=Priority.HIGH,
-                execution_strategy=ExecutionStrategy.CHAIN,
-                chain_id="file_analysis",
-                chain_type=ChainType.FILE_ANALYSIS,
-            )
-            _logger.info("route_node_forced_file_analysis", score=score, folder_path=state.get("folder_path"))
-            return {"decision": decision, "complexity_score": score}
 
         # Run routing + complexity scoring in PARALLEL — halves the routing latency.
         decision, score = await asyncio.gather(
@@ -275,7 +257,11 @@ class SimpleOrchestratorGraph(SimpleGraph):
                 # The Orchestrator creates the LLM and passes it to the chain so chains
                 # never instantiate their own models — they use whichever specialist was
                 # selected here.
-                chain_agent = get_agent(decision.agent)
+                chain_agent = get_agent(
+                    decision.agent_role or decision.agent,
+                    specialist=decision.specialist,
+                    agent_id=decision.agent_id,
+                )
                 chain_llm = get_model_for_provider(provider, model)
 
                 result = await execute_chain_with_intelligence(
@@ -324,7 +310,11 @@ class SimpleOrchestratorGraph(SimpleGraph):
             memory_context = getattr(memory_result, "context", "")
 
         # 2. Standard Execution Mode
-        agent = get_agent(decision.agent)
+        agent = get_agent(
+            decision.agent_role or decision.agent,
+            specialist=decision.specialist,
+            agent_id=decision.agent_id,
+        )
         messages = [{"role": "system", "content": agent.system_prompt}]
 
         if memory_context.strip():

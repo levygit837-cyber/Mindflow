@@ -1,4 +1,4 @@
-"""Compatibility shim for intelligent routing.
+"""Compatibility shim for intelligent routing (adapter only).
 
 The implementation lives in `mindflow_backend.orchestrator.routing.intelligent_router`.
 Older modules import from `mindflow_backend.orchestrator.intelligent_router`.
@@ -13,4 +13,3 @@ from mindflow_backend.orchestrator.routing.intelligent_router import (
 )
 
 __all__ = ["IntelligentRouter", "get_intelligent_router", "route_message_intelligently"]
-

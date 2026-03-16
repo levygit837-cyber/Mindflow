@@ -23,6 +23,7 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
     ThinkingLevel,
     ToolScope,
 )
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 # ---------------------------------------------------------------------------
 # Specialist variant registries
@@ -46,7 +47,7 @@ CODER_SUB_PERSONALITIES: dict[str, str] = {
 def create_analyst_agent() -> BaseAgent:
     """Create Analyst specialist — codebase context extractor with read-only access."""
     return BaseAgent(
-        agent_type=AgentType.ANALYST,
+        agent_role=AgentType.ANALYST,
         system_prompt=ANALYST_SYSTEM_PROMPT,
         tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.MEDIUM,
@@ -58,7 +59,7 @@ def create_analyst_agent() -> BaseAgent:
 def create_coder_agent() -> BaseAgent:
     """Create Coder specialist with filesystem and shell tools."""
     return BaseAgent(
-        agent_type=AgentType.CODER,
+        agent_role=AgentType.CODER,
         system_prompt=CODER_SYSTEM_PROMPT,
         tools=[ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.HIGH,
@@ -70,7 +71,7 @@ def create_coder_agent() -> BaseAgent:
 def create_researcher_agent() -> BaseAgent:
     """Create the Researcher specialist with web search tools."""
     return BaseAgent(
-        agent_type=AgentType.RESEARCHER,
+        agent_role=AgentType.RESEARCHER,
         system_prompt=RESEARCHER_SYSTEM_PROMPT,
         tools=[ToolScope.WEB_SEARCH, ToolScope.BROWSER_SEARCH],
         thinking_level=ThinkingLevel.HIGH,
@@ -82,7 +83,7 @@ def create_researcher_agent() -> BaseAgent:
 def create_orchestrator_agent() -> BaseAgent:
     """Create Orchestrator specialist with no direct tools."""
     return BaseAgent(
-        agent_type=AgentType.ORCHESTRATOR,
+        agent_role=AgentType.ORCHESTRATOR,
         system_prompt=ORCHESTRATOR_SYSTEM_PROMPT,
         tools=[],  # Orchestrator delegates, doesn't use tools directly
         thinking_level=ThinkingLevel.HIGH,
@@ -95,7 +96,8 @@ def create_orchestrator_agent() -> BaseAgent:
 def create_security_agent() -> BaseAgent:
     """Create Security specialist for security-focused analysis."""
     return BaseAgent(
-        agent_type=AgentType.ANALYST,  # Uses analyst base type
+        agent_role=AgentType.ANALYST,
+        specialist=SpecialistType.SECURITY_GUARD,
         system_prompt=compose_analyst_prompt("core", "security_guard"),
         tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.HIGH,
@@ -107,7 +109,8 @@ def create_security_agent() -> BaseAgent:
 def create_review_agent() -> BaseAgent:
     """Create Review specialist for code review and criticism."""
     return BaseAgent(
-        agent_type=AgentType.ANALYST,  # Uses analyst base type
+        agent_role=AgentType.ANALYST,
+        specialist=SpecialistType.CRITIC,
         system_prompt=compose_analyst_prompt("core", "critic"),
         tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.MEDIUM,
@@ -119,7 +122,8 @@ def create_review_agent() -> BaseAgent:
 def create_architecture_agent() -> BaseAgent:
     """Create Architecture specialist for architectural analysis."""
     return BaseAgent(
-        agent_type=AgentType.CODER,  # Uses coder base type
+        agent_role=AgentType.CODER,
+        specialist=SpecialistType.ARCH_TECH,
         system_prompt=compose_coder_prompt("core", "arch_tech"),
         tools=[ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.HIGH,
@@ -131,7 +135,8 @@ def create_architecture_agent() -> BaseAgent:
 def create_creative_agent() -> BaseAgent:
     """Create Creative specialist for brainstorming and ideation."""
     return BaseAgent(
-        agent_type=AgentType.ANALYST,  # Uses analyst base type
+        agent_role=AgentType.ANALYST,
+        specialist=SpecialistType.BRAINSTORM,
         system_prompt=compose_analyst_prompt("core", "brainstorm"),
         tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.MEDIUM,
@@ -143,7 +148,8 @@ def create_creative_agent() -> BaseAgent:
 def create_deep_analysis_agent() -> BaseAgent:
     """Create Deep Analysis specialist for thorough analysis."""
     return BaseAgent(
-        agent_type=AgentType.ANALYST,  # Uses analyst base type
+        agent_role=AgentType.ANALYST,
+        specialist=SpecialistType.DEEP_ITERATION,
         system_prompt=ANALYST_SYSTEM_PROMPT,
         tools=[ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
         thinking_level=ThinkingLevel.HIGH,
