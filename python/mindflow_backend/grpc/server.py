@@ -27,7 +27,7 @@ from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import EnhancedGr
 from mindflow_backend.grpc.resilience.advanced_retry import AdvancedRetryPolicy, AdvancedRetryConfig, AdaptiveBackoffType, RetryConditionType
 from mindflow_backend.grpc.resilience.bulkhead import GrpcBulkhead, BulkheadConfig
 from mindflow_backend.grpc.resilience.fallback import FallbackManager, FallbackConfig, DefaultResponseFallback
-from mindflow_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager
+from mindflow_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager, PoolManagerConfig
 from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor, CompressionConfig, CompressionAlgorithm
 from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache, CacheConfig
 from mindflow_backend.grpc.performance.monitoring.profiler import GrpcProfiler, ProfileConfig, ProfileLevel
@@ -36,6 +36,9 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
+
+# Global singleton — created lazily by get_server().
+_server_instance: "EnhancedGrpcAgentServer | None" = None
 
 
 class EnhancedGrpcAgentServer(GrpcServer):
@@ -180,7 +183,7 @@ class EnhancedGrpcAgentServer(GrpcServer):
         # Initialize performance components
         if getattr(self.config, 'enable_performance_optimization', True):
             # Connection pool manager
-            self.connection_pool_manager = GrpcConnectionPoolManager()
+            self.connection_pool_manager = GrpcConnectionPoolManager(PoolManagerConfig())
             
             # Message compressor
             compression_config = CompressionConfig(
@@ -225,6 +228,21 @@ class EnhancedGrpcAgentServer(GrpcServer):
             monitoring_components=len([c for c in [self.metrics_collector, self.health_checker, self.alert_manager] if c])
         )
     
+    def _build_server_interceptors(self) -> list[Any]:
+        """Build the list of interceptors to pass to grpc.aio.server() at creation.
+
+        grpc.aio does not support add_interceptor() after the server is created,
+        so all interceptors must be provided to the factory function.
+        """
+        interceptors: list[Any] = [
+            ErrorHandlerInterceptor(debug=self.settings.app_env == "development")
+        ]
+        if self.config.enable_metrics and self.metrics_collector:
+            interceptors.append(
+                MetricsInterceptor(self.metrics_collector, collect_business_metrics=True)
+            )
+        return interceptors
+
     async def start(self) -> None:
         """Start the enhanced gRPC server with all features."""
         if self._running:
@@ -232,8 +250,14 @@ class EnhancedGrpcAgentServer(GrpcServer):
             return
         
         try:
+            # Build interceptors before creating the server.
+            # grpc.aio requires interceptors at factory time — add_interceptor()
+            # does not exist on grpc.aio.Server.
+            interceptors = self._build_server_interceptors()
+
             # Create gRPC server
             self._server = grpc.aio.server(
+                interceptors=interceptors,
                 options=[
                     ('grpc.max_receive_message_length', self.config.max_receive_message_length),
                     ('grpc.max_send_message_length', self.config.max_send_message_length),
@@ -244,9 +268,6 @@ class EnhancedGrpcAgentServer(GrpcServer):
                     ('grpc.http2.min_ping_interval_without_data_ms', 300000),
                 ]
             )
-            
-            # Setup interceptors
-            await self._setup_interceptors()
             
             # Setup services
             await self._setup_services()
@@ -334,26 +355,9 @@ class EnhancedGrpcAgentServer(GrpcServer):
             _logger.warning("grpc_server_not_initialized", action="add_service")
     
     async def _setup_interceptors(self) -> None:
-        """Setup server interceptors."""
-        interceptors = []
-        
-        # Error handling interceptor (always enabled)
-        error_interceptor = ErrorHandlerInterceptor(debug=self.settings.app_env == "development")
-        interceptors.append(error_interceptor)
-        
-        # Metrics interceptor
-        if self.config.enable_metrics and self.metrics_collector:
-            metrics_interceptor = MetricsInterceptor(
-                self.metrics_collector,
-                collect_business_metrics=True
-            )
-            interceptors.append(metrics_interceptor)
-        
-        # Add all interceptors to server
-        for interceptor in interceptors:
-            self.add_interceptor(interceptor)
-        
-        _logger.info("grpc_interceptors_setup", count=len(interceptors))
+        """Deprecated: interceptors are now passed to grpc.aio.server() via
+        _build_server_interceptors() in start(). Kept as a no-op for test compatibility."""
+        _logger.debug("grpc_setup_interceptors_deprecated_noop")
     
     async def _setup_services(self) -> None:
         """Setup gRPC services."""
@@ -616,6 +620,25 @@ def get_enhanced_status(self) -> Dict[str, Any]:
 
 # Add the method to the class
 EnhancedGrpcAgentServer.get_enhanced_status = get_enhanced_status
+
+
+# ── Public compatibility aliases ─────────────────────────────────────────────
+
+# Alias so callers don't need to know the internal class name.
+GrpcAgentServer = EnhancedGrpcAgentServer
+
+
+async def get_grpc_server() -> "EnhancedGrpcAgentServer":
+    """Awaitable alias for get_server() — use this in FastAPI endpoints."""
+    return await get_server()
+
+
+async def serve() -> None:
+    """Start gRPC server and block until termination (standalone use)."""
+    server = GrpcAgentServer()
+    setup_signal_handlers()
+    await server.start()
+    await server.wait_for_termination()
 
 
 if __name__ == "__main__":

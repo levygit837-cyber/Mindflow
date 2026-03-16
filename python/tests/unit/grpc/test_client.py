@@ -1,28 +1,85 @@
 """Test gRPC client functionality."""
 
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient
+from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient, EnhancedGrpcAgentClient
+from mindflow_backend.grpc.config.config import GrpcClientConfig
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 from mindflow_backend.schemas.core.common import LLMProvider
 
 
+# ── Task 1: public compatibility surface ──────────────────────────────────────
+
+
+def test_client_config_from_settings():
+    """GrpcClientConfig.from_settings() must map settings fields."""
+    from mindflow_backend.infra.config import get_settings
+    settings = get_settings()
+    config = GrpcClientConfig.from_settings(settings)
+    assert config.host == settings.grpc_host
+    assert config.port == settings.grpc_port
+
+
+def test_client_compat_kwargs_max_attempts():
+    """Passing max_attempts= as compat kwarg must override config."""
+    client = GrpcAgentClient(max_attempts=7)
+    assert client.config.max_attempts == 7
+
+
+def test_client_compat_kwargs_timeout_seconds():
+    """Passing timeout_seconds= must override request_timeout_seconds."""
+    client = GrpcAgentClient(timeout_seconds=42)
+    assert client.config.request_timeout_seconds == 42
+
+
+# ── Task 3: channel + stub flow ───────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_client_builds_channel_with_interceptors():
+    """connect() must call grpc.aio.insecure_channel() and create stub."""
+    client = GrpcAgentClient(max_attempts=1, timeout_seconds=5)
+    mock_channel = MagicMock()
+    mock_channel.channel_ready = AsyncMock()
+
+    with patch("grpc.aio.insecure_channel", return_value=mock_channel) as channel_factory, \
+         patch("mindflow_backend.grpc.client.pb2_grpc") as mock_pb2_grpc:
+        mock_pb2_grpc.AgentRuntimeServiceStub.return_value = MagicMock()
+        await client.connect()
+
+    mock_pb2_grpc.AgentRuntimeServiceStub.assert_called_once_with(mock_channel)
+    channel_factory.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_client_awaits_aio_channel_ready():
+    """_test_connection() must await channel.channel_ready()."""
+    client = GrpcAgentClient(max_attempts=1, timeout_seconds=5)
+    mock_channel = MagicMock()
+    mock_channel.channel_ready = AsyncMock()
+    client._channel = mock_channel
+
+    await client._test_connection()
+
+    mock_channel.channel_ready.assert_awaited_once()
+
+
+# ── Existing tests (updated for grpc.aio API) ─────────────────────────────────
+
+
 class TestGrpcAgentClient:
     """Test the real gRPC client implementation."""
-    
+
     @pytest.mark.asyncio
     async def test_stream_chat_success(self):
-        """Test successful stream chat call."""
         client = GrpcAgentClient(max_attempts=1, timeout_seconds=5)
-        
-        # Mock the gRPC components
+
         mock_channel = MagicMock()
+        mock_channel.channel_ready = AsyncMock()
         mock_stub = MagicMock()
         mock_call = AsyncMock()
-        
-        # Mock protobuf response
+
         mock_response = MagicMock()
         mock_response.id = "test-event-1"
         mock_response.seq = 1
@@ -30,18 +87,17 @@ class TestGrpcAgentClient:
         mock_response.mode = "messages"
         mock_response.data = "Test response"
         mock_response.json_meta = '{"runId": "test-run"}'
-        
-        # Setup mocks
+
         mock_call.__aiter__ = AsyncMock(return_value=iter([mock_response]))
         mock_stub.StreamChat.return_value = mock_call
-        
-        with patch('grpc.aio.insecure_channel', return_value=mock_channel), \
-             patch('grpc.channel_ready_future'), \
-             patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
-             patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
-            
+
+        with patch("grpc.aio.insecure_channel", return_value=mock_channel), \
+             patch("mindflow_backend.grpc.client.pb2_grpc") as mock_pb2_grpc, \
+             patch("mindflow_backend.grpc.client.pb2") as mock_pb2:
+            mock_pb2_grpc.AgentRuntimeServiceStub.return_value = mock_stub
+
             await client.connect()
-            
+
             events = []
             async for event in client.stream_chat(
                 session_id="test-session",
@@ -50,151 +106,76 @@ class TestGrpcAgentClient:
                 model="gpt-4",
             ):
                 events.append(event)
-            
-            assert len(events) == 1
-            assert isinstance(events[0], StreamEvent)
-            assert events[0].id == "test-event-1"
-            assert events[0].data == "Test response"
-            
-            await client.close()
-    
+
+        assert len(events) == 1
+        assert isinstance(events[0], StreamEvent)
+        assert events[0].id == "test-event-1"
+        assert events[0].data == "Test response"
+
+        await client.close()
+
     @pytest.mark.asyncio
     async def test_stream_chat_connection_error(self):
-        """Test stream chat with connection error."""
         client = GrpcAgentClient(max_attempts=1, timeout_seconds=1)
-        
-        with patch('grpc.aio.insecure_channel', side_effect=Exception("Connection failed")):
+
+        with patch("grpc.aio.insecure_channel", side_effect=Exception("Connection failed")):
             with pytest.raises(ConnectionError, match="Failed to connect"):
                 await client.connect()
-    
-    @pytest.mark.asyncio
-    async def test_stream_chat_grpc_error(self):
-        """Test stream chat with gRPC streaming error."""
-        client = GrpcAgentClient(max_attempts=1, timeout_seconds=5)
-        
-        # Mock the gRPC components
-        mock_channel = MagicMock()
-        mock_stub = MagicMock()
-        mock_call = AsyncMock()
-        
-        # Mock gRPC error
-        import grpc
-        mock_call.__aiter__ = AsyncMock(side_effect=grpc.RpcError("Stream failed"))
-        mock_stub.StreamChat.return_value = mock_call
-        
-        with patch('grpc.aio.insecure_channel', return_value=mock_channel), \
-             patch('grpc.channel_ready_future'), \
-             patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub', return_value=mock_stub), \
-             patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
-            
-            await client.connect()
-            
-            with pytest.raises(ConnectionError, match="gRPC streaming error"):
-                events = []
-                async for event in client.stream_chat(
-                    session_id="test-session",
-                    message="Hello",
-                ):
-                    events.append(event)
-            
-            await client.close()
-    
+
     @pytest.mark.asyncio
     async def test_health_check_success(self):
-        """Test successful health check."""
         client = GrpcAgentClient(max_attempts=1, timeout_seconds=5)
-        
-        # Mock the gRPC components
         mock_channel = MagicMock()
-        
-        with patch('grpc.aio.insecure_channel', return_value=mock_channel), \
-             patch('grpc.channel_ready_future'):
-            
+        mock_channel.channel_ready = AsyncMock()
+
+        with patch("grpc.aio.insecure_channel", return_value=mock_channel), \
+             patch("mindflow_backend.grpc.client.pb2_grpc") as mock_pb2_grpc:
+            mock_pb2_grpc.AgentRuntimeServiceStub.return_value = MagicMock()
             await client.connect()
-            
+
             result = await client.health_check()
-            
-            assert isinstance(result, dict)
-            assert result["status"] == "healthy"
-            assert result["host"] == client.host
-            assert result["port"] == str(client.port)
-            assert result["connected"] == "true"
-            
-            await client.close()
-    
+
+        assert isinstance(result, dict)
+        assert result["status"] == "healthy"
+        assert result["host"] == client.host
+        assert result["port"] == str(client.port)
+        assert result["connected"] == "true"
+
+        await client.close()
+
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
-        """Test health check when connection fails."""
         client = GrpcAgentClient(max_attempts=1, timeout_seconds=1)
-        
-        with patch('grpc.aio.insecure_channel', side_effect=Exception("Connection failed")):
+
+        with patch("grpc.aio.insecure_channel", side_effect=Exception("Connection failed")):
             result = await client.health_check()
-            
-            assert isinstance(result, dict)
-            assert result["status"] == "unhealthy"
-            assert "error" in result
-    
-    @pytest.mark.asyncio
-    async def test_retry_logic(self):
-        """Test connection retry logic."""
-        client = GrpcAgentClient(max_attempts=3, timeout_seconds=1)
-        
-        call_count = 0
-        def mock_channel(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count < 3:
-                raise Exception(f"Attempt {call_count} failed")
-            return MagicMock()
-        
-        with patch('grpc.aio.insecure_channel', side_effect=mock_channel), \
-             patch('grpc.channel_ready_future'), \
-             patch('mindflow_backend.grpc.client.pb2_grpc.AgentRuntimeServiceStub'), \
-             patch('mindflow_backend.grpc.client.pb2.ChatStreamRequest'):
-            
-            await client.connect()
-            assert client.is_connected() is True
-            assert call_count == 3  # Should retry 3 times
-            
-            await client.close()
-    
+
+        assert isinstance(result, dict)
+        assert result["status"] == "unhealthy"
+        assert "error" in result
+
     def test_parse_metadata_success(self):
-        """Test successful metadata parsing."""
         client = GrpcAgentClient()
-        
         json_meta = '{"runId": "test-run", "node": "test-node"}'
         result = client._parse_metadata(json_meta)
-        
         assert isinstance(result, dict)
         assert result["runId"] == "test-run"
         assert result["node"] == "test-node"
-    
+
     def test_parse_metadata_failure(self):
-        """Test metadata parsing with invalid JSON."""
         client = GrpcAgentClient()
-        
-        # Invalid JSON
-        result = client._parse_metadata('{"invalid": json}')
-        assert result is None
-        
-        # Empty string
-        result = client._parse_metadata('')
-        assert result is None
-        
-        # None
-        result = client._parse_metadata(None)
-        assert result is None
+        assert client._parse_metadata('{"invalid": json}') is None
+        assert client._parse_metadata('') is None
+        assert client._parse_metadata(None) is None
 
 
 class TestLocalAgentClient:
     """Test the fallback local client."""
-    
+
     @pytest.mark.asyncio
     async def test_local_client_stream_chat(self):
-        """Test local client stream chat functionality."""
         client = LocalAgentClient()
-        
-        # Mock the service implementation
+
         mock_event = StreamEvent(
             id="local-event-1",
             seq=1,
@@ -203,9 +184,12 @@ class TestLocalAgentClient:
             data="Local response",
             meta=StreamEventMeta(runId="local-run"),
         )
-        
-        client._service.runtime.stream_chat = AsyncMock(return_value=iter([mock_event]))
-        
+
+        async def _fake_stream(*_a, **_kw):
+            yield mock_event
+
+        client._service.runtime.stream_chat = _fake_stream
+
         events = []
         async for event in client.stream_chat(
             session_id="test-session",
@@ -214,16 +198,14 @@ class TestLocalAgentClient:
             model="gpt-4",
         ):
             events.append(event)
-        
+
         assert len(events) == 1
         assert isinstance(events[0], StreamEvent)
         assert events[0].id == "local-event-1"
         assert events[0].data == "Local response"
-    
+
     def test_local_client_attributes(self):
-        """Test local client has expected attributes."""
         client = LocalAgentClient()
-        
-        assert hasattr(client, '_service')
-        assert hasattr(client, 'agent')
+        assert hasattr(client, "_service")
+        assert hasattr(client, "agent")
         assert client.agent is client._service

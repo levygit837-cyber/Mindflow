@@ -281,6 +281,21 @@ class GrpcClientConfig(BaseModel):
     )
     
     @classmethod
+    def from_settings(cls, settings=None) -> "GrpcClientConfig":
+        """Create client config from application settings."""
+        if settings is None:
+            from mindflow_backend.infra.config import get_settings
+            settings = get_settings()
+        return cls(
+            host=getattr(settings, "grpc_host", "localhost"),
+            port=getattr(settings, "grpc_port", 50051),
+            secure=getattr(settings, "grpc_secure", False),
+            max_attempts=getattr(settings, "grpc_max_attempts", 3),
+            connection_timeout_seconds=getattr(settings, "grpc_connection_timeout_seconds", 30),
+            request_timeout_seconds=getattr(settings, "grpc_default_timeout_seconds", 300),
+        )
+
+    @classmethod
     def from_server_config(cls, server_config: GrpcConfig) -> GrpcClientConfig:
         """Create client config from server config."""
         return cls(

@@ -30,6 +30,14 @@ from mindflow_backend.schemas.core.common import LLMProvider
 
 _logger = get_logger(__name__)
 
+# Generated protobuf bindings — imported at module level so test patches work.
+try:
+    from mindflow_backend.grpc.generated import mindflow_backend_pb2 as pb2
+    from mindflow_backend.grpc.generated import mindflow_backend_pb2_grpc as pb2_grpc
+except ImportError:
+    pb2 = None  # type: ignore[assignment]
+    pb2_grpc = None  # type: ignore[assignment]
+
 
 class EnhancedGrpcAgentClient(GrpcClient):
     """Enhanced gRPC client with monitoring, resilience, and advanced features."""
@@ -44,9 +52,23 @@ class EnhancedGrpcAgentClient(GrpcClient):
         enable_circuit_breaker: bool = True,
         enable_retry: bool = True,
         enable_timeout_management: bool = True,
+        # Compatibility kwargs — map onto GrpcClientConfig fields.
+        max_attempts: int | None = None,
+        timeout_seconds: int | None = None,
     ) -> None:
         settings = get_settings()
-        
+
+        # Apply compat kwargs onto a config override when provided.
+        if max_attempts is not None or timeout_seconds is not None:
+            base_cfg = config or GrpcClientConfig.from_settings(settings)
+            config = base_cfg.model_copy(update={
+                k: v for k, v in {
+                    "max_attempts": max_attempts,
+                    "request_timeout_seconds": timeout_seconds,
+                }.items()
+                if v is not None
+            })
+
         # Configuration
         self.config = config or GrpcClientConfig.from_settings(settings)
         self.host = host or self.config.host
@@ -178,19 +200,27 @@ class EnhancedGrpcAgentClient(GrpcClient):
                             cert_path=getattr(self.config, 'tls_cert_path', 'not_set')
                         )
                         # Fallback to insecure channel for development
-                        self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
+                        self._channel = grpc.aio.insecure_channel(
+                            f"{self.host}:{self.port}", interceptors=[]
+                        )
                         _logger.warning("grpc_fallback_insecure_channel")
-                        
+
                     except Exception as e:
                         _logger.error(
                             "grpc_tls_configuration_failed",
                             error=str(e)
                         )
                         # Fallback to insecure channel
-                        self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
+                        self._channel = grpc.aio.insecure_channel(
+                            f"{self.host}:{self.port}", interceptors=[]
+                        )
                         _logger.warning("grpc_fallback_insecure_channel")
                 else:
-                    self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
+                    _interceptors = [self.metrics_interceptor] if self.enable_monitoring else []
+                    self._channel = grpc.aio.insecure_channel(
+                        f"{self.host}:{self.port}",
+                        interceptors=_interceptors,
+                    )
                 
                 # Test connection
                 await self._test_connection()
@@ -215,21 +245,17 @@ class EnhancedGrpcAgentClient(GrpcClient):
                 else:
                     raise
     
-    async def _create_stub(self):
-        """Create gRPC stub with interceptors."""
-        try:
-            from mindflow_backend.grpc.generated import mindflow_backend_pb2_grpc as pb2_grpc
-            
-            interceptors = []
-            if self.enable_monitoring:
-                interceptors.append(self.metrics_interceptor)
-            
-            self._stub = pb2_grpc.AgentRuntimeServiceStub(self._channel, interceptors=interceptors)
-            
-        except Exception as exc:
+    async def _create_stub(self) -> None:
+        """Create gRPC stub from the already-open channel.
+
+        Interceptors belong on the *channel* (passed to grpc.aio.insecure_channel /
+        grpc.aio.secure_channel), not on the stub constructor.
+        """
+        if pb2_grpc is None:
             raise RuntimeError(
                 "Missing generated gRPC bindings. Run: python/scripts/gen_proto.sh"
-            ) from exc
+            )
+        self._stub = pb2_grpc.AgentRuntimeServiceStub(self._channel)
     
     async def close(self) -> None:
         """Close gRPC connection and cleanup resources."""
@@ -242,12 +268,11 @@ class EnhancedGrpcAgentClient(GrpcClient):
                 _logger.info("grpc_client_closed")
     
     async def _test_connection(self) -> None:
-        """Test connection to server."""
+        """Test connection to server (uses the grpc.aio async API)."""
         if not self._channel:
             raise ConnectionError("No channel established")
-        
         try:
-            grpc.channel_ready_future(self._channel).result(timeout=10)
+            await self._channel.channel_ready()
         except Exception as exc:
             raise ConnectionError(f"Channel not ready: {exc}") from exc
     
@@ -324,9 +349,6 @@ class EnhancedGrpcAgentClient(GrpcClient):
                                  agent_type: str | None, debug_steps: bool,
                                  folder_path: str | None) -> AsyncGenerator[StreamEvent, None]:
         """Execute the actual streaming chat operation."""
-        # Import protobuf types
-        from mindflow_backend.grpc.generated import mindflow_backend_pb2 as pb2
-        
         # Create request
         request = pb2.ChatStreamRequest(
             session_id=session_id,
