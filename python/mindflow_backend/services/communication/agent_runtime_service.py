@@ -3,6 +3,8 @@ from typing import Any
 
 from mindflow_backend.runtime.stream import AgentRuntime
 from mindflow_backend.grpc.generated import mindflow_backend_pb2_grpc as pb2_grpc
+from mindflow_backend.grpc.generated import mindflow_backend_pb2 as pb2
+from mindflow_backend.grpc.serialization import stream_event_to_proto
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 
 
@@ -27,4 +29,4 @@ class AgentRuntimeServiceImpl(pb2_grpc.AgentRuntimeServiceServicer):
         session_id = getattr(request, "session_id", "")
         run_id = getattr(request, "run_id", "")
         async for event in self.runtime.stream_chat(payload, session_id, run_id=run_id):
-            yield event
+            yield stream_event_to_proto(event, pb2)

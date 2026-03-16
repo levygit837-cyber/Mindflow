@@ -63,3 +63,37 @@ async def test_service_streamchat_preserves_folder_path(monkeypatch) -> None:
 
     _ = [e async for e in svc.StreamChat(request, context=None)]
     assert captured["folder_path"] == "/repo"
+
+
+@pytest.mark.asyncio
+async def test_service_streamchat_yields_protobuf_events(monkeypatch) -> None:
+    """StreamChat() must yield pb2.StreamEvent protobuf messages, not domain objects."""
+    from mindflow_backend.schemas.chat.agent import StreamEvent as DomainStreamEvent
+
+    request = SimpleNamespace(
+        message="ping",
+        provider="vertexai",
+        model="gemini-flash",
+        session_id="s1",
+        run_id="r1",
+    )
+
+    svc = AgentRuntimeServiceImpl()
+
+    async def _fake_stream_chat(*_args, **_kwargs):
+        yield DomainStreamEvent(
+            id="evt-1",
+            seq=1,
+            type="response",
+            mode="messages",
+            data="ok",
+            meta={"runId": "r1"},
+        )
+
+    monkeypatch.setattr(svc.runtime, "stream_chat", _fake_stream_chat)
+
+    events = [e async for e in svc.StreamChat(request, context=None)]
+    assert len(events) == 1
+    # The service must yield a protobuf message (has DESCRIPTOR attribute).
+    assert hasattr(events[0], "DESCRIPTOR"), "Expected a protobuf message, got domain object"
+    assert events[0].id == "evt-1"
