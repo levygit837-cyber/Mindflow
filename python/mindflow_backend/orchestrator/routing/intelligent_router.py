@@ -1,36 +1,33 @@
-"""Intelligent Orchestrator Router — LLM-powered intent analysis and delegation.
+"""Canonical orchestrator routing implementation.
 
-The Orchestrator is a first-class entity: it can respond directly to the user
-OR delegate to specialist agents. All routing decisions are LLM-driven — no
-keyword matching is used anywhere in this module.
+This module is the authoritative router for the production orchestration
+runtime. It decides execution strategy and target agent identity, then hands
+that route to the planner layer for final chain/graph resolution.
 """
 
 from __future__ import annotations
 
 import json
+from contextlib import suppress
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.orchestrator.delegation_engine import DelegationEngine
 from mindflow_backend.runtime import get_model_for_provider, normalize_response_for_json
-from mindflow_backend.schemas.orchestration.delegation import (
-    DelegationTask,
-    DelegationResult,
-    OrchestratorSession,
-)
+from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
-    ChainType,
     ExecutionStrategy,
     OrchestratorDecision,
     Priority,
     ThinkingLevel,
     ToolScope,
 )
+from mindflow_backend.schemas.orchestration.workflow import WorkflowRouteDecision
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 _logger = get_logger(__name__)
 
@@ -43,6 +40,7 @@ class IntentAnalysis(BaseModel):
     context_needed: str = Field(default="", description="Unused — kept for schema compatibility")
     suggested_scope: list[str] = Field(default_factory=list, description="Suggested files/modules to analyze")
     recommended_agent: AgentType = Field(description="Which agent should handle this")
+    recommended_specialist: str | None = Field(default=None, description="Optional specialist/profile identifier")
     formulated_objective: str = Field(description="Precise objective for the target agent")
     confidence: float = Field(description="Confidence in this analysis (0-1)")
     is_multi_agent: bool = Field(default=False, description="Requires multiple agents")
@@ -51,8 +49,6 @@ class IntentAnalysis(BaseModel):
         default=ExecutionStrategy.SINGLE_AGENT,
         description="How to execute: direct_response, single_agent, chain, or graph",
     )
-    suggested_chain_id: str | None = Field(default=None, description="Chain identifier if using CHAIN")
-    suggested_chain_type: ChainType | None = Field(default=None, description="Chain type/category")
 
     @field_validator("recommended_agent", mode="before")
     @classmethod
@@ -64,7 +60,7 @@ class IntentAnalysis(BaseModel):
     def normalize_agent_sequence(cls, v: list) -> list:
         return [x.lower() if isinstance(x, str) else x for x in (v or [])]
 
-    @field_validator("suggested_chain_type", "suggested_chain_id", mode="before")
+    @field_validator("recommended_specialist", mode="before")
     @classmethod
     def nullify_null_string(cls, v):
         """Convert the literal string 'null' returned by LLMs to Python None."""
@@ -146,13 +142,12 @@ Has Workspace Root: {str(has_folder_path).lower()}
     "context_needed": "",
     "suggested_scope": [],
     "recommended_agent": "CODER|ANALYST|RESEARCHER|ORCHESTRATOR",
+    "recommended_specialist": "security_guard|critic|arch_tech|brainstorm|null",
     "formulated_objective": "precise objective for the specialist (empty if direct_response)",
     "confidence": 0.9,
     "is_multi_agent": false,
     "agent_sequence": [],
-    "execution_strategy": "direct_response|single_agent|chain",
-    "suggested_chain_id": "coding_task|analysis_task|file_analysis|null",
-    "suggested_chain_type": "coding_task|analysis_task|file_analysis|null"
+    "execution_strategy": "direct_response|single_agent|chain|graph"
 }}
 
 STRICT RULES:
@@ -224,20 +219,16 @@ STRICT RULES:
                 execution_strategy=ExecutionStrategy.SINGLE_AGENT,
             )
 
-    async def route_message_intelligently(
+    async def route_message_strategy(
         self,
         message: str,
         session: OrchestratorSession | None = None,
         folder_path: str | None = None,
-    ) -> OrchestratorDecision:
+    ) -> WorkflowRouteDecision:
         """Route message using LLM intent analysis.
 
-        The Orchestrator decides:
-        - direct_response: it answers the user directly (no delegation)
-        - single_agent:    delegate to one specialist
-        - chain:           multi-agent pipeline (Analyst → Coder → Critic)
-
-        No keyword-based routing is used anywhere in this method.
+        Router responsibility ends at strategy + target identity. Chain or graph
+        variant resolution happens in the planner layer.
         """
         if session is None:
             session = OrchestratorSession(user_intent=message)
@@ -253,40 +244,63 @@ STRICT RULES:
         else:
             intent = await self.analyze_intent_with_llm(message, session_context)
 
+        specialist = None
+        with suppress(ValueError):
+            if intent.recommended_specialist:
+                specialist = SpecialistType(intent.recommended_specialist)
+
         # --- DIRECT_RESPONSE: Orchestrator answers itself ---
         if intent.execution_strategy == ExecutionStrategy.DIRECT_RESPONSE:
             _logger.info("orchestrator_direct_response", intent=intent.user_intent)
-            return OrchestratorDecision(
+            return WorkflowRouteDecision(
                 rationale="Orchestrator answering directly — no delegation needed.",
-                agent=AgentType.ORCHESTRATOR,
+                agent_role=AgentType.ORCHESTRATOR,
+                specialist=specialist,
                 task=message,
                 thinking=ThinkingLevel.MEDIUM,
-                tools=[],
                 priority=Priority.NORMAL,
                 execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
+                tools=[],
+                confidence=intent.confidence,
             )
 
-        # --- CHAIN: multi-agent pipeline ---
+        # --- CHAIN: planner resolves the concrete chain ---
         if intent.execution_strategy == ExecutionStrategy.CHAIN:
-            chain_id = intent.suggested_chain_id or "coding_task"
-            chain_type = intent.suggested_chain_type or ChainType.CODING_TASK
-            # Use recommended_agent as fallback so if the chain fails it delegates
-            # to the correct specialist instead of the Orchestrator itself.
-            fallback_agent = intent.recommended_agent if intent.recommended_agent != AgentType.ORCHESTRATOR else AgentType.ANALYST
-            _logger.info("orchestrator_chain", chain_id=chain_id, fallback_agent=fallback_agent.value)
-            return OrchestratorDecision(
-                rationale=(
-                    f"Chain execution selected: {chain_id}. "
-                    "Analyst reads context → Coder implements → Analyst reviews."
-                ),
-                agent=fallback_agent,
-                task=intent.user_intent,
+            target_role = (
+                intent.recommended_agent
+                if intent.recommended_agent != AgentType.ORCHESTRATOR
+                else AgentType.ANALYST
+            )
+            _logger.info("orchestrator_chain", target_role=target_role.value)
+            return WorkflowRouteDecision(
+                rationale="Multi-step execution required; planner will resolve the concrete workflow.",
+                agent_role=target_role,
+                specialist=specialist,
+                task=intent.formulated_objective or intent.user_intent or message,
                 thinking=ThinkingLevel.HIGH,
-                tools=self._get_tools_for_agent(fallback_agent),
+                tools=self._get_tools_for_agent(target_role),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.CHAIN,
-                chain_id=chain_id,
-                chain_type=chain_type,
+                confidence=intent.confidence,
+            )
+
+        # --- GRAPH: planner/executor resolve the concrete graph ---
+        if intent.execution_strategy == ExecutionStrategy.GRAPH:
+            target_role = (
+                intent.recommended_agent
+                if intent.recommended_agent != AgentType.ORCHESTRATOR
+                else AgentType.ANALYST
+            )
+            return WorkflowRouteDecision(
+                rationale="Graph execution selected; planner will resolve the concrete graph runtime.",
+                agent_role=target_role,
+                specialist=specialist,
+                task=intent.formulated_objective or intent.user_intent or message,
+                thinking=ThinkingLevel.HIGH,
+                tools=self._get_tools_for_agent(target_role),
+                priority=Priority.HIGH,
+                execution_strategy=ExecutionStrategy.GRAPH,
+                confidence=intent.confidence,
             )
 
         # --- SINGLE_AGENT or multi-agent (both route to single_agent decision) ---
@@ -305,14 +319,36 @@ STRICT RULES:
 
         _logger.info("orchestrator_single_agent", agent=target_agent.value, rationale=rationale)
 
-        return OrchestratorDecision(
+        return WorkflowRouteDecision(
             rationale=rationale,
-            agent=target_agent,
+            agent_role=target_agent,
+            specialist=specialist,
             task=intent.formulated_objective or message,
             thinking=ThinkingLevel.HIGH,
             tools=self._get_tools_for_agent(target_agent),
             priority=Priority.NORMAL,
             execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+            confidence=intent.confidence,
+        )
+
+    async def route_message_intelligently(
+        self,
+        message: str,
+        session: OrchestratorSession | None = None,
+        folder_path: str | None = None,
+    ) -> OrchestratorDecision:
+        """Compatibility helper that returns the final executor plan."""
+        from mindflow_backend.orchestrator.chain_integration import plan_orchestrator_execution
+
+        route = await self.route_message_strategy(
+            message,
+            session=session,
+            folder_path=folder_path,
+        )
+        return plan_orchestrator_execution(
+            message=message,
+            route=route,
+            folder_path=folder_path,
         )
 
     def _get_tools_for_agent(self, agent_type: AgentType) -> list[ToolScope]:

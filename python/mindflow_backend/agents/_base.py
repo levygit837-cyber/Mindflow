@@ -2,58 +2,24 @@
 
 Provides ``AgentPersonality`` (structural typing) and ``BaseAgent``
 (immutable configuration) that every specialist factory must produce.
+
+The canonical role/specialization vocabulary lives in orchestration schemas.
+This module only defines the runtime container for those contracts.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
-from enum import StrEnum
 
-
-class AgentType(StrEnum):
-    """Available agent personalities."""
-
-    CODER = "coder"
-    ANALYST = "analyst"
-    RESEARCHER = "researcher"
-    ORCHESTRATOR = "orchestrator"
-
-
-class ThinkingLevel(StrEnum):
-    """Depth of reasoning the agent should apply."""
-
-    NONE = "NONE"
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-
-
-class ToolScope(StrEnum):
-    """Capability scopes available to agents."""
-
-    FILESYSTEM = "filesystem"
-    SHELL = "shell"
-    WEB_SEARCH = "web_search"
-    CODE_ANALYSIS = "code_analysis"
-    DATABASE = "database"
-
-
-class SandboxMode(StrEnum):
-    """Level of sandbox isolation for tool execution."""
-
-    NONE = "none"
-    READ_ONLY = "read_only"
-    FULL = "full"
-
-
-class Priority(StrEnum):
-    """Execution priority for the orchestrator."""
-
-    LOW = "low"
-    NORMAL = "normal"
-    HIGH = "high"
-    CRITICAL = "critical"
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    AgentType,
+    Priority,
+    SandboxMode,
+    ThinkingLevel,
+    ToolScope,
+)
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 
 @runtime_checkable
@@ -61,7 +27,13 @@ class AgentPersonality(Protocol):
     """Structural contract that every agent specialist must satisfy."""
 
     @property
+    def agent_role(self) -> AgentType: ...
+
+    @property
     def agent_type(self) -> AgentType: ...
+
+    @property
+    def specialist(self) -> SpecialistType | None: ...
 
     @property
     def system_prompt(self) -> str: ...
@@ -82,8 +54,9 @@ class BaseAgent:
     sandbox policy, etc.
     """
 
-    agent_type: AgentType
+    agent_role: AgentType
     system_prompt: str
+    specialist: SpecialistType | None = None
     tools: list[ToolScope] = field(default_factory=list)
     default_model: str | None = None
     thinking_level: ThinkingLevel = ThinkingLevel.MEDIUM
@@ -94,3 +67,15 @@ class BaseAgent:
     # agent's system prompt is augmented with a "your working directory is …"
     # instruction so the LLM knows where to work.
     root_dir: str | None = None
+
+    @property
+    def agent_type(self) -> AgentType:
+        """Compatibility alias for older callers that still expect ``agent_type``."""
+        return self.agent_role
+
+    @property
+    def agent_id(self) -> str:
+        """Stable registry identity used for role + specialization lookups."""
+        if self.specialist is None:
+            return self.agent_role.value
+        return f"{self.agent_role.value}:{self.specialist.value}"

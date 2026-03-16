@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType, Priority, ToolScope
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +66,9 @@ class DelegationTask(BaseModel):
 
     task_id: UUID = Field(default_factory=uuid4)
     agent: AgentType
+    agent_role: AgentType | None = None
+    specialist: SpecialistType | None = None
+    agent_id: str | None = None
     objective: str = Field(
         description="One clear sentence: what must the agent accomplish.",
     )
@@ -104,6 +108,16 @@ class DelegationTask(BaseModel):
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    def model_post_init(self, __context) -> None:
+        if self.agent_role is None:
+            self.agent_role = self.agent
+        self.agent = self.agent_role
+        if self.agent_id is None:
+            if self.specialist is None:
+                self.agent_id = self.agent_role.value
+            else:
+                self.agent_id = f"{self.agent_role.value}:{self.specialist.value}"
+
 
 # ---------------------------------------------------------------------------
 # Delegation Result — what comes back from the agent
@@ -120,6 +134,9 @@ class DelegationResult(BaseModel):
 
     task_id: UUID = Field(description="References the originating DelegationTask.")
     agent: AgentType
+    agent_role: AgentType | None = None
+    specialist: SpecialistType | None = None
+    agent_id: str | None = None
     status: DelegationStatus
     key_findings: str = Field(
         description=(
@@ -156,6 +173,16 @@ class DelegationResult(BaseModel):
         description="Error details if status is FAILED.",
     )
     completed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def model_post_init(self, __context) -> None:
+        if self.agent_role is None:
+            self.agent_role = self.agent
+        self.agent = self.agent_role
+        if self.agent_id is None:
+            if self.specialist is None:
+                self.agent_id = self.agent_role.value
+            else:
+                self.agent_id = f"{self.agent_role.value}:{self.specialist.value}"
 
 
 # ---------------------------------------------------------------------------

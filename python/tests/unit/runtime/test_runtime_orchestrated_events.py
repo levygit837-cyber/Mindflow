@@ -21,7 +21,6 @@ async def test_orchestrated_stream_maps_dt_step_and_tool_call_without_crashing(m
 
     runtime = AgentRuntime()
     runtime._orchestrator_graph = _FakeGraph()
-    runtime._chat_repo.add_message = lambda *args, **kwargs: None
 
     payload = AgentChatRequest(
         message="oi",

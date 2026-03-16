@@ -35,13 +35,12 @@ async def test_routes_coding_requests_to_coding_task_chain(monkeypatch: pytest.M
             context_needed="",
             suggested_scope=[],
             recommended_agent=AgentType.CODER,
+            recommended_specialist=None,
             formulated_objective="Implement feature X",
             confidence=0.9,
             is_multi_agent=False,
             agent_sequence=[],
             execution_strategy=ExecutionStrategy.CHAIN,
-            suggested_chain_id="coding_task",
-            suggested_chain_type=ChainType.CODING_TASK,
         )
 
     monkeypatch.setattr(IntelligentRouter, "analyze_intent_with_llm", _fake_analyze, raising=True)
@@ -88,13 +87,12 @@ async def test_routes_non_coding_to_single_agent_without_llm_execution(monkeypat
             context_needed="",
             suggested_scope=[],
             recommended_agent=AgentType.ANALYST,
+            recommended_specialist=None,
             formulated_objective="Explain concept succinctly",
             confidence=0.8,
             is_multi_agent=False,
             agent_sequence=[],
             execution_strategy=ExecutionStrategy.SINGLE_AGENT,
-            suggested_chain_id=None,
-            suggested_chain_type=None,
         )
 
     monkeypatch.setattr(IntelligentRouter, "analyze_intent_with_llm", _fake_analyze, raising=True)
@@ -137,13 +135,12 @@ async def test_router_can_select_file_analysis_when_folder_path_is_present(monke
             context_needed="workspace",
             suggested_scope=[],
             recommended_agent=AgentType.ANALYST,
+            recommended_specialist=None,
             formulated_objective="Mapear a codebase",
             confidence=0.92,
             is_multi_agent=False,
             agent_sequence=[],
             execution_strategy=ExecutionStrategy.CHAIN,
-            suggested_chain_id="file_analysis",
-            suggested_chain_type=ChainType.FILE_ANALYSIS,
         )
 
     monkeypatch.setattr(IntelligentRouter, "analyze_intent_with_llm", _fake_analyze, raising=True)

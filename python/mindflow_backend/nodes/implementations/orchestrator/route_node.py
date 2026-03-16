@@ -1,4 +1,4 @@
-"""Route node - analyzes user message and selects agent personality."""
+"""Compatibility node wrapper around the canonical router + planner flow."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from typing import Any, Dict
 from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
 from mindflow_backend.nodes.base.stateful import StatefulNode
 from mindflow_backend.schemas.orchestration.orchestrator import (
-    OrchestratorDecision,
     ThinkingMode,
 )
 
@@ -29,7 +28,7 @@ class RouteNode(StatefulNode, BaseNode):
     
     async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Execute the routing logic."""
-        from mindflow_backend.orchestrator.intelligent_router import route_message_intelligently
+        from mindflow_backend.orchestrator.routing.intelligent_router import route_message_intelligently
         from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
         from mindflow_backend.orchestrator.complexity import ComplexityScorer
         from mindflow_backend.infra.config import get_settings
@@ -42,33 +41,6 @@ class RouteNode(StatefulNode, BaseNode):
             user_intent=state["message"],
         )
 
-        if state.get("agent_type") == "analyst" and state.get("folder_path"):
-            from mindflow_backend.schemas.orchestration.orchestrator import (
-                AgentType,
-                ChainType,
-                ExecutionStrategy,
-                Priority,
-                ThinkingLevel,
-            )
-
-            scorer = ComplexityScorer()
-            score = await scorer.get_complexity_score(
-                state["message"],
-                provider=state.get("provider"),
-                model=state.get("model"),
-            )
-            decision = OrchestratorDecision(
-                rationale="Forced file analysis for analyst request with workspace root.",
-                agent=AgentType.ANALYST,
-                task=state["message"],
-                thinking=ThinkingLevel.HIGH,
-                priority=Priority.HIGH,
-                execution_strategy=ExecutionStrategy.CHAIN,
-                chain_id="file_analysis",
-                chain_type=ChainType.FILE_ANALYSIS,
-            )
-            return {"decision": decision, "complexity_score": score}
-        
         # Use intelligent routing
         decision = await route_message_intelligently(
             state["message"],
