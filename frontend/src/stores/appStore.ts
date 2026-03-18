@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { useShallow } from 'zustand/react/shallow';
 import { devtools, persist } from 'zustand/middleware';
 import { DEFAULT_PROVIDER, getDefaultModelForProvider } from '../utils/llm';
 import type { 
@@ -9,7 +8,6 @@ import type {
   AgentStatus, 
   Session, 
   Message, 
-  StreamEvent,
   AppSettings
 } from '../types';
 
@@ -37,14 +35,8 @@ interface AppStore extends AppState {
   updateMessage: (messageId: string, updates: Partial<Message>) => void;
   deleteMessage: (messageId: string) => void;
   
-  // Streaming actions
-  setStreaming: (isStreaming: boolean) => void;
-  addStreamEvent: (event: StreamEvent) => void;
-  clearStreamEvents: () => void;
-  
   // UI actions
   setSidebarOpen: (open: boolean) => void;
-  setReasoningPanelOpen: (open: boolean) => void;
   setSettingsPanelOpen: (open: boolean) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   
@@ -83,11 +75,8 @@ const initialState: Omit<AppState, 'settings'> = {
   sessions: [],
   currentSession: null,
   messages: [],
-  isStreaming: false,
-  streamingEvents: [],
   
   sidebarOpen: true,
-  reasoningPanelOpen: false,
   settingsPanelOpen: false,
   theme: 'dark',
 };
@@ -209,21 +198,8 @@ export const useAppStore = create<AppStore>()(
               : null,
           })),
         
-        // Streaming actions
-        setStreaming: (isStreaming) => set({ isStreaming }),
-        
-        addStreamEvent: (event) =>
-          set((state) => ({
-            streamingEvents: [...state.streamingEvents, event],
-          })),
-          
-        clearStreamEvents: () => set({ streamingEvents: [] }),
-        
         // UI actions
         setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-        
-        setReasoningPanelOpen: (reasoningPanelOpen) => set({ reasoningPanelOpen }),
-        
         setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),
         
         setTheme: (theme) =>
@@ -246,8 +222,6 @@ export const useAppStore = create<AppStore>()(
           set({
             currentSession: null,
             messages: [],
-            streamingEvents: [],
-            isStreaming: false,
           }),
           
         resetStore: () =>
@@ -262,8 +236,7 @@ export const useAppStore = create<AppStore>()(
           settings: state.settings,
           theme: state.theme,
           sidebarOpen: state.sidebarOpen,
-          reasoningPanelOpen: state.reasoningPanelOpen,
-          // Don't persist sessions, messages, or streaming state
+          // Don't persist sessions or messages
         }),
       }
     ),
@@ -280,14 +253,4 @@ export const useAgentStatus = () => useAppStore((state) => state.agentStatus);
 export const useSessions = () => useAppStore((state) => state.sessions);
 export const useCurrentSession = () => useAppStore((state) => state.currentSession);
 export const useMessages = () => useAppStore((state) => state.messages);
-export const useStreamingState = () => useAppStore(useShallow((state) => ({
-  isStreaming: state.isStreaming,
-  streamingEvents: state.streamingEvents,
-})));
-export const useUIState = () => useAppStore(useShallow((state) => ({
-  sidebarOpen: state.sidebarOpen,
-  reasoningPanelOpen: state.reasoningPanelOpen,
-  settingsPanelOpen: state.settingsPanelOpen,
-  theme: state.theme,
-})));
 export const useSettings = () => useAppStore((state) => state.settings);

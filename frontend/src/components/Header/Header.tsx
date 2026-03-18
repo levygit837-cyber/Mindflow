@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Menu, Brain, Cpu } from 'lucide-react';
-import { useUIState, useAppStore } from '../../stores/appStore';
+import { Brain, Menu } from 'lucide-react';
+import { useAppStore } from '../../stores/appStore';
 import { Button } from '../common';
 
 export const Header: React.FC = () => {
-  const { reasoningPanelOpen, theme } = useUIState();
-  const { setSidebarOpen, setReasoningPanelOpen, setTheme } = useAppStore();
+  const theme = useAppStore((state) => state.theme);
+  const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
+  const setTheme = useAppStore((state) => state.setTheme);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -39,16 +40,6 @@ export const Header: React.FC = () => {
 
       {/* Right side actions */}
       <div className="flex items-center space-x-2">
-        {/* Reasoning panel toggle */}
-        <Button
-          variant={reasoningPanelOpen ? 'primary' : 'ghost'}
-          size="sm"
-          icon={<Cpu className="h-4 w-4" />}
-          onClick={() => setReasoningPanelOpen(!reasoningPanelOpen)}
-        >
-          Reasoning
-        </Button>
-
         {/* Theme toggle */}
         <Button
           variant="ghost"

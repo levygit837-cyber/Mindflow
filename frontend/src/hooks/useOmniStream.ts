@@ -46,7 +46,6 @@ export const useOmniStream = (url: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const clearEvents = useCallback(() => setEvents([]), []);
-  const setInitialEvents = useCallback((initialEvents: StreamEvent[]) => setEvents(initialEvents), []);
 
   const startStream = useCallback(async (body: {
     message: string,
@@ -56,12 +55,10 @@ export const useOmniStream = (url: string) => {
     orchestrate?: boolean,
     agent?: string,
     folder_path?: string,
+    execution_id?: string,
   }) => {
     setIsStreaming(true);
     setError(null);
-    // Don't clear events if we have a session_id (it's a continuation)
-    // Actually, we should clear the reasoning tree events but keep the message history
-    // But since ReasoningTree currently renders everything, we'll keep it simple for now.
 
     try {
       const response = await fetch(url, {
@@ -111,5 +108,5 @@ export const useOmniStream = (url: string) => {
     }
   }, [url]);
 
-  return { events, isStreaming, error, startStream, clearEvents, setInitialEvents };
+  return { events, isStreaming, error, startStream, clearEvents };
 };

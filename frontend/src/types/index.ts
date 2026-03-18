@@ -107,33 +107,6 @@ export interface SessionMetadata {
   tags?: string[];
 }
 
-export interface StreamEvent {
-  id?: string;
-  seq?: number;
-  type: EventType;
-  data: string;
-  meta?: StreamEventMeta;
-}
-
-export type EventType = 
-  | 'user'
-  | 'thought' 
-  | 'response'
-  | 'tool_call'
-  | 'tool_result'
-  | 'step'
-  | 'agent_step'
-  | 'error'
-  | 'done';
-
-export interface StreamEventMeta {
-  runId?: string;
-  turnRunId?: string;
-  agentType?: AgentType;
-  timestamp?: string;
-  [key: string]: any;
-}
-
 export interface ChatRequest {
   message: string;
   sessionId?: string;
@@ -159,12 +132,9 @@ export interface AppState {
   sessions: Session[];
   currentSession: Session | null;
   messages: Message[];
-  isStreaming: boolean;
-  streamingEvents: StreamEvent[];
   
   // UI state
   sidebarOpen: boolean;
-  reasoningPanelOpen: boolean;
   settingsPanelOpen: boolean;
   theme: 'dark' | 'light';
   
