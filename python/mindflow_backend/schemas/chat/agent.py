@@ -26,6 +26,10 @@ class AgentChatRequest(BaseModel):
         default=None,
         description="Working directory for filesystem tools (root_dir for sandboxed operations)",
     )
+    execution_id: str | None = Field(
+        default=None,
+        description="Existing durable execution identifier for compatibility streaming",
+    )
 
     @field_validator("folder_path", mode="before")
     @classmethod
@@ -59,13 +63,28 @@ class AgentExecutionResponse(BaseResponse):
     """Response for execution status and control actions."""
 
     execution_id: str = Field(description="Execution ID")
+    root_execution_id: str | None = Field(default=None, description="Root execution ID for the full durable tree")
+    parent_execution_id: str | None = Field(default=None, description="Parent execution ID when this is a delegated agent")
     status: str = Field(description="Execution status")
+    stage: str | None = Field(default=None, description="Detailed execution stage")
     action: str | None = Field(default=None, description="Requested control action")
     paused: bool = Field(default=False, description="Whether the execution is paused")
     can_resume: bool = Field(default=False, description="Whether the execution can be resumed")
     progress: float | None = Field(default=None, description="Execution progress percentage")
     snapshot: dict[str, Any] = Field(default_factory=dict, description="Execution snapshot or state details")
+    tree: dict[str, Any] = Field(default_factory=dict, description="Durable execution tree rooted at the orchestrator")
+    events: list[dict[str, Any]] = Field(default_factory=list, description="Durable execution events")
+    messages: list[dict[str, Any]] = Field(default_factory=list, description="Mailbox entries for the selected execution")
+    processes: list[dict[str, Any]] = Field(default_factory=list, description="Managed process records for the selected execution")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional execution metadata")
+
+
+class AgentExecutionMessageRequest(BaseModel):
+    message_type: Literal["context_update", "direct_message", "final_result", "system_notice"]
+    content: str = Field(min_length=1, max_length=100000)
+    sender_execution_id: str | None = None
+    visibility: Literal["internal", "user_visible", "audit"] = "internal"
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class ChatMessageSchema(BaseModel):

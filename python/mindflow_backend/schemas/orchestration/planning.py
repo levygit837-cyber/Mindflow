@@ -4,6 +4,7 @@ This module defines the contracts for the planning phase:
 - Plan creation and storage
 - Plan confirmation workflow
 - Plan → TodoList conversion
+- Intelligent planning trigger analysis
 """
 
 from __future__ import annotations
@@ -201,3 +202,109 @@ class PlanConfirmationResponse(BaseModel):
     plan: PlanDocument
     todo_list_id: str | None = None
     message: str = ""
+
+
+# ============================================================================
+# Intelligent Planning Trigger Schemas
+# ============================================================================
+
+
+class PlanningDecision(BaseModel):
+    """LLM-powered decision on whether to trigger planning.
+    
+    This schema represents the output of the intelligent planning analyzer,
+    which uses semantic understanding rather than keyword matching to determine
+    if a user request requires decomposition into a TODO-list.
+    """
+    
+    requires_planning: bool = Field(
+        description="Whether this request requires decomposition into TODO-list"
+    )
+    
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Confidence score [0, 1] for this decision"
+    )
+    
+    reasoning: str = Field(
+        description="Explanation of why planning is/isn't needed"
+    )
+    
+    estimated_subtasks: int = Field(
+        ge=0,
+        le=50,
+        description="Estimated number of subtasks if planning is triggered"
+    )
+    
+    complexity_factors: list[str] = Field(
+        default_factory=list,
+        description="Key complexity drivers (e.g., 'multi-file', 'security', 'integration')"
+    )
+    
+    suggested_work_type: str | None = Field(
+        default=None,
+        description="Suggested work type: 'feature', 'refactor', 'bugfix', 'research', etc"
+    )
+
+
+class PlanningAnalysisRequest(BaseModel):
+    """Request for intelligent planning analysis.
+    
+    Contains the user message and contextual information needed for the
+    LLM to make an informed decision about whether planning is required.
+    """
+    
+    message: str = Field(
+        description="The user's request message"
+    )
+    
+    session_context: str = Field(
+        default="",
+        description="Serialized session context for understanding conversation state"
+    )
+    
+    folder_path: str | None = Field(
+        default=None,
+        description="Current workspace folder path, if set"
+    )
+    
+    conversation_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Recent conversation history for context"
+    )
+    
+    # Structural features (extracted before LLM call for fallback logic)
+    has_multiple_files: bool = Field(
+        default=False,
+        description="Whether the message mentions multiple files"
+    )
+    
+    has_code_blocks: bool = Field(
+        default=False,
+        description="Whether the message contains code blocks"
+    )
+    
+    message_length: int = Field(
+        default=0,
+        description="Character count of the message"
+    )
+    
+    question_count: int = Field(
+        default=0,
+        description="Number of questions in the message"
+    )
+
+
+class PlanningTriggerMetrics(BaseModel):
+    """Metrics for planning trigger decisions and outcomes."""
+    
+    session_id: str
+    plan_id: str | None = None
+    trigger_decision: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    user_confirmed: bool | None = None
+    execution_completed: bool | None = None
+    latency_ms: float
+    method_used: str  # llm, fallback, legacy
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

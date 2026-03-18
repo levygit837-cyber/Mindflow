@@ -1,0 +1,268 @@
+/**
+ * Chat Visualization V2 - Component Styles
+ * 
+ * Shared styles, animations, and utilities for V2 components.
+ * Uses CSS variables from tokens.css for theme consistency.
+ */
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.mindflow-v2-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.mindflow-v2-fade-in {
+  animation: fadeIn 0.18s ease;
+}
+
+.mindflow-v2-slide-in-right {
+  animation: slideInRight 0.22s ease-out;
+}
+
+.mindflow-v2-slide-out-right {
+  animation: slideOutRight 0.22s ease-out;
+}
+
+/* ============================================
+   Agent Theme Colors
+   ============================================ */
+
+.mindflow-v2-agent-orchestrator {
+  --agent-accent: var(--mindflow-v2-agent-orchestrator);
+  --agent-soft: #E8F4F4;
+  --agent-muted: #0D2E2E;
+}
+
+.mindflow-v2-agent-analyst {
+  --agent-accent: var(--mindflow-v2-agent-analyst);
+  --agent-soft: #EEF0FF;
+  --agent-muted: #202646;
+}
+
+.mindflow-v2-agent-coder {
+  --agent-accent: var(--mindflow-v2-agent-coder);
+  --agent-soft: #FCEFE8;
+  --agent-muted: #4C2211;
+}
+
+.mindflow-v2-agent-researcher {
+  --agent-accent: var(--mindflow-v2-agent-researcher);
+  --agent-soft: #EAF7EF;
+  --agent-muted: #173E2C;
+}
+
+/* Dark theme adjustments */
+:root[data-theme='dark'] .mindflow-v2-agent-orchestrator {
+  --agent-soft: #0D2E2E;
+}
+
+:root[data-theme='dark'] .mindflow-v2-agent-analyst {
+  --agent-soft: #202646;
+}
+
+:root[data-theme='dark'] .mindflow-v2-agent-coder {
+  --agent-soft: #4C2211;
+}
+
+:root[data-theme='dark'] .mindflow-v2-agent-researcher {
+  --agent-soft: #173E2C;
+}
+
+/* ============================================
+   Tone Colors
+   ============================================ */
+
+.mindflow-v2-tone-accent {
+  --tone-color: var(--mindflow-v2-accent-teal);
+  --tone-bg: var(--mindflow-v2-accent-teal-muted);
+}
+
+.mindflow-v2-tone-info {
+  --tone-color: var(--state-info);
+  --tone-bg: rgba(91, 106, 191, 0.12);
+}
+
+.mindflow-v2-tone-success {
+  --tone-color: var(--state-success);
+  --tone-bg: rgba(13, 110, 110, 0.12);
+}
+
+.mindflow-v2-tone-warning {
+  --tone-color: var(--state-warning);
+  --tone-bg: rgba(230, 126, 34, 0.12);
+}
+
+.mindflow-v2-tone-error {
+  --tone-color: var(--state-error);
+  --tone-bg: rgba(192, 57, 43, 0.12);
+}
+
+.mindflow-v2-tone-neutral {
+  --tone-color: var(--text-secondary);
+  --tone-bg: var(--surface-glass);
+}
+
+/* ============================================
+   Common Component Patterns
+   ============================================ */
+
+.mindflow-v2-card {
+  background: var(--mindflow-v2-bg-surface);
+  border: 1px solid var(--mindflow-v2-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  transition: all var(--transition-base);
+}
+
+.mindflow-v2-card:hover {
+  border-color: var(--mindflow-v2-border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.mindflow-v2-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-family: var(--font-meta);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.mindflow-v2-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: 2px var(--spacing-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-family: var(--font-meta);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mindflow-v2-divider {
+  height: 1px;
+  background: var(--mindflow-v2-border-primary);
+  margin: var(--spacing-3) 0;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+.mindflow-v2-scrollable {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-meta) transparent;
+}
+
+.mindflow-v2-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mindflow-v2-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mindflow-v2-scrollable::-webkit-scrollbar-thumb {
+  background: var(--text-meta);
+  border-radius: var(--radius-full);
+}
+
+.mindflow-v2-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ============================================
+   Responsive Utilities
+   ============================================ */
+
+@media (max-width: 768px) {
+  .mindflow-v2-card {
+    padding: var(--spacing-2);
+  }
+
+  .mindflow-v2-pill {
+    font-size: 0.7rem;
+    padding: 2px var(--spacing-1);
+  }
+
+  .mindflow-v2-badge {
+    font-size: 0.65rem;
+    padding: 1px var(--spacing-1);
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  .mindflow-v2-pulse {
+    animation: none;
+  }
+
+  .mindflow-v2-card {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+}

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowUpRight, ChevronDown, Paperclip } from 'lucide-react';
 import { AgentBubble } from '../common/AgentBubble';
 import { FolderPathBar } from '../common/FolderPathBar';
+import { ChatStreamFeed } from '../chat/v2';
 import { useOmniStream } from '../../hooks/useOmniStream';
 import { useAppStore } from '../../stores/appStore';
 import type { LlmProvider } from '../../types';
@@ -323,7 +324,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
 
     onAgentCountChange?.(0);
-    setStreamStartedAt(null);
 
     if (pending && assistantText && pending.isFirst) {
       fetch(`/v1/chat/sessions/${sessionId}/generate-title`, {
@@ -341,7 +341,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         .catch(() => undefined);
     }
 
-    clearEvents();
   }, [
     isStreaming,
     error,
@@ -352,22 +351,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     onTitleChange,
     onAgentCountChange,
     bumpSessionRefresh,
-    clearEvents,
   ]);
 
   useEffect(() => {
     if (!error) return;
     pendingSaveRef.current = null;
-    setStreamStartedAt(null);
     onAgentCountChange?.(0);
-    clearEvents();
-  }, [error, clearEvents, onAgentCountChange]);
+  }, [error, onAgentCountChange]);
 
   const handleSend = useCallback(async () => {
     const text = inputValue.trim();
     if (!text || isStreaming) return;
 
     setInputValue('');
+    clearEvents();
     setStreamStartedAt(new Date());
 
     const isFirst = messages.length === 0;
@@ -407,6 +404,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     selectedModel,
     sessionId,
     startStream,
+    clearEvents,
   ]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -440,6 +438,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           ) : showHistory ? (
             <>
               {messages.map((message) => renderMessage(message))}
+
+              {(isStreaming || events.length > 0) && (
+                <ChatStreamFeed
+                  events={events}
+                  isStreaming={isStreaming}
+                  startedAt={isStreaming ? streamStartedAt : null}
+                  hasHistory={messages.length > 0}
+                />
+              )}
 
               {isStreaming &&
                 (streamingText ? (
@@ -525,7 +532,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     lineHeight: 1.65,
                   }}
                 >
-                  O chat agora mostra apenas conversa e resposta final. O resto da trilha foi removido para a refatoração.
+                  O chat agora mostra conversa, pensamento, delegação, ferramentas, memória e jornada em tempo real.
                 </p>
               </div>
             </motion.div>

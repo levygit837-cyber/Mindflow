@@ -508,6 +508,7 @@ class LocalAgentClient:
         orchestrate: bool = False,
         agent_type: str | None = None,
         folder_path: str | None = None,
+        execution_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         payload = AgentChatRequest(
             message=message,
@@ -516,6 +517,7 @@ class LocalAgentClient:
             orchestrate=orchestrate,
             agent_type=agent_type,
             folder_path=folder_path,
+            execution_id=execution_id,
         )
         async for event in self._service.runtime.stream_chat(
             payload,
@@ -524,8 +526,39 @@ class LocalAgentClient:
         ):
             yield event
 
+    async def create_execution(
+        self,
+        *,
+        payload: AgentChatRequest,
+        session_id: str | None = None,
+        run_id: str | None = None,
+    ) -> dict[str, Any]:
+        return await self._service.runtime.create_execution(payload, session_id=session_id, run_id=run_id)
+
     async def get_execution_status(self, *, execution_id: str) -> dict[str, Any]:
         return await self._service.runtime.get_execution_status(execution_id)
+
+    async def get_execution_events(self, *, execution_id: str, after_id: int = 0) -> list[dict[str, Any]]:
+        return await self._service.runtime.get_execution_events(execution_id, after_id=after_id)
+
+    async def send_execution_message(
+        self,
+        *,
+        execution_id: str,
+        message_type: str,
+        content: str,
+        sender_execution_id: str | None = None,
+        visibility: str = "internal",
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return await self._service.runtime.send_execution_message(
+            execution_id,
+            message_type=message_type,
+            content=content,
+            sender_execution_id=sender_execution_id,
+            visibility=visibility,
+            payload=payload,
+        )
 
     async def pause_execution(self, *, execution_id: str) -> dict[str, Any]:
         return await self._service.runtime.pause_execution(execution_id)

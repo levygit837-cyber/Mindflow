@@ -13,6 +13,7 @@ The flow integrates with the existing simple_flow.py architecture.
 
 from __future__ import annotations
 
+import time
 from typing import Any, TypedDict
 
 from langchain_core.callbacks.manager import adispatch_custom_event
@@ -55,7 +56,10 @@ async def should_trigger_planning(
     complexity_score: float,
     session_context: dict[str, Any],
 ) -> bool:
-    """Determine if planning should be triggered.
+    """Determine if planning should be triggered (LEGACY - keyword-based).
+    
+    DEPRECATED: This function uses keyword matching. Use should_trigger_planning_v2
+    for LLM-based semantic analysis when ENABLE_LLM_PLANNING_TRIGGER is enabled.
     
     Planning is triggered when:
     1. Complexity is high (>= 0.6)
@@ -107,6 +111,141 @@ async def should_trigger_planning(
         return complexity_score >= 0.4
     
     return False
+
+
+async def should_trigger_planning_v2(
+    message: str,
+    session_context: dict[str, Any],
+    folder_path: str | None = None,
+    conversation_history: list[dict[str, str]] | None = None,
+) -> tuple[bool, Any]:
+    """Determine if planning should be triggered using LLM semantic analysis.
+    
+    This is the new intelligent planning trigger that uses LLM to understand
+    semantic intent rather than keyword matching.
+    
+    Returns:
+        (should_trigger, decision): Boolean trigger + full PlanningDecision object
+    """
+    from mindflow_backend.orchestrator.planning.analyzer import get_planning_analyzer
+    from mindflow_backend.schemas.orchestration.planning import PlanningAnalysisRequest
+    from mindflow_backend.services.orchestration.planning_service import get_planning_service
+    
+    # Check for existing active plan
+    planning_service = get_planning_service()
+    session_id = session_context.get("session_id", "")
+    
+    plans = await planning_service.get_session_plans(session_id)
+    has_active_plan = any(
+        p.status in (PlanStatus.CONFIRMED, PlanStatus.IN_EXECUTION)
+        for p in plans
+    )
+    
+    if has_active_plan:
+        # Don't create new plan if one is already in execution
+        from mindflow_backend.schemas.orchestration.planning import PlanningDecision
+        return False, PlanningDecision(
+            requires_planning=False,
+            confidence=1.0,
+            reasoning="Active plan already in execution",
+            estimated_subtasks=0,
+            complexity_factors=["active_plan_exists"],
+        )
+    
+    # Use LLM to analyze
+    analyzer = get_planning_analyzer()
+    request = PlanningAnalysisRequest(
+        message=message,
+        session_context=str(session_context),
+        folder_path=folder_path,
+        conversation_history=conversation_history or [],
+    )
+    
+    decision = await analyzer.should_trigger_planning(request)
+    
+    # Emit reasoning to user
+    if decision.requires_planning:
+        await adispatch_custom_event(
+            "agent_thought",
+            {
+                "thought": f"🤔 **Análise de Planejamento**\n\n"
+                           f"{decision.reasoning}\n\n"
+                           f"Estimativa: {decision.estimated_subtasks} subtarefas\n"
+                           f"Confiança: {decision.confidence:.0%}"
+            },
+        )
+    
+    return decision.requires_planning, decision
+
+
+async def should_trigger_planning_hybrid(
+    message: str,
+    complexity_score: float,
+    session_context: dict[str, Any],
+    folder_path: str | None = None,
+    conversation_history: list[dict[str, str]] | None = None,
+) -> bool:
+    """Hybrid planning trigger with feature flag support.
+    
+    Uses LLM-based analysis if ENABLE_LLM_PLANNING_TRIGGER is enabled,
+    otherwise falls back to keyword-based matching.
+    
+    This function also logs comparison between old and new methods for A/B testing.
+    """
+    from mindflow_backend.orchestrator.planning.metrics import get_metrics_collector
+    
+    settings = get_settings()
+    metrics = get_metrics_collector()
+    session_id = session_context.get("session_id", "")
+    
+    start_time = time.time()
+    
+    if settings.enable_llm_planning_trigger:
+        should_trigger, decision = await should_trigger_planning_v2(
+            message=message,
+            session_context=session_context,
+            folder_path=folder_path,
+            conversation_history=conversation_history,
+        )
+        
+        latency_ms = (time.time() - start_time) * 1000
+        method_used = "fallback" if "fallback" in decision.reasoning.lower() else "llm"
+        
+        # Track metrics
+        await metrics.track_trigger_decision(
+            session_id=session_id,
+            trigger_decision=should_trigger,
+            confidence=decision.confidence,
+            latency_ms=latency_ms,
+            method_used=method_used,
+        )
+        
+        # Log comparison with old method for A/B testing
+        old_result = await should_trigger_planning(message, complexity_score, session_context)
+        if old_result != should_trigger:
+            _logger.warning(
+                "planning_trigger_mismatch",
+                old_method=old_result,
+                new_method=should_trigger,
+                confidence=decision.confidence,
+                reasoning=decision.reasoning[:100],
+            )
+        
+        return should_trigger
+    else:
+        result = await should_trigger_planning(message, complexity_score, session_context)
+        latency_ms = (time.time() - start_time) * 1000
+        
+        # Track legacy metrics
+        await metrics.track_trigger_decision(
+            session_id=session_id,
+            trigger_decision=result,
+            confidence=1.0 if result else 0.0,
+            latency_ms=latency_ms,
+            method_used="legacy",
+        )
+        
+        return result
 
 
 async def run_planning_phase(
@@ -268,6 +407,16 @@ async def run_execution_loop(
                 {"thought": f"✅ Todas as {len(todo_list.items)} tarefas concluídas!"},
             )
             await planning_service.update_plan_status(session_id, plan_id, PlanStatus.COMPLETED)
+            
+            # Track execution completion
+            from mindflow_backend.orchestrator.planning.metrics import get_metrics_collector
+            metrics = get_metrics_collector()
+            await metrics.track_execution_completion(
+                session_id=session_id,
+                plan_id=plan_id,
+                completed=True,
+            )
+            
             break
         
         # Get the next item (respecting dependencies)

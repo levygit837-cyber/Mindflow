@@ -66,6 +66,7 @@ async def invoke_with_tools(
     lc_tools: list[Any],
     *,
     event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
+    before_iteration: Callable[[list[Any], int], Awaitable[None]] | None = None,
     max_iterations: int = 50,
 ) -> str:
     """Execute ``llm`` in a ReAct loop with ``lc_tools``.
@@ -94,6 +95,8 @@ async def invoke_with_tools(
 
     while True:
         _logger.debug(f"tool_loop iteration={iteration}, messages={len(working_messages)}")
+        if before_iteration is not None:
+            await before_iteration(working_messages, iteration)
 
         response = await llm.ainvoke(working_messages)
 
@@ -214,6 +217,12 @@ async def invoke_with_tools(
         except Exception as exc:
             _logger.error(f"tool_loop_fallback_failed: {exc}")
 
+    if event_dispatcher is not None and final_text.strip():
+        try:
+            await event_dispatcher("agent_response", {"chunk": final_text})
+        except Exception:
+            pass
+
     return final_text
 
 
@@ -224,6 +233,7 @@ async def stream_with_tools(
     *,
     chunk_dispatcher: Callable[[str], Awaitable[None]] | None = None,
     event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
+    before_iteration: Callable[[list[Any], int], Awaitable[None]] | None = None,
     max_iterations: int = 50,
 ) -> str:
     """Like ``invoke_with_tools`` but streams the final LLM response.
@@ -255,6 +265,8 @@ async def stream_with_tools(
     iteration = 0
 
     while True:
+        if before_iteration is not None:
+            await before_iteration(working_messages, iteration)
         response = await llm.ainvoke(working_messages)
         tool_calls: list[dict] = getattr(response, "tool_calls", []) or []
 

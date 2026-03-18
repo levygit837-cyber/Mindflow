@@ -29,9 +29,15 @@ _logger = get_logger(__name__)
 class _DefaultRegistry:
     """Enhanced registry that maps ToolScope to concrete tool implementations."""
 
-    def __init__(self, sandbox: MindFlowSandbox, session_id: str | None = None) -> None:
+    def __init__(
+        self,
+        sandbox: MindFlowSandbox,
+        session_id: str | None = None,
+        execution_id: str | None = None,
+    ) -> None:
         self.sandbox = sandbox
         self.session_id = session_id
+        self.execution_id = execution_id
         self._tool_mapping = self._build_tool_mapping()
         self._initialized_tools = {}  # Cache for tool instances
 
@@ -91,6 +97,8 @@ class _DefaultRegistry:
                     tool.root_dir = root_dir
                 if self.session_id and hasattr(tool, "session_id"):
                     tool.session_id = self.session_id
+                if self.execution_id and hasattr(tool, "execution_id"):
+                    tool.execution_id = self.execution_id
 
             # Cache the tools
             self._initialized_tools[cache_key] = tools
@@ -452,6 +460,8 @@ class _DefaultRegistry:
                 tool.root_dir = root_dir
             if self.session_id and hasattr(tool, "session_id"):
                 tool.session_id = self.session_id
+            if self.execution_id and hasattr(tool, "execution_id"):
+                tool.execution_id = self.execution_id
             if hasattr(tool, "sandbox_mode"):
                 tool.sandbox_mode = sandbox_mode
             if hasattr(tool, "secure_mode"):
@@ -485,9 +495,10 @@ class _DefaultRegistry:
 def create_default_registry(
     sandbox: MindFlowSandbox,
     session_id: str | None = None,
+    execution_id: str | None = None,
 ) -> _DefaultRegistry:
     """Create a default tool registry for an agent sandbox."""
-    return _DefaultRegistry(sandbox, session_id=session_id)
+    return _DefaultRegistry(sandbox, session_id=session_id, execution_id=execution_id)
 
 
 __all__ = [

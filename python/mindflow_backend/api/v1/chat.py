@@ -15,6 +15,7 @@ from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.dependencies.security import audit_log
 from mindflow_backend.infra.middleware.auth import require_api_key
 from mindflow_backend.infra.config import get_settings
+from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.schemas.api.chat import (
     ChatSessionCreateRequest,
     ChatSessionMessageCreateRequest,
@@ -121,6 +122,24 @@ async def get_session(
 
         data = _session_dict(sess)
         data["messages"] = [_message_dict(m) for m in messages]
+        with_runtime_state = None
+        with_runtime_payload = {}
+        try:
+            execution_memory = get_execution_memory_service()
+            with_runtime_state = await execution_memory.load_session_runtime_state(session_id=session_id)
+        except Exception:
+            with_runtime_state = None
+
+        if with_runtime_state is not None:
+            with_runtime_payload = {
+                "execution_id": getattr(with_runtime_state, "execution_id", None),
+                "state": getattr(with_runtime_state, "state_json", {}) or {},
+                "version": getattr(with_runtime_state, "version", None),
+                "updated_at": getattr(with_runtime_state, "updated_at", None).isoformat()
+                if getattr(with_runtime_state, "updated_at", None)
+                else None,
+            }
+        data["runtime_state"] = with_runtime_payload
         return data
 
 

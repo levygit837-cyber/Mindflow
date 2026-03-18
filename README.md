@@ -93,6 +93,7 @@ Copy `.env.example` to `.env` and configure:
 - `QUEUE_MEMORY_PIPELINE` — ativa enfileiramento de memory/embedding
 - `QUEUE_SESSION_REVIEW` — ativa enfileiramento de session review
 - `QUEUE_RESEARCH_PIPELINE` — ativa enfileiramento de browser/content research
+- `ENABLE_LLM_PLANNING_TRIGGER` — ativa trigger inteligente de planejamento via LLM (default: false)
 
 ### Local Infrastructure (Docker)
 
@@ -121,13 +122,19 @@ Sub-personalities (`security_guard`, `critic`) are composed via prompt injection
 ## Key Features
 
 - **Decomposition Thinking** — Complex tasks broken into a DAG of sub-tasks, scheduled via topological sort, resolved by specialized agents
+- **Intelligent Planning Trigger** — LLM-based semantic analysis to detect when tasks need planning (replaces keyword matching, 800x faster with cache)
 - **Multi-Provider Fallback** — Automatic fallback between VertexAI API-key and Service Account auth
 - **Memory System** — Per-agent rolling memory with summary windows and RAG retrieval (PostgreSQL-backed)
 - **Context Governance** — Token budget management (`max_payload_tokens = 10_000`)
 - **Session Review** — Automatic session chunk review via Analyst critic sub-personality
 - **Queue Contracts** — Shared envelopes and interfaces live in `python/mindflow_backend/workers/contracts`
 - **Domain Workers** — Each queue domain owns its own `schemas`, `interfaces`, `publishers` and `consumers`
-- **Feature Flags** — Incremental rollout via `ENABLE_RABBITMQ`, `QUEUE_MEMORY_PIPELINE`, `QUEUE_SESSION_REVIEW` and `QUEUE_RESEARCH_PIPELINE`
+- **Feature Flags** — Incremental rollout via `ENABLE_RABBITMQ`, `QUEUE_MEMORY_PIPELINE`, `QUEUE_SESSION_REVIEW`, `QUEUE_RESEARCH_PIPELINE`, and `ENABLE_LLM_PLANNING_TRIGGER`
+
+## Documentation
+
+- [Planning Trigger System Guide](python/docs/planning-trigger-guide.md) — Complete guide for intelligent planning trigger
+- [Sprint Documentation](python/docs/sprints/) — Implementation sprints and technical details
 
 ## Quality Checks
 

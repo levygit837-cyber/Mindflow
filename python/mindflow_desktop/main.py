@@ -2,30 +2,29 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
-
-from mindflow_desktop.viewmodels import ChatViewModel
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication
+from PySide6.QtWebEngineCore import QWebEngineProfile
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 
 def run_ui() -> None:
-    os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Fusion")
+    app = QApplication(sys.argv)
+    app.setApplicationName("MindFlow")
 
-    app = QGuiApplication(sys.argv)
-    engine = QQmlApplicationEngine()
+    # Disable disk cache so Vite HMR and fresh builds always reflect immediately.
+    profile = QWebEngineProfile.defaultProfile()
+    profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
 
-    chat_vm = ChatViewModel()
+    view = QWebEngineView()
+    view.setWindowTitle("MindFlow")
+    view.resize(1440, 900)
 
-    engine.rootContext().setContextProperty("chatVM", chat_vm)
-
-    qml_file = Path(__file__).resolve().parent / "qml" / "Main.qml"
-    engine.load(QUrl.fromLocalFile(str(qml_file)))
-
-    if not engine.rootObjects():
-        raise SystemExit(1)
+    frontend_url = os.getenv("MINDFLOW_FRONTEND_URL", "http://127.0.0.1:5173")
+    view.setUrl(QUrl(frontend_url))
+    view.show()
 
     raise SystemExit(app.exec())
 

@@ -138,6 +138,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
             "message": state.get("message", ""),
             "provider": state.get("provider", ""),
             "model": state.get("model", ""),
+            "execution_id": state.get("execution_id"),
             "decision": state.get("decision"),
             "workflow_plan": state.get("workflow_plan"),
             "response": state.get("response", ""),
@@ -353,6 +354,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
 
         agent = get_agent(agent_id="orchestrator")
         session_id = str(state.get("session_id", ""))
+        execution_id = state.get("execution_id")
 
         # Build the delegate tool with runtime context
         delegate_tool = DelegateToAgentTool()
@@ -360,6 +362,8 @@ class SimpleOrchestratorGraph(SimpleGraph):
             delegate_tool.root_dir = state["folder_path"]
         if session_id:
             delegate_tool.session_id = session_id
+        if execution_id:
+            delegate_tool.execution_id = str(execution_id)
 
         lc_tools = to_langchain_tools([delegate_tool])
 

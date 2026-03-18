@@ -232,6 +232,59 @@ class AgentRuntime:
             return AgentRuntime._snapshot_json(value.value)
         return str(value)
 
+    async def _sync_session_runtime_state(
+        self,
+        *,
+        session_id: str | None,
+        execution_id: str | None,
+    ) -> None:
+        if self._execution_memory is None or not session_id or not execution_id:
+            return
+
+        try:
+            execution = await self._execution_memory.get_execution(execution_id)
+            if execution is None:
+                return
+
+            root_execution_id = getattr(execution, "root_execution_id", None) or execution_id
+            root_execution = execution
+            if root_execution_id != execution_id:
+                loaded_root = await self._execution_memory.get_execution(root_execution_id)
+                if loaded_root is not None:
+                    root_execution = loaded_root
+
+            status = getattr(root_execution, "status", None)
+            active = status in {"queued", "running", "pause_requested", "paused", "resuming"}
+            state = {
+                "agent_runtime": {
+                    "latest_execution_id": execution_id,
+                    "latest_root_execution_id": root_execution_id,
+                    "active_execution_id": root_execution_id if active else None,
+                    "root_execution_id": root_execution_id,
+                    "status": status,
+                    "stage": getattr(root_execution, "current_stage", None),
+                    "progress": getattr(root_execution, "progress", None),
+                    "can_resume": status in {"paused", "pause_requested"},
+                    "active": active,
+                    "updated_at": self._snapshot_json(
+                        getattr(root_execution, "updated_at", None)
+                        or getattr(root_execution, "created_at", None)
+                    ),
+                }
+            }
+            await self._execution_memory.save_session_runtime_state(
+                session_id=session_id,
+                execution_id=root_execution_id,
+                state=state,
+            )
+        except Exception as exc:
+            _logger.warning(
+                "session_runtime_state_sync_failed",
+                session_id=session_id,
+                execution_id=execution_id,
+                error=str(exc),
+            )
+
     def _build_context_bundle(self, state_values: dict[str, Any], *, next_nodes: tuple[str, ...] | list[str]) -> dict[str, Any]:
         values = self._snapshot_json(state_values)
         return {
@@ -253,6 +306,9 @@ class AgentRuntime:
         run_id: str | None,
         provider: str,
         model: str,
+        execution_id: str | None = None,
+        status: str = "running",
+        stage: str | None = None,
     ) -> Any | None:
         if self._execution_memory is None:
             return None
@@ -270,10 +326,13 @@ class AgentRuntime:
         try:
             return await self._execution_memory.start_execution(
                 session_id=session_id,
+                execution_id=execution_id or getattr(payload, "execution_id", None),
                 run_id=run_id,
                 mode=execution_mode,
                 provider=provider,
                 model=model,
+                status=status,
+                stage=stage or ("routing" if execution_mode == "orchestrated" else "booting"),
                 metadata=metadata,
             )
         except Exception as exc:
@@ -284,6 +343,52 @@ class AgentRuntime:
                 error=str(exc),
             )
             return None
+
+    async def create_execution(
+        self,
+        payload: AgentChatRequest,
+        *,
+        session_id: str | None = None,
+        run_id: str | None = None,
+    ) -> dict[str, Any]:
+        settings = get_settings()
+        provider = payload.provider or settings.default_provider
+        model = payload.model or settings.default_model
+        resolved_session_id = session_id or payload.sessionId or f"sess-{uuid.uuid4()}"
+        execution = await self._start_execution(
+            payload=payload,
+            session_id=resolved_session_id,
+            run_id=run_id,
+            provider=provider,
+            model=model,
+            execution_id=getattr(payload, "execution_id", None),
+            status="queued",
+            stage="routing" if payload.orchestrate or self._should_force_structured_analyst_flow(payload) else "booting",
+        )
+        if execution is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+
+        with contextlib.suppress(Exception):
+            await self._execution_memory.append_event(
+                execution.id,
+                "execution_created",
+                {
+                    "session_id": resolved_session_id,
+                    "root_execution_id": getattr(execution, "root_execution_id", execution.id),
+                    "visibility": "internal",
+                },
+                stage=getattr(execution, "current_stage", None),
+            )
+
+        status = await self.get_execution_status(execution.id)
+        metadata = dict(status.get("metadata", {}) or {})
+        metadata.setdefault("session_id", resolved_session_id)
+        status["metadata"] = metadata
+        await self._sync_session_runtime_state(
+            session_id=resolved_session_id,
+            execution_id=status.get("root_execution_id") or execution.id,
+        )
+        return status
 
     async def resume_execution(
         self,
@@ -318,6 +423,10 @@ class AgentRuntime:
             folder_path=graph_input.get("folder_path"),
         )
         await self._execution_memory.mark_status(execution_id, "resuming")
+        await self._sync_session_runtime_state(
+            session_id=getattr(execution, "session_id", None),
+            execution_id=execution_id,
+        )
 
         async for event in self._stream_chat_orchestrated(
             payload,
@@ -354,26 +463,123 @@ class AgentRuntime:
             next_nodes = list(getattr(snapshot, "next_nodes", []) or [])
             progress = 1.0 if not next_nodes and status == "completed" else 0.5 if next_nodes else 0.0
 
+        tree = await self._execution_memory.get_execution_tree(execution_id)
+        root_execution_id = getattr(execution, "root_execution_id", None) or execution_id
+        events = [
+            self._snapshot_json(getattr(item, "__dict__", item))
+            for item in await self._execution_memory.list_events(root_execution_id, after_id=0)
+        ]
+        messages = [
+            self._snapshot_json(getattr(item, "__dict__", item))
+            for item in await self._execution_memory.list_messages(execution_id, include_consumed=True)
+        ]
+        processes = [
+            self._snapshot_json(getattr(item, "__dict__", item))
+            for item in await self._execution_memory.list_processes(execution_id)
+        ]
+
         return {
             "execution_id": execution_id,
+            "root_execution_id": root_execution_id,
+            "parent_execution_id": getattr(execution, "parent_execution_id", None),
             "status": status,
+            "stage": getattr(execution, "current_stage", None),
             "paused": status in {"paused", "pause_requested"},
             "can_resume": status in {"paused", "pause_requested"},
             "progress": progress,
             "snapshot": snapshot_payload if isinstance(snapshot_payload, dict) else {"value": snapshot_payload},
+            "tree": tree if isinstance(tree, dict) else {"value": tree},
+            "events": events,
+            "messages": messages,
+            "processes": processes,
             "metadata": metadata,
+        }
+
+    async def get_execution_events(self, execution_id: str, *, after_id: int = 0) -> list[dict[str, Any]]:
+        if self._execution_memory is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+
+        execution = await self._execution_memory.get_execution(execution_id)
+        if execution is None:
+            raise ValueError(f"Execution not found: {execution_id}")
+
+        root_execution_id = getattr(execution, "root_execution_id", None) or execution_id
+        rows = await self._execution_memory.list_events(root_execution_id, after_id=after_id)
+        return [self._snapshot_json(getattr(row, "__dict__", row)) for row in rows]
+
+    async def send_execution_message(
+        self,
+        execution_id: str,
+        *,
+        message_type: str,
+        content: str,
+        sender_execution_id: str | None = None,
+        visibility: str = "internal",
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if self._execution_memory is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+
+        execution = await self._execution_memory.get_execution(execution_id)
+        if execution is None:
+            raise ValueError(f"Execution not found: {execution_id}")
+
+        message = await self._execution_memory.record_message(
+            execution_id=execution_id,
+            message_type=message_type,
+            sender_execution_id=sender_execution_id,
+            recipient_execution_id=execution_id,
+            content=content,
+            visibility=visibility,
+            payload=payload,
+            status="pending",
+        )
+        await self._execution_memory.append_event(
+            execution_id,
+            "message_received",
+            {
+                "message_type": message_type,
+                "sender_execution_id": sender_execution_id,
+                "recipient_execution_id": execution_id,
+                "visibility": visibility,
+            },
+            stage="applying_context" if message_type == "context_update" else getattr(execution, "current_stage", None),
+        )
+        await self._sync_session_runtime_state(
+            session_id=getattr(execution, "session_id", None),
+            execution_id=execution_id,
+        )
+
+        return {
+            "success": True,
+            "execution_id": execution_id,
+            "root_execution_id": getattr(execution, "root_execution_id", execution_id),
+            "parent_execution_id": getattr(execution, "parent_execution_id", None),
+            "status": getattr(execution, "status", "unknown"),
+            "stage": getattr(execution, "current_stage", None),
+            "message": self._snapshot_json(getattr(message, "__dict__", message)),
         }
 
     async def pause_execution(self, execution_id: str, *, reason: str | None = None) -> dict[str, Any]:
         if self._execution_memory is None:
             raise RuntimeError("Execution memory service is unavailable.")
         await self._execution_memory.request_pause(execution_id=execution_id, reason=reason)
+        execution = await self._execution_memory.get_execution(execution_id)
+        await self._sync_session_runtime_state(
+            session_id=getattr(execution, "session_id", None) if execution is not None else None,
+            execution_id=execution_id,
+        )
         return await self.get_execution_status(execution_id)
 
     async def mark_execution_resumed(self, execution_id: str) -> dict[str, Any]:
         if self._execution_memory is None:
             raise RuntimeError("Execution memory service is unavailable.")
         await self._execution_memory.mark_resumed(execution_id=execution_id)
+        execution = await self._execution_memory.get_execution(execution_id)
+        await self._sync_session_runtime_state(
+            session_id=getattr(execution, "session_id", None) if execution is not None else None,
+            execution_id=execution_id,
+        )
         return await self.get_execution_status(execution_id)
 
     async def stream_chat(
@@ -387,14 +593,42 @@ class AgentRuntime:
         model = payload.model or settings.default_model
         memory_agent_id = self._resolve_memory_agent_id(payload)
         derived_from_recall = is_continuation_prompt(payload.message)
-        execution = await self._start_execution(
-            payload=payload,
-            session_id=session_id,
-            run_id=run_id,
-            provider=provider,
-            model=model,
-        )
+        execution = None
+        requested_execution_id = getattr(payload, "execution_id", None)
+        if self._execution_memory is not None and requested_execution_id:
+            execution = await self._execution_memory.get_execution(requested_execution_id)
+            if execution is not None:
+                with contextlib.suppress(Exception):
+                    await self._execution_memory.mark_status(
+                        requested_execution_id,
+                        "running",
+                        stage="routing" if payload.orchestrate or self._should_force_structured_analyst_flow(payload) else "booting",
+                    )
+
+        if execution is None:
+            execution = await self._start_execution(
+                payload=payload,
+                session_id=session_id,
+                run_id=run_id,
+                provider=provider,
+                model=model,
+                execution_id=requested_execution_id,
+            )
         execution_id = getattr(execution, "id", None)
+
+        if self._execution_memory is not None and execution_id:
+            with contextlib.suppress(Exception):
+                await self._execution_memory.mark_status(execution_id, "running", stage="routing")
+                await self._execution_memory.append_event(
+                    execution_id,
+                    "execution_started",
+                    {
+                        "session_id": session_id,
+                        "visibility": "internal",
+                    },
+                    stage="routing",
+                )
+            await self._sync_session_runtime_state(session_id=session_id, execution_id=execution_id)
 
         # 1. Save user message in background — do NOT await before streaming starts
         asyncio.create_task(
@@ -416,6 +650,24 @@ class AgentRuntime:
         assistant_completed = False
 
         try:
+            if execution_id:
+                yield self._custom_event(
+                    counter=counter,
+                    run_id=run_id or str(uuid.uuid4()),
+                    session_id=session_id,
+                    event_type="agent_execution_start",
+                    data=json.dumps(
+                        {
+                            "execution_id": execution_id,
+                            "root_execution_id": getattr(execution, "root_execution_id", execution_id),
+                            "parent_execution_id": getattr(execution, "parent_execution_id", None),
+                            "status": getattr(execution, "status", "running"),
+                            "stage": getattr(execution, "current_stage", None),
+                        }
+                    ),
+                    agent="orchestrator" if payload.orchestrate or self._should_force_structured_analyst_flow(payload) else getattr(payload, "agent_type", None),
+                )
+
             if payload.orchestrate or self._should_force_structured_analyst_flow(payload):
                 async for event in self._stream_chat_orchestrated(payload, session_id, run_id, execution_id=execution_id):
                     if event.type == "response":
@@ -425,7 +677,12 @@ class AgentRuntime:
                     yield event
             elif getattr(payload, "agent_type", None):
                 async for event in self._stream_with_watchdog(
-                    source=self._stream_chat_direct_agent(payload, session_id, run_id),
+                    source=self._stream_chat_direct_agent(
+                        payload,
+                        session_id,
+                        run_id,
+                        execution_id=execution_id,
+                    ),
                     payload=payload,
                     session_id=session_id,
                     run_id=run_id,
@@ -444,6 +701,25 @@ class AgentRuntime:
                     elif event.type == "done":
                         assistant_completed = True
                     yield event
+
+            if self._execution_memory is not None and execution_id:
+                execution_record = await self._execution_memory.get_execution(execution_id)
+                terminal_statuses = {"completed", "failed", "paused", "pause_requested", "canceled"}
+                if execution_record is not None and getattr(execution_record, "status", None) not in terminal_statuses:
+                    final_stage = "responding" if execution_mode == "orchestrated" else "finalizing"
+                    await self._execution_memory.mark_status(
+                        execution_id,
+                        "completed",
+                        stage=final_stage,
+                        progress=1.0,
+                    )
+                    await self._execution_memory.append_event(
+                        execution_id,
+                        "execution_completed",
+                        {"visibility": "internal"},
+                        stage=final_stage,
+                    )
+                await self._sync_session_runtime_state(session_id=session_id, execution_id=execution_id)
         finally:
             # 3. Save full assistant response — runs even if generator is closed early
             full_response = "".join(assistant_content)
@@ -466,6 +742,8 @@ class AgentRuntime:
         payload: AgentChatRequest,
         session_id: str,
         run_id: str | None = None,
+        *,
+        execution_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         from mindflow_backend.agents._registry import get_agent
 
@@ -492,7 +770,11 @@ class AgentRuntime:
                     root_dir=sandbox_root,
                     read_only=(agent.sandbox == SandboxMode.READ_ONLY),
                 )
-                registry = create_default_registry(sandbox, session_id=session_id)
+                registry = create_default_registry(
+                    sandbox,
+                    session_id=session_id,
+                    execution_id=execution_id,
+                )
                 tools = registry.get_tools_for_agent(agent)
 
             lc_tools: list[Any] = []
@@ -1420,12 +1702,14 @@ class AgentRuntime:
         provider: str,
         model: str,
         history_dicts: list[dict[str, str]],
+        execution_id: str | None = None,
     ) -> dict[str, Any]:
         return {
             "message": payload.message,
             "provider": provider,
             "model": model,
             "session_id": session_id,
+            "execution_id": execution_id,
             "agent_type": getattr(payload, "agent_type", None),
             "folder_path": getattr(payload, "folder_path", None),
             "conversation_history": history_dicts,
@@ -1442,6 +1726,7 @@ class AgentRuntime:
         run_id: str,
         session_id: str,
         agent_state: dict[str, str | None],
+        execution_id: str | None = None,
     ) -> str | None:
         current_agent = agent_state.get("current_agent")
         event_stream: Any
@@ -1598,6 +1883,15 @@ class AgentRuntime:
                             )
 
             elif event_type == "on_chain_start" and event.get("name") == "route":
+                if self._execution_memory is not None and execution_id:
+                    with contextlib.suppress(Exception):
+                        await self._execution_memory.mark_status(execution_id, "running", stage="routing")
+                        await self._execution_memory.append_event(
+                            execution_id,
+                            "routing_started",
+                            {"visibility": "internal"},
+                            stage="routing",
+                        )
                 yield self._custom_event(
                     counter=counter,
                     run_id=run_id,
@@ -1612,6 +1906,17 @@ class AgentRuntime:
                 if output:
                     decision = output.get("decision")
                     if decision:
+                        if self._execution_memory is not None and execution_id:
+                            with contextlib.suppress(Exception):
+                                await self._execution_memory.append_event(
+                                    execution_id,
+                                    "routing_completed",
+                                    {
+                                        "decision": self._decision_payload(decision),
+                                        "visibility": "internal",
+                                    },
+                                    stage="routing",
+                                )
                         yield self._custom_event(
                             counter=counter,
                             run_id=run_id,
@@ -1636,6 +1941,15 @@ class AgentRuntime:
                             event_type="reflection_mode_start",
                             data="",
                         )
+                        if self._execution_memory is not None and execution_id:
+                            with contextlib.suppress(Exception):
+                                await self._execution_memory.mark_status(execution_id, "running", stage="reflecting")
+                                await self._execution_memory.append_event(
+                                    execution_id,
+                                    "reflection_started",
+                                    {"agent_id": current_agent, "visibility": "internal"},
+                                    stage="reflecting",
+                                )
 
                         if self._is_direct_response(decision):
                             current_agent = "orchestrator"
@@ -1660,6 +1974,19 @@ class AgentRuntime:
                                 ),
                                 agent=current_agent,
                             )
+                            if self._execution_memory is not None and execution_id:
+                                with contextlib.suppress(Exception):
+                                    await self._execution_memory.mark_status(execution_id, "running", stage="delegating")
+                                    await self._execution_memory.append_event(
+                                        execution_id,
+                                        "delegation_created",
+                                        {
+                                            **payload_data,
+                                            "delegated_by": "orchestrator",
+                                            "visibility": "internal",
+                                        },
+                                        stage="delegating",
+                                    )
                             yield self._custom_event(
                                 counter=counter,
                                 run_id=run_id,
@@ -1727,6 +2054,7 @@ class AgentRuntime:
                 provider=provider,
                 model=model,
                 history_dicts=history_dicts,
+                execution_id=execution_id,
             )
 
             if self._execution_memory is not None and execution_id and self._execution_memory is not None:
@@ -1752,6 +2080,7 @@ class AgentRuntime:
                     run_id=run_id,
                     session_id=session_id,
                     agent_state=agent_state,
+                    execution_id=execution_id,
                 ):
                     yield emitted_event
             else:
@@ -1774,6 +2103,7 @@ class AgentRuntime:
                             run_id=run_id,
                             session_id=session_id,
                             agent_state=agent_state,
+                            execution_id=execution_id,
                         ):
                             yield emitted_event
 
@@ -1813,6 +2143,10 @@ class AgentRuntime:
                                 current_node=None,
                                 last_safe_node="completed",
                             )
+                            await self._sync_session_runtime_state(
+                                session_id=session_id,
+                                execution_id=execution_id,
+                            )
                             break
 
                         await self._execution_memory.mark_status(
@@ -1833,6 +2167,10 @@ class AgentRuntime:
                                 "paused",
                                 current_node=next_nodes[0],
                                 last_safe_node=next_nodes[0],
+                            )
+                            await self._sync_session_runtime_state(
+                                session_id=session_id,
+                                execution_id=execution_id,
                             )
                             yield self._custom_event(
                                 counter=counter,
@@ -1874,6 +2212,19 @@ class AgentRuntime:
                 event_type="reflection_mode_end",
                 data="",
             )
+            if self._execution_memory is not None and execution_id:
+                with contextlib.suppress(Exception):
+                    await self._execution_memory.append_event(
+                        execution_id,
+                        "reflection_completed",
+                        {"visibility": "internal"},
+                        stage="responding",
+                    )
+                    await self._execution_memory.mark_status(execution_id, "running", stage="responding")
+                    await self._sync_session_runtime_state(
+                        session_id=session_id,
+                        execution_id=execution_id,
+                    )
             current_agent = agent_state.get("current_agent")
             if current_agent:
                 yield self._custom_event(
@@ -1892,6 +2243,14 @@ class AgentRuntime:
                     ),
                     agent=current_agent,
                 )
+                if self._execution_memory is not None and execution_id:
+                    with contextlib.suppress(Exception):
+                        await self._execution_memory.append_event(
+                            execution_id,
+                            "delegation_completed",
+                            {"agent_id": current_agent, "success": True, "visibility": "internal"},
+                            stage="responding",
+                        )
             yield normalizer.step_event(
                 self._next_seq(counter),
                 run_id=run_id,
@@ -1912,6 +2271,10 @@ class AgentRuntime:
                         {"error": str(exc)},
                     )
                     await self._execution_memory.mark_status(execution_id, "failed", error=str(exc))
+                    await self._sync_session_runtime_state(
+                        session_id=session_id,
+                        execution_id=execution_id,
+                    )
             _logger.error("orchestrator_graph_error", error=str(exc))
             yield self._error_event(
                 exc=exc, counter=counter, provider=provider, model=model,

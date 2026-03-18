@@ -137,14 +137,15 @@ async def run_workflow_step(
                         lc_tools=lc_tools,
                         chunk_dispatcher=chunk_dispatcher,
                         event_dispatcher=event_dispatcher,
-                        max_iterations=2 if memory_grounded else policy.max_iterations,
+                        max_iterations=policy.max_iterations,  # Use full iterations even with memory
                     )
                 else:
                     response_text = await invoke_with_tools(
                         llm=llm_with_tools,
                         messages=messages,
                         lc_tools=lc_tools,
-                        max_iterations=2 if memory_grounded else policy.max_iterations,
+                        event_dispatcher=event_dispatcher,
+                        max_iterations=policy.max_iterations,  # Use full iterations even with memory
                     )
             else:
                 response = await llm.ainvoke(messages)

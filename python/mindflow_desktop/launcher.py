@@ -37,6 +37,34 @@ def _run_step(cmd: list[str], *, cwd: Path) -> None:
     subprocess.run(cmd, cwd=str(cwd), check=True)
 
 
+def _docker_compose_up(compose_file: Path, env_file: Path, *, cwd: Path) -> None:
+    import re
+
+    cmd = [
+        "docker", "compose",
+        "--env-file", str(env_file),
+        "-f", str(compose_file),
+        "up", "-d", "--remove-orphans",
+    ]
+    result = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True)
+    if result.returncode == 0:
+        return
+
+    combined = result.stderr + result.stdout
+
+    # Container name conflict: a container with the same name exists but belongs
+    # to a different compose project (e.g. started via the root docker-compose.yml).
+    # Force-remove each conflicting container by name, then retry once.
+    if "already in use" in combined:
+        conflicting = re.findall(r'container name "/?([^"]+)"', combined)
+        for name in conflicting:
+            subprocess.run(["docker", "rm", "-f", name.lstrip("/")], capture_output=True)
+        subprocess.run(cmd, cwd=str(cwd), check=True)
+        return
+
+    raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+
+
 def _wait_for_postgres(container_name: str, user: str, db_name: str, *, timeout_seconds: int = 60) -> None:
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
@@ -105,14 +133,16 @@ def run() -> None:
 
     compose_file = python_root / "docker-compose.backend.yml"
 
-    _run_step(["docker", "compose", "--env-file", str(env_file), "-f", str(compose_file), "up", "-d"], cwd=python_root)
+    _docker_compose_up(compose_file, env_file, cwd=python_root)
 
     container_name = os.getenv("POSTGRES_CONTAINER_NAME", "mindflow-postgres-v1")
     db_user = os.getenv("POSTGRES_USER", "mindflow_app")
     db_name = os.getenv("POSTGRES_DB", "mindflow_v1")
     _wait_for_postgres(container_name, db_user, db_name)
 
-    _run_step([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=python_root)
+    # Migration 20260309_0009 requires pgvector which is not available in the
+    # bundled PostgreSQL image.  Stop at the last safe revision.
+    _run_step([sys.executable, "-m", "alembic", "upgrade", "20260308_0008"], cwd=python_root)
 
     api_url = os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000")
     logs_dir = python_root / ".logs"
@@ -134,6 +164,18 @@ def run() -> None:
     )
 
     processes: list[subprocess.Popen[str]] = [api_process]
+
+    # Start the React frontend dev server unless a pre-built URL is configured.
+    if not os.getenv("MINDFLOW_FRONTEND_URL"):
+        frontend_root = python_root.parent / "frontend"
+        if (frontend_root / "package.json").exists():
+            frontend_process = _start_background_process(
+                ["npm", "run", "dev"],
+                cwd=frontend_root,
+                log_path=logs_dir / "frontend.log",
+            )
+            processes.append(frontend_process)
+            time.sleep(2)  # give Vite time to bind its port
 
     # Optional services for local power users.
     if _truthy(os.getenv("MINDFLOW_START_GRPC")):

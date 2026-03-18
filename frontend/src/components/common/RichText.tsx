@@ -49,6 +49,20 @@ export const RichText: React.FC<RichTextProps> = ({ content, className = '' }) =
               </a>
             );
           },
+          li({ children, ...props }) {
+            const text = String(children);
+            if (text.startsWith('[ ] ') || text.startsWith('[x] ') || text.startsWith('[X] ')) {
+              const checked = text.startsWith('[x] ') || text.startsWith('[X] ');
+              const rest = text.slice(4);
+              return (
+                <li className="rich-text-task-item" data-checked={String(checked)} {...(props as React.HTMLAttributes<HTMLLIElement>)}>
+                  <span className="rich-text-checkbox" aria-hidden="true">{checked ? '✓' : ''}</span>
+                  <span>{rest}</span>
+                </li>
+              );
+            }
+            return <li {...(props as React.HTMLAttributes<HTMLLIElement>)}>{children}</li>;
+          },
           code({ className: codeClassName, children, ...props }) {
             const text = normalizeCodeChildren(children).replace(/\n$/, '');
             const isBlock = Boolean(codeClassName?.includes('language-')) || text.includes('\n');

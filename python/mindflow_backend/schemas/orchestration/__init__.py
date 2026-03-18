@@ -28,6 +28,9 @@ from mindflow_backend.schemas.orchestration.planning import (
     PlanTask,
     PlanningRequest,
     PlanningResponse,
+    PlanningDecision,
+    PlanningAnalysisRequest,
+    PlanningTriggerMetrics,
 )
 
 __all__ = [
@@ -56,4 +59,7 @@ __all__ = [
     "PlanTask",
     "PlanningRequest",
     "PlanningResponse",
+    "PlanningDecision",
+    "PlanningAnalysisRequest",
+    "PlanningTriggerMetrics",
 ]

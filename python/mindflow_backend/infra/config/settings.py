@@ -141,6 +141,13 @@ class Settings(BaseSettings):
     enable_context_governance: bool = Field(default=False, alias="ENABLE_CONTEXT_GOVERNANCE")
     enable_session_chunks: bool = Field(default=False, alias="ENABLE_SESSION_CHUNKS")
     chunk_target_tokens: int = Field(default=3000, alias="CHUNK_TARGET_TOKENS")
+    
+    # Planning Configuration
+    enable_llm_planning_trigger: bool = Field(
+        default=False,
+        alias="ENABLE_LLM_PLANNING_TRIGGER",
+        description="Enable LLM-based semantic planning trigger (replaces keyword matching)"
+    )
 
     # Execution Window Configuration
     execution_window_size: int = Field(default=10000, alias="EXECUTION_WINDOW_SIZE")

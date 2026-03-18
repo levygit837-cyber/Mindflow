@@ -252,8 +252,12 @@ class AgentExecution(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     session_id: Mapped[str] = mapped_column(String(64), index=True)
+    root_execution_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    parent_execution_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     agent_id: Mapped[str] = mapped_column(String(64), index=True)
+    execution_role: Mapped[str] = mapped_column(String(64), default="root_orchestrator", index=True)
+    owner_execution_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     mode: Mapped[str] = mapped_column(String(32), default="orchestrated")
     goal: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="running", index=True)
@@ -265,9 +269,12 @@ class AgentExecution(Base):
     model: Mapped[str | None] = mapped_column(String(100), nullable=True)
     progress: Mapped[float | None] = mapped_column(Float, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state_version: Mapped[int] = mapped_column(Integer, default=1)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_event_sequence: Mapped[int] = mapped_column(Integer, default=0)
     last_snapshot_sequence: Mapped[int] = mapped_column(Integer, default=0)
     last_effect_sequence: Mapped[int] = mapped_column(Integer, default=0)
+    last_message_sequence: Mapped[int] = mapped_column(Integer, default=0)
     last_event_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_snapshot_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     context_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -332,6 +339,46 @@ class AgentExecutionEffect(Base):
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class AgentExecutionMessage(Base):
+    __tablename__ = "agent_execution_messages"
+    __table_args__ = (UniqueConstraint("execution_id", "sequence", name="uq_agent_execution_message_sequence"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    execution_id: Mapped[str] = mapped_column(String(64), ForeignKey("agent_executions.id", ondelete="CASCADE"), index=True)
+    root_execution_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    parent_execution_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    message_type: Mapped[str] = mapped_column(String(32), index=True)
+    sender_execution_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    recipient_execution_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String(16), default="internal")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    content: Mapped[str] = mapped_column(Text, default="")
+    payload_json: Mapped[dict[str, Any]] = mapped_column("payload", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentExecutionProcess(Base):
+    __tablename__ = "agent_execution_processes"
+    __table_args__ = (UniqueConstraint("execution_id", "process_key", name="uq_agent_execution_process_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    execution_id: Mapped[str] = mapped_column(String(64), ForeignKey("agent_executions.id", ondelete="CASCADE"), index=True)
+    process_key: Mapped[str] = mapped_column(String(128), index=True)
+    tab_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    pid: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    owner_agent_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    terminal_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cwd: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SessionRuntimeState(Base):

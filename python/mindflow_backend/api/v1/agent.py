@@ -12,7 +12,12 @@ from mindflow_backend.api.controllers.agent_controller import AgentController
 from mindflow_backend.utils.formatting import format_sse
 from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
-from mindflow_backend.schemas.chat.agent import AgentChatRequest, AgentExecutionResponse, StreamEventMeta
+from mindflow_backend.schemas.chat.agent import (
+    AgentChatRequest,
+    AgentExecutionMessageRequest,
+    AgentExecutionResponse,
+    StreamEventMeta,
+)
 from mindflow_backend.schemas.tools.shell_tabs import ShellTabCreateRequest, ShellTabExecRequest
 from mindflow_backend.services import get_shell_tab_service
 
@@ -33,6 +38,18 @@ async def stream_chat(payload: AgentChatRequest, request: Request) -> StreamingR
 
     # Delegate to controller
     return await agent_controller.stream_chat(payload, request)
+
+
+@router.post("/executions", response_model=AgentExecutionResponse)
+async def create_execution(payload: AgentChatRequest, request: Request):
+    """Create a durable root execution before opening a stream."""
+    try:
+        payload.message = sanitize_message(payload.message)
+    except SanitizationError as exc:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    return await agent_controller.create_execution(payload, request)
 
 
 @router.get("/capabilities/{agent_type}")
@@ -57,6 +74,53 @@ async def validate_agent_request(request_data: dict):
 async def get_execution_status(execution_id: str, request: Request):
     """Get status for an agent execution."""
     return await agent_controller.get_execution_status(execution_id, request)
+
+
+@router.get("/execution/{execution_id}/events")
+async def stream_execution_events(
+    execution_id: str,
+    request: Request,
+    after_seq: int = 0,
+    follow: bool = True,
+) -> StreamingResponse:
+    """Replay durable events and optionally keep polling for live updates."""
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        cursor = after_seq
+        while True:
+            events = await agent_controller.get_execution_events(
+                execution_id,
+                after_id=cursor,
+                req=request,
+            )
+            for event in events:
+                cursor = max(cursor, int(event.get("id", 0) or 0))
+                yield format_sse(event)
+                await asyncio.sleep(0)
+
+            if not follow or await request.is_disconnected():
+                break
+            await asyncio.sleep(0.75)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@router.post("/execution/{execution_id}/messages")
+async def post_execution_message(
+    execution_id: str,
+    payload: AgentExecutionMessageRequest,
+    request: Request,
+):
+    """Append a durable mailbox message to a running execution."""
+    return await agent_controller.send_execution_message(execution_id, payload, request)
 
 
 @router.post("/execution/{execution_id}/pause", response_model=AgentExecutionResponse)
@@ -181,6 +245,7 @@ async def stream_chat_legacy(payload: AgentChatRequest, request: Request) -> Str
             orchestrate=payload.orchestrate,
             agent_type=payload.agent_type,
             folder_path=getattr(payload, "folder_path", None),
+            execution_id=getattr(payload, "execution_id", None),
         ):
             if await request.is_disconnected():
                 break

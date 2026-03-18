@@ -13,7 +13,12 @@ from mindflow_backend.api.schemas.responses import AgentResponse
 from mindflow_backend.services import get_agent_service
 from mindflow_backend.grpc.factory import get_runtime_client
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
-from mindflow_backend.schemas.chat.agent import AgentExecutionResponse, StreamEvent, StreamEventMeta
+from mindflow_backend.schemas.chat.agent import (
+    AgentExecutionMessageRequest,
+    AgentExecutionResponse,
+    StreamEvent,
+    StreamEventMeta,
+)
 
 # ── Module-level client access ────────────────────────────────────────────────
 # Use the transport factory so the active transport mode is respected.
@@ -77,6 +82,7 @@ class AgentController(BaseController):
                         orchestrate=payload.orchestrate,
                         agent_type=payload.agent_type,
                         folder_path=getattr(payload, 'folder_path', None),
+                        execution_id=getattr(payload, "execution_id", None),
                     ):
                         if await request.is_disconnected():
                             break
@@ -131,6 +137,35 @@ class AgentController(BaseController):
             raise self.handle_error(e, "agent_chat_stream")
         except Exception as e:
             raise self.handle_error(e, "agent_chat_stream")
+
+    @require_auth
+    @audit_log("agent_execution_create")
+    async def create_execution(self, payload: AgentChatRequest, request: Request | None = None) -> AgentExecutionResponse:
+        raw_session_id = getattr(payload, "session_id", None) or getattr(payload, "sessionId", None)
+        session_id = self.validate_session_id(raw_session_id)
+        self.log_request(
+            request,
+            "create_execution",
+            agent_type=payload.agent_type,
+            provider=payload.provider,
+            session_id=session_id,
+        )
+
+        runtime_client = _get_local_agent_client()
+        runtime_method = getattr(runtime_client, "create_execution", None)
+        if runtime_method is None or not callable(runtime_method):
+            raise HTTPException(status_code=501, detail="Runtime does not implement create_execution")
+
+        result = runtime_method(payload=payload, session_id=session_id)
+        if inspect.isawaitable(result):
+            result = await result
+
+        return self._normalize_execution_response(
+            payload=result,
+            execution_id=result.get("execution_id", ""),
+            action="create",
+            default_message="Execution created",
+        )
     
     @require_auth
     @audit_log("agent_capabilities")
@@ -228,6 +263,54 @@ class AgentController(BaseController):
             default_message="Resume requested",
         )
 
+    @require_auth
+    @audit_log("agent_execution_events")
+    async def get_execution_events(
+        self,
+        execution_id: str,
+        *,
+        after_id: int = 0,
+        req: Request | None = None,
+    ) -> list[dict[str, Any]]:
+        self.log_request(req, "get_execution_events", execution_id=execution_id, after_id=after_id)
+
+        runtime_client = _get_local_agent_client()
+        runtime_method = getattr(runtime_client, "get_execution_events", None)
+        if runtime_method is None or not callable(runtime_method):
+            raise HTTPException(status_code=501, detail="Runtime does not implement get_execution_events")
+
+        result = runtime_method(execution_id=execution_id, after_id=after_id)
+        if inspect.isawaitable(result):
+            result = await result
+        return [self._normalize_execution_payload(item) for item in list(result or [])]
+
+    @require_auth
+    @audit_log("agent_execution_message")
+    async def send_execution_message(
+        self,
+        execution_id: str,
+        payload: AgentExecutionMessageRequest,
+        req: Request | None = None,
+    ) -> dict[str, Any]:
+        self.log_request(req, "send_execution_message", execution_id=execution_id, message_type=payload.message_type)
+
+        runtime_client = _get_local_agent_client()
+        runtime_method = getattr(runtime_client, "send_execution_message", None)
+        if runtime_method is None or not callable(runtime_method):
+            raise HTTPException(status_code=501, detail="Runtime does not implement send_execution_message")
+
+        result = runtime_method(
+            execution_id=execution_id,
+            message_type=payload.message_type,
+            content=payload.content,
+            sender_execution_id=payload.sender_execution_id,
+            visibility=payload.visibility,
+            payload=payload.payload,
+        )
+        if inspect.isawaitable(result):
+            result = await result
+        return self._normalize_execution_payload(result)
+
     async def _resolve_execution_action(
         self,
         *,
@@ -253,29 +336,77 @@ class AgentController(BaseController):
             result = await result
 
         payload = self._normalize_execution_payload(result)
+        return self._normalize_execution_response(
+            payload=payload,
+            execution_id=execution_id,
+            action=action,
+            default_message=default_message,
+            default_status=default_status,
+        )
+
+    def _normalize_execution_response(
+        self,
+        *,
+        payload: dict[str, Any],
+        execution_id: str,
+        action: str | None,
+        default_message: str,
+        default_status: str | None = None,
+    ) -> AgentExecutionResponse:
         status = payload.get("status") or default_status or action or "unknown"
         snapshot = payload.get("snapshot")
         if snapshot is None:
             snapshot = payload.get("state") or {}
+
+        tree = payload.get("tree") or {}
+        messages = payload.get("messages") or []
+        processes = payload.get("processes") or []
+        events = payload.get("events") or []
 
         metadata = payload.get("metadata")
         if metadata is None:
             metadata = {
                 key: value
                 for key, value in payload.items()
-                if key not in {"execution_id", "status", "action", "paused", "can_resume", "progress", "snapshot", "state", "metadata", "message"}
+                if key
+                not in {
+                    "execution_id",
+                    "root_execution_id",
+                    "parent_execution_id",
+                    "status",
+                    "stage",
+                    "action",
+                    "paused",
+                    "can_resume",
+                    "progress",
+                    "snapshot",
+                    "state",
+                    "tree",
+                    "events",
+                    "messages",
+                    "processes",
+                    "metadata",
+                    "message",
+                }
             }
 
         return AgentExecutionResponse(
             success=payload.get("success", True),
             message=payload.get("message") or default_message,
             execution_id=payload.get("execution_id", execution_id),
+            root_execution_id=payload.get("root_execution_id"),
+            parent_execution_id=payload.get("parent_execution_id"),
             status=status,
+            stage=payload.get("stage"),
             action=payload.get("action", action),
-            paused=payload.get("paused", status == "paused"),
+            paused=payload.get("paused", status in {"paused", "pause_requested"}),
             can_resume=payload.get("can_resume", status in {"paused", "pause_requested"}),
             progress=payload.get("progress"),
             snapshot=snapshot if isinstance(snapshot, dict) else {"value": snapshot},
+            tree=tree if isinstance(tree, dict) else {"value": tree},
+            events=events if isinstance(events, list) else [{"value": events}],
+            messages=messages if isinstance(messages, list) else [{"value": messages}],
+            processes=processes if isinstance(processes, list) else [{"value": processes}],
             metadata=metadata if isinstance(metadata, dict) else {"value": metadata},
             timestamp=payload.get("timestamp"),
         )

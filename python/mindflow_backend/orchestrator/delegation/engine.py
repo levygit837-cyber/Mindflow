@@ -11,6 +11,7 @@ from typing import Any
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.providers import get_model_for_provider
@@ -23,13 +24,18 @@ _logger = get_logger(__name__)
 class DelegationEngine:
     """Handles execution of delegated tasks to specialized agents."""
     
-    def __init__(self):
+    def __init__(self, *, execution_memory: Any | None = None):
         self.settings = get_settings()
+        self._execution_memory = execution_memory or get_execution_memory_service()
         
     async def delegate_task(
         self,
         task: DelegationTask,
         session: Any,  # OrchestratorSession
+        *,
+        session_id: str | None = None,
+        root_execution_id: str | None = None,
+        parent_execution_id: str | None = None,
     ) -> DelegationResult:
         """Execute a delegated task and return structured results."""
         
@@ -38,6 +44,24 @@ class DelegationEngine:
             agent=task.agent.value,
             task_id=str(task.task_id),
             objective=task.objective,
+        )
+
+        child_execution = await self._start_child_execution(
+            task=task,
+            session_id=session_id,
+            root_execution_id=root_execution_id,
+            parent_execution_id=parent_execution_id,
+        )
+        child_execution_id = getattr(child_execution, "id", None)
+        await self._append_execution_event(
+            child_execution_id,
+            "delegation_started",
+            {
+                "task_id": str(task.task_id),
+                "objective": task.objective,
+                "scope": list(task.scope or []),
+            },
+            stage="booting",
         )
         
         try:
@@ -61,13 +85,27 @@ class DelegationEngine:
             
             # Set up sandbox and tools
             sandbox = self._create_sandbox_for_agent(agent, task)
-            tool_registry = create_default_registry(sandbox)
+            tool_registry = create_default_registry(
+                sandbox,
+                session_id=session_id,
+                execution_id=child_execution_id,
+            )
             
             # Get authorized tools (none for sandbox NONE agents)
             if agent.sandbox == SandboxMode.NONE:
                 tools = []
             else:
                 tools = tool_registry.get_tools_for_agent(agent)
+
+            if child_execution_id and (parent_execution_id or root_execution_id):
+                from mindflow_backend.agents.tools.orchestration.notify_orchestrator import NotifyOrchestratorTool
+
+                notify_tool = NotifyOrchestratorTool(execution_memory=self._execution_memory)
+                notify_tool.execution_id = child_execution_id
+                notify_tool.parent_execution_id = parent_execution_id or root_execution_id
+                if session_id:
+                    notify_tool.session_id = session_id
+                tools.append(notify_tool)
 
             # Inject root_dir into system prompt when tools are available
             if sandbox.cwd and tools:
@@ -89,6 +127,14 @@ class DelegationEngine:
                 getattr(task, "model", None) or self.settings.default_model
             )
 
+            if child_execution_id:
+                await self._mark_execution_status(
+                    child_execution_id,
+                    "running",
+                    stage="working",
+                    progress=0.1,
+                )
+
             # Bind tools and run with tool invocation loop if tools are available
             response_text = ""
             if tools:
@@ -102,6 +148,9 @@ class DelegationEngine:
                         llm=llm_with_tools,
                         messages=messages,
                         lc_tools=lc_tools,
+                        event_dispatcher=self._make_event_dispatcher(child_execution_id),
+                        before_iteration=self._make_before_iteration(child_execution_id),
+                        max_iterations=max(1, getattr(task, "max_iterations", 1) * 5),
                     )
 
             if not response_text:
@@ -147,6 +196,35 @@ class DelegationEngine:
                 tokens=tokens_consumed,
                 confidence=result.confidence,
             )
+
+            if child_execution_id:
+                await self._record_result_message(
+                    child_execution_id=child_execution_id,
+                    recipient_execution_id=parent_execution_id or root_execution_id,
+                    message_type="final_result",
+                    content=result.full_output or result.key_findings,
+                    payload={
+                        "task_id": str(task.task_id),
+                        "confidence": result.confidence,
+                        "files_analyzed": list(result.files_analyzed or []),
+                    },
+                )
+                await self._append_execution_event(
+                    child_execution_id,
+                    "delegation_completed",
+                    {
+                        "task_id": str(task.task_id),
+                        "confidence": result.confidence,
+                        "success": True,
+                    },
+                    stage="finalizing",
+                )
+                await self._mark_execution_status(
+                    child_execution_id,
+                    "completed",
+                    stage="finalizing",
+                    progress=1.0,
+                )
             
             return result
             
@@ -157,6 +235,24 @@ class DelegationEngine:
                 task_id=str(task.task_id),
                 error=str(exc),
             )
+
+            if child_execution_id:
+                await self._append_execution_event(
+                    child_execution_id,
+                    "delegation_failed",
+                    {
+                        "task_id": str(task.task_id),
+                        "error": str(exc),
+                        "success": False,
+                    },
+                    stage="finalizing",
+                )
+                await self._mark_execution_status(
+                    child_execution_id,
+                    "failed",
+                    stage="finalizing",
+                    error=str(exc),
+                )
             
             return DelegationResult(
                 task_id=task.task_id,
@@ -171,6 +267,156 @@ class DelegationEngine:
                 tokens_consumed=0,
                 error_message=str(exc),
             )
+
+    async def _start_child_execution(
+        self,
+        *,
+        task: DelegationTask,
+        session_id: str | None,
+        root_execution_id: str | None,
+        parent_execution_id: str | None,
+    ) -> Any | None:
+        if self._execution_memory is None or not session_id or not root_execution_id:
+            return None
+        try:
+            return await self._execution_memory.start_execution(
+                session_id=session_id,
+                agent_id=task.agent_id or task.agent.value,
+                goal=task.objective,
+                root_execution_id=root_execution_id,
+                parent_execution_id=parent_execution_id or root_execution_id,
+                execution_role="delegated_agent",
+                owner_execution_id=root_execution_id,
+                status="running",
+                stage="booting",
+                metadata={
+                    "task_id": str(task.task_id),
+                    "objective": task.objective,
+                    "scope": list(task.scope or []),
+                    "expected_output": task.expected_output,
+                    "context_from_session": task.context_from_session,
+                },
+            )
+        except Exception as exc:
+            _logger.warning("delegation_child_execution_start_failed", error=str(exc))
+            return None
+
+    async def _append_execution_event(
+        self,
+        execution_id: str | None,
+        event_type: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        stage: str | None = None,
+        message: str | None = None,
+    ) -> None:
+        if self._execution_memory is None or not execution_id:
+            return
+        try:
+            await self._execution_memory.append_event(
+                execution_id,
+                event_type,
+                payload or {},
+                stage=stage,
+                message=message,
+            )
+        except Exception as exc:
+            _logger.warning("delegation_event_persist_failed", execution_id=execution_id, error=str(exc))
+
+    async def _mark_execution_status(
+        self,
+        execution_id: str | None,
+        status: str,
+        **updates: Any,
+    ) -> None:
+        if self._execution_memory is None or not execution_id:
+            return
+        try:
+            await self._execution_memory.mark_status(execution_id, status, **updates)
+        except Exception as exc:
+            _logger.warning("delegation_status_persist_failed", execution_id=execution_id, error=str(exc))
+
+    async def _record_result_message(
+        self,
+        *,
+        child_execution_id: str,
+        recipient_execution_id: str | None,
+        message_type: str,
+        content: str,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        if self._execution_memory is None:
+            return
+        try:
+            await self._execution_memory.record_message(
+                execution_id=child_execution_id,
+                message_type=message_type,
+                sender_execution_id=child_execution_id,
+                recipient_execution_id=recipient_execution_id,
+                content=content,
+                visibility="internal",
+                payload=payload,
+                status="pending",
+            )
+        except Exception as exc:
+            _logger.warning("delegation_message_persist_failed", execution_id=child_execution_id, error=str(exc))
+
+    def _make_event_dispatcher(self, execution_id: str | None):
+        async def _dispatch(event_name: str, payload: dict[str, Any]) -> None:
+            if execution_id:
+                await self._append_execution_event(
+                    execution_id,
+                    event_name,
+                    payload,
+                    stage="working",
+                )
+            try:
+                from langchain_core.callbacks.manager import adispatch_custom_event
+
+                await adispatch_custom_event(event_name, payload)
+            except Exception:
+                pass
+
+        return _dispatch
+
+    def _make_before_iteration(self, execution_id: str | None):
+        async def _before_iteration(messages: list[Any], _iteration: int) -> None:
+            if self._execution_memory is None or not execution_id:
+                return
+
+            try:
+                pending = await self._execution_memory.consume_pending_messages(execution_id=execution_id)
+            except Exception as exc:
+                _logger.warning("delegation_pending_message_load_failed", execution_id=execution_id, error=str(exc))
+                return
+
+            for message in pending:
+                content = getattr(message, "content", "")
+                if not content:
+                    continue
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            "Additional context update received while you were working.\n"
+                            f"{content}"
+                        ),
+                    }
+                )
+                await self._append_execution_event(
+                    execution_id,
+                    "message_consumed",
+                    {
+                        "message_id": getattr(message, "id", None),
+                        "message_type": getattr(message, "message_type", None),
+                    },
+                    stage="applying_context",
+                )
+
+            if pending:
+                await self._mark_execution_status(execution_id, "running", stage="working")
+
+        return _before_iteration
     
     def _format_task_for_agent(self, task: DelegationTask) -> str:
         """Format the delegation task for the specific agent."""

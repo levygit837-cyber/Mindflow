@@ -1,18 +1,8 @@
 import React, { type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
 import { RichText } from './RichText';
-
-type AgentType =
-  | 'orchestrator'
-  | 'coder'
-  | 'analyst'
-  | 'researcher'
-  | 'architect'
-  | 'critic'
-  | 'creative'
-  | 'security'
-  | 'default';
+import type { AgentType } from '../../types/agentTypes';
+import { AGENT_ACCENTS, AGENT_LABELS } from '../../types/agentTypes';
 
 interface AgentBubbleProps {
   agentType: AgentType;
@@ -23,53 +13,51 @@ interface AgentBubbleProps {
   className?: string;
 }
 
-const AGENT_ACCENTS: Record<string, string> = {
-  orchestrator: 'var(--signal-synapse)',
-  coder: '#8ac79d',
-  analyst: '#d1a957',
-  researcher: '#79c1d6',
-  architect: 'var(--signal-synapse)',
-  critic: '#c68ba6',
-  creative: '#b899e4',
-  security: '#93b1a4',
-  default: 'var(--signal-synapse)',
-};
-
 export const AgentBubble: React.FC<AgentBubbleProps> = ({
   agentType,
   agentName,
   content,
-  timestamp,
   model,
   className = '',
 }) => {
   const accent = AGENT_ACCENTS[agentType] ?? AGENT_ACCENTS.default;
+  const label = AGENT_LABELS[agentType] ?? 'AGENT';
 
   return (
     <motion.section
       className={`event-shell w-full ${className}`}
       data-model={model || undefined}
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, ease: 'easeOut' }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      <div className="event-track">
-        <span className="signal-dot" />
-      </div>
-
       <div
         className="agent-thread"
-        style={
-          {
-            '--agent-accent': accent,
-          } as CSSProperties
-        }
+        style={{ '--agent-accent': accent } as CSSProperties}
       >
         <div className="agent-thread-header">
-          <span className="agent-thread-name">{agentName}</span>
-          <span className="agent-thread-time">
-            {format(timestamp, 'HH:mm')}
-          </span>
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: accent,
+              flexShrink: 0,
+            }}
+          />
+          <span className="agent-thread-name">{label}</span>
+          {agentName && agentName.toLowerCase() !== agentType && (
+            <span
+              style={{
+                color: 'var(--text-meta)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                letterSpacing: '0.04em',
+              }}
+            >
+              · {agentName}
+            </span>
+          )}
         </div>
 
         <div className="agent-thread-bubble">

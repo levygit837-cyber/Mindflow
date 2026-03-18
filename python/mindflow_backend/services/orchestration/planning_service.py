@@ -152,17 +152,27 @@ class PlanningService:
         request: PlanConfirmationRequest,
     ) -> PlanConfirmationResponse:
         """Confirm, reject, or modify a plan."""
+        from mindflow_backend.orchestrator.planning.metrics import get_metrics_collector
+        
         async with self._lock:
             plan = self._plans.get(request.session_id, {}).get(request.plan_id)
             if plan is None:
                 raise ValueError(f"Plan not found: {request.plan_id}")
             
             now = datetime.now(UTC)
+            metrics = get_metrics_collector()
             
             if request.action == "confirm":
                 plan.status = PlanStatus.CONFIRMED
                 plan.confirmed_at = now
                 plan.updated_at = now
+                
+                # Track confirmation
+                metrics.track_user_confirmation(
+                    session_id=request.session_id,
+                    plan_id=request.plan_id,
+                    confirmed=True,
+                )
                 
                 # Convert to todo list
                 todo_list_id = await self._convert_plan_to_todo(plan)
@@ -186,6 +196,14 @@ class PlanningService:
             elif request.action == "reject":
                 plan.status = PlanStatus.REJECTED
                 plan.updated_at = now
+                
+                # Track rejection
+                metrics.track_user_confirmation(
+                    session_id=request.session_id,
+                    plan_id=request.plan_id,
+                    confirmed=False,
+                )
+                
                 await self._write_plan_file(plan)
                 
                 _logger.info(

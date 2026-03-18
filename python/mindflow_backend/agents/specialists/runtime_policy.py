@@ -80,7 +80,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.MEDIUM,
-        max_iterations=10,
+        max_iterations=25,  # Increased from 10 to 25 for deeper analysis
         summary="Code investigation, structure analysis, symbol tracing, workspace exploration.",
         use_when="Understanding code, tracing bugs, auditing and explaining implementations.",
     ),
@@ -124,7 +124,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=3,
+        max_iterations=15,  # Increased from 3 to 15 for exhaustive analysis
         summary="Deep multi-file investigation with iterative exhaustive analysis.",
         use_when="Cross-cutting, high-complexity analysis requiring multiple passes.",
     ),
@@ -145,7 +145,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.FULL,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=10,
+        max_iterations=30,  # Increased from 10 to 30 for complex implementations
         summary="Code writing, implementation, refactoring and bug fixing.",
         use_when="Implementing features, fixing bugs and editing the codebase.",
     ),
@@ -166,7 +166,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.WEB_SEARCH, ToolScope.PINCHTAB_FLEET, ToolScope.PINCHTAB_BROWSER),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=5,
+        max_iterations=20,  # Increased from 5 to 20 for thorough research
         summary="Web search, documentation lookup and external research.",
         use_when="External research, documentation lookup and technology comparisons.",
     ),

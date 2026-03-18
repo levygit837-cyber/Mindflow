@@ -1,16 +1,18 @@
 import type { LlmProvider } from '../types';
 
-export const DEFAULT_PROVIDER: LlmProvider = 'ollama';
+export const DEFAULT_PROVIDER: LlmProvider = 'google';
 
 export const PROVIDER_MODELS: Record<LlmProvider, string[]> = {
   google: [
+    'gemini-3.1-flash-preview',
     'gemini-3.1-flash-lite-preview',
     'gemini-3.1-pro-preview',
-    'gemini-3.1-pro-preview-customtools',
+    'gemini-2.0-flash',
+    'gemini-2.0-pro',
   ],
-  openai: ['gpt-4o'],
-  anthropic: ['claude-sonnet-4-6', 'claude-opus-4-6'],
-  ollama: ['qwen3.5-0.8b', 'llama3.2'],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
+  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  ollama: ['llama3.2', 'mistral', 'qwen2.5'],
 };
 
 export function isLlmProvider(value: string | null | undefined): value is LlmProvider {

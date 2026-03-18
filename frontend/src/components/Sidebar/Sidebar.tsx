@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronRight, Plus, Settings } from 'lucide-react';
+import { Database, FolderOpen, Plus, Settings, X } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 
 interface Session {
@@ -10,6 +9,13 @@ interface Session {
   created_at: string;
   updated_at: string;
   message_count?: number | null;
+  folder_path?: string | null;
+}
+
+interface DirectoryGroup {
+  path: string | null;   // null = ungrouped / global
+  label: string;
+  sessions: Session[];
 }
 
 const BASE_URL = '/v1';
@@ -26,34 +32,331 @@ function timeAgo(dateStr: string): string {
   const mins = Math.floor(ms / 60000);
   const hours = Math.floor(ms / 3600000);
   const days = Math.floor(ms / 86400000);
-
+  if (mins < 1) return 'now';
   if (mins < 60) return `${mins}m`;
   if (hours < 24) return `${hours}h`;
   if (days < 7) return `${days}d`;
   return 'older';
 }
 
+function shortPath(fullPath: string): string {
+  const parts = fullPath.replace(/\\/g, '/').split('/').filter(Boolean);
+  if (parts.length === 0) return fullPath;
+  if (parts.length === 1) return parts[0];
+  return `…/${parts.at(-1) ?? ''}`;
+}
+
 function hasRealHistory(session: Session): boolean {
   if ((session.message_count ?? 0) > 0) return true;
-
-  const normalizedTitle = String(session.title ?? '')
-    .trim()
-    .toLowerCase();
-
+  const normalizedTitle = String(session.title ?? '').trim().toLowerCase();
   if (!GENERIC_SESSION_TITLES.has(normalizedTitle)) return true;
-
   const createdAt = new Date(session.created_at).getTime();
   const updatedAt = new Date(session.updated_at).getTime();
-
   if (Number.isNaN(createdAt) || Number.isNaN(updatedAt)) return false;
-
   return updatedAt - createdAt > 5000;
 }
+
+function groupByDirectory(sessions: Session[]): DirectoryGroup[] {
+  const map = new Map<string, Session[]>();
+
+  for (const session of sessions) {
+    const key = session.folder_path?.trim() || '';
+    const existing = map.get(key) ?? [];
+    existing.push(session);
+    map.set(key, existing);
+  }
+
+  const groups: DirectoryGroup[] = [];
+
+  // Non-directory sessions first (general)
+  const global = map.get('');
+  if (global?.length) {
+    groups.push({ path: null, label: 'General', sessions: global });
+  }
+
+  // Directory groups sorted alphabetically
+  const dirs = [...map.entries()]
+    .filter(([key]) => key !== '')
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  for (const [path, sessions] of dirs) {
+    groups.push({ path, label: shortPath(path), sessions });
+  }
+
+  return groups;
+}
+
+// ─── Workspace Indexer ───────────────────────────────────────────────────────
+
+interface WorkspaceIndexerProps {
+  onClose: () => void;
+}
+
+const WorkspaceIndexer: React.FC<WorkspaceIndexerProps> = ({ onClose }) => {
+  const [path, setPath] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBrowse = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    // Extract directory from first file's webkitRelativePath
+    const firstPath = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath ?? '';
+    const dirName = firstPath.split('/')[0];
+    setPath(dirName || files[0].name);
+  };
+
+  const handleIndex = async () => {
+    const trimmed = path.trim();
+    if (!trimmed) return;
+    setStatus('loading');
+    setErrorMsg('');
+
+    try {
+      const response = await fetch(`${BASE_URL}/workspace/index`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: trimmed }),
+      });
+
+      if (response.ok) {
+        setStatus('done');
+        setTimeout(onClose, 1400);
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setErrorMsg((data as { detail?: string }).detail ?? `error ${response.status}`);
+        setStatus('error');
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'network error');
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div
+      style={{
+        margin: '0 8px 8px',
+        padding: '10px 12px',
+        border: '1px solid var(--line-primary)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#0D6E6E',
+          }}
+        >
+          Index Workspace
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{ background: 'none', border: 'none', color: 'var(--text-meta)', cursor: 'pointer', display: 'flex', padding: 2 }}
+        >
+          <X size={12} />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          type="text"
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          placeholder="/path/to/workspace"
+          onKeyDown={(e) => e.key === 'Enter' && handleIndex()}
+          style={{
+            flex: 1,
+            height: 30,
+            padding: '0 10px',
+            border: '1px solid var(--line-primary)',
+            borderRadius: 6,
+            background: 'var(--surface-elevated)',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            outline: 'none',
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleBrowse}
+          title="Browse folder"
+          style={{
+            width: 30,
+            height: 30,
+            border: '1px solid var(--line-primary)',
+            borderRadius: 6,
+            background: 'var(--surface-elevated)',
+            color: 'var(--text-meta)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <FolderOpen size={13} />
+        </button>
+      </div>
+
+      {/* Hidden folder picker */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        // @ts-expect-error — webkitdirectory is not in TS types
+        webkitdirectory=""
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      <button
+        type="button"
+        onClick={handleIndex}
+        disabled={!path.trim() || status === 'loading'}
+        style={{
+          marginTop: 8,
+          width: '100%',
+          height: 28,
+          border: 'none',
+          borderRadius: 6,
+          background: status === 'done' ? '#0D2E2E' : '#0D6E6E',
+          color: '#fff',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          cursor: path.trim() && status !== 'loading' ? 'pointer' : 'not-allowed',
+          opacity: !path.trim() ? 0.5 : 1,
+          transition: 'background 200ms',
+        }}
+      >
+        {status === 'loading' ? 'Indexing…' : status === 'done' ? '✓ Indexed' : 'Index'}
+      </button>
+
+      {status === 'error' && (
+        <p
+          style={{
+            marginTop: 6,
+            color: 'var(--state-error)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            lineHeight: 1.4,
+          }}
+        >
+          {errorMsg}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ─── Session Item ─────────────────────────────────────────────────────────────
+
+interface SessionItemProps {
+  session: Session;
+  isActive: boolean;
+  showDir: boolean;
+  onClick: () => void;
+}
+
+const SessionItem: React.FC<SessionItemProps> = ({ session, isActive, showDir, onClick }) => {
+  const updatedAt = session.updated_at || session.created_at;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        padding: '10px 16px 10px 14px',
+        border: 'none',
+        borderLeft: isActive ? '2px solid #0D6E6E' : '2px solid transparent',
+        borderRadius: 0,
+        background: isActive ? 'var(--mindflow-bg-active-session)' : 'transparent',
+        textAlign: 'left',
+        cursor: 'pointer',
+        transition: 'background 150ms, border-color 150ms',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--mindflow-bg-active-session)';
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent';
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
+        <span
+          style={{
+            flex: 1,
+            color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+            fontFamily: 'var(--font-sans)',
+            fontSize: 13,
+            fontWeight: isActive ? 500 : 400,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            lineHeight: 1.35,
+          }}
+        >
+          {session.title || 'untitled'}
+        </span>
+        <span
+          style={{
+            color: 'var(--text-meta)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            flexShrink: 0,
+            letterSpacing: '0.04em',
+          }}
+        >
+          {timeAgo(updatedAt)}
+        </span>
+      </div>
+
+      {showDir && session.folder_path && (
+        <span
+          style={{
+            marginTop: 2,
+            color: 'var(--text-meta)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            letterSpacing: '0.02em',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {shortPath(session.folder_path)}
+        </span>
+      )}
+    </button>
+  );
+};
+
+// ─── Main Sidebar ─────────────────────────────────────────────────────────────
 
 export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId: activeSessionId } = useParams();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [showIndexer, setShowIndexer] = useState(false);
   const sessionRefreshTick = useAppStore((state) => state.sessionRefreshTick);
 
   const fetchSessions = useCallback(async () => {
@@ -68,10 +371,7 @@ export const Sidebar: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchSessions();
-    }, 0);
-
+    const timer = window.setTimeout(() => void fetchSessions(), 0);
     return () => window.clearTimeout(timer);
   }, [fetchSessions, activeSessionId, sessionRefreshTick]);
 
@@ -82,12 +382,7 @@ export const Sidebar: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: 'New session' }),
       });
-
-      if (!response.ok) {
-        navigate('/chat');
-        return;
-      }
-
+      if (!response.ok) { navigate('/chat'); return; }
       const session: Session = await response.json();
       await fetchSessions();
       navigate(`/chat/${session.id}`);
@@ -96,172 +391,285 @@ export const Sidebar: React.FC = () => {
     }
   };
 
+  const groups = groupByDirectory(sessions);
+  // sessions with NO directory are the "global" ones — also collect all dirs
+  const hasDirectories = groups.some((g) => g.path !== null);
+
   return (
     <aside
-      className="sidebar-shell flex h-full flex-col border-r px-3 py-4 md:px-4 md:py-5"
       style={{
-        width: 'clamp(232px, 22vw, 304px)',
-        borderColor: 'var(--line-primary)',
+        width: 240,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: 'var(--mindflow-bg-sidebar)',
+        borderRight: '1px solid var(--line-primary)',
       }}
     >
-      <div className="sidebar-section flex flex-col gap-4 px-1 pb-2 md:px-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div
-              className="flex items-center gap-3"
-              style={{ minHeight: 28 }}
-            >
-              <span className="signal-dot" />
-              <div className="min-w-0">
-                <div
-                  style={{
-                    color: 'var(--text-primary)',
-                    fontFamily: 'var(--font-brand)',
-                    fontSize: 28,
-                    fontWeight: 600,
-                    letterSpacing: '-0.03em',
-                    lineHeight: 0.94,
-                  }}
-                >
-                  Inicio
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            className="subtle-button hidden md:inline-flex"
-            type="button"
-            onClick={() => navigate('/settings')}
-            style={{ minHeight: 34, paddingInline: 12 }}
-          >
-            <Settings size={14} />
-          </button>
-        </div>
-
-        <button
-          className="subtle-button w-full justify-between"
-          type="button"
-          onClick={handleNewChat}
+      {/* ── Logo ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '20px 20px 16px',
+          borderBottom: '1px solid var(--line-primary)',
+        }}
+      >
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: '#0D6E6E',
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 13,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            letterSpacing: '0.02em',
+            flex: 1,
+          }}
         >
-          <span className="flex items-center gap-3">
-            <Plus size={14} />
-            <span className="hidden md:inline">New session</span>
-          </span>
-          <span className="mono-label hidden md:inline" style={{ letterSpacing: '0.08em' }}>
-            start
-          </span>
+          MindFlow
+        </span>
+        <button
+          type="button"
+          onClick={() => navigate('/settings')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 4,
+            color: 'var(--text-meta)',
+            cursor: 'pointer',
+            display: 'flex',
+            borderRadius: 4,
+          }}
+        >
+          <Settings size={13} />
         </button>
       </div>
 
-      <div className="sidebar-section flex min-h-0 flex-1 flex-col px-1 md:px-2">
-        <div className="flex items-center gap-3">
-          <span className="mono-label">Sessions</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--line-soft)' }} />
-        </div>
+      {/* ── Actions ── */}
+      <div style={{ padding: '10px 8px 6px' }}>
+        {/* New Chat */}
+        <button
+          type="button"
+          onClick={handleNewChat}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            width: '100%',
+            height: 34,
+            border: 'none',
+            borderRadius: 6,
+            background: 'var(--mindflow-bg-new-chat)',
+            color: '#0D6E6E',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            marginBottom: 6,
+          }}
+        >
+          <Plus size={12} />
+          New Chat
+        </button>
 
-        <div className="mt-3 flex-1 overflow-y-auto pr-1">
-          <div className="flex flex-col gap-2">
-            {sessions.length === 0 ? (
-              <div
-                className="px-1 py-4"
-                style={{
-                  color: 'var(--text-meta)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'calc(13px * var(--font-scale, 1))',
-                }}
-              >
-                no sessions yet
-              </div>
-            ) : (
-              sessions.map((session, index) => {
-                const isActive = session.id === activeSessionId;
-                const updatedAt = session.updated_at || session.created_at;
-
-                return (
-                  <motion.button
-                    key={session.id}
-                    type="button"
-                    onClick={() => navigate(`/chat/${session.id}`)}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2, delay: index * 0.03 }}
-                    className={`sidebar-session relative flex items-start gap-3 overflow-hidden text-left ${isActive ? 'active' : ''}`}
-                  >
-                    <div className="flex flex-col items-center self-stretch pt-1">
-                      <span className={`signal-dot ${isActive ? '' : 'idle'}`} />
-                      <span className="trace-rail mt-2 flex-1" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div
-                        style={{
-                          color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                          fontSize: 'calc(14px * var(--font-scale, 1))',
-                          fontWeight: 500,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          lineHeight: 1.45,
-                        }}
-                      >
-                        {session.title || 'untitled'}
-                      </div>
-                      <div
-                        className="mt-1 flex items-center gap-2"
-                        style={{
-                          color: 'var(--text-meta)',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 'calc(12px * var(--font-scale, 1))',
-                        }}
-                      >
-                        <span>{timeAgo(updatedAt)}</span>
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      size={14}
-                      style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-ghost)' }}
-                    />
-                  </motion.button>
-                );
-              })
-            )}
-          </div>
-        </div>
+        {/* Index Workspace */}
+        {!showIndexer && (
+          <button
+            type="button"
+            onClick={() => setShowIndexer(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              width: '100%',
+              height: 30,
+              border: '1px solid var(--line-primary)',
+              borderRadius: 6,
+              background: 'transparent',
+              color: 'var(--text-meta)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              fontWeight: 500,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              paddingInline: 10,
+            }}
+          >
+            <Database size={11} />
+            Index Workspace
+          </button>
+        )}
       </div>
 
-      <div className="sidebar-footer mt-4 px-1 py-3 md:px-2">
-        <div className="flex items-center gap-3">
-          <span className="signal-dot idle" />
-          <div className="min-w-0 flex-1">
-            <div
-              className="truncate"
-              style={{ color: 'var(--text-primary)', fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 500 }}
-            >
-              Levy Bonito
-            </div>
-            <div
-              className="truncate"
-              style={{
-                color: 'var(--text-meta)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'calc(12px * var(--font-scale, 1))',
-              }}
-            >
-              admin / pencil
-            </div>
-          </div>
+      {/* ── Indexer panel ── */}
+      {showIndexer && (
+        <WorkspaceIndexer onClose={() => setShowIndexer(false)} />
+      )}
 
-          <button
-            className="subtle-button md:hidden"
-            type="button"
-            onClick={() => navigate('/settings')}
-            style={{ minHeight: 34, paddingInline: 12 }}
+      {/* ── Sessions ── */}
+      {/* Sessions section header */}
+      <div
+        style={{
+          padding: '0 20px 4px',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: 2,
+          textTransform: 'uppercase',
+          color: 'var(--text-meta)',
+        }}
+      >
+        Recent
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {sessions.length === 0 ? (
+          <div
+            style={{
+              padding: '12px 16px',
+              color: 'var(--text-meta)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+            }}
           >
-            <Settings size={14} />
-          </button>
+            no sessions yet
+          </div>
+        ) : hasDirectories ? (
+          // Directory-grouped view
+          groups.map((group) => (
+            <div key={group.path ?? '__global__'}>
+              {/* Group header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '10px 16px 4px',
+                }}
+              >
+                {group.path && <FolderOpen size={10} style={{ color: 'var(--text-meta)', flexShrink: 0 }} />}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-meta)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={group.path ?? undefined}
+                >
+                  {group.label}
+                </span>
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    color: 'var(--text-ghost)',
+                  }}
+                >
+                  {group.sessions.length}
+                </span>
+              </div>
+
+              {/* Sessions in this group */}
+              {group.sessions.map((session) => (
+                <SessionItem
+                  key={session.id}
+                  session={session}
+                  isActive={session.id === activeSessionId}
+                  showDir={false}
+                  onClick={() => navigate(`/chat/${session.id}`)}
+                />
+              ))}
+            </div>
+          ))
+        ) : (
+          // Flat list (no directories yet)
+          sessions.map((session) => (
+            <SessionItem
+              key={session.id}
+              session={session}
+              isActive={session.id === activeSessionId}
+              showDir={false}
+              onClick={() => navigate(`/chat/${session.id}`)}
+            />
+          ))
+        )}
+      </div>
+
+      {/* ── User area ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 14px',
+          borderTop: '1px solid var(--line-primary)',
+        }}
+      >
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            background: '#0D6E6E',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            flexShrink: 0,
+          }}
+        >
+          L
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-sans)',
+              fontSize: 13,
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              lineHeight: 1.3,
+            }}
+          >
+            Levy Bonito
+          </div>
+          <div
+            style={{
+              color: 'var(--text-meta)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              letterSpacing: '0.04em',
+              lineHeight: 1.3,
+            }}
+          >
+            admin
+          </div>
         </div>
       </div>
     </aside>

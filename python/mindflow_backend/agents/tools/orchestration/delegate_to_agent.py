@@ -150,7 +150,13 @@ class DelegateToAgentTool(AsyncToolInterface):
 
             engine = DelegationEngine()
             session = OrchestratorSession()
-            result = await engine.delegate_task(task, session)
+            result = await engine.delegate_task(
+                task,
+                session,
+                session_id=self.session_id,
+                root_execution_id=self.execution_id,
+                parent_execution_id=self.execution_id,
+            )
 
             if result.status == "failed":
                 return f"Delegation failed: {result.error_message}"
