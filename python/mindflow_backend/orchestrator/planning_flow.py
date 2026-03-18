@@ -68,6 +68,10 @@ async def should_trigger_planning(
         "planejar", "plano", "plan", "planejamento",
         "implementar", "refatorar", "migrar", "arquitetura",
         "estruturar", "organizar", "decompor",
+        "implement", "refactor", "migrate", "architecture", 
+        "structure", "organize", "decompose", "design", "build", "create",
+        "planear", "diseñar", "construir", "crear", "arquitectura", 
+        "estructurar", "organizar", "descomponer",
     ]
     message_lower = message.lower()
     has_planning_intent = any(kw in message_lower for kw in planning_keywords)
@@ -210,19 +214,33 @@ async def run_execution_loop(
     iteration = 0
     all_results: list[dict[str, Any]] = []
     
-    while iteration < _SAFETY_ITERATION_LIMIT:
+    # Pre-fetch the list to determine dynamic safety limit and prevent infinite conversion loop
+    try:
+        todo_response = await todo_service.get_list(session_id, plan_id)
+        todo_list = todo_response.todo_list
+    except ValueError:
+        plan = await planning_service.get_plan(session_id, plan_id)
+        if plan:
+            await planning_service._convert_plan_to_todo(plan)
+            try:
+                todo_response = await todo_service.get_list(session_id, plan_id)
+                todo_list = todo_response.todo_list
+            except ValueError as exc:
+                raise RuntimeError(f"Failed to create or retrieve todo list for plan {plan_id}") from exc
+        else:
+            return {"execution_complete": True, "error": "Plan not found."}
+
+    # Dynamic limit: Max 5 iterations per task (to allow for retries/recovery)
+    dynamic_limit = max(20, len(todo_list.items) * 5)
+    
+    while iteration < dynamic_limit:
         iteration += 1
         
-        # Get the todo list
+        # Get the latest state of the todo list
         try:
             todo_response = await todo_service.get_list(session_id, plan_id)
             todo_list = todo_response.todo_list
         except ValueError:
-            # Todo list not found - create from plan
-            plan = await planning_service.get_plan(session_id, plan_id)
-            if plan:
-                await planning_service._convert_plan_to_todo(plan)
-                continue
             break
         
         # Find next pending item

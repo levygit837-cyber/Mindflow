@@ -38,23 +38,15 @@ _OWNER_WEIGHT = {
     "arch_tech": 0.14,
     "critic": 0.1,
 }
-_session_runtime_state_service = None
 
 
 def _get_session_runtime_state_service():
-    global _session_runtime_state_service
-    if _session_runtime_state_service is not None:
-        return _session_runtime_state_service
-
     try:
         from mindflow_backend.services.core import get_session_runtime_state_service
-
-        _session_runtime_state_service = get_session_runtime_state_service()
+        return get_session_runtime_state_service()
     except Exception as exc:
         _logger.warning("todo_session_runtime_state_service_unavailable", error=str(exc))
-        _session_runtime_state_service = None
-    return _session_runtime_state_service
-
+        return None
 
 def normalize_complexity_score(
     raw_score: float | None = None,
@@ -67,7 +59,10 @@ def normalize_complexity_score(
     overall_complexity: float | None = None,
 ) -> float:
     """Normalize task complexity into the [0, 1] interval using runtime heuristics."""
-    base = raw_score if raw_score is not None else 0.35
+    if raw_score is not None:
+        return min(max(raw_score, 0.0), 1.0)
+        
+    base = 0.35
     if overall_complexity is not None:
         base = max(base, min(max(overall_complexity, 0.0), 1.0) * 0.45)
 
@@ -76,11 +71,8 @@ def normalize_complexity_score(
     base += _OWNER_WEIGHT.get((owner_agent or "").lower(), 0.0)
     base += {1: 0.0, 2: 0.07, 3: 0.14}.get(_PRIORITY_WEIGHT.get(priority, 2), 0.07)
 
-    description_words = len(description.split())
-    if description_words > 16:
-        base += 0.06
-    if description_words > 32:
-        base += 0.05
+    # Note: Description word count removed as it was arbitrary and brittle.
+    # We now strictly rely on structural heuristics (dependencies, artifacts, priority, owner).
 
     return round(min(max(base, 0.0), 1.0), 3)
 
@@ -403,6 +395,8 @@ class TodoPlanningService:
         service = _get_session_runtime_state_service()
         if service is None:
             return
+        if service is None:
+            return
 
         try:
             snapshot = await service.load_session_state(session_id)
@@ -445,6 +439,8 @@ class TodoPlanningService:
 
     async def _persist_session_state(self, session_id: str) -> None:
         service = _get_session_runtime_state_service()
+        if service is None:
+            return
         if service is None:
             return
 
