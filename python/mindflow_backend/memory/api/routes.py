@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.memory.api.controller import MemoryController
 from mindflow_backend.api.schemas.requests import (
     MemorySearchRequest,
@@ -9,7 +10,7 @@ from mindflow_backend.api.schemas.requests import (
     ContextWindowRequest
 )
 
-router = APIRouter(prefix="/memory", tags=["memory"])
+router = APIRouter(prefix="/memory", tags=["memory"], dependencies=protected_route_dependencies)
 
 # Initialize controller
 memory_controller = MemoryController()

@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
 from mindflow_backend.workers.infrastructure.queue_manager import get_queue_manager
+from mindflow_backend.workers.research.schemas.browser_tasks import (
+    build_web_search_envelope,
+)
+from mindflow_backend.workers.research.schemas.content_tasks import (
+    build_content_synthesis_envelope,
+)
 
 _logger = get_logger(__name__)
 
@@ -35,15 +43,23 @@ class ResearchTask:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert task to dictionary for queue publishing."""
-        return {
-            "task_type": self.task_type,
-            "task_id": self.task_id,
-            "session_id": self.session_id,
-            "research_domain": self.research_domain,
-            "priority": self.priority,
-            "task_data": self.task_data,
-            "metadata": self.metadata,
-        }
+        envelope = QueueMessageEnvelope(
+            schema_version="1.0",
+            task_id=self.task_id,
+            task_type=self.task_type,
+            session_id=self.session_id,
+            correlation_id=self.task_id,
+            idempotency_key=self.task_id,
+            created_at=datetime.now(timezone.utc),
+            metadata={
+                **self.metadata,
+                "research_domain": self.research_domain,
+                "priority": self.priority,
+            },
+            payload=self.task_data,
+        )
+
+        return envelope.model_dump(mode="json")
 
 
 class ResearchTaskDefinitions:
@@ -496,8 +512,7 @@ class ResearchTaskPublisher:
         # Determine queue name based on research domain and priority
         queue_name = self._get_queue_name(task.research_domain, task.priority)
         
-        # Convert task to dictionary
-        task_dict = task.to_dict()
+        task_dict = self._build_queue_message(task)
         
         # Set message priority based on task priority
         priority = self._get_message_priority(task.priority)
@@ -515,6 +530,30 @@ class ResearchTaskPublisher:
             _logger.error(f"Failed to publish task {task.task_id} to {queue_name}")
         
         return success
+
+    def _build_queue_message(self, task: ResearchTask) -> Dict[str, Any]:
+        """Build the canonical queue payload for research tasks."""
+        if task.task_type == "web_search":
+            return build_web_search_envelope(
+                session_id=task.session_id,
+                query=task.task_data["search_query"],
+                search_engine=task.task_data.get("search_engine", "google"),
+                max_results=task.task_data.get("max_results", 10),
+                search_depth=task.task_data.get("search_depth", "standard"),
+                origin=task.metadata.get("origin", "research_task_publisher"),
+            ).model_dump(mode="json")
+
+        if task.task_type == "content_synthesis":
+            return build_content_synthesis_envelope(
+                session_id=task.session_id,
+                content_sources=task.task_data.get("content_sources", []),
+                synthesis_type=task.task_data.get("synthesis_type", "comprehensive"),
+                target_audience=task.task_data.get("target_audience", "technical"),
+                synthesis_length=task.task_data.get("synthesis_length", "medium"),
+                origin=task.metadata.get("origin", "research_task_publisher"),
+            ).model_dump(mode="json")
+
+        return task.to_dict()
     
     def _get_queue_name(self, research_domain: str, priority: str) -> str:
         """Get queue name for research domain and priority."""

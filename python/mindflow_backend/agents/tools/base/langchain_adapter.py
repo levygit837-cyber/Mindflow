@@ -61,9 +61,15 @@ def _sanitize_vertex_schema(schema: dict) -> dict:
 def _build_args_schema(schema_dict: dict):
     """Build a Pydantic model from a MindFlow ToolSchema dict.
 
-    Expects ``schema_dict`` to contain a ``parameters`` key with a list of
-    ``ToolParameter``-like objects (dicts or dataclass-style objects with
-    ``name``, ``type``, ``description``, ``required``, ``default`` attrs).
+    Supports two formats:
+
+    1. **List format** — ``parameters`` is a list of ``ToolParameter``-like
+       objects (dicts or dataclass-style) with ``name``, ``type``,
+       ``description``, ``required``, ``default`` attrs.
+
+    2. **JSON Schema format** — ``parameters`` is a JSON Schema object with
+       ``properties`` (and optionally ``required``). This is the format used
+       by tools that define their schema inline with ``get_schema()``.
 
     Returns a Pydantic ``BaseModel`` class or ``None`` if no parameters found.
     """
@@ -74,33 +80,57 @@ def _build_args_schema(schema_dict: dict):
 
         field_definitions: dict[str, Any] = {}
 
-        for param in parameters:
-            # Support both dict and object (ToolParameter) representations
-            if isinstance(param, dict):
-                name = param.get("name", "")
-                type_str = param.get("type", "string")
-                description = param.get("description", "")
-                required = param.get("required", False)
-                default = param.get("default", None)
-            else:
-                name = getattr(param, "name", "")
-                type_str = getattr(param, "type", "string")
-                description = getattr(param, "description", "")
-                required = getattr(param, "required", False)
-                default = getattr(param, "default", None)
+        # ── JSON Schema format: {"type": "object", "properties": {...}, "required": [...]} ──
+        if isinstance(parameters, dict):
+            properties: dict = parameters.get("properties") or {}
+            required_fields: list = parameters.get("required") or []
 
-            if not name:
-                continue
+            for name, prop in properties.items():
+                if not name:
+                    continue
+                type_str = prop.get("type", "string")
+                description = prop.get("description", "")
+                default = prop.get("default", None)
+                is_required = name in required_fields
 
-            python_type = _JSON_TYPE_MAP.get(type_str, str)
+                python_type = _JSON_TYPE_MAP.get(type_str, str)
 
-            if required:
-                field_definitions[name] = (python_type, Field(description=description))
-            else:
-                field_definitions[name] = (
-                    Optional[python_type],
-                    Field(default=default, description=description),
-                )
+                if is_required:
+                    field_definitions[name] = (python_type, Field(description=description))
+                else:
+                    field_definitions[name] = (
+                        Optional[python_type],
+                        Field(default=default, description=description),
+                    )
+
+        # ── List format: [{name, type, description, required, default}, ...] ──
+        else:
+            for param in parameters:
+                if isinstance(param, dict):
+                    name = param.get("name", "")
+                    type_str = param.get("type", "string")
+                    description = param.get("description", "")
+                    required = param.get("required", False)
+                    default = param.get("default", None)
+                else:
+                    name = getattr(param, "name", "")
+                    type_str = getattr(param, "type", "string")
+                    description = getattr(param, "description", "")
+                    required = getattr(param, "required", False)
+                    default = getattr(param, "default", None)
+
+                if not name:
+                    continue
+
+                python_type = _JSON_TYPE_MAP.get(type_str, str)
+
+                if required:
+                    field_definitions[name] = (python_type, Field(description=description))
+                else:
+                    field_definitions[name] = (
+                        Optional[python_type],
+                        Field(default=default, description=description),
+                    )
 
         if not field_definitions:
             return None
@@ -134,6 +164,24 @@ def to_langchain_tool(mindflow_tool: Any):
                 schema_dict = raw
 
         args_schema = _build_args_schema(schema_dict)
+        category = schema_dict.get("category") or getattr(mindflow_tool, "category", "tool")
+        family = getattr(mindflow_tool, "tool_family", category or "tool")
+        notifier_kind = getattr(mindflow_tool, "notifier_kind", getattr(mindflow_tool, "name", None))
+        tool_metadata = {
+            key: value
+            for key, value in {
+                "tool_name": getattr(mindflow_tool, "name", None),
+                "category": category,
+                "family": family,
+                "notifier_kind": notifier_kind,
+                "version": getattr(mindflow_tool, "version", None),
+            }.items()
+            if value is not None
+        }
+        tool_tags = list(schema_dict.get("tags") or [])
+        for extra_tag in (category, family):
+            if isinstance(extra_tag, str) and extra_tag and extra_tag not in tool_tags:
+                tool_tags.append(extra_tag)
 
         # Keep a stable reference to avoid closure capture issues in loops
         _tool = mindflow_tool
@@ -164,6 +212,8 @@ def to_langchain_tool(mindflow_tool: Any):
             description=mindflow_tool.description,
             args_schema=args_schema,
             handle_tool_error=True,
+            metadata=tool_metadata,
+            tags=tool_tags or None,
         )
 
         # Patch the generated JSON schema in-place so Vertex AI accepts it.

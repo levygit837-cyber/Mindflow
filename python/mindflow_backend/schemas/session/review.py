@@ -1,22 +1,18 @@
-"""Session review schemas for MindFlow backend.
-
-Provides schemas for session review operations including context
-analysis, quality assessment, and review workflows.
-"""
+"""Session review schemas with backward-compatible runtime contracts."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any
+from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ReviewPriority(StrEnum):
     """Priority level for review tasks."""
-    
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -24,168 +20,241 @@ class ReviewPriority(StrEnum):
 
 
 class ReviewTaskType(StrEnum):
-    """Type of review task."""
-    
+    """Known review task types."""
+
     CONTEXT_REVIEW = "context_review"
     QUALITY_ASSESSMENT = "quality_assessment"
     PERFORMANCE_ANALYSIS = "performance_analysis"
     ERROR_DETECTION = "error_detection"
     OPTIMIZATION = "optimization"
+    MANUAL_REVIEW = "manual_review"
+    AUTOMATIC_THRESHOLD = "automatic_threshold"
+    SESSION_REVIEW_REQUESTED = "session_review.requested"
 
 
 class ReviewTriggerType(StrEnum):
     """Type of review trigger."""
-    
+
     AUTOMATIC = "automatic"
     MANUAL = "manual"
     SCHEDULED = "scheduled"
     EVENT_BASED = "event_based"
+    TOKEN_THRESHOLD = "token_threshold"
+
+
+class WindowSize(StrEnum):
+    """Logical token window presets for session review."""
+
+    SMALL = "small"
+    MEDIUM = "medium"
+    LARGE = "large"
+    EXTRA_LARGE = "extra_large"
+    CUSTOM = "custom"
+
+
+class SessionReviewConfig(BaseModel):
+    """Configuration of a tracked review session."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    window_size: WindowSize
+    custom_window_tokens: int | None = None
+    trigger_type: ReviewTriggerType = ReviewTriggerType.TOKEN_THRESHOLD
+    trigger_threshold: int
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class TokenWindowTracker(BaseModel):
+    """In-memory tracker of token progress for a session."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    window_size: int
+    current_window: int = 0
+    windows_completed: int = 0
+    total_tokens_processed: int = 0
+    tokens_in_current_window: int = 0
+    next_review_threshold: int | None = None
+    last_review_at: datetime | None = None
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def populate_threshold(self) -> "TokenWindowTracker":
+        if self.next_review_threshold is None:
+            self.next_review_threshold = self.window_size
+        return self
+
+    @property
+    def tokens_until_next_review(self) -> int:
+        threshold = self.next_review_threshold or self.window_size
+        return max(0, threshold - self.tokens_in_current_window)
+
+    def should_trigger_review(self, threshold: int | None = None) -> bool:
+        review_threshold = threshold or self.next_review_threshold or self.window_size
+        return self.tokens_in_current_window >= review_threshold
+
+    def get_current_window_bounds(self) -> tuple[int, int]:
+        return self.get_window_bounds(self.current_window)
+
+    def get_window_bounds(self, window_index: int) -> tuple[int, int]:
+        window_start = window_index * self.window_size
+        return (window_start, window_start + self.window_size)
+
+    def advance_to_next_window(self) -> tuple[int, int]:
+        self.current_window += 1
+        self.windows_completed += 1
+        self.tokens_in_current_window = 0
+        self.updated_at = datetime.now(UTC)
+        return self.get_current_window_bounds()
+
+
+class WindowProgressInfo(BaseModel):
+    """Progress view returned by the session review service."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    current_window: tuple[int, int]
+    window_index: int
+    progress_in_window: float
+    overall_progress: float
+    tokens_until_next_review: int
+    estimated_next_review: datetime
+    windows_remaining: int
 
 
 class ReviewTask(BaseModel):
-    """Review task definition."""
-    
-    id: UUID = Field(description="Review task identifier")
-    session_id: UUID = Field(description="Session identifier")
-    
-    # Task information
-    task_type: ReviewTaskType = Field(description="Type of review task")
-    priority: ReviewPriority = Field(default=ReviewPriority.MEDIUM, description="Task priority")
-    title: str = Field(description="Task title")
-    description: Optional[str] = Field(default=None, description="Task description")
-    
-    # Task configuration
-    trigger_type: ReviewTriggerType = Field(description="What triggered this review")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Task parameters")
-    
-    # Temporal information
+    """Review task definition used by the service and workers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    task_id: str = Field(default_factory=lambda: str(uuid4()))
+    session_id: str
+    window_range: tuple[int, int] = (0, 0)
+    window_index: int = 0
+    task_type: str = ReviewTaskType.CONTEXT_REVIEW.value
+    priority: ReviewPriority = ReviewPriority.MEDIUM
+    trigger_type: ReviewTriggerType = ReviewTriggerType.AUTOMATIC
+    title: str = "Session review"
+    description: str | None = None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    max_tokens_to_analyze: int = 10_000
+    max_processing_time_minutes: int = 10
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    scheduled_for: Optional[datetime] = Field(default=None, description="Scheduled execution time")
-    started_at: Optional[datetime] = Field(default=None, description="Task start time")
-    completed_at: Optional[datetime] = Field(default=None, description="Task completion time")
-    
-    # Task status
-    status: str = Field(default="pending", description="Task status")
-    progress: float = Field(default=0.0, ge=0.0, le=1.0, description="Task progress")
-    
-    # Results
-    result: Optional[Dict[str, Any]] = Field(default=None, description="Task results")
-    issues_found: List[str] = Field(default_factory=list, description="Issues found during review")
-    recommendations: List[str] = Field(default_factory=list, description="Review recommendations")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
+    scheduled_for: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    status: str = "pending"
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
+    result: dict[str, Any] | None = None
+    issues_found: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
+    @property
+    def id(self) -> str:
+        return self.task_id
 
 
 class ReviewExecutionContext(BaseModel):
-    """Context for review execution."""
-    
-    session_id: UUID = Field(description="Session identifier")
-    task_id: UUID = Field(description="Review task identifier")
-    
-    # Context window
-    window_start: int = Field(ge=0, description="Window start position")
-    window_end: int = Field(ge=0, description="Window end position")
-    window_size: int = Field(gt=0, description="Window size")
-    
-    # Review configuration
-    review_type: ReviewTaskType = Field(description="Type of review to perform")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Review parameters")
-    
-    # Context data
-    messages: List[Dict[str, Any]] = Field(default_factory=list, description="Messages in context")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context metadata")
-    
-    # Execution context
-    agent_id: Optional[str] = Field(default=None, description="Agent performing review")
-    tools_available: List[str] = Field(default_factory=list, description="Available tools")
-    
-    class Config:
-        json_encoders = {
-            UUID: lambda v: str(v),
-        }
+    """Context consumed by the review agent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    task_id: str
+    window_range: tuple[int, int]
+    session_messages: list[dict[str, Any]] = Field(default_factory=list)
+    agent_capabilities: list[str] = Field(default_factory=list)
+    max_tokens: int = 10_000
+    time_limit_minutes: int = 10
+    quality_threshold: float = 0.7
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def window_start(self) -> int:
+        return self.window_range[0]
+
+    @property
+    def window_end(self) -> int:
+        return self.window_range[1]
+
+    @property
+    def window_size(self) -> int:
+        return max(0, self.window_end - self.window_start)
+
+    @property
+    def messages(self) -> list[dict[str, Any]]:
+        return self.session_messages
 
 
-class ReviewResult(BaseModel):
-    """Result of a review operation."""
-    
-    task_id: UUID = Field(description="Review task identifier")
-    session_id: UUID = Field(description="Session identifier")
-    
-    # Review outcome
-    success: bool = Field(description="Whether review was successful")
-    completion_rate: float = Field(ge=0.0, le=1.0, description="Review completion rate")
-    
-    # Findings
-    issues_found: List[Dict[str, Any]] = Field(default_factory=list, description="Issues identified")
-    recommendations: List[Dict[str, Any]] = Field(default_factory=list, description="Recommendations made")
-    
-    # Quality metrics
-    quality_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Overall quality score")
-    context_relevance: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Context relevance score")
-    
-    # Performance metrics
-    processing_time_ms: Optional[int] = Field(default=None, description="Processing time")
-    tokens_analyzed: int = Field(ge=0, description="Number of tokens analyzed")
-    
-    # Metadata
-    reviewed_by: Optional[str] = Field(default=None, description="Agent or system that performed review")
-    reviewed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional result metadata")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
+class SessionReviewResult(BaseModel):
+    """Persistable result of a session review window."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: str = Field(default_factory=lambda: str(uuid4()))
+    session_id: str
+    window_range: tuple[int, int]
+    priority: ReviewPriority = ReviewPriority.MEDIUM
+    summary_text: str = ""
+    actions_documented: list[str] = Field(default_factory=list)
+    insights_extracted: list[str] = Field(default_factory=list)
+    review_data: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def populate_review_data(self) -> "SessionReviewResult":
+        if not self.review_data:
+            self.review_data = {
+                "summary_text": self.summary_text,
+                "actions_documented": list(self.actions_documented),
+                "insights_extracted": list(self.insights_extracted),
+            }
+        if not self.summary_text:
+            self.summary_text = str(self.review_data.get("summary_text", ""))
+        return self
+
+
+ReviewResult = SessionReviewResult
 
 
 class ReviewSession(BaseModel):
-    """Complete review session for a context window."""
-    
-    id: UUID = Field(description="Review session identifier")
-    session_id: UUID = Field(description="Original session identifier")
-    
-    # Session information
-    window_start: int = Field(ge=0, description="Window start position")
-    window_end: int = Field(ge=0, description="Window end position")
-    window_size: int = Field(gt=0, description="Window size")
-    
-    # Review tasks
-    tasks: List[ReviewTask] = Field(default_factory=list, description="Review tasks in this session")
-    completed_tasks: List[ReviewTask] = Field(default_factory=list, description="Completed tasks")
-    
-    # Session status
-    status: str = Field(default="active", description="Session status")
-    progress: float = Field(default=0.0, ge=0.0, le=1.0, description="Overall session progress")
-    
-    # Temporal information
+    """Aggregate of review tasks for a session window."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    session_id: str
+    window_start: int
+    window_end: int
+    window_size: int
+    tasks: list[ReviewTask] = Field(default_factory=list)
+    completed_tasks: list[ReviewTask] = Field(default_factory=list)
+    status: str = "active"
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    started_at: Optional[datetime] = Field(default=None, description="Session start time")
-    completed_at: Optional[datetime] = Field(default=None, description="Session completion time")
-    
-    # Results summary
-    total_issues: int = Field(default=0, description="Total issues found")
-    critical_issues: int = Field(default=0, description="Critical issues found")
-    recommendations_count: int = Field(default=0, description="Total recommendations made")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v),
-        }
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    total_issues: int = 0
+    critical_issues: int = 0
+    recommendations_count: int = 0
 
 
-# Export all review schemas
 __all__ = [
     "ReviewPriority",
     "ReviewTaskType",
     "ReviewTriggerType",
+    "WindowSize",
+    "SessionReviewConfig",
+    "TokenWindowTracker",
+    "WindowProgressInfo",
     "ReviewTask",
     "ReviewExecutionContext",
+    "SessionReviewResult",
     "ReviewResult",
     "ReviewSession",
 ]

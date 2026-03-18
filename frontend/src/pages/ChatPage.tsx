@@ -1,22 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatInterface } from '../components/ChatInterface';
 import { TopBar } from '../components/Header/TopBar';
-
-const AVAILABLE_MODELS = [
-  'gemini-3.1-flash-lite-preview',
-  'gemini-1.5-pro',
-  'claude-sonnet-4-6',
-  'claude-opus-4-6',
-  'gpt-4o',
-];
+import { useAppStore, useSettings } from '../stores/appStore';
+import { getModelsForProvider, normalizeProvider, resolveModelForProvider } from '../utils/llm';
 
 export const ChatPage: React.FC = () => {
   const { sessionId } = useParams();
   const [title, setTitle] = useState('New Chat');
   const [agentCount, setAgentCount] = useState(0);
   const [workflowType, setWorkflowType] = useState<'parallel' | 'sequential' | 'orchestrator' | 'chain'>('orchestrator');
-  const [selectedModel, setSelectedModel] = useState('gemini-3.1-flash-lite-preview');
+  const settings = useSettings();
+  const setSettings = useAppStore((state) => state.setSettings);
+  const selectedProvider = normalizeProvider(settings.provider);
+  const selectedModel = resolveModelForProvider(selectedProvider, settings.model);
+  const availableModels = useMemo(
+    () => getModelsForProvider(selectedProvider),
+    [selectedProvider],
+  );
+
+  useEffect(() => {
+    if (settings.provider !== selectedProvider || settings.model !== selectedModel) {
+      setSettings({
+        provider: selectedProvider,
+        model: selectedModel,
+      });
+    }
+  }, [selectedModel, selectedProvider, setSettings, settings.model, settings.provider]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -25,12 +35,13 @@ export const ChatPage: React.FC = () => {
         agentCount={agentCount}
         workflowType={workflowType}
         selectedModel={selectedModel}
-        availableModels={AVAILABLE_MODELS}
-        onModelChange={setSelectedModel}
+        availableModels={availableModels}
+        onModelChange={(model) => setSettings({ model })}
       />
       <ChatInterface
         key={sessionId ?? 'new'}
         sessionId={sessionId}
+        selectedProvider={selectedProvider}
         selectedModel={selectedModel}
         onTitleChange={setTitle}
         onAgentCountChange={setAgentCount}

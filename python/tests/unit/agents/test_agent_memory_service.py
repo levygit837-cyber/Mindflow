@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from mindflow_backend.memory.service import AgentMemoryService
+from mindflow_backend.memory import AgentMemoryService
 from mindflow_backend.storage.postgresql.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,

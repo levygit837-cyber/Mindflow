@@ -7,15 +7,16 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
+from mindflow_backend.api.controllers.agent_controller import AgentController
 from mindflow_backend.utils.formatting import format_sse
 from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
-from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEventMeta
-from mindflow_backend.api.controllers.agent_controller import AgentController
+from mindflow_backend.schemas.chat.agent import AgentChatRequest, AgentExecutionResponse, StreamEventMeta
 from mindflow_backend.schemas.tools.shell_tabs import ShellTabCreateRequest, ShellTabExecRequest
 from mindflow_backend.services import get_shell_tab_service
 
-router = APIRouter(prefix="/agent", tags=["agent"])
+router = APIRouter(prefix="/agent", tags=["agent"], dependencies=protected_route_dependencies)
 
 # Initialize controller
 agent_controller = AgentController()
@@ -41,15 +42,33 @@ async def get_agent_capabilities(agent_type: str):
 
 
 @router.get("/list")
-async def list_agents():
+async def list_agents(request: Request):
     """List all available agents."""
-    return await agent_controller.list_agents()
+    return await agent_controller.list_agents(request)
 
 
 @router.post("/validate")
 async def validate_agent_request(request_data: dict):
     """Validate an agent request without processing."""
     return await agent_controller.validate_request(request_data)
+
+
+@router.get("/execution/{execution_id}", response_model=AgentExecutionResponse)
+async def get_execution_status(execution_id: str, request: Request):
+    """Get status for an agent execution."""
+    return await agent_controller.get_execution_status(execution_id, request)
+
+
+@router.post("/execution/{execution_id}/pause", response_model=AgentExecutionResponse)
+async def pause_execution(execution_id: str, request: Request):
+    """Request a pause for an agent execution."""
+    return await agent_controller.pause_execution(execution_id, request)
+
+
+@router.post("/execution/{execution_id}/resume", response_model=AgentExecutionResponse)
+async def resume_execution(execution_id: str, request: Request):
+    """Request a resume for an agent execution."""
+    return await agent_controller.resume_execution(execution_id, request)
 
 
 @router.get("/shell-tabs/{session_id}")

@@ -134,7 +134,7 @@ class ExecuteNode(StreamableNode, BaseNode):
         """Get authorized tools for the agent."""
         if agent.sandbox == SandboxMode.NONE:
             return []
-        return registry.get_tools_for_agent(agent.agent_type)
+        return registry.get_tools_for_agent(agent)
     
     def _extract_response_text(self, response: Any) -> str:
         """Extract text content from LLM response."""

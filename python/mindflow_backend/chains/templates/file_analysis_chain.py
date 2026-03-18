@@ -25,6 +25,7 @@ from mindflow_backend.agents.tools.filesystem.file_operations import (
 from mindflow_backend.chains.planners.codebase_scope_planner import CodebaseScopePlanner
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.workflow import WorkflowPlan
 
 _logger = get_logger(__name__)
 
@@ -98,6 +99,7 @@ class FileAnalysisChain:
         session_id: str = str(context.get("session_id") or "")
 
         _logger.info("file_analysis_chain_start", session_id=session_id, root_dir=root_dir)
+        identity = self._extract_workflow_identity(context)
 
         planning_result = await self._run_scope_planner(message, root_dir)
 
@@ -152,7 +154,30 @@ class FileAnalysisChain:
                     "files_read": list(read_result["file_contents"].keys()),
                 },
                 "structured_data": {"files_analyzed": list(read_result["file_contents"].keys())},
+                **identity,
             },
+        }
+
+    def _extract_workflow_identity(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Extract agent identity from the compiled workflow plan when present."""
+        workflow_plan = context.get("workflow_plan")
+        if not workflow_plan:
+            return {}
+
+        try:
+            plan = WorkflowPlan.model_validate(workflow_plan)
+        except Exception:
+            return {}
+
+        if not plan.steps:
+            return {}
+
+        step = plan.steps[0]
+        return {
+            "step_id": step.step_id,
+            "agent_id": step.agent_id,
+            "agent_role": step.agent_role,
+            "specialist": step.specialist,
         }
 
     # ------------------------------------------------------------------ steps

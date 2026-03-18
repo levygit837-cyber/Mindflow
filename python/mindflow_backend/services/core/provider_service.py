@@ -34,9 +34,9 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             "google": {
                 "name": "Google/VertexAI",
                 "models": [
-                    {"id": "gemini-pro", "name": "Gemini Pro", "context_window": 32768, "supports_vision": False},
-                    {"id": "gemini-pro-vision", "name": "Gemini Pro Vision", "context_window": 16384, "supports_vision": True},
-                    {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "context_window": 1048576, "supports_vision": True},
+                    {"id": "gemini-3.1-flash-lite-preview", "name": "Gemini 3.1 Flash Lite Preview", "context_window": 1048576, "supports_vision": True},
+                    {"id": "gemini-3.1-pro-preview", "name": "Gemini 3.1 Pro Preview", "context_window": 1048576, "supports_vision": True},
+                    {"id": "gemini-3.1-pro-preview-customtools", "name": "Gemini 3.1 Pro Preview Custom Tools", "context_window": 1048576, "supports_vision": True},
                 ],
                 "capabilities": ["text_generation", "vision", "function_calling"],
                 "status": "active"
@@ -64,6 +64,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             "ollama": {
                 "name": "Ollama (Local)",
                 "models": [
+                    {"id": "qwen3.5-0.8b", "name": "Qwen 3.5 0.8B", "context_window": 262144, "supports_vision": False},
                     {"id": "llama2", "name": "Llama 2", "context_window": 4096, "supports_vision": False},
                     {"id": "codellama", "name": "Code Llama", "context_window": 4096, "supports_vision": False},
                     {"id": "mistral", "name": "Mistral", "context_window": 4096, "supports_vision": False},

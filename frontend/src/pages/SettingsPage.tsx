@@ -2,11 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '../components/common';
 import { useSettings, useAppStore } from '../stores/appStore';
+import { normalizeProvider, resolveModelForProvider } from '../utils/llm';
 
 const selectStyle: React.CSSProperties = {
   width: '100%',
   padding: '14px 16px',
-  background: 'rgba(255, 255, 255, 0.02)',
+  background: 'color-mix(in srgb, var(--surface-glass) 68%, var(--surface) 32%)',
   border: '1px solid var(--line-primary)',
   borderRadius: 16,
   color: 'var(--text-primary)',
@@ -24,9 +25,19 @@ const checkboxRowStyle: React.CSSProperties = {
 
 export const SettingsPage: React.FC = () => {
   const settings = useSettings();
-  const { setSettings, setTheme } = useAppStore();
+  const theme = useAppStore((state) => state.theme);
+  const { setSettings } = useAppStore();
 
   const handleSettingChange = (key: string, value: unknown) => {
+    if (key === 'provider' && typeof value === 'string') {
+      const provider = normalizeProvider(value);
+      setSettings({
+        provider,
+        model: resolveModelForProvider(provider, settings.model),
+      });
+      return;
+    }
+
     setSettings({ [key]: value });
   };
 
@@ -42,8 +53,9 @@ export const SettingsPage: React.FC = () => {
         <h1
           style={{
             color: 'var(--text-primary)',
-            fontSize: 32,
-            fontWeight: 600,
+            fontFamily: 'var(--font-brand)',
+            fontSize: 38,
+            fontWeight: 500,
             letterSpacing: '-0.04em',
           }}
         >
@@ -58,17 +70,20 @@ export const SettingsPage: React.FC = () => {
         <Card padding="lg">
           <div className="mono-label mb-4">appearance</div>
           <div className="space-y-4">
-            <label className="space-y-2 block">
+            <div className="space-y-2">
               <span style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 500 }}>Tema</span>
-              <select
-                value={settings.theme || 'dark'}
-                onChange={(event) => setTheme(event.target.value as 'dark' | 'light')}
-                style={selectStyle}
+              <div
+                style={{
+                  ...selectStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
               >
-                <option value="dark">Escuro</option>
-                <option value="light">Claro</option>
-              </select>
-            </label>
+                <span>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</span>
+                <span className="mono-label">topbar toggle</span>
+              </div>
+            </div>
 
             <label className="space-y-2 block">
               <span style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 500 }}>Tamanho da fonte</span>
@@ -91,7 +106,7 @@ export const SettingsPage: React.FC = () => {
             <label className="space-y-2 block">
               <span style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 500 }}>Provedor</span>
               <select
-                value={settings.provider}
+                value={normalizeProvider(settings.provider)}
                 onChange={(event) => handleSettingChange('provider', event.target.value)}
                 style={selectStyle}
               >

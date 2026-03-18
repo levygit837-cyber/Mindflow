@@ -13,6 +13,7 @@ interface ThoughtBubbleProps {
 }
 
 export const ThoughtBubble: React.FC<ThoughtBubbleProps> = ({
+  agentType,
   agentName,
   content,
   isStreaming = false,
@@ -42,55 +43,40 @@ export const ThoughtBubble: React.FC<ThoughtBubbleProps> = ({
         <span className="signal-dot" />
       </div>
 
-      <motion.div layout className="event-node-lab">
-        <div className="event-header">
-          <span className="mono-label">--- Thinking</span>
-
-          <span className="event-title">
-            {displayName}
+      <motion.div layout className="thought-stack">
+        <button
+          type="button"
+          onClick={() => setCollapsed((value) => !value)}
+          className="thought-pill thought-pill-button"
+        >
+          <span className={`thought-synapse thought-synapse--${agentType ?? 'orchestrator'}`}>
+            <span className="thought-synapse-link thought-synapse-link-a" />
+            <span className="thought-synapse-link thought-synapse-link-b" />
+            <span className="thought-synapse-node thought-synapse-node-a" />
+            <span className="thought-synapse-node thought-synapse-node-b" />
+            <span className="thought-synapse-node thought-synapse-node-c" />
           </span>
 
-          <span className="event-badge">
-            {collapsed ? 'expandir' : 'aberto'}
-          </span>
+          <span className="thought-name">{displayName}</span>
+          <span className="thought-sep">/</span>
+          <span className="thought-status">thinking</span>
 
-          <button
-            type="button"
-            onClick={() => setCollapsed((value) => !value)}
-            className="event-toggle ml-auto"
-          >
-            <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
-              {collapsed ? '> abrir' : 'v fechar'}
-            </span>
-            {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-          </button>
-        </div>
+          <span className="thought-toggle-copy">{collapsed ? 'open' : 'close'}</span>
+          {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+        </button>
 
         <AnimatePresence initial={false}>
           {!collapsed && (
             <motion.div
               layout
               key="content"
-              className="event-expand event-expand-block"
+              className="thought-body thought-body-expanded"
               initial={{ opacity: 0, height: 0, y: -6 }}
               animate={{ opacity: 1, height: 'auto', y: 0 }}
               exit={{ opacity: 0, height: 0, y: -4 }}
               transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             >
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  color: 'var(--text-meta)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  lineHeight: 1.78,
-                  maxHeight: 280,
-                  overflowY: 'auto',
-                }}
-              >
-                {content}
-              </pre>
+              <pre className="thought-note thought-note-pre">{content}</pre>
             </motion.div>
           )}
         </AnimatePresence>

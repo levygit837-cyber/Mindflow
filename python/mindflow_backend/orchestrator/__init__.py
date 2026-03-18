@@ -5,6 +5,7 @@ Public API:
     - ``build_orchestrator_graph`` — compiled LangGraph graph
     - ``OrchestratorState`` — graph state TypedDict
     - ``context_validation`` — consolidated context validation
+    - ``planning_flow`` — planning-aware execution flow
 
 Imports are lazy to avoid cascading through the entire agent system
 when only submodules (e.g. decomposition.scoring) are needed.
@@ -26,6 +27,7 @@ __all__ = [
     "build_simple_orchestrator_flow",
     "route_message",
     "context_validation",
+    "planning_flow",
 ]
 
 
@@ -42,4 +44,7 @@ def __getattr__(name: str) -> object:
     if name == "context_validation":
         from mindflow_backend.orchestrator import context_validation
         return context_validation
+    if name == "planning_flow":
+        from mindflow_backend.orchestrator import planning_flow
+        return planning_flow
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

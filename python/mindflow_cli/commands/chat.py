@@ -18,7 +18,9 @@ SETTINGS_COMMANDS = {"/settings", "/config"}
 def build_client(base_url: str | None) -> MindFlowCliClient:
     settings = get_settings()
     api_url = base_url or settings.get("api_url")
-    return MindFlowCliClient(base_url=api_url)
+    # API key from settings file falls back to MINDFLOW_API_KEY env var (handled in client)
+    api_key = settings.get("api_key") or None
+    return MindFlowCliClient(base_url=api_url, api_key=api_key)
 
 
 def _show_settings_help() -> None:
@@ -107,9 +109,9 @@ def _run_chat(
     
     # Use settings defaults if not provided
     if not provider:
-        provider = settings.get("default_provider", "vertexai")
+        provider = settings.get("default_provider", "google")
     if not model:
-        model = settings.get("default_model", "gemini-3-flash")
+        model = settings.get("default_model", "gemini-3.1-flash-lite-preview")
     if not base_url:
         base_url = settings.get("api_url")
     
@@ -165,8 +167,8 @@ def register_chat_commands(app: typer.Typer) -> None:
     @app.command("connect")
     def connect(
         agent: str = typer.Option("coder", "--agent", "-a", help="Personalidade do agente (coder, analyst, researcher, etc)"),
-        provider: str = typer.Option("vertexai", "--provider", help="Provider override"),
-        model: str = typer.Option("gemini-3-flash-preview", "--model", help="Model override"),
+        provider: str = typer.Option("google", "--provider", help="Provider override"),
+        model: str = typer.Option("gemini-3.1-flash-lite-preview", "--model", help="Model override"),
         debug_steps: bool = typer.Option(False, "--debug-steps", help="Enable debug-oriented stream flags"),
         orchestrate: bool = typer.Option(False, "--orchestrate", "-o", help="Usar orquestrador inteligente (roteia para agente especialista)"),
         base_url: str | None = typer.Option(

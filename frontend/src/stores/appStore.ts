@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { devtools, persist } from 'zustand/middleware';
+import { DEFAULT_PROVIDER, getDefaultModelForProvider } from '../utils/llm';
 import type { 
   AppState, 
   Agent, 
@@ -56,13 +57,13 @@ interface AppStore extends AppState {
 }
 
 const defaultSettings: AppSettings = {
-  provider: 'google',
-  model: 'gemini-1.5-pro',
+  provider: DEFAULT_PROVIDER,
+  model: getDefaultModelForProvider(DEFAULT_PROVIDER),
   orchestrationMode: 'auto_route',
   autoSaveSessions: true,
   showReasoning: true,
   enableNotifications: true,
-  fontSize: 'medium',
+  fontSize: 'large',
   language: 'en',
 };
 
@@ -225,7 +226,14 @@ export const useAppStore = create<AppStore>()(
         
         setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),
         
-        setTheme: (theme) => set({ theme }),
+        setTheme: (theme) =>
+          set((state) => ({
+            theme,
+            settings: {
+              ...state.settings,
+              theme,
+            },
+          })),
         
         // Settings actions
         setSettings: (newSettings) =>

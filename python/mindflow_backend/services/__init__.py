@@ -40,6 +40,8 @@ from mindflow_backend.services.orchestration import (
     get_orchestration_service,
     get_task_service,
     get_routing_service,
+    get_todo_planning_service,
+    get_planning_service,
 )
 
 # Context domain services
@@ -86,6 +88,7 @@ from mindflow_backend.services.interfaces import (
     OrchestrationServiceInterface,
     TaskServiceInterface,
     RoutingServiceInterface,
+    TodoPlanningServiceInterface,
     RetrievalServiceInterface,
     EmbeddingServiceInterface,
     VectorStoreInterface,
@@ -109,6 +112,8 @@ __all__ = [
     "get_orchestration_service",
     "get_task_service",
     "get_routing_service",
+    "get_todo_planning_service",
+    "get_planning_service",
     
     # Context services
     "get_retrieval_service",
@@ -143,6 +148,7 @@ __all__ = [
     "OrchestrationServiceInterface",
     "TaskServiceInterface",
     "RoutingServiceInterface",
+    "TodoPlanningServiceInterface",
     "RetrievalServiceInterface",
     "EmbeddingServiceInterface",
     "VectorServiceInterface",

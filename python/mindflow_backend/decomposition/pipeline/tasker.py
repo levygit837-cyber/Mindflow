@@ -150,6 +150,8 @@ class EnhancedTasker(TaskDecomposer):
                         expected_artifacts=raw.get("expected_artifacts", []),
                         owner_agent=owner,
                         priority=raw.get("priority", "medium"),
+                        complexity_score=float(raw.get("complexity_score", 0.0) or 0.0),
+                        complexity_reason=raw.get("complexity_reason", ""),
                     )
                 )
 
@@ -238,6 +240,11 @@ class EnhancedTasker(TaskDecomposer):
         if comp.get("priority") not in TASKER_VALIDATION_RULES["valid_priorities"]:
             comp["priority"] = "medium"
 
+        try:
+            comp["complexity_score"] = min(max(float(comp.get("complexity_score", 0.0) or 0.0), 0.0), 1.0)
+        except (TypeError, ValueError):
+            comp["complexity_score"] = 0.0
+
         return comp
 
     def _default_field(self, field: str) -> Any:
@@ -258,6 +265,8 @@ class EnhancedTasker(TaskDecomposer):
             "context_boundary": "Standard task context",
             "expected_artifacts": ["Task completion"],
             "priority": "medium",
+            "complexity_score": 0.0,
+            "complexity_reason": "",
             "requires_context_sharing": False,
             "semantic_tags": [],
         }.get(field, "")
@@ -287,6 +296,8 @@ class EnhancedTasker(TaskDecomposer):
             expected_artifacts=["Processed result"],
             owner_agent=ComponentOwner.CODER,
             priority="medium",
+            complexity_score=0.4,
+            complexity_reason="Fallback single comprehensive task",
         )
         return main, [comp]
 

@@ -66,7 +66,7 @@ python/.logs/
 # searxng docker volume (permission-restricted)
 backend/searxng/searxng/
 
-# codesearch index and other AI tools
+# local AI tool artifacts
 .tools/
 
 # Git worktrees
@@ -89,8 +89,6 @@ design/
 # local-only explicit files
 *.log
 start_dev.sh
-.codesearchignore
-.gitnexus
 
 # Claude Code worktrees (local only)
 .claude/worktrees/

@@ -8,6 +8,8 @@ These files were archived during migration to the new RabbitMQ-based worker syst
 - `tasks.py` - Legacy task definitions (contained deprecated session supervisor)
 
 ## Why Archived:
+RabbitMQ is now the official async stack for MindFlow. These files remain archived only for historical reference and rollback analysis.
+
 The project migrated to a modern hierarchical RabbitMQ worker system that provides:
 - Better organization by domain (agents, system, research)
 - Modern RabbitMQ infrastructure instead of RQ/Redis

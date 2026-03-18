@@ -11,7 +11,11 @@ from .web_scraper import (
     WebScraperTool,
 )
 
-# Original web tools
+# Browser fleet tools
+from .pinchtab_fleet import PinchTabFleetTool
+from .pinchtab_browser import PinchTabBrowserTool
+
+# Compatibility alias
 from .browser_search import BrowserSearchTool
 from .http_client import HttpClientTool
 from .api_client import ApiClientTool
@@ -20,7 +24,11 @@ __all__ = [
     # Web tools (unified)
     "WebScraperTool",
     
-    # Original web tools
+    # PinchTab browser fleet
+    "PinchTabFleetTool",
+    "PinchTabBrowserTool",
+
+    # Compatibility alias
     "BrowserSearchTool",
     "HttpClientTool",
     "ApiClientTool",

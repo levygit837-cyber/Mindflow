@@ -18,40 +18,66 @@ export const useShellTabs = (sessionId: string, pollMs = 2500) => {
   const [tabs, setTabs] = useState<ShellTabView[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!sessionId) return;
+    if (!sessionId || isSupported === false) return;
 
     setIsLoading(true);
     try {
       const response = await fetch(`/v1/agent/shell-tabs/${sessionId}`);
+      if (response.status === 404) {
+        setTabs([]);
+        setError(null);
+        setIsSupported(false);
+        return;
+      }
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const payload = await response.json();
       setTabs(Array.isArray(payload) ? payload : []);
       setError(null);
+      setIsSupported(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao carregar shell tabs');
+      const message = err instanceof Error ? err.message : 'Failed to load shell tabs';
+      if (message === 'HTTP 404') {
+        setTabs([]);
+        setError(null);
+        setIsSupported(false);
+        return;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
+  }, [isSupported, sessionId]);
+
+  useEffect(() => {
+    setTabs([]);
+    setError(null);
+    setIsSupported(null);
   }, [sessionId]);
 
   useEffect(() => {
     void refresh();
-    if (!pollMs) return undefined;
+    if (!pollMs || isSupported === false) return undefined;
 
     const timer = window.setInterval(() => {
       void refresh();
     }, pollMs);
 
     return () => window.clearInterval(timer);
-  }, [pollMs, refresh]);
+  }, [isSupported, pollMs, refresh]);
 
   useEffect(() => {
-    if (!sessionId || typeof window === 'undefined' || typeof EventSource === 'undefined') {
+    if (
+      !sessionId ||
+      isSupported !== true ||
+      typeof window === 'undefined' ||
+      typeof EventSource === 'undefined'
+    ) {
       return undefined;
     }
 
@@ -75,7 +101,7 @@ export const useShellTabs = (sessionId: string, pollMs = 2500) => {
     };
 
     source.onerror = () => {
-      setError((current) => current ?? 'Falha na atualização em tempo real das shell tabs');
+      setError((current) => current ?? 'Live shell sync is unavailable');
     };
 
     return () => {
@@ -84,7 +110,7 @@ export const useShellTabs = (sessionId: string, pollMs = 2500) => {
         eventSourceRef.current = null;
       }
     };
-  }, [refresh, sessionId]);
+  }, [isSupported, refresh, sessionId]);
 
-  return { tabs, isLoading, error, refresh };
+  return { tabs, isLoading, error, refresh, isSupported };
 };

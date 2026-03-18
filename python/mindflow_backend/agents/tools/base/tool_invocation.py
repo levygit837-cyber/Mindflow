@@ -6,7 +6,7 @@ tool-use loop:
 1. Call LLM with bound tools.
 2. If the response contains ``tool_calls``, execute each tool and append the
    results as ``ToolMessage`` entries.
-3. Repeat until no more tool calls or ``max_iterations`` is reached.
+3. Repeat until the LLM produces no more tool calls (unlimited iterations).
 4. Return the final text response.
 
 This module is imported by ``graphs/implementations/orchestrator/simple_flow.py`` (execute_node) and
@@ -16,14 +16,48 @@ This module is imported by ``graphs/implementations/orchestrator/simple_flow.py`
 from __future__ import annotations
 
 import json
+import copy
 from typing import Any, Awaitable, Callable
 
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
-# Maximum number of tool-call → response cycles before forcing a stop.
-DEFAULT_MAX_ITERATIONS = 6
+
+def _sanitize_tool_call_args(args: dict[str, Any]) -> dict[str, Any]:
+    sanitized: dict[str, Any] = {}
+    for key, value in args.items():
+        if key == "content" and isinstance(value, str):
+            first_line = value.splitlines()[0][:80] if value else ""
+            sanitized[key] = (
+                f"<omitted file content: {len(value)} chars; "
+                f"re-read the file if you need to inspect it; first_line={first_line!r}>"
+            )
+            continue
+        if isinstance(value, str) and len(value) > 240:
+            sanitized[key] = f"<omitted long string: {len(value)} chars>"
+            continue
+        sanitized[key] = value
+    return sanitized
+
+
+def _copy_response_with_sanitized_tool_calls(response: Any, tool_calls: list[dict[str, Any]]) -> Any:
+    sanitized_tool_calls = []
+    for tool_call in tool_calls:
+        cloned = dict(tool_call)
+        cloned["args"] = _sanitize_tool_call_args(tool_call.get("args", {}))
+        sanitized_tool_calls.append(cloned)
+
+    try:
+        sanitized_response = response.model_copy(deep=True)
+    except AttributeError:
+        sanitized_response = copy.deepcopy(response)
+
+    try:
+        sanitized_response.tool_calls = sanitized_tool_calls
+    except Exception:
+        return response
+    return sanitized_response
 
 
 async def invoke_with_tools(
@@ -31,19 +65,22 @@ async def invoke_with_tools(
     messages: list[dict | Any],
     lc_tools: list[Any],
     *,
-    max_iterations: int = DEFAULT_MAX_ITERATIONS,
     event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
+    max_iterations: int = 50,
 ) -> str:
     """Execute ``llm`` in a ReAct loop with ``lc_tools``.
+
+    The loop runs until the LLM stops issuing tool calls or ``max_iterations``
+    is reached.
 
     Args:
         llm: A LangChain chat model already bound to tools via ``bind_tools()``.
         messages: Initial messages list (system + user).
         lc_tools: List of LangChain ``StructuredTool`` objects (used for
             ``ainvoke`` by name).
-        max_iterations: Hard cap on tool-call cycles.
         event_dispatcher: Optional async callable ``(event_name, payload)`` used
             to surface tool events into the LangGraph event stream.
+        max_iterations: Maximum number of tool-call rounds before forcing exit.
 
     Returns:
         The final text response as a plain string.
@@ -53,8 +90,9 @@ async def invoke_with_tools(
     tools_by_name: dict[str, Any] = {t.name: t for t in lc_tools}
     working_messages: list[Any] = list(messages)
     final_text: str = ""
+    iteration = 0
 
-    for iteration in range(max_iterations):
+    while True:
         _logger.debug(f"tool_loop iteration={iteration}, messages={len(working_messages)}")
 
         response = await llm.ainvoke(working_messages)
@@ -81,7 +119,7 @@ async def invoke_with_tools(
 
         # Append the assistant message (with tool_calls) so the model sees its
         # own decision in the next turn.
-        working_messages.append(response)
+        working_messages.append(_copy_response_with_sanitized_tool_calls(response, tool_calls))
 
         # Execute each tool call and collect ToolMessage results
         for tool_call in tool_calls:
@@ -99,12 +137,14 @@ async def invoke_with_tools(
             # Dispatch tool_call_start so the UI shows the tool as 'calling' immediately
             if event_dispatcher is not None:
                 try:
+                    tool_meta = getattr(tools_by_name.get(tool_name), "metadata", None)
                     await event_dispatcher(
                         "tool_call_start",
                         {
                             "tool": tool_name,
                             "args": tool_args,
                             "tool_call_id": tool_call_id,
+                            "tool_meta": tool_meta,
                         },
                     )
                 except Exception:
@@ -113,6 +153,7 @@ async def invoke_with_tools(
             if tool_name in tools_by_name:
                 try:
                     tool = tools_by_name[tool_name]
+                    tool_meta = getattr(tool, "metadata", None)
                     raw_result = await tool.ainvoke(tool_args)
                     tool_result_str = (
                         raw_result
@@ -125,6 +166,7 @@ async def invoke_with_tools(
                     )
                     _logger.warning(f"tool_execution_error tool={tool_name} error={exc}")
             else:
+                tool_meta = None
                 tool_result_str = json.dumps(
                     {"success": False, "error": f"Unknown tool: {tool_name}"}
                 )
@@ -140,6 +182,7 @@ async def invoke_with_tools(
                             "args": tool_args,
                             "result_preview": tool_result_str[:300],
                             "tool_call_id": tool_call_id,
+                            "tool_meta": tool_meta,
                         },
                     )
                 except Exception:
@@ -157,6 +200,10 @@ async def invoke_with_tools(
             iteration=iteration,
             tool_calls=len(tool_calls),
         )
+        iteration += 1
+        if iteration >= max_iterations:
+            _logger.warning("tool_loop_max_iterations_reached", limit=max_iterations)
+            break
 
     if not final_text:
         # Safety fallback: extract content from last response if loop exhausted
@@ -175,21 +222,21 @@ async def stream_with_tools(
     messages: list[dict | Any],
     lc_tools: list[Any],
     *,
-    max_iterations: int = DEFAULT_MAX_ITERATIONS,
     chunk_dispatcher: Callable[[str], Awaitable[None]] | None = None,
     event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
+    max_iterations: int = 50,
 ) -> str:
     """Like ``invoke_with_tools`` but streams the final LLM response.
 
     Tool execution rounds use ``ainvoke`` (no streaming needed for intermediate
     steps).  Only the final answer is streamed chunk-by-chunk via
-    ``chunk_dispatcher``.
+    ``chunk_dispatcher``.  The loop runs until the LLM stops issuing tool
+    calls or ``max_iterations`` is reached.
 
     Args:
         llm: LangChain chat model (already ``bind_tools``'d if tools are needed).
         messages: Initial messages list.
         lc_tools: LangChain tool list.
-        max_iterations: Hard cap on tool-call cycles.
         chunk_dispatcher: Called with each text chunk of the final response.
         event_dispatcher: Called for tool-call events.
 
@@ -205,8 +252,9 @@ async def stream_with_tools(
 
     # --- Tool call rounds (non-streaming) ---
     last_text_response: str = ""
+    iteration = 0
 
-    for iteration in range(max_iterations):
+    while True:
         response = await llm.ainvoke(working_messages)
         tool_calls: list[dict] = getattr(response, "tool_calls", []) or []
 
@@ -220,7 +268,7 @@ async def stream_with_tools(
             last_text_response = "".join(texts)
             break
 
-        working_messages.append(response)
+        working_messages.append(_copy_response_with_sanitized_tool_calls(response, tool_calls))
 
         for tool_call in tool_calls:
             tool_name: str = tool_call.get("name", "")
@@ -232,16 +280,24 @@ async def stream_with_tools(
             # Notify UI that tool is starting (shows 'calling' state immediately)
             if event_dispatcher is not None:
                 try:
+                    tool_meta = getattr(tools_by_name.get(tool_name), "metadata", None)
                     await event_dispatcher(
                         "tool_call_start",
-                        {"tool": tool_name, "args": tool_args, "tool_call_id": tool_call_id},
+                        {
+                            "tool": tool_name,
+                            "args": tool_args,
+                            "tool_call_id": tool_call_id,
+                            "tool_meta": tool_meta,
+                        },
                     )
                 except Exception:
                     pass
 
             if tool_name in tools_by_name:
                 try:
-                    raw_result = await tools_by_name[tool_name].ainvoke(tool_args)
+                    tool = tools_by_name[tool_name]
+                    tool_meta = getattr(tool, "metadata", None)
+                    raw_result = await tool.ainvoke(tool_args)
                     tool_result_str = (
                         raw_result
                         if isinstance(raw_result, str)
@@ -250,6 +306,7 @@ async def stream_with_tools(
                 except Exception as exc:
                     tool_result_str = json.dumps({"success": False, "error": str(exc)})
             else:
+                tool_meta = None
                 tool_result_str = json.dumps({"error": f"Unknown tool: {tool_name}"})
 
             # Notify UI that tool completed (shows result)
@@ -257,7 +314,13 @@ async def stream_with_tools(
                 try:
                     await event_dispatcher(
                         "tool_call",
-                        {"tool": tool_name, "args": tool_args, "result_preview": tool_result_str[:300], "tool_call_id": tool_call_id},
+                        {
+                            "tool": tool_name,
+                            "args": tool_args,
+                            "result_preview": tool_result_str[:300],
+                            "tool_call_id": tool_call_id,
+                            "tool_meta": tool_meta,
+                        },
                     )
                 except Exception:
                     pass
@@ -265,6 +328,11 @@ async def stream_with_tools(
             working_messages.append(
                 ToolMessage(content=tool_result_str, tool_call_id=tool_call_id)
             )
+
+        iteration += 1
+        if iteration >= max_iterations:
+            _logger.warning("stream_tool_loop_max_iterations_reached", limit=max_iterations)
+            break
 
     # --- Dispatch captured text response or fall back to a fresh stream ---
     if last_text_response.strip():
@@ -276,7 +344,7 @@ async def stream_with_tools(
             except Exception:
                 pass
     else:
-        # Fallback: tool loop exhausted max_iterations without a text answer.
+        # Fallback: loop exited without capturing a text answer.
         # Make one more streaming call (without bound tools if possible).
         async for chunk in llm.astream(working_messages):
             thought, texts = extract_chunk_parts(chunk)

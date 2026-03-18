@@ -228,7 +228,7 @@ class AgentBridge(StatefulNode, BaseNode):
         
         try:
             # Get tools for the agent type
-            tools = tools_registry.get_tools_for_agent(agent.agent_type)
+            tools = tools_registry.get_tools_for_agent(agent)
             
             # Create a simple response object for compatibility
             class AgentResponse:

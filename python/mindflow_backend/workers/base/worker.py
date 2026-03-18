@@ -8,12 +8,9 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-import pika
-from pika.adapters.asyncio_connection import AsyncioConnection
-from pika.channel import Channel
-from pika.credentials import PlainCredentials
+import aio_pika
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.exceptions import (
@@ -24,6 +21,7 @@ from mindflow_backend.workers.base.exceptions import (
 )
 from mindflow_backend.workers.config.queues import QueueConfig
 from mindflow_backend.workers.config.settings import get_worker_settings
+from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
 
 _logger = get_logger(__name__)
 
@@ -68,15 +66,23 @@ class BaseWorker(ABC):
         self.worker_name = worker_name or f"{queue_config.worker_type}_worker"
         self.settings = settings or get_worker_settings()
         self.status = WorkerStatus.IDLE
-        self._connection: Optional[AsyncioConnection] = None
-        self._channel: Optional[Channel] = None
+        self._connection: Any | None = None
+        self._channel: Any | None = None
+        self._queue: Any | None = None
         self._retry_count = 0
-        self._start_time: Optional[float] = None
-        
+        self._start_time: float | None = None
+        self._tasks_processed = 0
+        self._tasks_successful = 0
+        self._tasks_failed = 0
+        self._total_processing_time = 0.0
+        self._last_activity: float | None = None
+        self._total_retries = 0
+        self._last_correlation_id: str | None = None
+
         _logger.info(
             f"Worker {self.worker_name} initialized for queue {queue_config.get_full_queue_name()}"
         )
-    
+
     async def start(self) -> None:
         """Start the worker and connect to RabbitMQ."""
         try:
@@ -98,36 +104,28 @@ class BaseWorker(ABC):
         try:
             if self._connection and not self._connection.is_closed:
                 await self._connection.close()
+            self._channel = None
+            self._queue = None
             self.status = WorkerStatus.STOPPED
             _logger.info(f"Worker {self.worker_name} stopped")
         except Exception as e:
             _logger.error(f"Error stopping worker {self.worker_name}: {e}")
-    
+
     async def _connect(self) -> None:
         """Connect to RabbitMQ."""
-        credentials = PlainCredentials(
-            username=self.settings.rabbitmq_username,
-            password=self.settings.rabbitmq_password,
-        )
-        
-        parameters = pika.ConnectionParameters(
-            host=self.settings.rabbitmq_host,
-            port=self.settings.rabbitmq_port,
-            virtual_host=self.settings.rabbitmq_virtual_host,
-            credentials=credentials,
-            heartbeat=self.settings.heartbeat,
-            connection_timeout=self.settings.connection_timeout,
-        )
-        
         try:
-            self._connection = await pika.connect_async(parameters)
-            self._channel = await self._connection.channel()
-            
-            # Set QoS
-            await self._channel.basic_qos(
-                prefetch_count=self.settings.prefetch_count
+            self._connection = await aio_pika.connect_robust(
+                host=self.settings.rabbitmq_host,
+                port=self.settings.rabbitmq_port,
+                login=self.settings.rabbitmq_username,
+                password=self.settings.rabbitmq_password,
+                virtualhost=self.settings.rabbitmq_virtual_host,
+                timeout=self.settings.connection_timeout,
+                heartbeat=self.settings.heartbeat,
             )
-            
+            self._channel = await self._connection.channel()
+            await self._channel.set_qos(prefetch_count=self.settings.prefetch_count)
+
             _logger.info(f"Worker {self.worker_name} connected to RabbitMQ")
         except Exception as e:
             raise WorkerConnectionError(
@@ -135,7 +133,7 @@ class BaseWorker(ABC):
                 worker_name=self.worker_name,
                 service="rabbitmq",
             ) from e
-    
+
     async def _setup_queue(self) -> None:
         """Set up the queue and exchanges."""
         if not self._channel:
@@ -143,159 +141,240 @@ class BaseWorker(ABC):
                 "No channel available for queue setup",
                 worker_name=self.worker_name,
             )
-        
+
         queue_name = self.queue_config.get_full_queue_name()
-        
-        # Declare queue
-        await self._channel.queue_declare(
-            queue=queue_name,
+        dead_letter_queue = self.queue_config.get_dead_letter_queue_name()
+
+        self._queue = await self._channel.declare_queue(
+            queue_name,
             durable=True,
             arguments={
                 "x-message-ttl": self.queue_config.message_ttl * 1000,
                 "x-dead-letter-exchange": "",
-                "x-dead-letter-routing-key": self.queue_config.dead_letter_queue
-                or f"{queue_name}.dlq",
-            }
+                "x-dead-letter-routing-key": dead_letter_queue,
+            },
         )
-        
-        # Declare dead letter queue if needed
-        if self.queue_config.dead_letter_queue:
-            await self._channel.queue_declare(
-                queue=self.queue_config.dead_letter_queue,
-                durable=True,
-            )
-        
+
+        await self._channel.declare_queue(
+            dead_letter_queue,
+            durable=True,
+        )
+
         _logger.info(f"Queue {queue_name} set up for worker {self.worker_name}")
-    
+
     async def _start_consuming(self) -> None:
         """Start consuming messages from the queue."""
-        if not self._channel:
+        if not self._queue:
             raise WorkerConfigurationError(
-                "No channel available for consuming",
+                "No queue available for consuming",
                 worker_name=self.worker_name,
             )
-        
-        queue_name = self.queue_config.get_full_queue_name()
-        
-        await self._channel.basic_consume(
-            queue=queue_name,
-            on_message_callback=self._on_message,
-            auto_ack=False,
+
+        await self._queue.consume(self._on_message, no_ack=False)
+
+        _logger.info(
+            f"Worker {self.worker_name} started consuming from {self.queue_config.get_full_queue_name()}"
         )
-        
-        _logger.info(f"Worker {self.worker_name} started consuming from {queue_name}")
-    
-    async def _on_message(
-        self,
-        channel: Channel,
-        method: pika.spec.Basic.Deliver,
-        properties: pika.spec.BasicProperties,
-        body: bytes,
-    ) -> None:
+
+    async def _on_message(self, message: Any) -> None:
         """Handle incoming messages."""
         self.status = WorkerStatus.PROCESSING
         self._start_time = time.time()
-        
+
         try:
             # Parse message
-            message_data = json.loads(body.decode())
+            message_data = self._normalize_message_data(json.loads(message.body.decode()))
             task_id = message_data.get("task_id", "unknown")
-            
-            _logger.info(
-                f"Worker {self.worker_name} processing task {task_id}"
-            )
-            
+            self._last_correlation_id = message_data.get("correlation_id")
+
+            _logger.info(f"Worker {self.worker_name} processing task {task_id}")
+
             # Process the message
             result = await self.process_message(message_data)
-            
+            processing_time = result.processing_time or self.get_processing_time()
+            result.processing_time = processing_time
+            self._record_processing_outcome(
+                success=result.success,
+                processing_time=processing_time,
+            )
+
             if result.success:
-                await channel.basic_ack(delivery_tag=method.delivery_tag)
+                await message.ack()
                 _logger.info(
                     f"Worker {self.worker_name} completed task {task_id} "
                     f"in {result.processing_time:.2f}s"
                 )
             else:
                 # Handle failure
-                await self._handle_failure(
-                    channel, method, message_data, result, task_id
-                )
-                
+                await self._handle_failure(message, message_data, result, task_id)
+
         except json.JSONDecodeError as e:
-            _logger.error(
-                f"Worker {self.worker_name} failed to decode message: {e}"
+            self._record_processing_outcome(
+                success=False,
+                processing_time=self.get_processing_time(),
             )
-            await channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-            
+            _logger.error(f"Worker {self.worker_name} failed to decode message: {e}")
+            await message.reject(requeue=False)
+
         except Exception as e:
+            self._record_processing_outcome(
+                success=False,
+                processing_time=self.get_processing_time(),
+            )
             _logger.error(
                 f"Worker {self.worker_name} unexpected error: {e}",
                 exc_info=True
             )
-            await channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-            
+            await message.reject(requeue=True)
+
         finally:
             self.status = WorkerStatus.IDLE
             self._start_time = None
-    
+
     async def _handle_failure(
         self,
-        channel: Channel,
-        method: pika.spec.Basic.Deliver,
+        message: Any,
         message_data: Dict[str, Any],
         result: WorkerResult,
         task_id: str,
     ) -> None:
         """Handle processing failure with retry logic."""
+        retry_policy = self.queue_config.get_retry_policy()
         self._retry_count = message_data.get("retry_count", 0) + 1
-        
-        if self._retry_count <= self.queue_config.max_retries:
+        self._total_retries += 1
+
+        if self._retry_count <= retry_policy.max_retries:
+            if not self._channel:
+                raise WorkerConfigurationError(
+                    "No channel available for retry publish",
+                    worker_name=self.worker_name,
+                )
+
             # Retry with delay
-            await asyncio.sleep(self.queue_config.retry_delay)
-            
+            await asyncio.sleep(retry_policy.get_delay_for_attempt(self._retry_count))
+
             # Update retry count and requeue
             message_data["retry_count"] = self._retry_count
-            
-            await channel.basic_publish(
-                exchange="",
-                routing_key=self.queue_config.get_full_queue_name(),
-                body=json.dumps(message_data),
-                properties=pika.BasicProperties(
-                    delivery_mode=2,  # Make message persistent
-                ),
+
+            retry_message = aio_pika.Message(
+                body=json.dumps(message_data, default=str).encode(),
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                content_type="application/json",
             )
-            
-            await channel.basic_ack(delivery_tag=method.delivery_tag)
-            
+
+            await self._channel.default_exchange.publish(
+                retry_message,
+                routing_key=self.queue_config.get_full_queue_name(),
+            )
+
+            await message.ack()
+
             _logger.warning(
                 f"Worker {self.worker_name} retrying task {task_id} "
-                f"(attempt {self._retry_count}/{self.queue_config.max_retries})"
+                f"(attempt {self._retry_count}/{retry_policy.max_retries})"
             )
         else:
             # Max retries exceeded, send to dead letter queue
-            await channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-            
+            await message.reject(requeue=False)
+
             _logger.error(
                 f"Worker {self.worker_name} max retries exceeded for task {task_id}"
             )
-    
+
+    def _normalize_message_data(self, message_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize envelope and legacy payload formats for consumers."""
+        if "schema_version" in message_data and "payload" in message_data:
+            retry_count = message_data.get("retry_count")
+            envelope_data = {k: v for k, v in message_data.items() if k != "retry_count"}
+            envelope = QueueMessageEnvelope.model_validate(envelope_data)
+            normalized = {
+                **envelope.payload,
+                "schema_version": envelope.schema_version,
+                "task_type": envelope.task_type,
+                "task_id": envelope.task_id,
+                "session_id": envelope.session_id,
+                "run_id": envelope.run_id,
+                "correlation_id": envelope.correlation_id,
+                "idempotency_key": envelope.idempotency_key,
+                "created_at": envelope.created_at,
+                "metadata": envelope.metadata,
+            }
+            if retry_count is not None:
+                normalized["retry_count"] = retry_count
+            return normalized
+
+        task_data = message_data.get("task_data")
+        if isinstance(task_data, dict):
+            normalized = {**task_data}
+            for key in (
+                "task_type",
+                "task_id",
+                "session_id",
+                "priority",
+                "agent_type",
+                "system_component",
+                "research_domain",
+                "metadata",
+            ):
+                if key in message_data:
+                    normalized[key] = message_data[key]
+            return normalized
+
+        payload = message_data.get("payload")
+        if isinstance(payload, dict):
+            normalized = {**payload}
+            for key in ("task_type", "task_id", "session_id", "metadata"):
+                if key in message_data:
+                    normalized[key] = message_data[key]
+            return normalized
+
+        return message_data
+
     @abstractmethod
     async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
         """Process a message. Must be implemented by subclasses.
-        
+
         Args:
             message_data: The message data to process
-            
+
         Returns:
             WorkerResult with processing outcome
         """
         pass
-    
+
     def get_processing_time(self) -> float:
         """Get current task processing time."""
         if self._start_time:
             return time.time() - self._start_time
         return 0.0
-    
+
+    def get_metrics_snapshot(self) -> Dict[str, Any]:
+        """Get current runtime metrics for monitoring and health reports."""
+        average_processing_time = (
+            self._total_processing_time / self._tasks_processed
+            if self._tasks_processed
+            else 0.0
+        )
+        return {
+            "tasks_processed": self._tasks_processed,
+            "tasks_successful": self._tasks_successful,
+            "tasks_failed": self._tasks_failed,
+            "average_processing_time": average_processing_time,
+            "last_activity": self._last_activity,
+            "retry_count": self._total_retries,
+            "last_correlation_id": self._last_correlation_id,
+        }
+
     def get_status(self) -> WorkerStatus:
         """Get current worker status."""
         return self.status
+
+    def _record_processing_outcome(self, *, success: bool, processing_time: float) -> None:
+        """Update worker runtime counters after a processing attempt."""
+        self._tasks_processed += 1
+        self._last_activity = time.time()
+        self._total_processing_time += max(processing_time, 0.0)
+        if success:
+            self._tasks_successful += 1
+        else:
+            self._tasks_failed += 1

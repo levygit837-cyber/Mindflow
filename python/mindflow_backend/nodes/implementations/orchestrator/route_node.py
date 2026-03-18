@@ -6,9 +6,6 @@ from typing import Any, Dict
 
 from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
 from mindflow_backend.nodes.base.stateful import StatefulNode
-from mindflow_backend.schemas.orchestration.orchestrator import (
-    ThinkingMode,
-)
 
 
 class RouteNode(StatefulNode, BaseNode):
@@ -27,50 +24,29 @@ class RouteNode(StatefulNode, BaseNode):
         self.config.outputs = {"decision", "complexity_score"}
     
     async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute the routing logic."""
-        from mindflow_backend.orchestrator.routing.intelligent_router import route_message_intelligently
-        from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
-        from mindflow_backend.orchestrator.complexity import ComplexityScorer
-        from mindflow_backend.infra.config import get_settings
+        """Route all requests to the Orchestrator as sole entry point."""
         from mindflow_backend.infra.logging import get_logger
-        
-        _logger = get_logger(__name__)
-        
-        # Create orchestrator session
-        session = OrchestratorSession(
-            user_intent=state["message"],
+        from mindflow_backend.schemas.orchestration.orchestrator import (
+            AgentType,
+            ExecutionStrategy,
+            OrchestratorDecision,
         )
 
-        # Use intelligent routing
-        decision = await route_message_intelligently(
-            state["message"],
-            session,
-            folder_path=state.get("folder_path"),
+        _logger = get_logger(__name__)
+
+        decision = OrchestratorDecision(
+            agent=AgentType.ORCHESTRATOR,
+            execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
+            rationale="Orchestrator handles all requests directly.",
         )
-        
-        # Calculate complexity score
-        scorer = ComplexityScorer()
-        score = await scorer.get_complexity_score(
-            state["message"], 
-            provider=state.get("provider"), 
-            model=state.get("model")
-        )
-        
-        # Check for decomposition thinking
-        settings = get_settings()
-        if settings.enable_decomposition_thinking and scorer.should_decompose(score):
-            decision.thinking_mode = ThinkingMode.DECOMPOSITION
-            _logger.info("route_node_triggering_dt", score=score)
-        elif scorer.should_decompose(score):
-            _logger.info("route_node_dt_disabled", score=score)
-        
-        _logger.info("route_node_completed", agent=decision.agent.value, score=score)
-        
-        # Update node state
-        self.set_node_state("last_agent", decision.agent.value)
+        score = 0.0
+
+        _logger.info("route_node_completed", agent="orchestrator", strategy="direct_response")
+
+        self.set_node_state("last_agent", "orchestrator")
         self.set_node_state("last_complexity", score)
         self.set_node_state("routing_count", self.get_node_state("routing_count", 0) + 1)
-        
+
         return {
             "decision": decision,
             "complexity_score": score,

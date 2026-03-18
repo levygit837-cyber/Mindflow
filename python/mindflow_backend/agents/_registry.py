@@ -15,6 +15,18 @@ from mindflow_backend.agents.core.initialization import initialize_agent_system,
 
 _logger = get_logger(__name__)
 
+# Mapping from specialist name → canonical agent_id ("role:specialist").
+# Used so callers can look up specialists by their short name without needing
+# to know the base AgentType — e.g. get_agent("arch_tech") resolves to the
+# (CODER, ARCH_TECH) entry just like get_agent(agent_id="coder:arch_tech").
+_SPECIALIST_AGENT_ID: dict[str, str] = {
+    "arch_tech": "coder:arch_tech",
+    "security_guard": "analyst:security_guard",
+    "critic": "analyst:critic",
+    "brainstorm": "analyst:brainstorm",
+    "deep_iteration": "analyst:deep_iteration",
+}
+
 
 def _normalize_role(agent_type: AgentType | str) -> AgentType:
     """Normalize legacy string lookups to canonical agent roles."""
@@ -113,13 +125,26 @@ _registry = AgentRegistry()
 
 
 def get_agent(
-    agent_type: AgentType | str,
+    agent_type: AgentType | str | None = None,
     specialist: SpecialistType | str | None = None,
     agent_id: str | None = None,
 ) -> BaseAgent:
-    """Module-level shortcut to retrieve an agent from the global registry."""
+    """Module-level shortcut to retrieve an agent from the global registry.
+
+    Accepts both canonical agent roles (``AgentType`` values: coder, analyst,
+    researcher, orchestrator) and specialist short names (e.g. ``arch_tech``,
+    ``security_guard``).  Specialist names are resolved via
+    ``_SPECIALIST_AGENT_ID`` so callers don't have to know the base role.
+    """
     if agent_id:
         return _registry.get_by_id(agent_id)
+    if agent_type is None:
+        raise TypeError("get_agent() requires 'agent_type' when 'agent_id' is not provided")
+    # Resolve specialist short-names transparently so that
+    # get_agent("arch_tech") works exactly like get_agent(agent_id="coder:arch_tech").
+    normalized = str(agent_type).strip().lower()
+    if normalized in _SPECIALIST_AGENT_ID:
+        return _registry.get_by_id(_SPECIALIST_AGENT_ID[normalized])
     return _registry.get(agent_type, specialist=specialist)
 
 
@@ -151,7 +176,7 @@ def register_all_specialists() -> None:
             create_security_agent,
             create_review_agent,
             create_architecture_agent,
-            create_creative_agent,
+            create_brainstorm_agent,
             create_deep_analysis_agent,
         )
 
@@ -163,7 +188,7 @@ def register_all_specialists() -> None:
             create_security_agent,
             create_review_agent,
             create_architecture_agent,
-            create_creative_agent,
+            create_brainstorm_agent,
             create_deep_analysis_agent,
         ):
             _registry.register(factory())

@@ -1,7 +1,10 @@
+from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
+from mindflow_backend.infra.sanitizer import sanitize_message
+from mindflow_backend.schemas.api.common import BaseResponse
 from mindflow_backend.schemas.core.common import LLMProvider
 
 
@@ -23,6 +26,47 @@ class AgentChatRequest(BaseModel):
         default=None,
         description="Working directory for filesystem tools (root_dir for sandboxed operations)",
     )
+
+    @field_validator("folder_path", mode="before")
+    @classmethod
+    def normalize_folder_path(cls, value: Any) -> Any:
+        if value is None or not isinstance(value, str):
+            return value
+
+        candidate = value.strip()
+        if not candidate:
+            return None
+
+        try:
+            path = Path(candidate).expanduser()
+            if path.exists():
+                if path.is_file():
+                    return str(path.resolve().parent)
+                if path.is_dir():
+                    return str(path.resolve())
+        except OSError:
+            return candidate
+
+        return candidate
+
+    @field_validator("message")
+    @classmethod
+    def sanitize_input_message(cls, value: str) -> str:
+        return sanitize_message(value)
+
+
+class AgentExecutionResponse(BaseResponse):
+    """Response for execution status and control actions."""
+
+    execution_id: str = Field(description="Execution ID")
+    status: str = Field(description="Execution status")
+    action: str | None = Field(default=None, description="Requested control action")
+    paused: bool = Field(default=False, description="Whether the execution is paused")
+    can_resume: bool = Field(default=False, description="Whether the execution can be resumed")
+    progress: float | None = Field(default=None, description="Execution progress percentage")
+    snapshot: dict[str, Any] = Field(default_factory=dict, description="Execution snapshot or state details")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional execution metadata")
+
 
 class ChatMessageSchema(BaseModel):
     id: int | None = None

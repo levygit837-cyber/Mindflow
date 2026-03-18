@@ -5,9 +5,40 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MindFlow</title>
+    <script>
+      (() => {
+        const fontSizeMap = {
+          small: { base: '16px', scale: '1' },
+          medium: { base: '18px', scale: '1.08' },
+          large: { base: '19px', scale: '1.16' },
+        };
+
+        try {
+          const persisted = localStorage.getItem('mindflow-store');
+          const parsed = persisted ? JSON.parse(persisted) : null;
+          const theme = parsed?.state?.theme === 'dark' ? 'dark' : 'light';
+          const persistedSize = parsed?.state?.settings?.fontSize;
+          const fontSize = fontSizeMap[persistedSize] ? persistedSize : 'large';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.fontSize = fontSize;
+          document.documentElement.style.colorScheme = theme;
+          document.documentElement.style.setProperty('--base-font-size', fontSizeMap[fontSize].base);
+          document.documentElement.style.setProperty('--font-scale', fontSizeMap[fontSize].scale);
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+          document.documentElement.dataset.fontSize = 'large';
+          document.documentElement.style.colorScheme = 'light';
+          document.documentElement.style.setProperty('--base-font-size', '19px');
+          document.documentElement.style.setProperty('--font-scale', '1.16');
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@400;500;600&family=Familjen+Grotesk:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

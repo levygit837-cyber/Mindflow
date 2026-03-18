@@ -78,7 +78,7 @@ export const DashboardPage: React.FC = () => {
             Inicia um novo fluxo de delegação com o orchestrator no centro e notifiers visíveis.
           </p>
           <div className="mt-6 mono-chip" style={{ width: 'fit-content' }}>
-            --- iniciar
+            iniciar
           </div>
         </Card>
 
@@ -91,7 +91,7 @@ export const DashboardPage: React.FC = () => {
             Usa a mesma linguagem mínima do restante da interface para identificar gargalos e agentes disponíveis.
           </p>
           <div className="mt-6 mono-chip" style={{ width: 'fit-content' }}>
-            --- mapear
+            mapear
           </div>
         </Card>
       </div>

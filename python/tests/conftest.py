@@ -3,15 +3,25 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 # NOTE: Avoid importing the full FastAPI app at import-time.
 # Many unit tests don't need it, and importing it can pull optional dependencies.
+
+# ---------------------------------------------------------------------------
+# Auth test configuration
+# Set a fixed master key so tests work when AUTH_ENABLED=true is toggled on.
+# ---------------------------------------------------------------------------
+_TEST_API_KEY = "test-master-key-for-pytest"
+os.environ.setdefault("AUTH_MASTER_KEY", _TEST_API_KEY)
+
+AUTH_HEADERS: dict[str, str] = {"Authorization": f"Bearer {_TEST_API_KEY}"}
 
 
 @pytest.fixture(scope="session")
@@ -33,16 +43,24 @@ async def setup_database():
 
 @pytest.fixture
 def client() -> TestClient:
-    """Create a test client."""
+    """Create a test client with auth headers pre-configured."""
+    from mindflow_backend.main import app  # lazy import
+    return TestClient(app, headers=AUTH_HEADERS)
+
+
+@pytest.fixture
+def unauthed_client() -> TestClient:
+    """Create a test client without auth headers (for testing auth rejection)."""
     from mindflow_backend.main import app  # lazy import
     return TestClient(app)
 
 
 @pytest_asyncio.fixture
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    """Create an async test client."""
+    """Create an async test client with auth headers pre-configured."""
     from mindflow_backend.main import app  # lazy import
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers=AUTH_HEADERS) as ac:
         yield ac
 
 
@@ -168,7 +186,11 @@ def mock_provider_service():
             "id": "google",
             "name": "Google/VertexAI",
             "status": "active",
-            "models": ["gemini-pro", "gemini-pro-vision"]
+            "models": [
+                "gemini-3.1-flash-lite-preview",
+                "gemini-3.1-pro-preview",
+                "gemini-3.1-pro-preview-customtools",
+            ]
         },
         {
             "id": "anthropic",
@@ -178,8 +200,9 @@ def mock_provider_service():
         }
     ]
     service.get_provider_models.return_value = [
-        {"name": "gemini-pro", "status": "available"},
-        {"name": "gemini-pro-vision", "status": "available"}
+        {"name": "gemini-3.1-flash-lite-preview", "status": "available"},
+        {"name": "gemini-3.1-pro-preview", "status": "available"},
+        {"name": "gemini-3.1-pro-preview-customtools", "status": "available"},
     ]
     service.test_provider_connection.return_value = {
         "provider_id": "google",
@@ -251,7 +274,7 @@ def sample_agent_request():
         "message": "Test message",
         "agent_type": "analyst",
         "provider": "google",
-        "model": "gemini-pro",
+        "model": "gemini-3.1-flash-lite-preview",
         "session_id": "test-session",
         "orchestrate": False
     }

@@ -25,15 +25,21 @@ def test_agent_type_values_are_base_roles() -> None:
 
 
 def test_tool_scope_values_include_browser_search() -> None:
-    expected = {
+    # Verify the core scopes are present; new scopes may be added over time.
+    required = {
         "filesystem",
         "shell",
         "web_search",
         "browser_search",
         "code_analysis",
         "database",
+        "memory",
+        "planning",
+        "delegation",
+        "pinchtab_fleet",
+        "pinchtab_browser",
     }
-    assert set(ToolScope) == expected
+    assert required.issubset({s.value for s in ToolScope})
 
 
 def test_orchestrator_decision_defaults() -> None:

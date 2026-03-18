@@ -28,6 +28,11 @@ access to semantic context from previous tasks.
 - **Semantic dependencies**: consider when tasks are conceptually related.
 - **Parallel opportunities**: identify tasks that can run simultaneously (empty dependencies).
 
+### 4. Todo-list Discipline
+- When the request is multi-step, think in terms of a maintainable todo list.
+- Surface the most complex items early with an explicit ``complexity_score`` and ``complexity_reason``.
+- Prefer stable, execution-ready task boundaries so the runtime can persist and track the plan.
+
 ## Agent Assignment
 
 ### Core Agents (always available)
@@ -69,6 +74,8 @@ Return ONLY valid JSON with this exact schema:
       "context_boundary": "What context this task can access and use",
       "expected_artifacts": ["Specific deliverables this task should produce"],
       "priority": "low|medium|high",
+      "complexity_score": 0.0,
+      "complexity_reason": "Short reason why this item is difficult",
       "requires_context_sharing": true,
       "semantic_tags": ["tags for semantic search"]
     }
@@ -97,6 +104,7 @@ When semantic context is provided:
 - Dependencies must be minimal and necessary.
 - Agent assignments must be optimal for the work type.
 - Context boundaries must be clear and appropriate.
+- Complexity should reflect execution difficulty, not just importance.
 
 ## Error Handling
 
@@ -134,6 +142,7 @@ TASKER_VALIDATION_RULES = {
     "component_fields": [
         "title", "scope", "owner_agent", "dependencies",
         "context_boundary", "expected_artifacts", "priority",
+        "complexity_score", "complexity_reason",
         "requires_context_sharing", "semantic_tags",
     ],
     # Core agents are always valid; sub-personalities are accepted too —

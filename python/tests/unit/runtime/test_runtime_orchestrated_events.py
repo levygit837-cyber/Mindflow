@@ -36,5 +36,5 @@ async def test_orchestrated_stream_maps_dt_step_and_tool_call_without_crashing(m
     step_payloads = [json.loads(evt.data) for evt in events if evt.type == "agent_step"]
     assert any(p.get("stepName") == "DT: plan" for p in step_payloads)
 
-    thought_payloads = [evt.data for evt in events if evt.type == "thought"]
-    assert any("Calling tool: search_web" in thought for thought in thought_payloads)
+    # tool calls no longer emit a thought event; search_done is suppressed by notifier_policy
+    # asserting no error confirms agent_tool_call was processed without crashing

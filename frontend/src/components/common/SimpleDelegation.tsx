@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
-import { Network, ChevronRight } from 'lucide-react';
+import { ChevronRight, Network } from 'lucide-react';
 
-
-type AgentType = 'orchestrator' | 'analyst' | 'coder' | 'researcher';
+type AgentType = 'orchestrator' | 'analyst' | 'coder' | 'researcher' | 'default';
 
 interface SimpleDelegationProps {
   /** Target agent receiving the task */
@@ -14,46 +13,38 @@ interface SimpleDelegationProps {
   className?: string;
 }
 
-// Matches the design sdr* node color tokens
-const AGENT_DELEGATION_COLORS: Record<string, {
-  containerBg: string;
-  dotColor: string;
-  nameColor: string;
-  badgeBg: string;
-  badgeText: string;
-  taskColor: string;
-}> = {
+const AGENT_DELEGATION_COLORS: Record<
+  string,
+  {
+    accent: string;
+    badgeBg: string;
+    badgeBorder: string;
+  }
+> = {
   researcher: {
-    containerBg: '#031118',
-    dotColor: '#22D3EE',
-    nameColor: '#22D3EE',
+    accent: '#22D3EE',
     badgeBg: '#031118',
-    badgeText: '#22D3EE',
-    taskColor: '#2A6678',
+    badgeBorder: '#22D3EE',
   },
   analyst: {
-    containerBg: '#150D04',
-    dotColor: '#F59E0B',
-    nameColor: '#F59E0B',
+    accent: '#F59E0B',
     badgeBg: '#150D04',
-    badgeText: '#F59E0B',
-    taskColor: '#7A5E1A',
+    badgeBorder: '#F59E0B',
   },
   coder: {
-    containerBg: '#041208',
-    dotColor: '#4ADE80',
-    nameColor: '#4ADE80',
+    accent: '#4ADE80',
     badgeBg: '#041208',
-    badgeText: '#4ADE80',
-    taskColor: '#1E5A2A',
+    badgeBorder: '#4ADE80',
   },
   orchestrator: {
-    containerBg: '#110A2E',
-    dotColor: '#8B5CF6',
-    nameColor: '#8B5CF6',
+    accent: '#8B5CF6',
     badgeBg: '#110A2E',
-    badgeText: '#8B5CF6',
-    taskColor: '#4A3B7A',
+    badgeBorder: '#8B5CF6',
+  },
+  default: {
+    accent: 'var(--signal-synapse)',
+    badgeBg: '#1D1840',
+    badgeBorder: 'var(--signal-synapse)',
   },
 };
 
@@ -70,69 +61,51 @@ export const SimpleDelegation: React.FC<SimpleDelegationProps> = ({
   task,
   className = '',
 }) => {
-  const colors = AGENT_DELEGATION_COLORS[agentType] ?? AGENT_DELEGATION_COLORS.researcher;
+  const colors = AGENT_DELEGATION_COLORS[agentType] ?? AGENT_DELEGATION_COLORS.default;
   const displayName = agentName ?? AGENT_LABEL_MAP[agentType] ?? agentType;
 
   return (
-    <motion.div
-      className={`rounded-lg overflow-hidden ${className}`}
-      style={{ backgroundColor: colors.containerBg }}
+    <motion.section
+      className={`event-shell w-full ${className}`}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
     >
-      {/* Header row */}
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-1.5">
-          {/* Orchestrator icon (delegating from) */}
-          <Network className="w-3.5 h-3.5" style={{ color: '#8B5CF6' }} />
-          <span
-            className="text-[12px]"
-            style={{ color: '#7C5ABF', fontFamily: 'var(--font-brand)' }}
-          >
-            Orchestrator
-          </span>
-
-          {/* Arrow */}
-          <ChevronRight className="w-3 h-3" style={{ color: '#1E1A40' }} />
-
-          {/* Target agent dot + name */}
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: colors.dotColor }}
-          />
-          <span
-            className="text-[12px] font-semibold"
-            style={{ color: colors.nameColor, fontFamily: 'var(--font-brand)' }}
-          >
-            {displayName}
-          </span>
-        </div>
-
-        {/* Agent type badge */}
-        <div
-          className="px-2 py-0.5 rounded"
-          style={{ backgroundColor: colors.badgeBg, border: `1px solid ${colors.dotColor}22` }}
-        >
-          <span
-            className="text-[11px] font-semibold"
-            style={{ color: colors.badgeText, fontFamily: 'var(--font-brand)' }}
-          >
-            {displayName}
-          </span>
-        </div>
+      <div className="event-track">
+        <span className="signal-dot idle" />
       </div>
 
-      {/* Task description */}
-      <div className="px-3 pb-2.5">
-        <p
-          className="text-[12px] leading-relaxed"
-          style={{ color: colors.taskColor, fontFamily: 'var(--font-sans)' }}
-        >
-          {task}
-        </p>
+      <div
+        className="simple-delegation-card"
+        style={
+          {
+            '--delegation-accent': colors.accent,
+            '--delegation-badge-bg': colors.badgeBg,
+            '--delegation-badge-border': colors.badgeBorder,
+          } as CSSProperties
+        }
+      >
+        <div className="simple-delegation-header">
+          <div className="simple-delegation-route">
+            <div className="simple-delegation-route-core">
+              <Network size={13} />
+              <span className="simple-delegation-origin">Orchestrator</span>
+            </div>
+
+            <ChevronRight size={13} className="simple-delegation-arrow" />
+
+            <div className="simple-delegation-target">
+              <span className="simple-delegation-dot" />
+              <span className="simple-delegation-name">{displayName}</span>
+            </div>
+          </div>
+
+          <span className="simple-delegation-badge">{displayName}</span>
+        </div>
+
+        <p className="simple-delegation-task">{task}</p>
       </div>
-    </motion.div>
+    </motion.section>
   );
 };
 

@@ -9,9 +9,17 @@ interface Session {
   title: string | null;
   created_at: string;
   updated_at: string;
+  message_count?: number | null;
 }
 
 const BASE_URL = '/v1';
+const GENERIC_SESSION_TITLES = new Set([
+  'new chat',
+  'new session',
+  'nova conversa',
+  'untitled',
+  'sem título',
+]);
 
 function timeAgo(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();
@@ -22,7 +30,24 @@ function timeAgo(dateStr: string): string {
   if (mins < 60) return `${mins}m`;
   if (hours < 24) return `${hours}h`;
   if (days < 7) return `${days}d`;
-  return 'antigo';
+  return 'older';
+}
+
+function hasRealHistory(session: Session): boolean {
+  if ((session.message_count ?? 0) > 0) return true;
+
+  const normalizedTitle = String(session.title ?? '')
+    .trim()
+    .toLowerCase();
+
+  if (!GENERIC_SESSION_TITLES.has(normalizedTitle)) return true;
+
+  const createdAt = new Date(session.created_at).getTime();
+  const updatedAt = new Date(session.updated_at).getTime();
+
+  if (Number.isNaN(createdAt) || Number.isNaN(updatedAt)) return false;
+
+  return updatedAt - createdAt > 5000;
 }
 
 export const Sidebar: React.FC = () => {
@@ -36,7 +61,7 @@ export const Sidebar: React.FC = () => {
       const response = await fetch(`${BASE_URL}/chat/sessions`);
       if (!response.ok) return;
       const data = await response.json();
-      setSessions(Array.isArray(data) ? data : []);
+      setSessions(Array.isArray(data) ? data.filter(hasRealHistory) : []);
     } catch {
       setSessions([]);
     }
@@ -55,7 +80,7 @@ export const Sidebar: React.FC = () => {
       const response = await fetch(`${BASE_URL}/chat/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'Nova conversa' }),
+        body: JSON.stringify({ title: 'New session' }),
       });
 
       if (!response.ok) {
@@ -75,14 +100,13 @@ export const Sidebar: React.FC = () => {
     <aside
       className="sidebar-shell flex h-full flex-col border-r px-3 py-4 md:px-4 md:py-5"
       style={{
-        width: 'clamp(88px, 24vw, 304px)',
+        width: 'clamp(232px, 22vw, 304px)',
         borderColor: 'var(--line-primary)',
       }}
     >
       <div className="sidebar-section flex flex-col gap-4 px-1 pb-2 md:px-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="mono-label mb-2">MindFlow / rail</div>
             <div
               className="flex items-center gap-3"
               style={{ minHeight: 28 }}
@@ -90,27 +114,16 @@ export const Sidebar: React.FC = () => {
               <span className="signal-dot" />
               <div className="min-w-0">
                 <div
-                  className="truncate"
                   style={{
                     color: 'var(--text-primary)',
-                    fontSize: 16,
+                    fontFamily: 'var(--font-brand)',
+                    fontSize: 28,
                     fontWeight: 600,
-                    letterSpacing: '-0.02em',
+                    letterSpacing: '-0.03em',
+                    lineHeight: 0.94,
                   }}
                 >
-                  Agentes em trilho
-                </div>
-                <div
-                  className="hidden md:block"
-                  style={{
-                    color: 'var(--text-meta)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  notificadores, setas e precisão
+                  Inicio
                 </div>
               </div>
             </div>
@@ -133,7 +146,7 @@ export const Sidebar: React.FC = () => {
         >
           <span className="flex items-center gap-3">
             <Plus size={14} />
-            <span className="hidden md:inline">Nova conversa</span>
+            <span className="hidden md:inline">New session</span>
           </span>
           <span className="mono-label hidden md:inline" style={{ letterSpacing: '0.08em' }}>
             start
@@ -143,7 +156,7 @@ export const Sidebar: React.FC = () => {
 
       <div className="sidebar-section flex min-h-0 flex-1 flex-col px-1 md:px-2">
         <div className="flex items-center gap-3">
-          <span className="mono-label">Sessões</span>
+          <span className="mono-label">Sessions</span>
           <div style={{ flex: 1, height: 1, background: 'var(--line-soft)' }} />
         </div>
 
@@ -155,10 +168,10 @@ export const Sidebar: React.FC = () => {
                 style={{
                   color: 'var(--text-meta)',
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
+                  fontSize: 'calc(13px * var(--font-scale, 1))',
                 }}
               >
-                sem histórico ainda
+                no sessions yet
               </div>
             ) : (
               sessions.map((session, index) => {
@@ -181,28 +194,28 @@ export const Sidebar: React.FC = () => {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="mono-label mb-2 hidden md:block">
-                        {isActive ? 'ativo' : 'registro'}
-                      </div>
                       <div
-                        className="truncate"
                         style={{
                           color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                          fontSize: 13,
+                          fontSize: 'calc(14px * var(--font-scale, 1))',
                           fontWeight: 500,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.45,
                         }}
                       >
-                        {session.title || 'sem título'}
+                        {session.title || 'untitled'}
                       </div>
                       <div
                         className="mt-1 flex items-center gap-2"
                         style={{
                           color: 'var(--text-meta)',
                           fontFamily: 'var(--font-mono)',
-                          fontSize: 11,
+                          fontSize: 'calc(12px * var(--font-scale, 1))',
                         }}
                       >
-                        <span>---</span>
                         <span>{timeAgo(updatedAt)}</span>
                       </div>
                     </div>
@@ -225,7 +238,7 @@ export const Sidebar: React.FC = () => {
           <div className="min-w-0 flex-1">
             <div
               className="truncate"
-              style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}
+              style={{ color: 'var(--text-primary)', fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 500 }}
             >
               Levy Bonito
             </div>
@@ -234,7 +247,7 @@ export const Sidebar: React.FC = () => {
               style={{
                 color: 'var(--text-meta)',
                 fontFamily: 'var(--font-mono)',
-                fontSize: 11,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
               }}
             >
               admin / pencil

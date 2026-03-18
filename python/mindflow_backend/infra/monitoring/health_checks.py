@@ -149,7 +149,9 @@ class DatabaseHealthChecker(HealthChecker):
         start_time = datetime.now(UTC)
         
         try:
-            health_data = await self._db_health_checker.check_health()
+            health_data = self._normalize_health_data(
+                await self._db_health_checker.check_health()
+            )
             response_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
             
             # Determine status based on health data
@@ -197,6 +199,28 @@ class DatabaseHealthChecker(HealthChecker):
             self.failure_count += 1
             
             return result
+
+    @staticmethod
+    def _normalize_health_data(raw_health_data: Any) -> dict[str, Any]:
+        if isinstance(raw_health_data, dict):
+            return raw_health_data
+
+        health_data = dict(getattr(raw_health_data, "details", {}) or {})
+        health_data.setdefault("status", getattr(raw_health_data, "status", "unknown"))
+        health_data.setdefault("latency_ms", getattr(raw_health_data, "latency_ms", None))
+
+        error = getattr(raw_health_data, "error", None)
+        if error is not None:
+            health_data.setdefault("error", str(error))
+
+        timestamp = getattr(raw_health_data, "timestamp", None)
+        if timestamp is not None:
+            health_data.setdefault(
+                "timestamp",
+                timestamp.isoformat() if hasattr(timestamp, "isoformat") else timestamp,
+            )
+
+        return health_data
 
 
 class CacheHealthChecker(HealthChecker):

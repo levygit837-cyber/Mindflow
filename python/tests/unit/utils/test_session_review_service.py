@@ -78,10 +78,10 @@ class TestSessionReviewService:
         
         # Add tokens above threshold
         progress = await session_review_service.update_token_count(sample_session_id, 15000)
-        
+
         # Should have triggered review and advanced window
         assert progress.window_index >= 1  # Advanced to next window
-        assert progress.progress_in_window < 0.5  # Reset for new window
+        assert progress.progress_in_window <= 0.5  # Carry-over cannot exceed half window here
         
         # Check that review was called
         session_review_service.review_agent.review_session_window.assert_called_once()

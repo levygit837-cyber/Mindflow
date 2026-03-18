@@ -11,6 +11,7 @@ from mindflow_backend.interfaces.services.orchestration import (
     OrchestrationServiceInterface,
     TaskServiceInterface,
     RoutingServiceInterface,
+    TodoPlanningServiceInterface,
 )
 
 # Maintain backward compatibility
@@ -18,4 +19,5 @@ __all__ = [
     "OrchestrationServiceInterface",
     "TaskServiceInterface",
     "RoutingServiceInterface",
+    "TodoPlanningServiceInterface",
 ]

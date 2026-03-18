@@ -36,7 +36,8 @@ def custom_openapi(app: FastAPI) -> Dict[str, Any]:
         - **Caching**: Redis/in-memory for performance
 
         ## Authentication
-        All endpoints require API key authentication using the `Authorization: Bearer <key>` header.
+        Protected endpoints require API key authentication using the `Authorization: Bearer <key>` header.
+        Public endpoints include health checks and documentation routes.
 
         ## Rate Limiting
         - 100 requests per minute per IP
@@ -173,7 +174,7 @@ def custom_openapi(app: FastAPI) -> Dict[str, Any]:
                 "message": "Analyze this code for security vulnerabilities",
                 "agent_type": "analyst",
                 "provider": "google",
-                "model": "gemini-pro",
+                "model": "gemini-3.1-flash-lite-preview",
                 "sessionId": "sess-12345",
                 "orchestrate": false
             }
@@ -251,7 +252,7 @@ def add_operation_examples(app: FastAPI) -> None:
                                 "message": "Help me analyze this Python code for potential bugs",
                                 "agent_type": "analyst",
                                 "provider": "google",
-                                "model": "gemini-pro",
+                                "model": "gemini-3.1-flash-lite-preview",
                                 "sessionId": "sess-12345",
                                 "orchestrate": False
                             }

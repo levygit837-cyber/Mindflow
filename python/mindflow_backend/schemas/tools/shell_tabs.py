@@ -28,6 +28,9 @@ class ShellTabContract(BaseModel):
     session_id: str
     cwd: str
     title: str
+    workspace_root: str | None = None
+    read_only: bool = False
+    secure_mode: bool = False
     pid: int | None = None
     state: ShellTabState = ShellTabState.IDLE
     last_command: str | None = None

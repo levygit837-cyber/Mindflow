@@ -352,7 +352,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
         
         # Provider validation (if specified)
         provider = request_data.get("provider")
-        if provider and provider not in ["google", "anthropic", "openai", "ollama", "vertexai", "codex"]:
+        if provider and provider not in ["google", "anthropic", "openai", "ollama", "vertexai"]:
             raise ValueError(f"Unknown provider: {provider}")
         
         # Session ID validation (if specified)

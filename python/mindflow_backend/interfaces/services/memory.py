@@ -2,6 +2,14 @@
 
 This module provides standardized interfaces for memory management services,
 including storage, retrieval, and context operations.
+
+Canonical facade
+----------------
+``MemoryFacadeInterface`` is the **single coherent contract** that all callers
+should depend on.  The older ``MemoryServiceInterface``, ``ContextMemoryInterface``,
+``VectorMemoryInterface`` and ``AgentMemoryServiceInterface`` are preserved for
+backward compatibility with existing implementations but should not be used in
+new code.
 """
 
 from __future__ import annotations
@@ -9,6 +17,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 from uuid import UUID
+
+from mindflow_backend.schemas.memory.contracts import (
+    AgentMemorySnapshot,
+    MemoryPersistResult,
+    MemoryRecallRequest,
+    MemoryRecallResponse,
+    SessionBlockSchema,
+)
 
 
 @runtime_checkable
@@ -300,8 +316,61 @@ class AgentMemoryServiceInterface(ABC):
         ...
 
 
+@runtime_checkable
+class MemoryFacadeInterface(Protocol):
+    """Canonical facade contract for the memory subsystem.
+
+    This is the *only* interface that new callers should depend on.
+    Implementations must delegate to the underlying storage services.
+    """
+
+    async def record_message(
+        self,
+        db: Any,
+        *,
+        session_id: str,
+        agent_id: str,
+        role: str,
+        content: str,
+        source_message_id: Optional[int] = None,
+        idempotency_key: Optional[str] = None,
+        source_status: str = "final",
+        derived_from_recall: bool = False,
+    ) -> MemoryPersistResult:
+        """Persist a message to agent memory and embed it immediately."""
+        ...
+
+    async def recall(
+        self,
+        request: MemoryRecallRequest,
+    ) -> MemoryRecallResponse:
+        """Retrieve semantically relevant context for a query."""
+        ...
+
+    async def get_agent_snapshot(
+        self,
+        session_id: str,
+        agent_id: str,
+        token_limit: Optional[int] = None,
+    ) -> AgentMemorySnapshot:
+        """Return a lightweight snapshot of an agent's memory state."""
+        ...
+
+    async def list_session_blocks(
+        self,
+        session_id: str,
+        categories: Optional[List[str]] = None,
+        limit: int = 10,
+    ) -> List[SessionBlockSchema]:
+        """Return the latest categorical session blocks."""
+        ...
+
+
 # Export all interfaces
 __all__ = [
+    # Canonical facade (use this)
+    "MemoryFacadeInterface",
+    # Legacy interfaces (backward compat)
     "MemoryServiceInterface",
     "AgentMemoryServiceInterface",
     "ContextMemoryInterface",

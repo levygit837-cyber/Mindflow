@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import type { ToolCallData } from './ToolCallBlock';
 
+type AgentType = 'orchestrator' | 'coder' | 'analyst' | 'researcher' | 'default';
+
 export const FS_TOOL_NAMES = new Set([
   'read_file',
   'write_file',
@@ -35,7 +37,7 @@ export function isFSTool(name: string): boolean {
 }
 
 function shortPath(path: string): string {
-  if (!path) return '(sem caminho)';
+  if (!path) return '(no path)';
   const parts = path.replace(/\\/g, '/').split('/').filter(Boolean);
   if (parts.length <= 3) return path;
   return `…/${parts.slice(-2).join('/')}`;
@@ -71,7 +73,7 @@ const FS_CONFIG: Record<string, FSConfig> = {
   read_file: {
     Icon: ({ size }) => <FileText size={size} />,
     label: (args) => shortPath(String(args.file_path ?? '')),
-    subtitle: (_, result) => result?.line_count ? `${result.line_count} linhas` : 'leitura',
+    subtitle: (_, result) => result?.line_count ? `${result.line_count} lines` : 'read',
     body: (_, result) => result?.content ? (
       <pre style={preStyle}>{truncate(String(result.content), 420)}</pre>
     ) : null,
@@ -79,13 +81,13 @@ const FS_CONFIG: Record<string, FSConfig> = {
   write_file: {
     Icon: ({ size }) => <FilePlus size={size} />,
     label: (args) => shortPath(String(args.file_path ?? '')),
-    subtitle: () => 'escrita',
+    subtitle: () => 'write',
     body: (args) => args.content ? <pre style={preStyle}>{truncate(String(args.content), 420)}</pre> : null,
   },
   edit_file: {
     Icon: ({ size }) => <Pencil size={size} />,
     label: (args) => shortPath(String(args.file_path ?? '')),
-    subtitle: (_, result) => result?.replacements != null ? `${result.replacements} troca(s)` : 'edição',
+    subtitle: (_, result) => result?.replacements != null ? `${result.replacements} edits` : 'edit',
     body: (args) => (
       <pre style={preStyle}>
         {`old: ${truncate(String(args.old_string ?? ''), 160)}\nnew: ${truncate(String(args.new_string ?? ''), 160)}`}
@@ -95,12 +97,12 @@ const FS_CONFIG: Record<string, FSConfig> = {
   list_dir: {
     Icon: ({ size }) => <Folder size={size} />,
     label: (args) => shortPath(String(args.path ?? args.directory_path ?? '')),
-    subtitle: (_, result) => `${((result?.entries as unknown[])?.length ?? 0)} item(ns)`,
+    subtitle: (_, result) => `${((result?.entries as unknown[])?.length ?? 0)} items`,
     body: (_, result) => (
       <pre style={preStyle}>
         {Array.isArray(result?.entries) && result.entries.length > 0
           ? result.entries.slice(0, 18).join('\n')
-          : 'diretório vazio'}
+          : 'empty directory'}
       </pre>
     ),
   },
@@ -110,21 +112,21 @@ const FS_CONFIG: Record<string, FSConfig> = {
     subtitle: (_, result) => {
       const files = Array.isArray(result?.files) ? result.files.length : 0;
       const dirs = Array.isArray(result?.directories) ? result.directories.length : 0;
-      return `${files + dirs} item(ns)`;
+      return `${files + dirs} items`;
     },
     body: (_, result) => (
       <pre style={preStyle}>
         {[
           ...(Array.isArray(result?.directories) ? result.directories.map((item) => `[dir] ${(item as { name?: string }).name ?? ''}`) : []),
           ...(Array.isArray(result?.files) ? result.files.map((item) => `[file] ${(item as { name?: string }).name ?? ''}`) : []),
-        ].slice(0, 18).join('\n') || 'diretório vazio'}
+        ].slice(0, 18).join('\n') || 'empty directory'}
       </pre>
     ),
   },
   grep_search: {
     Icon: ({ size }) => <FileSearch size={size} />,
     label: (args) => `"${truncate(String(args.pattern ?? ''), 32)}"`,
-    subtitle: (_, result) => `${result?.total_matches ?? 0} match(es)`,
+    subtitle: (_, result) => `${result?.total_matches ?? 0} matches`,
     body: (_, result) => (
       <pre style={preStyle}>
         {Array.isArray(result?.matches)
@@ -135,24 +137,24 @@ const FS_CONFIG: Record<string, FSConfig> = {
                 return `${shortPath(String(typedMatch.file ?? ''))}:${typedMatch.line_number ?? '?'} ${typedMatch.line ?? ''}`;
               })
               .join('\n')
-          : 'sem resultados'}
+          : 'no results'}
       </pre>
     ),
   },
   glob_search: {
     Icon: ({ size }) => <FileSearch size={size} />,
     label: (args) => String(args.pattern ?? '*'),
-    subtitle: (_, result) => `${result?.total_count ?? 0} arquivo(s)`,
+    subtitle: (_, result) => `${result?.total_count ?? 0} files`,
     body: (_, result) => (
       <pre style={preStyle}>
-        {Array.isArray(result?.files) ? result.files.slice(0, 18).join('\n') : 'sem resultados'}
+        {Array.isArray(result?.files) ? result.files.slice(0, 18).join('\n') : 'no results'}
       </pre>
     ),
   },
   file_finder: {
     Icon: ({ size }) => <FileSearch size={size} />,
     label: (args) => String(args.pattern ?? '*'),
-    subtitle: (_, result) => `${result?.total_count ?? 0} encontrado(s)`,
+    subtitle: (_, result) => `${result?.total_count ?? 0} found`,
     body: (_, result) => (
       <pre style={preStyle}>
         {Array.isArray(result?.files)
@@ -160,29 +162,33 @@ const FS_CONFIG: Record<string, FSConfig> = {
               .slice(0, 18)
               .map((file) => shortPath(String((file as { path?: string }).path ?? '')))
               .join('\n')
-          : 'sem resultados'}
+          : 'no results'}
       </pre>
     ),
   },
   delete_file: {
     Icon: ({ size }) => <Trash2 size={size} />,
     label: (args) => shortPath(String(args.file_path ?? args.path ?? '')),
-    subtitle: () => 'remoção',
+    subtitle: () => 'delete',
     body: () => null,
   },
   mkdir: {
     Icon: ({ size }) => <FolderPlus size={size} />,
     label: (args) => shortPath(String(args.path ?? '')),
-    subtitle: () => 'nova pasta',
+    subtitle: () => 'new folder',
     body: () => null,
   },
 };
 
 const preStyle: React.CSSProperties = {
   margin: 0,
+  padding: '14px 16px',
+  borderRadius: 18,
+  border: '1px solid var(--line-soft)',
+  background: 'color-mix(in srgb, var(--surface-glass) 62%, var(--surface) 38%)',
   color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 12,
+  fontSize: 'calc(13px * var(--font-scale, 1))',
   lineHeight: 1.7,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
@@ -190,9 +196,15 @@ const preStyle: React.CSSProperties = {
 
 interface FSNotifierProps {
   toolCall: ToolCallData;
+  agentType?: AgentType;
+  agentName?: string;
 }
 
-export const FSNotifier: React.FC<FSNotifierProps> = ({ toolCall }) => {
+export const FSNotifier: React.FC<FSNotifierProps> = ({
+  toolCall,
+  agentType,
+  agentName,
+}) => {
   const [expanded, setExpanded] = useState(true);
   const config = FS_CONFIG[toolCall.name.toLowerCase()];
 
@@ -201,6 +213,15 @@ export const FSNotifier: React.FC<FSNotifierProps> = ({ toolCall }) => {
   const result = parseResult(toolCall.result);
   const body = config.body(toolCall.args, result);
   const hasBody = Boolean(body);
+  const tone =
+    toolCall.status === 'calling'
+      ? 'warning'
+      : toolCall.status === 'success'
+        ? 'success'
+        : 'error';
+  const agentBadge = agentName
+    ? (agentType === 'default' ? agentName : `${agentName} · agent`)
+    : null;
 
   const statusIcon = (() => {
     if (toolCall.status === 'calling') {
@@ -225,7 +246,7 @@ export const FSNotifier: React.FC<FSNotifierProps> = ({ toolCall }) => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="event-shell min-w-0 max-w-[760px] w-full"
+      className="event-shell min-w-0 w-full"
     >
       <div className="event-track">
         <span className={toolCall.status === 'calling' ? 'signal-dot' : 'signal-dot idle'} />
@@ -235,44 +256,59 @@ export const FSNotifier: React.FC<FSNotifierProps> = ({ toolCall }) => {
         <button
           type="button"
           onClick={() => hasBody && setExpanded((value) => !value)}
-          className="flex w-full items-start gap-3 text-left"
+          className={`tool-event-card tool-event-card--${tone}`}
           style={{ background: 'transparent', border: 'none', cursor: hasBody ? 'pointer' : 'default' }}
         >
-          <div className="min-w-0 flex-1">
-            <div className="event-header">
-              <config.Icon size={14} />
-              <span
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {config.label(toolCall.args)}
-              </span>
-              <span className="event-badge">filesystem</span>
-              <span className="event-badge" style={{ marginLeft: 'auto' }}>
-                {config.subtitle(toolCall.args, result)}
-              </span>
-              <span style={{ color: 'var(--text-meta)' }}>{statusIcon}</span>
-              {hasBody && (
-                <span className="event-toggle">
-                  {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <div className="tool-event-card-header">
+            <div className="tool-event-topline">
+              <span className="tool-event-lead" />
+
+              <div className="tool-event-topline-copy">
+                <span className="tool-event-title">Tool</span>
+                <span className="tool-event-sep">/</span>
+                <span className="tool-event-status">
+                  {toolCall.status === 'calling'
+                    ? 'executando ferramenta'
+                    : toolCall.status === 'success'
+                      ? 'resultado recebido'
+                      : 'falha de execução'}
                 </span>
+              </div>
+
+              {toolCall.status === 'calling' ? (
+                <span className="tool-event-live">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              ) : (
+                <span className="tool-event-icon">{statusIcon}</span>
               )}
             </div>
 
-            <div
-              style={{
-                marginTop: 10,
-                color: 'var(--text-secondary)',
-                fontSize: 13,
-                lineHeight: 1.6,
-              }}
-            >
-              --- {toolCall.name}
+            <div className="tool-event-meta">
+              <div className="tool-event-name-row">
+                <config.Icon size={14} />
+                <span className="tool-event-name">{config.label(toolCall.args)}</span>
+              </div>
+
+              <div className="tool-event-badges">
+                <span className="event-badge">filesystem</span>
+                <span className="event-badge">{toolCall.name.replaceAll('_', ' ')}</span>
+                <span className="event-badge">{config.subtitle(toolCall.args, result)}</span>
+                {agentBadge ? <span className="event-badge">{agentBadge}</span> : null}
+              </div>
             </div>
+
+            <div className="tool-event-summary">filesystem / {toolCall.name.replaceAll('_', ' ')}</div>
+
+            {hasBody && (
+              <span className="event-toggle">
+                <span className="tool-event-icon">
+                  {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </span>
+              </span>
+            )}
           </div>
         </button>
 
@@ -295,8 +331,8 @@ export const FSNotifier: React.FC<FSNotifierProps> = ({ toolCall }) => {
                 ) : toolCall.status === 'calling' && !result ? (
                   <div className="flex items-center gap-3">
                     <span className="signal-dot" />
-                    <span style={{ color: 'var(--text-meta)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                      aguardando leitura do notifier
+                    <span style={{ color: 'var(--text-meta)', fontFamily: 'var(--font-mono)', fontSize: 'calc(13px * var(--font-scale, 1))' }}>
+                      waiting for filesystem sync
                     </span>
                   </div>
                 ) : (

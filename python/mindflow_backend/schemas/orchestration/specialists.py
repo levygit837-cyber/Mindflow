@@ -43,7 +43,7 @@ class SpecializationRequirement(StrEnum):
     SECURITY = "security"
     ARCHITECTURE = "architecture"
     CODE_REVIEW = "code_review"
-    CREATIVE = "creative"
+    BRAINSTORM = "brainstorm"
     ANALYSIS = "analysis"
     IMPLEMENTATION = "implementation"
 

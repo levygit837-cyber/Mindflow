@@ -21,6 +21,21 @@ class ProviderController(BaseController):
     def __init__(self):
         super().__init__()
         self.provider_service = get_provider_service()
+
+    @staticmethod
+    def _normalize_model_names(models: list[Any] | None) -> list[str]:
+        normalized: list[str] = []
+        for model in models or []:
+            if isinstance(model, str):
+                normalized.append(model)
+                continue
+            if isinstance(model, dict):
+                model_name = model.get("id") or model.get("name")
+                if model_name:
+                    normalized.append(str(model_name))
+                    continue
+            normalized.append(str(model))
+        return normalized
     
     @require_auth
     @audit_log("provider_list")
@@ -38,7 +53,7 @@ class ProviderController(BaseController):
                     provider_id=provider_data["id"],
                     name=provider_data["name"],
                     status=provider_data["status"],
-                    models=provider_data.get("models", []),
+                    models=self._normalize_model_names(provider_data.get("models")),
                     config=provider_data.get("config", {}),
                     metadata=provider_data
                 ))
@@ -66,7 +81,9 @@ class ProviderController(BaseController):
                 success=True,
                 message=f"Models retrieved for {provider_id}",
                 provider_id=provider_id,
-                models=models_data,
+                name=provider_id,
+                status="available",
+                models=self._normalize_model_names(models_data),
                 metadata={"models": models_data}
             )
             
@@ -109,6 +126,8 @@ class ProviderController(BaseController):
                 success=True,
                 message=f"Configuration retrieved for {provider_id}",
                 provider_id=provider_id,
+                name=provider_id,
+                status="configured",
                 config=config_data["config"],
                 metadata=config_data
             )
@@ -148,6 +167,8 @@ class ProviderController(BaseController):
                 success=True,
                 message=f"Configuration updated for {provider_id}",
                 provider_id=provider_id,
+                name=provider_id,
+                status="configured",
                 config=result["config"],
                 metadata=result
             )

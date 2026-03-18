@@ -29,6 +29,7 @@ class OrchestratorWorker(BaseWorker):
         - agent_coordination: Coordinate between agents
         - progress_monitoring: Monitor task progress
         """
+        message_data = self._normalize_message_data(message_data)
         start_time = time.time()
         task_type = message_data.get("task_type", "unknown")
         task_id = message_data.get("task_id", "unknown")

@@ -1,9 +1,4 @@
-"""Specialists for MindFlow agents.
-
-These are specialized variants of core specialists that were previously
-implemented as separate agents. Now they're unified under the specialist
-system with the orchestrator dynamically selecting the appropriate one.
-"""
+"""Specialist metadata backed by the canonical runtime policy."""
 
 from __future__ import annotations
 
@@ -13,6 +8,7 @@ from dataclasses import dataclass
 from mindflow_backend.agents._base import AgentType, ThinkingLevel, SandboxMode, Priority
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType, TaskComplexity
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 
 _logger = get_logger(__name__)
 
@@ -132,27 +128,6 @@ class ReviewSpecialist(SpecialistBase):
         super().__init__(config)
 
 
-class CreativeSpecialist(SpecialistBase):
-    """Creative specialist for brainstorming and alternative solutions."""
-    
-    def __init__(self):
-        config = SpecialistConfig(
-            name="creative",
-            description="Specialized in creative problem-solving and brainstorming alternative approaches",
-            base_specialist=SpecialistType.ANALYST,
-            prompt_segments=["core", "read", "brainstorm"],
-            tools=["CODE_ANALYSIS", "BRAINSTORM"],
-            thinking_level=ThinkingLevel.HIGH,
-            sandbox_mode=SandboxMode.NONE,
-            max_iterations=2,
-            specializations=["creative", "brainstorm", "alternative", "innovative"],
-            trigger_keywords=["brainstorm", "creative", "alternative", "innovate", "explore"],
-            estimated_efficiency_gain=0.35,
-            confidence_boost=0.25,
-        )
-        super().__init__(config)
-
-
 class ArchitectureSpecialist(SpecialistBase):
     """Architecture-focused specialist for design and structural decisions."""
     
@@ -178,17 +153,18 @@ class BrainstormSpecialist(SpecialistBase):
     """Brainstorming specialist for idea generation and exploration."""
     
     def __init__(self):
+        policy = get_agent_runtime_policy(AgentType.ANALYST, specialist=SpecialistType.BRAINSTORM)
         config = SpecialistConfig(
             name="brainstorm",
             description="Specialized in idea generation and creative exploration",
             base_specialist=SpecialistType.ANALYST,
-            prompt_segments=["core", "read", "brainstorm"],
-            tools=["IDEA_GENERATION", "BRAINSTORM"],
-            thinking_level=ThinkingLevel.HIGH,
-            sandbox_mode=SandboxMode.NONE,
-            max_iterations=2,
-            specializations=["brainstorm", "ideas", "exploration", "possibilities"],
-            trigger_keywords=["brainstorm", "ideas", "explore", "possibilities", "generate"],
+            prompt_segments=["brainstorm"],
+            tools=[tool.value.upper() for tool in policy.tools],
+            thinking_level=policy.thinking_level,
+            sandbox_mode=policy.sandbox,
+            max_iterations=policy.max_iterations,
+            specializations=["brainstorm", "ideas", "exploration", "possibilities", "alternatives"],
+            trigger_keywords=["brainstorm", "ideas", "explore", "possibilities", "generate", "creative", "alternative", "ideate"],
             estimated_efficiency_gain=0.3,
             confidence_boost=0.2,
         )
@@ -199,15 +175,16 @@ class DeepAnalysisSpecialist(SpecialistBase):
     """Deep analysis specialist for thorough analysis and refinement."""
     
     def __init__(self):
+        policy = get_agent_runtime_policy(AgentType.ANALYST, specialist=SpecialistType.DEEP_ITERATION)
         config = SpecialistConfig(
             name="deep_iteration",
             description="Specialized in deep analysis and iterative refinement",
             base_specialist=SpecialistType.ANALYST,
-            prompt_segments=["core", "read", "deep"],
-            tools=["CODE_ANALYSIS", "FILESYSTEM", "REFACTORING"],
-            thinking_level=ThinkingLevel.HIGH,
-            sandbox_mode=SandboxMode.NONE,
-            max_iterations=3,
+            prompt_segments=["deep_iteration"],
+            tools=[tool.value.upper() for tool in policy.tools],
+            thinking_level=policy.thinking_level,
+            sandbox_mode=policy.sandbox,
+            max_iterations=policy.max_iterations,
             specializations=["deep", "thorough", "iteration", "refine", "analyze"],
             trigger_keywords=["deep", "thorough", "iteration", "refine", "analyze", "detailed"],
             estimated_efficiency_gain=0.35,
@@ -219,7 +196,6 @@ class DeepAnalysisSpecialist(SpecialistBase):
 # Registry of all specialists
 SPECIALISTS: Dict[str, SpecialistBase] = {
     "security_guard": SecuritySpecialist(),
-    "creative": CreativeSpecialist(),
     "critic": ReviewSpecialist(),
     "arch_tech": ArchitectureSpecialist(),
     "brainstorm": BrainstormSpecialist(),

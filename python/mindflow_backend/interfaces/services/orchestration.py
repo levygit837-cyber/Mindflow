@@ -171,3 +171,51 @@ class RoutingServiceInterface(Protocol):
     async def optimize_routing_strategy(self) -> dict[str, Any]:
         """Optimize routing strategy based on performance."""
         ...
+
+
+@runtime_checkable
+class TodoPlanningServiceInterface(Protocol):
+    """Interface for session-scoped planning/todo-list operations."""
+
+    async def replace_list(
+        self,
+        session_id: str,
+        task_id: str,
+        goal: str,
+        items: list[dict[str, Any]],
+        source: str,
+    ) -> Any:
+        """Replace the current todo list for a task."""
+        ...
+
+    async def get_list(self, session_id: str, task_id: str) -> Any:
+        """Return the current todo list for a task."""
+        ...
+
+    async def get_session_lists(self, session_id: str) -> list[Any]:
+        """Return all todo lists associated with a session."""
+        ...
+
+    async def update_item_status(
+        self,
+        session_id: str,
+        task_id: str,
+        item_id: str,
+        status: str,
+        notes: str | None = None,
+    ) -> Any:
+        """Update the state for a single todo item."""
+        ...
+
+    async def focus_complex_items(
+        self,
+        session_id: str,
+        task_id: str,
+        limit: int = 3,
+    ) -> Any:
+        """Return the most relevant open todo items."""
+        ...
+
+    async def is_stale(self, session_id: str, task_id: str) -> bool:
+        """Return whether the todo list is missing or outdated."""
+        ...

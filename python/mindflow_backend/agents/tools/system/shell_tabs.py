@@ -14,6 +14,7 @@ from mindflow_backend.schemas.tools.shell_tabs import (
     SHELL_TAB_READ_SCHEMA,
     SHELL_TAB_STATUS_SCHEMA,
 )
+from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
 from mindflow_backend.services import get_shell_tab_service
 
 
@@ -40,7 +41,14 @@ class ShellTabOpenTool(_ShellTabToolBase):
         session_id = self._resolve_session_id(kwargs)
         cwd = kwargs.get("cwd") or self.root_dir or str(Path.cwd())
         title = kwargs.get("title")
-        created = await self._service.create_tab(session_id=session_id, cwd=cwd, title=title)
+        created = await self._service.create_tab(
+            session_id=session_id,
+            cwd=cwd,
+            title=title,
+            workspace_root=self.root_dir,
+            read_only=self.sandbox_mode == SandboxMode.READ_ONLY,
+            secure_mode=self.secure_mode,
+        )
         return self._format_result(success=True, result=created.model_dump(mode="json"))
 
     def get_schema(self) -> dict[str, Any]:
@@ -133,4 +141,3 @@ class ShellTabCloseTool(_ShellTabToolBase):
 
     def get_schema(self) -> dict[str, Any]:
         return self._schema.model_dump()
-

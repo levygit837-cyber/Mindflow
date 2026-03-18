@@ -22,6 +22,7 @@ from mindflow_backend.services.interfaces.orchestration_interfaces import (
     OrchestrationServiceInterface,
     TaskServiceInterface,
     RoutingServiceInterface,
+    TodoPlanningServiceInterface,
 )
 
 from mindflow_backend.services.interfaces.context_interfaces import (
@@ -56,6 +57,7 @@ __all__ = [
     "OrchestrationServiceInterface",
     "TaskServiceInterface",
     "RoutingServiceInterface",
+    "TodoPlanningServiceInterface",
     
     # Context interfaces
     "RetrievalServiceInterface",

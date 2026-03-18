@@ -14,7 +14,7 @@ from .search_web import *
 # Research components
 from .core import *
 from .analysis import *
-from .monitoring import *
+from .monitoring.pinchtab_service import get_pinchtab_service
 
 __all__ = [
     # Web search tools
@@ -30,7 +30,5 @@ __all__ = [
     "get_source_trust_engine",
     
     # Monitoring components
-    "get_action_trail_logger",
-    "get_pitchtab_monitor",
     "get_pinchtab_service",
 ]

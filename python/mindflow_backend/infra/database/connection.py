@@ -19,7 +19,7 @@ import threading
 import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.pool import QueuePool, StaticPool
 
 from mindflow_backend.infra.config import get_settings
@@ -251,6 +251,19 @@ class DatabaseManager:
     def pool_state(self) -> PoolState:
         """Get current pool state."""
         return self._pool_state
+
+    @staticmethod
+    def _safe_invalid_count(pool) -> int:
+        """Return invalid connection count when exposed by the active pool implementation."""
+        invalid = getattr(pool, "invalid", None)
+        if callable(invalid):
+            try:
+                return int(invalid())
+            except Exception:
+                return 0
+        if isinstance(invalid, int):
+            return invalid
+        return 0
         
     async def initialize(self) -> None:
         """Initialize database connections and pooling.
@@ -319,7 +332,7 @@ class DatabaseManager:
             
             # Test basic connectivity
             async with self._engine.begin() as conn:
-                await conn.execute("SELECT 1")
+                await conn.execute(text("SELECT 1"))
                 
             # Get pool statistics
             pool = self._engine.pool
@@ -339,7 +352,7 @@ class DatabaseManager:
                 "checked_in": pool.checkedin(),
                 "checked_out": pool.checkedout(),
                 "overflow": pool.overflow(),
-                "invalid": pool.invalid(),
+                "invalid": self._safe_invalid_count(pool),
                 "timestamp": datetime.now(UTC).isoformat(),
                 "metrics": self._metrics.get_utilization_stats(),
             }
@@ -575,7 +588,7 @@ class DatabaseManager:
                 "checked_in": pool.checkedin(),
                 "checked_out": pool.checkedout(),
                 "overflow": pool.overflow(),
-                "invalid": pool.invalid(),
+                "invalid": self._safe_invalid_count(pool),
                 "utilization": pool.checkedout() / max(pool.size(), 1),
             },
             "metrics": self._metrics.get_utilization_stats(),

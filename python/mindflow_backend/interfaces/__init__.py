@@ -90,6 +90,8 @@ from .tools import (
     HttpClientTool,
     ApiClientTool,
     BrowserSearchTool,
+    PinchTabBrowserHandleInterface,
+    PinchTabFleetToolInterface,
     WebhookTool,
     RssFeedTool,
     WebSecurityTool,

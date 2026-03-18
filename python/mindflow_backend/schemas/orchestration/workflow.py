@@ -41,11 +41,27 @@ class WorkflowRouteDecision(BaseModel):
         return f"{self.agent_role.value}:{self.specialist.value}"
 
 
+class WorkflowStep(BaseModel):
+    """Executable step produced by the planner."""
+
+    step_id: str
+    agent_id: str
+    agent_role: AgentType
+    specialist: SpecialistType | None = None
+    objective: str = ""
+    tools: list[ToolScope] = Field(default_factory=list)
+    sandbox: str = ""
+    thinking: ThinkingLevel = ThinkingLevel.MEDIUM
+    context_strategy: str = "maintain"
+    depends_on: list[str] = Field(default_factory=list)
+
+
 class WorkflowPlan(BaseModel):
     """Planner output consumed by the executor without further routing logic."""
 
     route: WorkflowRouteDecision
     tools: list[ToolScope] = Field(default_factory=list)
+    steps: list[WorkflowStep] = Field(default_factory=list)
     chain_id: str | None = None
     chain_type: ChainType | None = None
     graph_id: str | None = None

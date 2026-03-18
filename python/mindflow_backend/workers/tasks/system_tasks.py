@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
 from mindflow_backend.workers.infrastructure.queue_manager import get_queue_manager
+from mindflow_backend.workers.system.schemas.session_review_tasks import (
+    SessionReviewRequestedPayload,
+    build_session_review_idempotency_key,
+)
 
 _logger = get_logger(__name__)
 
@@ -35,21 +41,74 @@ class SystemTask:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert task to dictionary for queue publishing."""
-        return {
-            "task_type": self.task_type,
-            "task_id": self.task_id,
-            "session_id": self.session_id,
-            "system_component": self.system_component,
-            "priority": self.priority,
-            "task_data": self.task_data,
-            "metadata": self.metadata,
-        }
+        envelope = QueueMessageEnvelope(
+            schema_version="1.0",
+            task_id=self.task_id,
+            task_type=self.task_type,
+            session_id=self.session_id,
+            correlation_id=self.task_id,
+            idempotency_key=self.task_id,
+            created_at=datetime.now(timezone.utc),
+            metadata={
+                **self.metadata,
+                "system_component": self.system_component,
+                "priority": self.priority,
+            },
+            payload=self.task_data,
+        )
+
+        return envelope.model_dump(mode="json")
 
 
 class SystemTaskDefinitions:
     """Definitions and utilities for system tasks."""
     
     # Session Review Tasks
+    @staticmethod
+    def create_session_review_requested_task(
+        session_id: str,
+        window_index: int,
+        window_range: tuple[int, int],
+        trigger_type: str,
+        review_priority: str = "medium",
+        tokens_in_window: int = 0,
+        total_tokens_processed: int = 0,
+        threshold: int = 0,
+        origin: str = "session_review_service",
+    ) -> SystemTask:
+        """Create a queue-safe session review request with deterministic idempotency."""
+        payload = SessionReviewRequestedPayload(
+            session_id=session_id,
+            window_index=window_index,
+            window_range=window_range,
+            trigger_type=trigger_type,
+            priority=review_priority,
+            tokens_in_window=tokens_in_window,
+            total_tokens_processed=total_tokens_processed,
+            threshold=threshold,
+            origin=origin,
+        )
+        task_id = build_session_review_idempotency_key(
+            session_id=session_id,
+            window_index=window_index,
+            trigger_type=trigger_type,
+        )
+
+        return SystemTask(
+            task_type="session_review.requested",
+            session_id=session_id,
+            system_component="session_review",
+            priority=review_priority,
+            task_data=payload.model_dump(mode="json"),
+            metadata={
+                "task_id": task_id,
+                "created_at": payload.requested_at.isoformat(),
+                "estimated_duration": 120,
+                "window_range": list(window_range),
+                "origin": origin,
+            },
+        )
+
     @staticmethod
     def create_window_review_task(
         session_id: str,

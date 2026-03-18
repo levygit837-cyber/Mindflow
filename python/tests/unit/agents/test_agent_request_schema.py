@@ -1,4 +1,5 @@
 from mindflow_backend.schemas.agent import AgentChatRequest
+from pydantic import ValidationError
 
 
 def test_agent_request_accepts_agent_type_and_agent_alias() -> None:
@@ -7,3 +8,23 @@ def test_agent_request_accepts_agent_type_and_agent_alias() -> None:
 
     assert by_name.agent_type == "coder"
     assert by_alias.agent_type == "coder"
+
+
+def test_agent_request_normalizes_file_folder_path_to_parent_directory(tmp_path) -> None:
+    target_file = tmp_path / "feature.py"
+    target_file.write_text("print('ok')\n", encoding="utf-8")
+
+    request = AgentChatRequest.model_validate(
+        {"message": "analise esse arquivo", "folder_path": str(target_file)}
+    )
+
+    assert request.folder_path == str(tmp_path)
+
+
+def test_agent_request_rejects_removed_codex_provider() -> None:
+    try:
+        AgentChatRequest.model_validate({"message": "oi", "provider": "codex"})
+    except ValidationError as exc:
+        assert "provider" in str(exc)
+    else:
+        raise AssertionError("AgentChatRequest should reject codex as a removed provider")

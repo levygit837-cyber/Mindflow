@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel, Field
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import AdaptiveThresholdType, EnhancedCircuitBreakerConfig
 from mindflow_backend.grpc.resilience.advanced_retry import AdaptiveBackoffType, RetryConditionType, AdvancedRetryConfig
 from mindflow_backend.grpc.resilience.bulkhead import BulkheadConfig
@@ -15,7 +16,11 @@ from mindflow_backend.grpc.resilience.fallback import FallbackConfig
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
-router = APIRouter(prefix="/resilience", tags=["resilience"])
+router = APIRouter(
+    prefix="/resilience",
+    tags=["resilience"],
+    dependencies=protected_route_dependencies,
+)
 
 
 class CircuitBreakerConfigRequest(BaseModel):

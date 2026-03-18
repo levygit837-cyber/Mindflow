@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.controllers.orchestration_controller import OrchestrationController
 from mindflow_backend.api.schemas.requests import (
     OrchestrationRequest,
@@ -9,7 +10,11 @@ from mindflow_backend.api.schemas.requests import (
     SpecialistSelectionRequest
 )
 
-router = APIRouter(prefix="/orchestration", tags=["orchestration"])
+router = APIRouter(
+    prefix="/orchestration",
+    tags=["orchestration"],
+    dependencies=protected_route_dependencies,
+)
 
 # Initialize controller
 orchestration_controller = OrchestrationController()

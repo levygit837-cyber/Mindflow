@@ -29,6 +29,7 @@ class ResearcherWorker(BaseWorker):
         - fact_checking: Fact-checking and verification
         - literature_review: Academic literature review
         """
+        message_data = self._normalize_message_data(message_data)
         start_time = time.time()
         task_type = message_data.get("task_type", "unknown")
         task_id = message_data.get("task_id", "unknown")

@@ -9,8 +9,18 @@ from .communication import CommunicationServiceInterface, GrpcServiceInterface, 
 from .core import CoreServiceInterface, AgentServiceInterface, SessionServiceInterface, MemoryServiceInterface, ProviderServiceInterface
 from .memory import MemoryServiceInterface as MemoryServiceInterfaceNew, ContextMemoryInterface, VectorMemoryInterface
 from .monitoring import MonitoringServiceInterface, HealthServiceInterface, MetricsServiceInterface, ReviewServiceInterface
-from .orchestration import OrchestrationServiceInterface, TaskServiceInterface, RoutingServiceInterface
+from .orchestration import (
+    OrchestrationServiceInterface,
+    TaskServiceInterface,
+    RoutingServiceInterface,
+    TodoPlanningServiceInterface,
+)
 from .context import RetrievalServiceInterface as ContextRetrievalServiceInterface, EmbeddingServiceInterface as ContextEmbeddingServiceInterface, VectorStoreInterface as ContextVectorServiceInterface
+from .pinchtab import (
+    PinchTabBrowserServiceInterface,
+    PinchTabContainerOrchestratorInterface,
+    PinchTabFleetServiceInterface,
+)
 
 __all__ = [
     # Base service interfaces
@@ -39,6 +49,9 @@ __all__ = [
     "ContextRetrievalServiceInterface",
     "ContextEmbeddingServiceInterface",
     "ContextVectorServiceInterface",
+    "PinchTabBrowserServiceInterface",
+    "PinchTabContainerOrchestratorInterface",
+    "PinchTabFleetServiceInterface",
     
     # Monitoring interfaces
     "MonitoringServiceInterface",
@@ -50,4 +63,5 @@ __all__ = [
     "OrchestrationServiceInterface",
     "TaskServiceInterface",
     "RoutingServiceInterface",
+    "TodoPlanningServiceInterface",
 ]

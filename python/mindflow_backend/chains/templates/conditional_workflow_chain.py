@@ -392,7 +392,7 @@ class ConditionalWorkflowChain(BaseChain):
             )
             
             tool_registry = create_default_registry(sandbox)
-            tools = [] if agent.sandbox == SandboxMode.NONE else tool_registry.get_tools_for_agent(agent.agent_type)
+            tools = [] if agent.sandbox == SandboxMode.NONE else tool_registry.get_tools_for_agent(agent)
             
             # Execute
             llm = get_model_for_provider(self.settings.default_provider, self.settings.default_model)

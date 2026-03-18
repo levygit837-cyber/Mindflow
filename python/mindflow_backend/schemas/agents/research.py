@@ -12,6 +12,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.schemas.tools.pinchtab_schemas import (
+    BrowserEconomyMode,
+    BrowserRuntimeState,
+)
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -171,10 +175,13 @@ class ResearchConfig(BaseModel):
     """Configuration for research operations."""
     
     max_concurrent_browsers: int = Field(default=5, ge=1, le=10)
+    max_browsers_per_session: int = Field(default=5, ge=1, le=20)
     default_timeout_seconds: int = Field(default=30, ge=10, le=120)
     retry_attempts: int = Field(default=2, ge=0, le=5)
     enable_stealth_mode: bool = True
     headless_mode: bool = True
+    allow_browser_auto_create: bool = True
+    default_economy_mode: BrowserEconomyMode = BrowserEconomyMode.WARM_PAUSED
     preferred_search_engines: list[str] = Field(
         default_factory=lambda: ["google.com", "duckduckgo.com", "brave.com"]
     )
@@ -193,6 +200,24 @@ class ResearchRequest(BaseModel):
     agent_id: str
     config: ResearchConfig | None = None
     force_browser_search: bool = False
+    target_browser_ids: list[str] = Field(default_factory=list)
+
+
+class ResearchBrowserReference(BaseModel):
+    """Reference to a session-owned browser in the Researcher fleet."""
+
+    browser_id: str
+    runtime_state: BrowserRuntimeState = BrowserRuntimeState.PENDING
+    economy_mode: BrowserEconomyMode = BrowserEconomyMode.WARM_PAUSED
+    current_url: str | None = None
+
+
+class ResearchBrowserSelection(BaseModel):
+    """Selection payload describing which browsers should run a research step."""
+
+    session_id: str
+    selected_browser_ids: list[str] = Field(default_factory=list)
+    auto_created_browser_ids: list[str] = Field(default_factory=list)
 
 
 class ResearchResponse(BaseModel):

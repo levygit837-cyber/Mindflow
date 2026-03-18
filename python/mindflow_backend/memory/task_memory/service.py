@@ -52,19 +52,12 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         """Get logger instance for this service."""
         return get_logger(__name__)
     
-    def _get_embedding_service(self):
-        """Get embedding service instance (lazy loading)."""
+    def _get_embedding_provider(self):
+        """Get embedding provider instance (lazy loading)."""
         if self._embedding_service is None:
-            from mindflow_backend.memory.shared.embeddings import get_embedding_service
-            self._embedding_service = get_embedding_service()
+            from mindflow_backend.memory.shared.embeddings import get_embedding_provider
+            self._embedding_service = get_embedding_provider()
         return self._embedding_service
-    
-    def _get_vector_service(self):
-        """Get vector service instance (lazy loading)."""
-        if self._vector_service is None:
-            from mindflow_backend.services import get_vector_service
-            self._vector_service = get_vector_service()
-        return self._vector_service
     
     async def create_task_memory(
         self,
@@ -213,7 +206,7 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
             # Get chunks
             chunks = list(db.scalars(
                 select(TaskChunk)
-                .where(TaskChunk.task_memory_id == task_memory_id)
+                .where(TaskChunk.task_memory_id == task_memory.id)
                 .order_by(TaskChunk.sequence.asc())
                 .limit(max_chunks)
             ))
@@ -294,8 +287,8 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
     ) -> None:
         """Armazenar embedding para task/chunk."""
         try:
-            embedding_service = self._get_embedding_service()
-            embedding = await embedding_service.generate_embedding(content)
+            provider = self._get_embedding_provider()
+            embedding = await provider.embed(content)
             
             task_embedding = TaskEmbedding(
                 task_memory_id=task_memory_id,
@@ -303,7 +296,6 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
                 content_type=content_type,
                 content=content,
                 embedding=embedding,
-                vector_dims=len(embedding),
             )
             
             db.add(task_embedding)
@@ -321,37 +313,49 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         session_id: Optional[str] = None,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Buscar tasks semânticamente."""
+        """Buscar tasks semanticamente usando pgvector direto."""
         self.log_operation(
             "search_tasks",
             query=query,
             session_id=session_id,
         )
-        
+
         try:
-            vector_service = self._get_vector_service()
-            
-            # Generate query embedding
-            query_embedding = await self._get_embedding_service().generate_embedding(query)
-            
-            # Search in task embeddings
-            results = await vector_service.search_vectors(
-                collection_name="task_memory",
-                query_vector=query_embedding,
-                limit=limit,
-                filters={"session_id": session_id} if session_id else None
+            provider = self._get_embedding_provider()
+            query_vec = await provider.embed(query)
+
+            # Search via pgvector cosine distance on TaskEmbedding
+            stmt = (
+                select(TaskEmbedding, TaskMemory)
+                .join(TaskMemory, TaskEmbedding.task_memory_id == TaskMemory.id)
+                .order_by(TaskEmbedding.embedding.cosine_distance(query_vec))
+                .limit(limit * 2)
             )
-            
-            return [
-                {
-                    "task_id": result.get("task_memory_id"),
-                    "title": result.get("title", ""),
-                    "score": result.get("score", 0.0),
-                    "content": result.get("content", ""),
-                }
-                for result in results
-            ]
-            
+
+            if session_id:
+                stmt = stmt.where(TaskMemory.session_id == session_id)
+
+            rows = list(db.execute(stmt))
+            results = []
+            for task_emb, task_mem in rows:
+                try:
+                    distance = task_emb.embedding.cosine_distance(query_vec)
+                except Exception:
+                    distance = 1.0
+                score = 1.0 - float(distance)
+                if score < 0.2:
+                    continue
+                results.append({
+                    "task_id": str(task_mem.task_id),
+                    "title": task_mem.title,
+                    "score": score,
+                    "content": task_emb.content[:500],
+                })
+                if len(results) >= limit:
+                    break
+
+            return results
+
         except Exception as exc:
             _logger.error(f"Failed to search tasks: {exc}")
             return []

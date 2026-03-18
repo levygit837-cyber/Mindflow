@@ -10,8 +10,10 @@ from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
+from mindflow_backend.security.client_ip import get_client_ip
 
 _logger = get_logger(__name__)
 
@@ -19,9 +21,15 @@ _logger = get_logger(__name__)
 class ValidationMiddleware(BaseHTTPMiddleware):
     """Middleware for centralized validation, sanitization, and security checks."""
     
-    def __init__(self, app, max_request_size: int = 10_000_000):
+    def __init__(
+        self,
+        app,
+        max_request_size: int = 10_000_000,
+        enable_in_memory_rate_limit: bool = True,
+    ):
         super().__init__(app)
         self.max_request_size = max_request_size
+        self.enable_in_memory_rate_limit = enable_in_memory_rate_limit
         self.blocked_patterns = self._init_blocked_patterns()
         self.rate_limit_store: Dict[str, Dict] = {}
     
@@ -29,7 +37,7 @@ class ValidationMiddleware(BaseHTTPMiddleware):
         """Initialize blocked patterns for security."""
         return [
             # SQL injection patterns
-            "(?i)union\\s+select",
+            "(?i)union.*select",
             "(?i)drop\\s+table", 
             "(?i)insert\\s+into",
             "(?i)delete\\s+from",
@@ -59,7 +67,8 @@ class ValidationMiddleware(BaseHTTPMiddleware):
             await self._validate_request_size(request)
 
             # 2. Rate limiting check
-            await self._check_rate_limit(request)
+            if self.enable_in_memory_rate_limit:
+                await self._check_rate_limit(request)
 
             # 3. Content validation (safe to run even on SSE requests —
             #    validates the *request* body, not the response)
@@ -99,7 +108,8 @@ class ValidationMiddleware(BaseHTTPMiddleware):
     
     async def _check_rate_limit(self, request: Request) -> None:
         """Basic rate limiting by client IP."""
-        client_ip = self._get_client_ip(request)
+        settings = get_settings()
+        client_ip = get_client_ip(request, settings=settings)
         current_time = time.time()
         
         # Clean old entries
@@ -131,6 +141,9 @@ class ValidationMiddleware(BaseHTTPMiddleware):
             body = await request.body()
             
             if not body:
+                return
+
+            if not isinstance(body, (bytes, bytearray)):
                 return
             
             # Try to parse as JSON for validation
@@ -213,15 +226,14 @@ class ValidationMiddleware(BaseHTTPMiddleware):
     
     def _get_client_ip(self, request: Request) -> str:
         """Get client IP from request."""
-        # Try various headers for real IP
         forwarded_for = request.headers.get("x-forwarded-for")
         if forwarded_for:
             return forwarded_for.split(",")[0].strip()
-        
+
         real_ip = request.headers.get("x-real-ip")
         if real_ip:
             return real_ip
-        
+
         return request.client.host if request.client else "unknown"
     
     def _add_security_headers(self, response: Response) -> Response:

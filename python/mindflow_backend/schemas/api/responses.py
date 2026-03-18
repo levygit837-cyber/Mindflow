@@ -84,8 +84,8 @@ class ProviderResponse(BaseResponse):
     """Response for provider operations."""
     
     provider_id: str = Field(description="Provider ID")
-    name: str = Field(description="Provider name")
-    status: str = Field(description="Provider status")
+    name: Optional[str] = Field(default=None, description="Provider name")
+    status: Optional[str] = Field(default=None, description="Provider status")
     models: Optional[list[str]] = Field(default=None, description="Available models")
     config: Optional[dict[str, Any]] = Field(default=None, description="Provider configuration")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")

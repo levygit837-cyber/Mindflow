@@ -9,13 +9,15 @@ from __future__ import annotations
 import traceback
 from typing import Any
 
-from fastapi import Request, Response, status
+from fastapi import HTTPException, Request, Response, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.errors import (
     ErrorCategory,
+    ErrorContext,
     ErrorSchema,
     ErrorSeverity,
     ErrorResponse,
@@ -37,6 +39,8 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             return response
+        except (HTTPException, RequestValidationError):
+            raise
             
         except Exception as exc:
             # Create error schema from exception
@@ -97,7 +101,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         from mindflow_backend.exceptions import (
             ValidationError, AuthenticationError, AuthorizationError,
             NetworkError, TimeoutError, ResourceError,
-            ConfigurationError, DatabaseError, ProviderError
+            AgentConfigurationError, InfraConfigurationError, DatabaseError, ProviderError
         )
         
         # Business logic errors
@@ -113,7 +117,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             return ErrorCategory.RESOURCE, ErrorSeverity.HIGH
         
         # Configuration issues
-        if isinstance(exception, ConfigurationError):
+        if isinstance(exception, (AgentConfigurationError, InfraConfigurationError)):
             return ErrorCategory.CONFIGURATION, ErrorSeverity.MEDIUM
         
         # Database issues
@@ -149,17 +153,21 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         exception_short = exception_name.replace('Error', '').upper()
         return f"{category_prefix}_{exception_short[:8]}"
     
-    def _extract_request_context(self, request: Request) -> dict[str, Any]:
+    def _extract_request_context(self, request: Request) -> ErrorContext:
         """Extract relevant context from request."""
-        return {
-            "method": request.method,
-            "url": str(request.url),
-            "path_params": request.path_params,
-            "query_params": dict(request.query_params),
-            "client_ip": self._get_client_ip(request),
-            "user_agent": request.headers.get("user-agent"),
-            "request_id": request.headers.get("x-request-id"),
-        }
+        request_id = request.headers.get("x-request-id")
+        return ErrorContext(
+            component="api",
+            request_id=request_id,
+            metadata={
+                "method": request.method,
+                "url": str(request.url),
+                "path_params": request.path_params,
+                "query_params": dict(request.query_params),
+                "client_ip": self._get_client_ip(request),
+                "user_agent": request.headers.get("user-agent"),
+            },
+        )
     
     def _get_client_ip(self, request: Request) -> str | None:
         """Extract client IP from request."""

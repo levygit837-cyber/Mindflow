@@ -16,10 +16,25 @@ from datetime import datetime
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.agents.tools.security import (
+    WorkspaceSecurityError,
+    is_read_only_mode,
+    resolve_workspace_path,
+)
 from mindflow_backend.schemas.tools.filesystem_schemas import READ_FILE_SCHEMA, WRITE_FILE_SCHEMA, EDIT_FILE_SCHEMA, DELETE_FILE_SCHEMA, LIST_DIRECTORY_SCHEMA
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
+
+
+def _resolve_tool_path(tool: AsyncToolInterface, raw_path: str) -> Path:
+    """Resolve paths relative to the configured workspace when present."""
+    if tool.root_dir or tool.secure_mode:
+        return resolve_workspace_path(raw_path, tool.root_dir)
+    path = Path(raw_path)
+    if tool.root_dir and not path.is_absolute():
+        path = Path(tool.root_dir) / path
+    return path.resolve()
 
 
 class FileReadTool(AsyncToolInterface):
@@ -80,20 +95,15 @@ class FileReadTool(AsyncToolInterface):
             encoding = kwargs.get("encoding", "utf-8")
             max_lines = kwargs.get("max_lines")
 
-            # Resolve relative paths against root_dir (agent working directory)
-            if self.root_dir and not Path(file_path).is_absolute():
-                file_path = str(Path(self.root_dir) / file_path)
+            path_obj = _resolve_tool_path(self, file_path)
 
             # Security validation
-            validation_result = self._validate_path(file_path)
+            validation_result = self._validate_path(str(path_obj))
             if not validation_result["valid"]:
                 return self._format_result(
                     success=False,
                     error=validation_result["error"]
                 )
-
-            # Convert to Path object
-            path_obj = Path(file_path)
 
             # Check if file exists
             if not path_obj.exists():
@@ -146,6 +156,11 @@ class FileReadTool(AsyncToolInterface):
             return self._format_result(
                 success=False,
                 error=f"Encoding error: {str(e)}"
+            )
+        except WorkspaceSecurityError as e:
+            return self._format_result(
+                success=False,
+                error=f"Workspace security error: {str(e)}"
             )
         except PermissionError as e:
             return self._format_result(
@@ -224,23 +239,35 @@ class FileEditTool(AsyncToolInterface):
         count = int(kwargs.get("count", 1))
         encoding = kwargs.get("encoding", "utf-8")
 
-        validation_result = self._validate_path(file_path)
-        if not validation_result["valid"]:
-            return {"success": False, "error": validation_result["error"]}
+        try:
+            if is_read_only_mode(self.sandbox_mode):
+                return self._format_result(
+                    success=False,
+                    error="Write operation blocked in read-only sandbox mode",
+                )
 
-        path_obj = Path(file_path)
+            path_obj = _resolve_tool_path(self, file_path)
+        except WorkspaceSecurityError as e:
+            return self._format_result(
+                success=False,
+                error=f"Workspace security error: {str(e)}"
+            )
+
+        validation_result = self._validate_path(str(path_obj))
+        if not validation_result["valid"]:
+            return self._format_result(success=False, error=validation_result["error"])
         if not path_obj.exists() or not path_obj.is_file():
-            return {"success": False, "error": f"File not found: {file_path}"}
+            return self._format_result(success=False, error=f"File not found: {path_obj}")
 
         content = path_obj.read_text(encoding=encoding)
         if old_string not in content:
-            return {"success": False, "error": "old_string not found in file"}
+            return self._format_result(success=False, error="old_string not found in file")
 
         new_content = content.replace(old_string, new_string, count)
         replacements = 1 if count == 1 else content.count(old_string)
         path_obj.write_text(new_content, encoding=encoding)
 
-        return {"success": True, "replacements": replacements}
+        return self._format_result(success=True, result={"replacements": replacements})
 
     def _validate_path(self, file_path: str) -> Dict[str, Any]:
         try:
@@ -316,12 +343,16 @@ class FileWriteTool(AsyncToolInterface):
             encoding = kwargs.get("encoding", "utf-8")
             create_dirs = kwargs.get("create_dirs", True)
 
-            # Resolve relative paths against root_dir (agent working directory)
-            if self.root_dir and not Path(file_path).is_absolute():
-                file_path = str(Path(self.root_dir) / file_path)
+            if is_read_only_mode(self.sandbox_mode):
+                return self._format_result(
+                    success=False,
+                    error="Write operation blocked in read-only sandbox mode",
+                )
+
+            path_obj = _resolve_tool_path(self, file_path)
 
             # Security validation
-            validation_result = self._validate_path(file_path)
+            validation_result = self._validate_path(str(path_obj))
             if not validation_result["valid"]:
                 return self._format_result(
                     success=False,
@@ -335,9 +366,6 @@ class FileWriteTool(AsyncToolInterface):
                     success=False,
                     error=f"Content too large: {content_size} bytes (max: {self.max_file_size})"
                 )
-
-            # Convert to Path object
-            path_obj = Path(file_path)
 
             # Create parent directories if needed
             if create_dirs:
@@ -360,6 +388,11 @@ class FileWriteTool(AsyncToolInterface):
             return self._format_result(
                 success=False,
                 error=f"Permission denied: {str(e)}"
+            )
+        except WorkspaceSecurityError as e:
+            return self._format_result(
+                success=False,
+                error=f"Workspace security error: {str(e)}"
             )
         except Exception as e:
             return self._format_result(
@@ -443,20 +476,15 @@ class DirectoryListTool(AsyncToolInterface):
             recursive = kwargs.get("recursive", False)
             pattern = kwargs.get("pattern")
 
-            # Resolve relative paths against root_dir (agent working directory)
-            if self.root_dir and not Path(directory_path).is_absolute():
-                directory_path = str(Path(self.root_dir) / directory_path)
+            path_obj = _resolve_tool_path(self, directory_path)
 
             # Security validation
-            validation_result = self._validate_path(directory_path)
+            validation_result = self._validate_path(str(path_obj))
             if not validation_result["valid"]:
                 return self._format_result(
                     success=False,
                     error=validation_result["error"]
                 )
-
-            # Convert to Path object
-            path_obj = Path(directory_path)
 
             # Check if directory exists
             if not path_obj.exists():
@@ -514,6 +542,11 @@ class DirectoryListTool(AsyncToolInterface):
             return self._format_result(
                 success=False,
                 error=f"Permission denied: {str(e)}"
+            )
+        except WorkspaceSecurityError as e:
+            return self._format_result(
+                success=False,
+                error=f"Workspace security error: {str(e)}"
             )
         except Exception as e:
             return self._format_result(
@@ -587,17 +620,21 @@ class FileDeleteTool(AsyncToolInterface):
             file_path = kwargs["file_path"]
             recursive = kwargs.get("recursive", False)
             force = kwargs.get("force", False)
+            if is_read_only_mode(self.sandbox_mode):
+                return self._format_result(
+                    success=False,
+                    error="Delete operation blocked in read-only sandbox mode",
+                )
+
+            path_obj = _resolve_tool_path(self, file_path)
 
             # Security validation
-            validation_result = self._validate_path(file_path)
+            validation_result = self._validate_path(str(path_obj))
             if not validation_result["valid"]:
                 return self._format_result(
                     success=False,
                     error=validation_result["error"]
                 )
-
-            # Convert to Path object
-            path_obj = Path(file_path)
 
             # Check if path exists
             if not path_obj.exists():
@@ -642,6 +679,11 @@ class FileDeleteTool(AsyncToolInterface):
             return self._format_result(
                 success=False,
                 error=f"Permission denied: {str(e)}"
+            )
+        except WorkspaceSecurityError as e:
+            return self._format_result(
+                success=False,
+                error=f"Workspace security error: {str(e)}"
             )
         except Exception as e:
             return self._format_result(

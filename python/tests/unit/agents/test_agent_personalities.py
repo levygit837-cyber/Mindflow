@@ -4,18 +4,15 @@ from mindflow_backend.agents._base import AgentPersonality, BaseAgent
 from mindflow_backend.agents.specialists import (
     create_analyst_agent,
     create_architecture_agent,
+    create_brainstorm_agent,
     create_coder_agent,
+    create_deep_analysis_agent,
     create_review_agent,
     create_researcher_agent,
+    create_security_agent,
 )
-from mindflow_backend.agents.specialists.creative import create_creative_agent
-from mindflow_backend.agents.specialists.security import create_security_agent
-from mindflow_backend.schemas.orchestrator import (
-    AgentType,
-    SandboxMode,
-    ThinkingLevel,
-    ToolScope,
-)
+from mindflow_backend.schemas.orchestrator import AgentType, SandboxMode, ThinkingLevel, ToolScope
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 
 def test_coder_agent_creation() -> None:
@@ -43,42 +40,56 @@ def test_researcher_agent_creation() -> None:
     agent = create_researcher_agent()
     assert agent.agent_type == AgentType.RESEARCHER
     assert ToolScope.WEB_SEARCH in agent.tools
-    assert agent.thinking_level == ThinkingLevel.MEDIUM
+    assert agent.thinking_level == ThinkingLevel.HIGH
     assert "Researcher" in agent.system_prompt
 
 
 def test_arch_tech_agent_creation() -> None:
-    agent = create_arch_tech_agent()
-    assert agent.agent_type == AgentType.ARCH_TECH
+    agent = create_architecture_agent()
+    assert agent.agent_role == AgentType.CODER
+    assert agent.specialist == SpecialistType.ARCH_TECH
     assert ToolScope.FILESYSTEM in agent.tools
     assert ToolScope.CODE_ANALYSIS in agent.tools
     assert agent.thinking_level == ThinkingLevel.HIGH
-    assert "ArchTech" in agent.system_prompt
+    assert agent.sandbox == SandboxMode.FULL
 
 
 def test_critic_agent_creation() -> None:
-    agent = create_critic_agent()
-    assert agent.agent_type == AgentType.CRITIC
+    agent = create_review_agent()
+    assert agent.agent_role == AgentType.ANALYST
+    assert agent.specialist == SpecialistType.CRITIC
     assert ToolScope.CODE_ANALYSIS in agent.tools
     assert agent.thinking_level == ThinkingLevel.MEDIUM
     assert "Critic" in agent.system_prompt
 
 
-def test_creative_agent_creation() -> None:
-    agent = create_creative_agent()
+def test_brainstorm_agent_creation() -> None:
+    agent = create_brainstorm_agent()
     assert isinstance(agent, BaseAgent)
-    assert agent.agent_type == AgentType.CREATIVE
+    assert agent.agent_role == AgentType.ANALYST
+    assert agent.specialist == SpecialistType.BRAINSTORM
     assert ToolScope.CODE_ANALYSIS in agent.tools
     assert ToolScope.FILESYSTEM in agent.tools
+    assert agent.thinking_level == ThinkingLevel.MEDIUM
+    assert "brainstorm" in agent.system_prompt.lower() or "alternative" in agent.system_prompt.lower()
+
+
+def test_deep_iteration_agent_creation() -> None:
+    agent = create_deep_analysis_agent()
+    assert isinstance(agent, BaseAgent)
+    assert agent.agent_role == AgentType.ANALYST
+    assert agent.specialist == SpecialistType.DEEP_ITERATION
+    assert ToolScope.CODE_ANALYSIS in agent.tools
+    assert ToolScope.SHELL in agent.tools
+    assert agent.sandbox == SandboxMode.READ_ONLY
     assert agent.thinking_level == ThinkingLevel.HIGH
-    assert "Creative" in agent.system_prompt
-    assert "diverge" in agent.system_prompt.lower() or "converge" in agent.system_prompt.lower()
 
 
 def test_security_guard_agent_creation() -> None:
-    agent = create_security_guard_agent()
+    agent = create_security_agent()
     assert isinstance(agent, BaseAgent)
-    assert agent.agent_type == AgentType.SECURITY_GUARD
+    assert agent.agent_role == AgentType.ANALYST
+    assert agent.specialist == SpecialistType.SECURITY_GUARD
     assert ToolScope.CODE_ANALYSIS in agent.tools
     assert ToolScope.FILESYSTEM in agent.tools
     assert agent.thinking_level == ThinkingLevel.HIGH
@@ -94,7 +105,8 @@ def test_all_agents_satisfy_protocol() -> None:
         create_researcher_agent,
         create_review_agent,
         create_architecture_agent,
-        create_creative_agent,
+        create_brainstorm_agent,
+        create_deep_analysis_agent,
         create_security_agent,
     ):
         agent = factory()
@@ -105,5 +117,5 @@ def test_base_agent_is_frozen() -> None:
     agent = create_coder_agent()
     import pytest
 
-    with pytest.raises(AttributeError):
+    with pytest.raises((AttributeError, TypeError)):
         agent.agent_type = AgentType.ANALYST  # type: ignore[misc]

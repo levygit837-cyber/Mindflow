@@ -125,7 +125,7 @@ class TestSessionController:
             role="user",
             content="Test message",
             provider="google",
-            model="gemini-pro"
+            model="gemini-3.1-flash-lite-preview"
         )
         
         assert result["success"] is True
@@ -136,7 +136,7 @@ class TestSessionController:
             role="user",
             content="Test message",
             provider="google",
-            model="gemini-pro"
+            model="gemini-3.1-flash-lite-preview"
         )
     
     @pytest.mark.asyncio
@@ -153,7 +153,7 @@ class TestSessionController:
                 role="user",
                 content="Original message",
                 provider="google",
-                model="gemini-pro"
+                model="gemini-3.1-flash-lite-preview"
             )
             
             mock_sanitize.assert_called_once_with("Original message")
@@ -283,7 +283,7 @@ class TestSessionControllerIntegration:
                     "role": "user",
                     "content": "Test message",
                     "provider": "google",
-                    "model": "gemini-pro"
+                    "model": "gemini-3.1-flash-lite-preview"
                 }
             )
             

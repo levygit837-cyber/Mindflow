@@ -10,7 +10,7 @@ MindFlow is a multi-agent AI system built for software engineering assistance. I
 
 | Component | Stack | Location |
 |---|---|---|
-| **Backend** | Python 3.11+ / FastAPI / LangGraph / gRPC / Redis+RQ / PostgreSQL 16 | `python/mindflow_backend/` |
+| **Backend** | Python 3.11+ / FastAPI / LangGraph / gRPC / RabbitMQ (`aio-pika`) / PostgreSQL 16 | `python/mindflow_backend/` |
 | **Frontend** | React 19 / Vite / TypeScript | `frontend/` |
 | **CLI** | Typer + Rich | `python/mindflow_cli/` |
 
@@ -48,7 +48,7 @@ storage/repositories.py  — SQLAlchemy (PostgreSQL)
 - [uv](https://docs.astral.sh/uv/) package manager
 - Node.js 18+
 - PostgreSQL 16
-- Redis (for background workers)
+- RabbitMQ 3.13+ (for background workers)
 
 ### Backend Setup
 
@@ -59,7 +59,7 @@ cp ../.env.example ../.env   # Configure your API keys
 
 uv run mindflow-api          # FastAPI on :8000
 uv run mindflow-grpc         # gRPC on :50051
-uv run mindflow-worker       # RQ background worker
+uv run mindflow-worker       # RabbitMQ background worker (aio-pika)
 
 # Apply DB migrations
 uv run alembic upgrade head
@@ -87,19 +87,25 @@ Copy `.env.example` to `.env` and configure:
 - `ANTHROPIC_API_KEY` — for Claude
 - `OPENAI_API_KEY` — for GPT
 - `DATABASE_URL` — PostgreSQL connection string (default: `localhost:5433/mindflow_v1`)
-- `REDIS_URL` — Redis connection string (default: `localhost:6380`)
+- `RABBITMQ_URL` — AMQP connection string (default: `amqp://guest:guest@127.0.0.1:5673/`)
+- `RABBITMQ_HOST` / `RABBITMQ_PORT` / `RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD`
+- `ENABLE_RABBITMQ` — gate global do backbone assíncrono
+- `QUEUE_MEMORY_PIPELINE` — ativa enfileiramento de memory/embedding
+- `QUEUE_SESSION_REVIEW` — ativa enfileiramento de session review
+- `QUEUE_RESEARCH_PIPELINE` — ativa enfileiramento de browser/content research
 
 ### Local Infrastructure (Docker)
 
 ```bash
-docker-compose up -d   # PostgreSQL, Redis, SearXNG
+docker compose -f python/docker-compose.backend.yml up -d   # PostgreSQL, RabbitMQ, KuzuDB
 ```
 
 | Service | Default Address |
 |---|---|
 | PostgreSQL | `localhost:5433` — DB: `mindflow_v1` |
-| Redis | `localhost:6380` |
-| SearXNG | `localhost:8080` |
+| RabbitMQ | `localhost:5673` |
+| RabbitMQ Management | `localhost:15673` |
+| KuzuDB Explorer | `localhost:8001` |
 
 ## Agent Personalities
 
@@ -119,7 +125,9 @@ Sub-personalities (`security_guard`, `critic`) are composed via prompt injection
 - **Memory System** — Per-agent rolling memory with summary windows and RAG retrieval (PostgreSQL-backed)
 - **Context Governance** — Token budget management (`max_payload_tokens = 10_000`)
 - **Session Review** — Automatic session chunk review via Analyst critic sub-personality
-- **Feature Flags** — Incremental rollout via `infra/config.py`
+- **Queue Contracts** — Shared envelopes and interfaces live in `python/mindflow_backend/workers/contracts`
+- **Domain Workers** — Each queue domain owns its own `schemas`, `interfaces`, `publishers` and `consumers`
+- **Feature Flags** — Incremental rollout via `ENABLE_RABBITMQ`, `QUEUE_MEMORY_PIPELINE`, `QUEUE_SESSION_REVIEW` and `QUEUE_RESEARCH_PIPELINE`
 
 ## Quality Checks
 

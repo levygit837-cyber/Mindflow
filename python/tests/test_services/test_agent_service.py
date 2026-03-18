@@ -33,7 +33,7 @@ class TestAgentService:
                 message="Test message",
                 agent_type="analyst",
                 provider="google",
-                model="gemini-pro",
+                model="gemini-3.1-flash-lite-preview",
                 session_id="test-session",
                 orchestrate=False
             )

@@ -6,7 +6,7 @@ for different specialist types and complexities.
 
 from __future__ import annotations
 
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from mindflow_backend.schemas.orchestration.specialists import (
     SpecialistType,
@@ -16,6 +16,7 @@ from mindflow_backend.schemas.orchestration.specialists import (
     SpecialistDecisionResult,
 )
 from mindflow_backend.agents._base import AgentType, ThinkingLevel, SandboxMode
+from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 from mindflow_backend.config.agents import get_agent_config
 from mindflow_backend.infra.logging import get_logger
 
@@ -55,69 +56,35 @@ class SpecialistConfigurationBuilder:
     
     def _get_base_configuration(self, specialist: SpecialistType) -> SpecialistConfiguration:
         """Get base configuration for specialist type."""
-        configurations = {
-            SpecialistType.CORE: SpecialistConfiguration(
-                specialist=specialist,
-                agent_type=AgentType.ANALYST,
-                prompt_segments=["core", "read"],
-                tools=["CODE_ANALYSIS", "FILESYSTEM"],
-                thinking_level=ThinkingLevel.MEDIUM,
-                sandbox_mode=SandboxMode.NONE,
-                max_iterations=1,
-            ),
-            
-            SpecialistType.SECURITY_GUARD: SpecialistConfiguration(
-                specialist=specialist,
-                agent_type=AgentType.ANALYST,
-                prompt_segments=["core", "security_guard"],
-                tools=["CODE_ANALYSIS", "FILESYSTEM"],
-                thinking_level=ThinkingLevel.HIGH,
-                sandbox_mode=SandboxMode.READ_ONLY,
-                max_iterations=1,
-            ),
-            
-            SpecialistType.CRITIC: SpecialistConfiguration(
-                specialist=specialist,
-                agent_type=AgentType.ANALYST,
-                prompt_segments=["core", "critic"],
-                tools=["CODE_ANALYSIS"],
-                thinking_level=ThinkingLevel.HIGH,
-                sandbox_mode=SandboxMode.NONE,
-                max_iterations=1,
-            ),
-            
-            SpecialistType.BRAINSTORM: SpecialistConfiguration(
-                specialist=specialist,
-                agent_type=AgentType.ANALYST,
-                prompt_segments=["core", "brainstorm"],
-                tools=["CODE_ANALYSIS"],
-                thinking_level=ThinkingLevel.HIGH,
-                sandbox_mode=SandboxMode.NONE,
-                max_iterations=1,
-            ),
-            
-            SpecialistType.ARCH_TECH: SpecialistConfiguration(
-                specialist=specialist,
-                agent_type=AgentType.CODER,
-                prompt_segments=["core", "arch_tech"],
-                tools=["FILESYSTEM", "CODE_ANALYSIS"],
-                thinking_level=ThinkingLevel.HIGH,
-                sandbox_mode=SandboxMode.NONE,
-                max_iterations=1,
-            ),
-            
-            SpecialistType.DEEP_ITERATION: SpecialistConfiguration(
-                specialist=specialist,
-                agent_type=AgentType.ANALYST,
-                prompt_segments=["core", "read", "deep_iteration"],
-                tools=["CODE_ANALYSIS", "FILESYSTEM"],
-                thinking_level=ThinkingLevel.HIGH,
-                sandbox_mode=SandboxMode.NONE,
-                max_iterations=2,  # Default for medium complexity
-            ),
+        policy_keys = {
+            SpecialistType.CORE: "analyst",
+            SpecialistType.SECURITY_GUARD: "analyst:security_guard",
+            SpecialistType.CRITIC: "analyst:critic",
+            SpecialistType.BRAINSTORM: "analyst:brainstorm",
+            SpecialistType.ARCH_TECH: "coder:arch_tech",
+            SpecialistType.DEEP_ITERATION: "analyst:deep_iteration",
         }
-        
-        return configurations.get(specialist, configurations[SpecialistType.CORE])
+        prompt_segments = {
+            SpecialistType.CORE: ["core", "read"],
+            SpecialistType.SECURITY_GUARD: ["core", "security_guard"],
+            SpecialistType.CRITIC: ["core", "critic"],
+            SpecialistType.BRAINSTORM: ["core", "brainstorm"],
+            SpecialistType.ARCH_TECH: ["core", "arch_tech"],
+            SpecialistType.DEEP_ITERATION: ["deep_iteration"],
+        }
+
+        key = policy_keys.get(specialist, "analyst")
+        policy = get_agent_runtime_policy(agent_id=key)
+
+        return SpecialistConfiguration(
+            specialist=specialist,
+            agent_type=policy.agent_role,
+            prompt_segments=prompt_segments.get(specialist, ["core", "read"]),
+            tools=[tool.name for tool in policy.tools],
+            thinking_level=policy.thinking_level,
+            sandbox_mode=policy.sandbox,
+            max_iterations=policy.max_iterations,
+        )
     
     def _enhance_for_complexity(
         self,
@@ -209,6 +176,11 @@ class DelegationTaskBuilder:
         """Build delegation task configured for selected specialist."""
         return {
             "agent": configuration.agent_type,
+            "agent_id": (
+                configuration.agent_type
+                if configuration.specialist in {SpecialistType.CORE, SpecialistType.ANALYST, SpecialistType.CODER}
+                else f"{configuration.agent_type}:{configuration.specialist}"
+            ),
             "objective": task_description,
             "tools": configuration.tools,
             "thinking_level": configuration.thinking_level,
@@ -256,12 +228,12 @@ class DelegationTaskBuilder:
         benefits = {
             (SpecialistType.CORE, SpecialistType.SECURITY_GUARD): "Enhanced security focus",
             (SpecialistType.CORE, SpecialistType.CRITIC): "Improved code quality assessment",
-            (SpecialistType.CORE, SpecialistType.BRAINSTORM): "Enhanced creative exploration",
+            (SpecialistType.CORE, SpecialistType.BRAINSTORM): "Enhanced ideation and alternatives exploration",
             (SpecialistType.CORE, SpecialistType.ARCH_TECH): "Better architectural decisions",
             (SpecialistType.CORE, SpecialistType.DEEP_ITERATION): "More thorough analysis",
             (SpecialistType.ANALYST, SpecialistType.SECURITY_GUARD): "Security-focused analysis",
             (SpecialistType.ANALYST, SpecialistType.CRITIC): "Quality-focused evaluation",
-            (SpecialistType.ANALYST, SpecialistType.BRAINSTORM): "Creative problem-solving",
+            (SpecialistType.ANALYST, SpecialistType.BRAINSTORM): "Structured ideation and option generation",
             (SpecialistType.CODER, SpecialistType.ARCH_TECH): "Architecture-aware implementation",
         }
         

@@ -11,7 +11,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator,  Field, validator, field_validator
+import pydantic
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from mindflow_backend.infra.config.database import DatabaseConfig
@@ -63,15 +64,25 @@ class Settings(BaseSettings):
     log_sampling_rate: float = Field(default=1.0, alias="LOG_SAMPLING_RATE")
     
     # Rate Limiting Configuration
-    rate_limit_enabled: bool = Field(default=False, alias="RATE_LIMIT_ENABLED")
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
     rate_limit_global: int = Field(default=100, alias="RATE_LIMIT_GLOBAL")
     rate_limit_chat_stream: int = Field(default=20, alias="RATE_LIMIT_CHAT_STREAM")
+    rate_limit_shell: int = Field(default=5, alias="RATE_LIMIT_SHELL")
     rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
 
     # Authentication Configuration
     auth_enabled: bool = Field(default=False, alias="AUTH_ENABLED")
-    auth_master_key: str | None = Field(default=None, alias="AUTH_MASTER_KEY")
+    auth_master_key: str | None = Field(default=None, alias="AUTH_MASTER_KEY", repr=False)
     auth_token_expiry_hours: int = Field(default=24, alias="AUTH_TOKEN_EXPIRY_HOURS")
+    security_trusted_hosts: str = Field(default="", alias="SECURITY_TRUSTED_HOSTS")
+    security_trust_proxy_headers: bool = Field(default=False, alias="SECURITY_TRUST_PROXY_HEADERS")
+    security_trusted_proxy_ips: str = Field(default="", alias="SECURITY_TRUSTED_PROXY_IPS")
+    security_require_json_content_type: bool = Field(
+        default=True, alias="SECURITY_REQUIRE_JSON_CONTENT_TYPE"
+    )
+    security_enforce_accept_header: bool = Field(
+        default=True, alias="SECURITY_ENFORCE_ACCEPT_HEADER"
+    )
 
     # Filesystem sandbox configuration
     working_path: str | None = Field(default=None, alias="WORKING_PATH")
@@ -80,26 +91,47 @@ class Settings(BaseSettings):
     default_provider: str = Field(default="google", alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3.1-flash-lite-preview", alias="DEFAULT_MODEL")
     enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
+    agent_stream_timeout_seconds: float = Field(default=180.0, alias="AGENT_STREAM_TIMEOUT_SECONDS")
+    agent_stream_initial_timeout_seconds: float = Field(
+        default=300.0,
+        alias="AGENT_STREAM_INITIAL_TIMEOUT_SECONDS",
+    )
+    agent_stream_tool_progress_timeout_seconds: float = Field(
+        default=300.0,
+        alias="AGENT_STREAM_TOOL_PROGRESS_TIMEOUT_SECONDS",
+    )
+    agent_stream_progress_heartbeat_seconds: float = Field(
+        default=5.0,
+        alias="AGENT_STREAM_PROGRESS_HEARTBEAT_SECONDS",
+    )
     
     # Memory Configuration
     memory_enabled: bool = Field(default=True, alias="MEMORY_ENABLED")
     memory_summary_window_tokens: int = Field(default=300000, alias="MEMORY_SUMMARY_WINDOW_TOKENS")
     memory_retrieval_top_k: int = Field(default=4, alias="MEMORY_RETRIEVAL_TOP_K")
-    memory_embedding_dims: int = Field(default=256, alias="MEMORY_EMBEDDING_DIMS")
+    # DEPRECATED — use embedding_dims (EMBEDDING_DIMS) instead
+    memory_embedding_dims: int = Field(default=768, alias="MEMORY_EMBEDDING_DIMS")
 
     # Embedding Provider Configuration (EmbeddingProviderFactory)
-    embedding_backend: str = Field(default="gemini", alias="EMBEDDING_BACKEND")
-    embedding_model_name: str = Field(default="models/text-embedding-004", alias="EMBEDDING_MODEL_NAME")
+    embedding_backend: str = Field(default="ollama", alias="EMBEDDING_BACKEND")
+    embedding_model_name: str = Field(default="nomic-embed-text-v2-moe:latest", alias="EMBEDDING_MODEL_NAME")
     embedding_dims: int = Field(default=768, alias="EMBEDDING_DIMS")
+    memory_block_max_messages: int = Field(default=8, alias="MEMORY_BLOCK_MAX_MESSAGES")
+    memory_block_max_tokens: int = Field(default=1200, alias="MEMORY_BLOCK_MAX_TOKENS")
+    memory_block_topic_shift_threshold: float = Field(
+        default=0.45,
+        alias="MEMORY_BLOCK_TOPIC_SHIFT_THRESHOLD",
+    )
 
     # AI Provider Configuration
-    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
+    # repr=False prevents API keys from appearing in repr() / logs / error tracebacks
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY", repr=False)
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY", repr=False)
+    google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY", repr=False)
     google_application_credentials: str | None = Field(
-        default=None, alias="GOOGLE_APPLICATION_CREDENTIALS"
+        default=None, alias="GOOGLE_APPLICATION_CREDENTIALS", repr=False
     )
-    vertexai_credentials_path: str | None = Field(default=None, alias="VERTEXAI_CREDENTIALS_PATH")
+    vertexai_credentials_path: str | None = Field(default=None, alias="VERTEXAI_CREDENTIALS_PATH", repr=False)
     google_cloud_project: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
     kuzudb_url: str = Field(default="http://localhost:8001", alias="KUZUDB_URL")
@@ -121,11 +153,24 @@ class Settings(BaseSettings):
         default="pgvector", alias="VECTOR_DB_PROVIDER"
     )
     vector_db_url: str | None = Field(default=None, alias="VECTOR_DB_URL")
-    vector_db_dimensions: int = Field(default=256, alias="VECTOR_DB_DIMENSIONS")
+    # DEPRECATED — use embedding_dims (EMBEDDING_DIMS) instead
+    vector_db_dimensions: int = Field(default=768, alias="VECTOR_DB_DIMENSIONS")
     vector_db_api_key: str | None = Field(default=None, alias="VECTOR_DB_API_KEY")
 
     # Task Configuration
     enable_tasks_v2: bool = Field(default=False, alias="ENABLE_TASKS_V2")
+
+    # RabbitMQ Configuration
+    rabbitmq_url: str = Field(default="amqp://guest:guest@127.0.0.1:5672/", alias="RABBITMQ_URL")
+    rabbitmq_host: str = Field(default="127.0.0.1", alias="RABBITMQ_HOST")
+    rabbitmq_port: int = Field(default=5672, alias="RABBITMQ_PORT")
+    rabbitmq_username: str = Field(default="guest", alias="RABBITMQ_USERNAME")
+    rabbitmq_password: str = Field(default="guest", alias="RABBITMQ_PASSWORD")
+    rabbitmq_virtual_host: str = Field(default="/", alias="RABBITMQ_VIRTUAL_HOST")
+    enable_rabbitmq: bool = Field(default=False, alias="ENABLE_RABBITMQ")
+    queue_memory_pipeline: bool = Field(default=False, alias="QUEUE_MEMORY_PIPELINE")
+    queue_session_review: bool = Field(default=False, alias="QUEUE_SESSION_REVIEW")
+    queue_research_pipeline: bool = Field(default=False, alias="QUEUE_RESEARCH_PIPELINE")
 
     # Semantic Search Configuration
     enable_semantic_search: bool = Field(default=True, alias="ENABLE_SEMANTIC_SEARCH")
@@ -176,6 +221,32 @@ class Settings(BaseSettings):
 
     # Feature Flags
     feature_flags: dict[str, bool] = Field(default_factory=dict)
+
+    # PinchTab browser fleet
+    pinchtab_browser_image: str = Field(
+        default="mindflow/pinchtab-browser:latest",
+        alias="PINCHTAB_BROWSER_IMAGE",
+    )
+    pinchtab_docker_network: str = Field(
+        default="mindflow_default",
+        alias="PINCHTAB_DOCKER_NETWORK",
+    )
+    pinchtab_default_economy_mode: str = Field(
+        default="warm_paused",
+        alias="PINCHTAB_DEFAULT_ECONOMY_MODE",
+    )
+    pinchtab_idle_timeout_seconds: int = Field(
+        default=120,
+        alias="PINCHTAB_IDLE_TIMEOUT_SECONDS",
+    )
+    pinchtab_max_browsers_per_session: int = Field(
+        default=5,
+        alias="PINCHTAB_MAX_BROWSERS_PER_SESSION",
+    )
+    pinchtab_reconcile_on_startup: bool = Field(
+        default=True,
+        alias="PINCHTAB_RECONCILE_ON_STARTUP",
+    )
     
     # Modular Configuration Sections
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -237,6 +308,11 @@ class Settings(BaseSettings):
         return {}
 
     @property
+    def canonical_embedding_dims(self) -> int:
+        """Canonical embedding dimension — single source of truth (768)."""
+        return self.embedding_dims
+
+    @property
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.app_env == "development"
@@ -261,6 +337,14 @@ class Settings(BaseSettings):
         Returns:
             Feature flag value.
         """
+        queue_flag_mapping = {
+            "rabbitmq_enabled": self.enable_rabbitmq,
+            "rabbitmq_memory_pipeline_enabled": self.enable_rabbitmq and self.queue_memory_pipeline,
+            "rabbitmq_session_review_pipeline_enabled": self.enable_rabbitmq and self.queue_session_review,
+            "rabbitmq_research_pipeline_enabled": self.enable_rabbitmq and self.queue_research_pipeline,
+        }
+        if flag_name in queue_flag_mapping:
+            return queue_flag_mapping[flag_name]
         return self.feature_flags.get(flag_name, default)
 
     def set_feature_flag(self, flag_name: str, value: bool) -> None:
@@ -295,6 +379,14 @@ class Settings(BaseSettings):
             List of CORS headers.
         """
         return [header.strip() for header in self.cors_allow_headers.split(",") if header.strip()]
+
+    def get_trusted_hosts_list(self) -> list[str]:
+        """Get trusted hosts as list."""
+        return [host.strip() for host in self.security_trusted_hosts.split(",") if host.strip()]
+
+    def get_trusted_proxy_ips_list(self) -> list[str]:
+        """Get trusted proxy IPs/networks as list."""
+        return [item.strip() for item in self.security_trusted_proxy_ips.split(",") if item.strip()]
 
 
 @lru_cache(maxsize=1)

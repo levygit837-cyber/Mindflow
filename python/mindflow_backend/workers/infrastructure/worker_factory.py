@@ -15,6 +15,7 @@ from mindflow_backend.workers.research.browser_worker import BrowserWorker
 from mindflow_backend.workers.research.content_worker import ContentWorker
 from mindflow_backend.workers.system.health_worker import HealthWorker
 from mindflow_backend.workers.system.memory_worker import MemoryWorker
+from mindflow_backend.workers.system.session_review_worker import SessionReviewWorker
 from mindflow_backend.workers.system.vector_worker import VectorWorker
 
 _logger = get_logger(__name__)
@@ -34,6 +35,7 @@ class WorkerFactory:
         # System workers
         "vector": VectorWorker,
         "memory": MemoryWorker,
+        "session_review": SessionReviewWorker,
         "health": HealthWorker,
         
         # Research workers
@@ -106,6 +108,7 @@ class WorkerFactory:
             "orchestrator": "orchestrator_critical",
             "vector": "vector_medium",
             "memory": "memory_low",
+            "session_review": "session_review_high",
             "health": "health_low",
             "browser": "browser_high",
             "content": "content_medium",

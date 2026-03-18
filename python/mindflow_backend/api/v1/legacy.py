@@ -6,12 +6,13 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.controllers.base_controller import BaseController
 from mindflow_backend.infra.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/legacy", tags=["legacy"])
+router = APIRouter(prefix="/legacy", tags=["legacy"], dependencies=protected_route_dependencies)
 
 
 class LegacyController(BaseController):

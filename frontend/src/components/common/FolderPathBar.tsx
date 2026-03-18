@@ -39,7 +39,7 @@ export const FolderPathBar: React.FC<FolderPathBarProps> = ({ value, onChange })
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="/caminho/do/projeto"
+        placeholder="workspace root /absolute/path or relative/path"
         className="min-w-0 flex-1 bg-transparent outline-none"
         style={{
           color: value ? 'var(--text-primary)' : 'var(--text-meta)',
@@ -55,7 +55,7 @@ export const FolderPathBar: React.FC<FolderPathBarProps> = ({ value, onChange })
         style={{ minHeight: 30, paddingInline: 12 }}
       >
         <span className="mono-label" style={{ letterSpacing: '0.08em' }}>
-          abrir
+          browse
         </span>
       </button>
 

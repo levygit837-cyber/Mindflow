@@ -5,6 +5,7 @@ Prefer: from mindflow_backend.schemas.chat.agent import ...
 
 from mindflow_backend.schemas.chat.agent import (
     AgentChatRequest,
+    AgentExecutionResponse,
     ChatMessageSchema,
     ChatSessionSchema,
     LogEntry,
@@ -17,6 +18,7 @@ from mindflow_backend.schemas.chat.agent import (
 
 __all__ = [
     "AgentChatRequest",
+    "AgentExecutionResponse",
     "ChatMessageSchema",
     "ChatSessionSchema",
     "LogEntry",

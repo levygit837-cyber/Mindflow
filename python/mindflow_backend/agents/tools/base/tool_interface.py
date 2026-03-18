@@ -24,6 +24,9 @@ class ToolInterface(ABC):
         self.root_dir: str | None = None
         # Optional chat session propagated by the runtime for session-scoped tools.
         self.session_id: str | None = None
+        # Optional sandbox policy propagated by the registry/runtime.
+        self.sandbox_mode = None
+        self.secure_mode: bool = False
 
     @abstractmethod
     def execute(self, **kwargs) -> Dict[str, Any]:

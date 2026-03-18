@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 
@@ -43,14 +42,14 @@ class WorkerSettings:
     def from_settings(cls) -> WorkerSettings:
         """Create WorkerSettings from application settings."""
         app_settings = get_settings()
-        
+
         return cls(
-            rabbitmq_url=getattr(app_settings, "rabbitmq_url", "amqp://localhost:5672/"),
-            rabbitmq_host=getattr(app_settings, "rabbitmq_host", "localhost"),
-            rabbitmq_port=getattr(app_settings, "rabbitmq_port", 5672),
-            rabbitmq_username=getattr(app_settings, "rabbitmq_username", "guest"),
-            rabbitmq_password=getattr(app_settings, "rabbitmq_password", "guest"),
-            rabbitmq_virtual_host=getattr(app_settings, "rabbitmq_virtual_host", "/"),
+            rabbitmq_url=app_settings.rabbitmq_url,
+            rabbitmq_host=app_settings.rabbitmq_host,
+            rabbitmq_port=app_settings.rabbitmq_port,
+            rabbitmq_username=app_settings.rabbitmq_username,
+            rabbitmq_password=app_settings.rabbitmq_password,
+            rabbitmq_virtual_host=app_settings.rabbitmq_virtual_host,
             default_concurrency=getattr(app_settings, "worker_default_concurrency", 1),
             default_max_retries=getattr(app_settings, "worker_default_max_retries", 3),
             default_retry_delay=getattr(app_settings, "worker_default_retry_delay", 60),

@@ -3,12 +3,37 @@
 from __future__ import annotations
 
 import pytest
+import pytest_asyncio
 from unittest.mock import patch, AsyncMock
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+from fastapi.responses import StreamingResponse
+from starlette.requests import Request
 
+import mindflow_backend.api.v1.agent as agent_routes
 from mindflow_backend.api.controllers.agent_controller import AgentController
+from mindflow_backend.api.schemas.requests import AgentChatRequest
 from mindflow_backend.api.schemas.responses import AgentResponse
+from mindflow_backend.schemas.chat.agent import AgentChatRequest as RouteAgentChatRequest
+
+
+def _build_agent_test_app() -> FastAPI:
+    app = FastAPI()
+    app.include_router(agent_routes.router, prefix="/v1")
+    return app
+
+
+@pytest.fixture
+def agent_client() -> TestClient:
+    return TestClient(_build_agent_test_app())
+
+
+@pytest_asyncio.fixture
+async def agent_async_client() -> AsyncClient:
+    transport = ASGITransport(app=_build_agent_test_app())
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
 
 
 class TestAgentController:
@@ -96,16 +121,60 @@ class TestAgentController:
         # Mock the streaming response
         with patch('mindflow_backend.api.controllers.agent_controller.StreamingResponse') as mock_response:
             mock_response.return_value = AsyncMock()
+            with patch('mindflow_backend.api.controllers.agent_controller._get_local_agent_client') as mock_client_factory:
+                mock_client = AsyncMock()
+                mock_client.stream_chat.return_value = iter(())
+                mock_client_factory.return_value = mock_client
             
-            request = AsyncMock()
-            request.message = "Test message"
-            request.agent_type = "analyst"
-            request.sessionId = "test-session"
+                payload = AgentChatRequest(
+                    message="Test message",
+                    agent_type="analyst",
+                    sessionId="test-session",
+                )
+                request = Request(
+                    {
+                        "type": "http",
+                        "method": "POST",
+                        "path": "/v1/agent/chat/stream",
+                        "headers": [],
+                    }
+                )
             
-            result = await controller.stream_chat(request, AsyncMock())
+                result = await controller.stream_chat(payload, request)
             
-            # Verify streaming response is created
-            mock_response.assert_called_once()
+                # Verify streaming response is created
+                mock_response.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_stream_chat_success_with_route_schema(self, mock_agent_service):
+        """Test streaming chat using the route-level AgentChatRequest schema."""
+        controller = AgentController()
+        controller.agent_service = mock_agent_service
+
+        with patch('mindflow_backend.api.controllers.agent_controller.StreamingResponse') as mock_response:
+            mock_response.return_value = AsyncMock()
+            with patch('mindflow_backend.api.controllers.agent_controller._get_local_agent_client') as mock_client_factory:
+                mock_client = AsyncMock()
+                mock_client.stream_chat.return_value = iter(())
+                mock_client_factory.return_value = mock_client
+
+                payload = RouteAgentChatRequest(
+                    message="Test message",
+                    agent_type="analyst",
+                    session_id="test-session",
+                )
+                request = Request(
+                    {
+                        "type": "http",
+                        "method": "POST",
+                        "path": "/v1/agent/chat/stream",
+                        "headers": [],
+                    }
+                )
+
+                await controller.stream_chat(payload, request)
+
+                mock_response.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_stream_chat_sanitization_error(self, mock_agent_service):
@@ -127,59 +196,65 @@ class TestAgentController:
 class TestAgentControllerIntegration:
     """Integration tests for AgentController endpoints."""
     
-    def test_agent_capabilities_endpoint(self, client: TestClient, mock_agent_service):
+    def test_agent_capabilities_endpoint(self, agent_client: TestClient, mock_agent_service):
         """Test /agent/capabilities/{agent_type} endpoint."""
-        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
-            mock_controller_instance = AsyncMock()
-            mock_controller_instance.get_capabilities.return_value = AgentResponse(
+        with patch.object(
+            agent_routes.agent_controller,
+            "get_capabilities",
+            AsyncMock(
+                return_value=AgentResponse(
                 success=True,
                 agent_type="analyst",
                 capabilities=["analysis"]
             )
-            mock_controller.return_value = mock_controller_instance
-            
-            response = client.get("/v1/agent/capabilities/analyst")
+            ),
+        ):
+            response = agent_client.get("/v1/agent/capabilities/analyst")
             
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
             assert data["agent_type"] == "analyst"
     
-    def test_agent_list_endpoint(self, client: TestClient, mock_agent_service):
+    def test_agent_list_endpoint(self, agent_client: TestClient, mock_agent_service):
         """Test /agent/list endpoint."""
-        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
-            mock_controller_instance = AsyncMock()
-            mock_controller_instance.list_agents.return_value = AgentResponse(
+        with patch.object(
+            agent_routes.agent_controller,
+            "list_agents",
+            AsyncMock(
+                return_value=AgentResponse(
                 success=True,
                 response="Found 1 available agents",
                 capabilities=["analyst"]
             )
-            mock_controller.return_value = mock_controller_instance
-            
-            response = client.get("/v1/agent/list")
+            ),
+        ):
+            response = agent_client.get("/v1/agent/list")
             
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
             assert "Found 1 available agents" in data["response"]
     
-    def test_agent_validate_endpoint(self, client: TestClient, mock_agent_service):
+    def test_agent_validate_endpoint(self, agent_client: TestClient, mock_agent_service):
         """Test /agent/validate endpoint."""
-        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
-            mock_controller_instance = AsyncMock()
-            mock_controller_instance.validate_request.return_value = AgentResponse(
+        with patch.object(
+            agent_routes.agent_controller,
+            "validate_request",
+            AsyncMock(
+                return_value=AgentResponse(
                 success=True,
                 response="Request is valid",
                 metadata={"valid": True}
             )
-            mock_controller.return_value = mock_controller_instance
-            
+            ),
+        ):
             request_data = {
                 "message": "Test message",
                 "agent_type": "analyst"
             }
             
-            response = client.post("/v1/agent/validate", json=request_data)
+            response = agent_client.post("/v1/agent/validate", json=request_data)
             
             assert response.status_code == 200
             data = response.json()
@@ -187,24 +262,31 @@ class TestAgentControllerIntegration:
             assert data["metadata"]["valid"] is True
     
     @pytest.mark.asyncio
-    async def test_agent_stream_endpoint_async(self, async_client: AsyncClient, mock_agent_service):
+    async def test_agent_stream_endpoint_async(self, agent_async_client: AsyncClient, mock_agent_service):
         """Test /agent/chat/stream endpoint with async client."""
-        with patch('mindflow_backend.api.v1.agent.agent_controller') as mock_controller:
-            mock_controller_instance = AsyncMock()
-            mock_controller_instance.stream_chat.return_value = AsyncMock()
-            mock_controller.return_value = mock_controller_instance
-            
+        async def _empty_stream():
+            if False:
+                yield "data: {}\n\n"
+
+        with patch.object(
+            agent_routes.agent_controller,
+            "stream_chat",
+            AsyncMock(
+                return_value=StreamingResponse(
+                    _empty_stream(),
+                    media_type="text/event-stream",
+                )
+            ),
+        ):
             request_data = {
                 "message": "Test message",
                 "agent_type": "analyst",
                 "sessionId": "test-session"
             }
             
-            response = await async_client.post("/v1/agent/chat/stream", json=request_data)
+            response = await agent_async_client.post("/v1/agent/chat/stream", json=request_data)
             
-            # Note: StreamingResponse might not return standard HTTP response
-            # This test verifies the endpoint is reachable
-            assert response.status_code in [200, 404]  # 404 if streaming not fully mocked
+            assert response.status_code == 200
 
 
 class TestAgentControllerErrorHandling:

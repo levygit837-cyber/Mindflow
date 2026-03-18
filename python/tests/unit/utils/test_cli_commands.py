@@ -173,6 +173,8 @@ def test_connect_command_reset_clears_local_history(monkeypatch) -> None:
             orchestrate: bool = False,
         ):
             seen_messages.append(message)
+            assert provider == "google"
+            assert model == "gemini-3.1-flash-lite-preview"
             yield _event("response", "ok", seq=1)
             yield _event("done", "", seq=2)
 

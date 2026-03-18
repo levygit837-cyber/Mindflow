@@ -5,12 +5,13 @@ from __future__ import annotations
 from typing import Any, Dict
 from fastapi import APIRouter, Depends, Request
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.controllers.base_controller import BaseController
 from mindflow_backend.api.middleware.performance import PerformanceMiddleware
 from mindflow_backend.api.middleware.caching import AdvancedCacheMiddleware
 from mindflow_backend.infra.logging import get_logger
 
-router = APIRouter(prefix="/metrics", tags=["metrics"])
+router = APIRouter(prefix="/metrics", tags=["metrics"], dependencies=protected_route_dependencies)
 logger = get_logger(__name__)
 
 

@@ -17,11 +17,22 @@ from mindflow_backend.schemas.agents.research import (
     BrowserActionRequest,
     BrowserActionResponse,
     QueryPlan,
+    ResearchBrowserSelection,
     ResearchConfig,
     ResearchFinding,
     ResearchRequest,
     ResearchResponse,
     SourceClassification,
+)
+from mindflow_backend.schemas.tools.pinchtab_schemas import (
+    BrowserCommandRequest,
+    BrowserCommandResponse,
+    BrowserInstanceState,
+    CreateBrowserRequest,
+    CreateBrowserResponse,
+    ListBrowsersRequest,
+    ListBrowsersResponse,
+    ReconcileFleetResponse,
 )
 
 
@@ -42,8 +53,39 @@ class EnhancedResearcher(CorePersonalityContract, Protocol):
         """Execute comprehensive research request."""
         ...
 
+    async def create_browser(self, request: CreateBrowserRequest) -> CreateBrowserResponse:
+        """Provision a browser for the Researcher fleet."""
+        ...
+
+    async def list_browsers(self, request: ListBrowsersRequest) -> ListBrowsersResponse:
+        """List browsers visible to the current session."""
+        ...
+
+    async def get_browser_interface(self, browser_id: str):
+        """Return an interface bound to a specific browser."""
+        ...
+
+    async def dispatch_browser_query(
+        self,
+        browser_id: str,
+        request: BrowserCommandRequest,
+    ) -> BrowserCommandResponse:
+        """Dispatch a browser command to a specific browser."""
+        ...
+
+    async def reconcile_browser_fleet(self, session_id: str) -> ReconcileFleetResponse:
+        """Reconcile persisted browser state for a session."""
+        ...
+
     async def plan_queries(self, research_query: str) -> QueryPlan:
         """Plan optimal queries for research."""
+        ...
+
+    async def select_browsers_for_research(
+        self,
+        request: ResearchRequest,
+    ) -> ResearchBrowserSelection:
+        """Select or allocate browsers for a research request."""
         ...
 
     async def synthesize_results(self, results: list) -> str:

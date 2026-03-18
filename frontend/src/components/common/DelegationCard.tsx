@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 
 type AgentStatus = 'active' | 'pending' | 'done' | 'waiting';
@@ -24,6 +24,20 @@ const STATUS_LABELS: Record<AgentStatus, string> = {
   waiting: 'waiting',
 };
 
+const STATUS_TITLES: Record<AgentStatus, string> = {
+  active: 'em execução',
+  pending: 'pendente',
+  done: 'pronto',
+  waiting: 'aguardando',
+};
+
+const AGENT_ACCENTS: Record<DelegatedAgent['agentType'], string> = {
+  orchestrator: 'var(--signal-synapse)',
+  analyst: '#F59E0B',
+  coder: '#4ADE80',
+  researcher: '#22D3EE',
+};
+
 export const DelegationCard: React.FC<DelegationCardProps> = ({
   title = 'Delegação',
   subtitle = 'Orchestrator delegou a próxima etapa',
@@ -31,6 +45,11 @@ export const DelegationCard: React.FC<DelegationCardProps> = ({
   pipelineLabel = 'Pipeline',
   className = '',
 }) => {
+  const activeAgents = agents.filter((agent) => agent.status === 'active').length;
+  const footerLabel = `${agents.length} ${agents.length === 1 ? 'agente' : 'agentes'}${
+    activeAgents > 0 ? ` · ${activeAgents} ativo${activeAgents > 1 ? 's' : ''}` : ''
+  }`;
+
   return (
     <motion.section
       className={`event-shell w-full ${className}`}
@@ -39,75 +58,55 @@ export const DelegationCard: React.FC<DelegationCardProps> = ({
       transition={{ duration: 0.24, ease: 'easeOut' }}
     >
       <div className="event-track">
-        <span className="signal-dot" />
+        <span className={activeAgents > 0 ? 'signal-dot' : 'signal-dot idle'} />
       </div>
 
-      <div className="event-node-lab">
-        <div className="event-header">
-          <span className="mono-label">--- delegation</span>
-          <span className="event-title">
-            {title}
-          </span>
-          <span className="event-badge" style={{ marginLeft: 'auto' }}>
-            {pipelineLabel}
-          </span>
+      <div className="delegation-card">
+        <div className="delegation-card-header">
+          <div className="delegation-card-copy">
+            <span className="mono-label">delegation</span>
+            <span className="delegation-card-title">{title}</span>
+            <p className="delegation-card-subtitle">{subtitle}</p>
+          </div>
+
+          <span className="delegation-card-pipeline">{pipelineLabel}</span>
         </div>
 
-        <p
-          style={{
-            marginTop: 10,
-            color: 'var(--text-secondary)',
-            fontSize: 13,
-            lineHeight: 1.65,
-          }}
-        >
-          {subtitle}
-        </p>
-
-        <div className="event-expand">
-          <div
-            style={{
-              color: 'var(--text-meta)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              lineHeight: 1.85,
-            }}
-          >
-            Orchestrator
-          </div>
-
-          <div
-            style={{
-              marginTop: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {agents.map((agent, index) => (
-              <motion.div
-                key={`${agent.agentName}-${index}`}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.18, delay: index * 0.05 }}
-                className="flex items-center gap-3"
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                }}
-              >
+        <div className="delegation-card-body">
+          {agents.map((agent, index) => (
+            <motion.div
+              key={`${agent.agentName}-${index}`}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.18, delay: index * 0.05 }}
+              className="delegation-agent-row"
+              style={
+                {
+                  '--delegation-row-accent': AGENT_ACCENTS[agent.agentType],
+                } as CSSProperties
+              }
+            >
+              <div className="delegation-agent-line">
                 <span className={`signal-dot ${agent.status === 'active' ? '' : 'idle'}`} />
-                <span style={{ color: 'var(--text-meta)' }}>
+                <span className="delegation-agent-branch">
                   {index === agents.length - 1 ? '└─' : '├─'}
                 </span>
-                <span style={{ minWidth: 0, flex: 1 }}>{agent.agentName}</span>
-                <span style={{ color: 'var(--text-meta)' }}>
-                  {STATUS_LABELS[agent.status]}
-                </span>
-              </motion.div>
-            ))}
-          </div>
+                <span className="delegation-agent-name">{agent.agentName}</span>
+              </div>
+
+              <div className="delegation-agent-meta">
+                <span className="delegation-agent-role">{agent.agentType}</span>
+                <span className="delegation-agent-status">{STATUS_TITLES[agent.status]}</span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="delegation-card-divider" />
+
+        <div className="delegation-card-footer">
+          <span className="delegation-card-footer-copy">{footerLabel}</span>
+          <span className="delegation-card-footer-tag">{STATUS_LABELS[agents.at(-1)?.status ?? 'waiting']}</span>
         </div>
       </div>
     </motion.section>

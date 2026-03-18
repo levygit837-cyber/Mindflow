@@ -1,8 +1,13 @@
 import { AppRouter } from './router';
+import { ThemeController } from './components/theme/ThemeController';
 import './index.css';
 
 function App() {
-  return <AppRouter />;
+  return (
+    <ThemeController>
+      <AppRouter />
+    </ThemeController>
+  );
 }
 
 export default App;

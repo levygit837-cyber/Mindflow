@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+
+from mindflow_backend.schemas.memory.contracts import MemoryRecallPolicy, MemoryRecallScope
 
 # Keep orchestration schemas lightweight: do not import graphs/runtime modules here.
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
@@ -51,8 +53,13 @@ class ToolScope(StrEnum):
     SHELL = "shell"
     WEB_SEARCH = "web_search"
     BROWSER_SEARCH = "browser_search"
+    PINCHTAB_FLEET = "pinchtab_fleet"
+    PINCHTAB_BROWSER = "pinchtab_browser"
     CODE_ANALYSIS = "code_analysis"
     DATABASE = "database"
+    MEMORY = "memory"
+    PLANNING = "planning"
+    DELEGATION = "delegation"
 
 
 class SandboxMode(StrEnum):
@@ -106,6 +113,32 @@ class GraphType(StrEnum):
 # ---------------------------------------------------------------------------
 
 
+class MemoryRecallConfig(BaseModel):
+    """Configuration for adaptive memory recall in the orchestrator."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    enabled: bool = True
+    policy: MemoryRecallPolicy = MemoryRecallPolicy.ADAPTIVE
+    scope: MemoryRecallScope = MemoryRecallScope.CURRENT_THEN_CROSS
+    max_results: int = Field(default=4, ge=1, validation_alias=AliasChoices("max_results", "top_k"))
+    min_score: float = 0.35
+    fallback_score_threshold: float = 0.55
+    # Cross-session fallback thresholds (Phase 4)
+    cross_session_fallback: bool = True
+    cross_session_min_hits: int = 2       # trigger fallback when session hits < this
+    cross_session_min_score: float = 0.55  # trigger fallback when best_score < this
+
+    @property
+    def top_k(self) -> int:
+        return self.max_results
+
+    @model_validator(mode="after")
+    def _sync_compat_thresholds(self) -> "MemoryRecallConfig":
+        self.cross_session_min_score = self.fallback_score_threshold
+        return self
+
+
 class ChainStep(BaseModel):
     """A single step in a multi-agent chain."""
 
@@ -142,6 +175,7 @@ class OrchestratorDecision(BaseModel):
     graph_id: str | None = None
     graph_type: GraphType | None = None
     complexity_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    memory_recall: MemoryRecallConfig = Field(default_factory=MemoryRecallConfig)
 
     @model_validator(mode="after")
     def _normalize_identity(self) -> "OrchestratorDecision":

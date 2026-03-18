@@ -31,6 +31,15 @@ export interface StreamEvent {
   meta?: Record<string, any>;
 }
 
+/** Read the API key from Vite env or window config. Empty string = no auth header sent. */
+const getApiKey = (): string =>
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) || '';
+
+const buildAuthHeaders = (): Record<string, string> => {
+  const key = getApiKey();
+  return key ? { 'Authorization': `Bearer ${key}` } : {};
+};
+
 export const useOmniStream = (url: string) => {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -60,6 +69,7 @@ export const useOmniStream = (url: string) => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream',
+          ...buildAuthHeaders(),
         },
         body: JSON.stringify(body),
       });

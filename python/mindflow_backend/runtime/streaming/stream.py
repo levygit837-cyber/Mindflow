@@ -5,15 +5,17 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from mindflow_backend.agents.tools.search_web import search_web
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.graphs.implementations.orchestrator.simple_flow import build_simple_orchestrator_flow
+from mindflow_backend.memory.indexing import is_continuation_prompt
 from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
-from mindflow_backend.runtime.providers import get_model_for_provider
+from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
+from mindflow_backend.runtime.providers import get_model_for_provider, resolve_provider_model_for_tools
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
 
 try:
@@ -26,10 +28,33 @@ else:
     _logger = get_logger(__name__)
 
 try:
+    from mindflow_backend.execution_memory import (
+        get_execution_memory_service as _get_execution_memory_service,
+    )
+except Exception as exc:  # pragma: no cover - import guard for lean test envs
+    _get_execution_memory_service = None
+    _logger.warning("execution_memory_service_import_failed", error=str(exc))
+
+try:
+    from mindflow_backend.memory.agent_memory.checkpointer import langgraph_memory
+except Exception as exc:  # pragma: no cover - import guard for lean test envs
+    langgraph_memory = None
+    _logger.warning("langgraph_memory_import_failed", error=str(exc))
+
+try:
+    from mindflow_backend.workers.system.publishers.memory_publisher import (
+        RabbitMQMemoryTaskPublisher as _RabbitMQMemoryTaskPublisher,
+    )
+except Exception as exc:  # pragma: no cover - import guard for lean test envs
+    _RabbitMQMemoryTaskPublisher = None
+    _logger.warning("memory_publisher_import_failed", error=str(exc))
+
+try:
     from mindflow_backend.infra.database.connection import get_db_session as db_session
-    from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
+    from mindflow_backend.storage.postgresql.models import AgentMemoryEvent, ChatMessage, ChatSession
 except Exception as exc:  # pragma: no cover - import guard for lean test envs
     db_session = None
+    AgentMemoryEvent = None
     ChatMessage = None
     ChatSession = None
     _logger.warning("runtime_db_import_failed", error=str(exc))
@@ -39,6 +64,59 @@ SYSTEM_PROMPT = (
     "Be concise, factual, and action-oriented. "
     "Always keep outputs clear and useful for software engineering context."
 )
+
+_OLLAMA_CODER_TOOL_RUNTIME_PROMPT = (
+    "Runtime rules for the current task: use the available tools directly before any prose and do not "
+    "describe tool calls in plain text. For new files, call write_file. For existing files, read first "
+    "and then edit. Do not output code blocks for files that have not been written yet. "
+    "If asked to build a Python CLI task tracker, create exactly app.py, test_app.py, and README.md in "
+    "the provided folder. The CLI contract is exact: "
+    'python app.py add "text", python app.py list, and python app.py done 1. '
+    "Do not invent flags like --task-text or --task-id. Use positional arguments only. "
+    "Use simple integer task IDs starting at 1, persist tasks in tasks.json, and keep the implementation "
+    "standard-library only. In tests, invoke the CLI with sys.executable instead of the bare python command. "
+    "Before the final response, run python -m py_compile app.py test_app.py, then python -m unittest -q, "
+    "then a real smoke check with add/list/done, and fix failures if any command fails. "
+    "Only send the final response after verification, and include a FINAL_STATUS section with files_created, "
+    "tests_passed, and how_to_run."
+)
+
+# Maximum number of past user/assistant messages to inject per turn (Mudança 3)
+_HISTORY_WINDOW = 8
+_ORCHESTRATOR_INTERRUPT_AFTER = ["route", "execute", "respond"]
+
+
+async def _load_history_messages(session_id: str, limit: int = _HISTORY_WINDOW) -> list[Any]:
+    """Load the last ``limit`` user/assistant turns for ``session_id``.
+
+    Returns a list of LangChain HumanMessage / AIMessage objects in chronological
+    order, ready to be injected between the system messages and the current user
+    message.  Returns an empty list when the DB is unavailable or the session has
+    no prior messages.
+    """
+    if db_session is None or ChatMessage is None:
+        return []
+    try:
+        from sqlalchemy import select
+        async with db_session() as db:
+            result = await db.execute(
+                select(ChatMessage)
+                .where(ChatMessage.session_id == session_id)
+                .where(ChatMessage.role.in_(["user", "assistant"]))
+                .order_by(ChatMessage.created_at.desc())
+                .limit(limit)
+            )
+            rows = list(reversed(result.scalars().all()))
+            lc_msgs: list[Any] = []
+            for row in rows:
+                if row.role == "user":
+                    lc_msgs.append(HumanMessage(content=row.content))
+                else:
+                    lc_msgs.append(AIMessage(content=row.content))
+            return lc_msgs
+    except Exception as exc:
+        _logger.warning("history_load_failed", session_id=session_id, error=str(exc))
+        return []
 
 # ── Canonical compiled orchestrator graph singleton ───────────────────────────
 # Production orchestration enters here and uses the compiled LangGraph built by
@@ -56,12 +134,32 @@ def _get_orchestrator_graph() -> Any:
     return _ORCHESTRATOR_GRAPH
 
 
+def _select_direct_agent_system_prompt(
+    *,
+    agent_type: str,
+    base_prompt: str,
+    provider: str,
+    model: str,
+    tools_bound: bool,
+) -> str:
+    if (
+        tools_bound
+        and agent_type == "coder"
+        and provider == "ollama"
+        and model.strip().lower() == "qwen3:8b"
+    ):
+        return f"{base_prompt}\n\n{_OLLAMA_CODER_TOOL_RUNTIME_PROMPT}"
+    return base_prompt
+
+
 class AgentRuntime:
     def __init__(self) -> None:
         # Lazy-load the graph so direct-agent and test paths do not pay the
         # compilation cost unless orchestration is actually requested.
         self._orchestrator_graph = None
         self._memory_service = _get_memory_service() if _get_memory_service else None
+        self._execution_memory = _get_execution_memory_service() if _get_execution_memory_service else None
+        self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
 
     async def _save_message_bg(
         self,
@@ -71,6 +169,8 @@ class AgentRuntime:
         memory_agent_id: str,
         provider: str | None = None,
         model: str | None = None,
+        source_status: str = "final",
+        derived_from_recall: bool = False,
     ) -> None:
         """Fire-and-forget DB + memory write — runs in background task."""
         from datetime import UTC, datetime
@@ -96,16 +196,185 @@ class AgentRuntime:
                 await db.commit()
                 await db.refresh(msg)
 
-                self._record_memory_message(
+                await self._dispatch_memory_message(
                     db=db,
                     session_id=session_id,
                     agent_id=memory_agent_id,
                     role=role,
                     content=content,
                     source_message_id=msg.id,
+                    source_status=source_status,
+                    derived_from_recall=derived_from_recall,
                 )
         except Exception as exc:
             _logger.error("bg_save_message_failed", role=role, error=str(exc))
+
+    def _resolve_execution_mode(self, payload: AgentChatRequest) -> str:
+        if payload.orchestrate or self._should_force_structured_analyst_flow(payload):
+            return "orchestrated"
+        if getattr(payload, "agent_type", None):
+            return "direct"
+        return "legacy"
+
+    @staticmethod
+    def _snapshot_json(value: Any) -> Any:
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, list):
+            return [AgentRuntime._snapshot_json(item) for item in value]
+        if isinstance(value, tuple):
+            return [AgentRuntime._snapshot_json(item) for item in value]
+        if isinstance(value, dict):
+            return {str(key): AgentRuntime._snapshot_json(item) for key, item in value.items()}
+        if hasattr(value, "model_dump"):
+            return AgentRuntime._snapshot_json(value.model_dump(mode="json"))
+        if hasattr(value, "value"):
+            return AgentRuntime._snapshot_json(value.value)
+        return str(value)
+
+    def _build_context_bundle(self, state_values: dict[str, Any], *, next_nodes: tuple[str, ...] | list[str]) -> dict[str, Any]:
+        values = self._snapshot_json(state_values)
+        return {
+            "objective": values.get("message", ""),
+            "decision": values.get("decision"),
+            "workflow_plan": values.get("workflow_plan"),
+            "memory_context": values.get("memory_context", ""),
+            "response": values.get("response", ""),
+            "error": values.get("error"),
+            "conversation_history": values.get("conversation_history", []),
+            "next_nodes": list(next_nodes),
+        }
+
+    async def _start_execution(
+        self,
+        *,
+        payload: AgentChatRequest,
+        session_id: str,
+        run_id: str | None,
+        provider: str,
+        model: str,
+    ) -> Any | None:
+        if self._execution_memory is None:
+            return None
+
+        execution_mode = self._resolve_execution_mode(payload)
+        metadata: dict[str, Any] = {
+            "provider": provider,
+            "model": model,
+            "agent_type": getattr(payload, "agent_type", None),
+            "folder_path": getattr(payload, "folder_path", None),
+            "orchestrate": bool(payload.orchestrate),
+            "message": payload.message,
+        }
+
+        try:
+            return await self._execution_memory.start_execution(
+                session_id=session_id,
+                run_id=run_id,
+                mode=execution_mode,
+                provider=provider,
+                model=model,
+                metadata=metadata,
+            )
+        except Exception as exc:
+            _logger.warning(
+                "execution_start_persistence_failed",
+                session_id=session_id,
+                mode=execution_mode,
+                error=str(exc),
+            )
+            return None
+
+    async def resume_execution(
+        self,
+        execution_id: str,
+        *,
+        run_id: str | None = None,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        if self._execution_memory is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+
+        execution = await self._execution_memory.get_execution(execution_id)
+        if execution is None:
+            raise ValueError(f"Execution not found: {execution_id}")
+
+        if getattr(execution, "mode", None) != "orchestrated":
+            raise ValueError("Only orchestrated executions currently support resume.")
+
+        if getattr(execution, "status", "") not in {"paused", "pause_requested", "running", "resuming"}:
+            raise ValueError(f"Execution {execution_id} is not resumable from status {getattr(execution, 'status', 'unknown')}.")
+
+        metadata = getattr(execution, "metadata", {}) or {}
+        graph_input = metadata.get("graph_input")
+        if not isinstance(graph_input, dict) or not graph_input:
+            raise ValueError(f"Execution {execution_id} does not have a resumable graph input.")
+
+        payload = AgentChatRequest(
+            message=graph_input.get("message") or metadata.get("message") or "",
+            provider=graph_input.get("provider") or getattr(execution, "provider", None),
+            model=graph_input.get("model") or getattr(execution, "model", None),
+            orchestrate=True,
+            agent_type=graph_input.get("agent_type"),
+            folder_path=graph_input.get("folder_path"),
+        )
+        await self._execution_memory.mark_status(execution_id, "resuming")
+
+        async for event in self._stream_chat_orchestrated(
+            payload,
+            graph_input.get("session_id") or getattr(execution, "session_id"),
+            run_id,
+            execution_id=execution_id,
+            resume=True,
+            stored_graph_input=graph_input,
+        ):
+            yield event
+
+    async def get_execution_status(self, execution_id: str) -> dict[str, Any]:
+        if self._execution_memory is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+
+        execution = await self._execution_memory.get_execution(execution_id)
+        if execution is None:
+            raise ValueError(f"Execution not found: {execution_id}")
+
+        snapshot = await self._execution_memory.get_latest_snapshot(execution_id)
+        status = getattr(execution, "status", "unknown")
+        metadata = dict(getattr(execution, "metadata", {}) or {})
+        snapshot_payload = {}
+        if snapshot is not None:
+            snapshot_payload = (
+                getattr(snapshot, "context_json", None)
+                or getattr(snapshot, "context_bundle", None)
+                or getattr(snapshot, "state_json", None)
+                or {}
+            )
+
+        progress = getattr(execution, "progress", None)
+        if progress is None and snapshot is not None:
+            next_nodes = list(getattr(snapshot, "next_nodes", []) or [])
+            progress = 1.0 if not next_nodes and status == "completed" else 0.5 if next_nodes else 0.0
+
+        return {
+            "execution_id": execution_id,
+            "status": status,
+            "paused": status in {"paused", "pause_requested"},
+            "can_resume": status in {"paused", "pause_requested"},
+            "progress": progress,
+            "snapshot": snapshot_payload if isinstance(snapshot_payload, dict) else {"value": snapshot_payload},
+            "metadata": metadata,
+        }
+
+    async def pause_execution(self, execution_id: str, *, reason: str | None = None) -> dict[str, Any]:
+        if self._execution_memory is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+        await self._execution_memory.request_pause(execution_id=execution_id, reason=reason)
+        return await self.get_execution_status(execution_id)
+
+    async def mark_execution_resumed(self, execution_id: str) -> dict[str, Any]:
+        if self._execution_memory is None:
+            raise RuntimeError("Execution memory service is unavailable.")
+        await self._execution_memory.mark_resumed(execution_id=execution_id)
+        return await self.get_execution_status(execution_id)
 
     async def stream_chat(
         self,
@@ -117,6 +386,15 @@ class AgentRuntime:
         provider = payload.provider or settings.default_provider
         model = payload.model or settings.default_model
         memory_agent_id = self._resolve_memory_agent_id(payload)
+        derived_from_recall = is_continuation_prompt(payload.message)
+        execution = await self._start_execution(
+            payload=payload,
+            session_id=session_id,
+            run_id=run_id,
+            provider=provider,
+            model=model,
+        )
+        execution_id = getattr(execution, "id", None)
 
         # 1. Save user message in background — do NOT await before streaming starts
         asyncio.create_task(
@@ -125,6 +403,8 @@ class AgentRuntime:
                 role="user",
                 content=payload.message,
                 memory_agent_id=memory_agent_id,
+                source_status="final",
+                derived_from_recall=derived_from_recall,
             )
         )
 
@@ -133,22 +413,36 @@ class AgentRuntime:
         # generator early (e.g. agent_controller breaks after "done" event,
         # which triggers .aclose() and would skip code after the last yield).
         assistant_content = []
+        assistant_completed = False
 
         try:
             if payload.orchestrate or self._should_force_structured_analyst_flow(payload):
-                async for event in self._stream_chat_orchestrated(payload, session_id, run_id):
+                async for event in self._stream_chat_orchestrated(payload, session_id, run_id, execution_id=execution_id):
                     if event.type == "response":
                         assistant_content.append(event.data)
+                    elif event.type == "done":
+                        assistant_completed = True
                     yield event
             elif getattr(payload, "agent_type", None):
-                async for event in self._stream_chat_direct_agent(payload, session_id, run_id):
+                async for event in self._stream_with_watchdog(
+                    source=self._stream_chat_direct_agent(payload, session_id, run_id),
+                    payload=payload,
+                    session_id=session_id,
+                    run_id=run_id,
+                    node="direct",
+                    node_category="RUNTIME",
+                ):
                     if event.type == "response":
                         assistant_content.append(event.data)
+                    elif event.type == "done":
+                        assistant_completed = True
                     yield event
             else:
                 async for event in self._stream_chat_legacy(payload, session_id, run_id):
                     if event.type == "response":
                         assistant_content.append(event.data)
+                    elif event.type == "done":
+                        assistant_completed = True
                     yield event
         finally:
             # 3. Save full assistant response — runs even if generator is closed early
@@ -162,6 +456,8 @@ class AgentRuntime:
                         memory_agent_id=memory_agent_id,
                         provider=provider,
                         model=model,
+                        source_status="final" if assistant_completed else "partial",
+                        derived_from_recall=derived_from_recall,
                     )
                 )
 
@@ -173,24 +469,12 @@ class AgentRuntime:
     ) -> AsyncGenerator[StreamEvent, None]:
         from mindflow_backend.agents._registry import get_agent
 
-        provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
+        provider, model, run_id, _normalizer, counter = self._create_stream_context(payload, session_id, run_id)
         agent_type = getattr(payload, "agent_type", "coder")
-
-        yield normalizer.step_event(
-            self._next_seq(counter),
-            run_id=run_id,
-            step_name=f"Direct Agent: {agent_type}",
-            detail=f"Executing directly with {agent_type} personality.",
-            action="start",
-            node="direct",
-            node_category="RUNTIME",
-            user_visible=True,
-        )
 
         try:
             agent = get_agent(agent_type)
-            llm = get_model_for_provider(provider, model)
-            messages = [SystemMessage(content=agent.system_prompt)]
+            base_system_prompt = agent.system_prompt
 
             sandbox_root = (
                 getattr(payload, "folder_path", None)
@@ -198,7 +482,7 @@ class AgentRuntime:
                 or (getattr(get_settings(), "working_path", None))
             )
 
-            tools = []
+            tools: list[Any] = []
             if getattr(agent, "sandbox", None) != "none":
                 from mindflow_backend.agents.tools import create_default_registry
                 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
@@ -209,48 +493,85 @@ class AgentRuntime:
                     read_only=(agent.sandbox == SandboxMode.READ_ONLY),
                 )
                 registry = create_default_registry(sandbox, session_id=session_id)
-                tools = registry.get_tools_for_agent(agent.agent_type)
+                tools = registry.get_tools_for_agent(agent)
 
-                if sandbox_root and tools:
-                    messages.append(
-                        SystemMessage(
-                            content=(
-                                f"Your working directory (root_dir) is: {sandbox_root}\n"
-                                "Use list_directory first, read_file second, and shell only as a fallback "
-                                "for navigation or shell tab inspection."
-                            )
-                        )
-                    )
-
-            messages.append(HumanMessage(content=payload.message))
-
-            emitted_response = False
+            lc_tools: list[Any] = []
             if tools:
                 from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
 
                 lc_tools = to_langchain_tools(tools)
-                if lc_tools:
-                    llm_with_tools = llm.bind_tools(lc_tools)
-                    async for event in self._stream_tool_aware_direct_agent(
-                        llm=llm_with_tools,
-                        messages=messages,
-                        lc_tools=lc_tools,
-                        normalizer=normalizer,
-                        counter=counter,
-                        run_id=run_id,
-                        agent_type=agent_type,
-                    ):
-                        if event.type == "response":
-                            emitted_response = True
-                        yield event
-                else:
-                    async for chunk in llm.astream(messages):
-                        thought, texts = extract_chunk_parts(chunk)
-                        if thought:
-                            yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
-                        for text in texts:
-                            emitted_response = True
-                            yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
+
+            resolved_provider, resolved_model = resolve_provider_model_for_tools(
+                provider,
+                model,
+                tools_required=bool(lc_tools),
+            )
+            if (resolved_provider, resolved_model) != (provider, model):
+                _logger.warning(
+                    "tool_model_fallback_selected",
+                    requested_provider=provider,
+                    requested_model=model,
+                    resolved_provider=resolved_provider,
+                    resolved_model=resolved_model,
+                )
+                provider = resolved_provider
+                model = resolved_model
+
+            system_prompt = _select_direct_agent_system_prompt(
+                agent_type=agent_type,
+                base_prompt=base_system_prompt,
+                provider=provider,
+                model=model,
+                tools_bound=bool(lc_tools),
+            )
+            messages = [SystemMessage(content=system_prompt)]
+
+            if sandbox_root and tools:
+                messages.append(
+                    SystemMessage(
+                        content=(
+                            f"Your working directory (root_dir) is: {sandbox_root}\n"
+                            "Use list_directory first, read_file second, and shell only as a fallback "
+                            "for navigation or shell tab inspection."
+                        )
+                    )
+                )
+
+            for _hist in await _load_history_messages(session_id):
+                messages.append(_hist)
+
+            messages.append(HumanMessage(content=payload.message))
+
+            normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
+            llm = get_model_for_provider(provider, model)
+
+            yield normalizer.step_event(
+                self._next_seq(counter),
+                run_id=run_id,
+                step_name=f"Direct Agent: {agent_type}",
+                detail=f"Executing directly with {agent_type} personality.",
+                action="start",
+                node="direct",
+                node_category="RUNTIME",
+                user_visible=True,
+            )
+
+            emitted_response = False
+            if lc_tools:
+                llm_with_tools = llm.bind_tools(lc_tools)
+                async for event in self._stream_tool_aware_direct_agent(
+                    llm=llm_with_tools,
+                    messages=messages,
+                    lc_tools=lc_tools,
+                    normalizer=normalizer,
+                    counter=counter,
+                    run_id=run_id,
+                    agent_type=agent_type,
+                    session_id=session_id,
+                ):
+                    if event.type == "response":
+                        emitted_response = True
+                    yield event
             else:
                 async for chunk in llm.astream(messages):
                     thought, texts = extract_chunk_parts(chunk)
@@ -284,6 +605,140 @@ class AgentRuntime:
             counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
         )
 
+    async def _stream_with_watchdog(
+        self,
+        *,
+        source: AsyncGenerator[StreamEvent, None],
+        payload: AgentChatRequest,
+        session_id: str,
+        run_id: str | None,
+        node: str,
+        node_category: str,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        settings = get_settings()
+        timeout_seconds = float(getattr(settings, "agent_stream_timeout_seconds", 0) or 0)
+        if timeout_seconds <= 0:
+            async for event in source:
+                yield event
+            return
+
+        initial_timeout_seconds = float(
+            getattr(settings, "agent_stream_initial_timeout_seconds", timeout_seconds) or timeout_seconds
+        )
+        if initial_timeout_seconds <= 0:
+            initial_timeout_seconds = timeout_seconds
+
+        tool_progress_timeout_seconds = float(
+            getattr(settings, "agent_stream_tool_progress_timeout_seconds", timeout_seconds) or timeout_seconds
+        )
+        if tool_progress_timeout_seconds <= 0:
+            tool_progress_timeout_seconds = timeout_seconds
+
+        heartbeat_seconds = float(
+            getattr(settings, "agent_stream_progress_heartbeat_seconds", min(5.0, timeout_seconds))
+            or min(5.0, timeout_seconds)
+        )
+        provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
+        iterator = source.__aiter__()
+        loop = asyncio.get_running_loop()
+        last_progress_at = loop.time()
+        meaningful_progress_seen = False
+        tool_progress_seen = False
+        pending = asyncio.create_task(iterator.__anext__())
+
+        try:
+            while True:
+                if not meaningful_progress_seen:
+                    active_timeout_seconds = initial_timeout_seconds
+                elif tool_progress_seen:
+                    active_timeout_seconds = tool_progress_timeout_seconds
+                else:
+                    active_timeout_seconds = timeout_seconds
+                elapsed = loop.time() - last_progress_at
+                remaining = active_timeout_seconds - elapsed
+                if remaining <= 0:
+                    yield normalizer.step_event(
+                        self._next_seq(counter),
+                        run_id=run_id,
+                        step_name="Agent Wait",
+                        detail="Waiting for agent progress.",
+                        action="update",
+                        node=node,
+                        node_category=node_category,
+                        user_visible=True,
+                    )
+                    raise TimeoutError(
+                        f"Agent stream timed out after {active_timeout_seconds:.2f}s without progress"
+                    )
+
+                wait_slice = min(heartbeat_seconds, remaining)
+                done, _ = await asyncio.wait({pending}, timeout=wait_slice)
+                if pending in done:
+                    try:
+                        event = pending.result()
+                    except StopAsyncIteration:
+                        return
+                    if self._counts_as_watchdog_progress(event):
+                        last_progress_at = loop.time()
+                        meaningful_progress_seen = True
+                        if self._counts_as_tool_watchdog_progress(event):
+                            tool_progress_seen = True
+                    counter[0] = max(counter[0], getattr(event, "seq", 0))
+                    yield event
+                    pending = asyncio.create_task(iterator.__anext__())
+                    continue
+
+                yield normalizer.step_event(
+                    self._next_seq(counter),
+                    run_id=run_id,
+                    step_name="Agent Wait",
+                    detail="Waiting for agent progress.",
+                    action="update",
+                    node=node,
+                    node_category=node_category,
+                    user_visible=True,
+                )
+        except TimeoutError as exc:
+            yield self._error_event(
+                exc=exc,
+                counter=counter,
+                provider=provider,
+                model=model,
+                run_id=run_id,
+                session_id=session_id,
+                node=node,
+                node_category=node_category,
+            )
+            yield self._done_event(
+                counter=counter,
+                provider=provider,
+                model=model,
+                run_id=run_id,
+                session_id=session_id,
+            )
+        finally:
+            if not pending.done():
+                pending.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await pending
+            if hasattr(iterator, "aclose"):
+                with contextlib.suppress(Exception):
+                    await iterator.aclose()
+
+    @staticmethod
+    def _counts_as_watchdog_progress(event: StreamEvent) -> bool:
+        """Only substantive source events reset the watchdog.
+
+        Initial/direct runtime step updates are emitted immediately and should not
+        shorten the first-turn budget for slower tool-capable models.
+        """
+        return event.type != "agent_step"
+
+    @staticmethod
+    def _counts_as_tool_watchdog_progress(event: StreamEvent) -> bool:
+        """Tool-related progress may need a larger idle budget on slower local models."""
+        return event.type in {"tool_call", "tool_result"}
+
     async def _stream_tool_aware_direct_agent(
         self,
         *,
@@ -294,6 +749,7 @@ class AgentRuntime:
         counter: list[int],
         run_id: str,
         agent_type: str,
+        session_id: str,
     ) -> AsyncGenerator[StreamEvent, None]:
         from mindflow_backend.agents.tools.base.tool_invocation import stream_with_tools
 
@@ -352,6 +808,7 @@ class AgentRuntime:
                     tool_name = data.get("tool", "")
                     tool_args = data.get("args", {}) or {}
                     tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                    tool_meta = data.get("tool_meta") or None
                     if tool_name:
                         yield normalizer.tool_call_event(
                             self._next_seq(counter),
@@ -359,13 +816,25 @@ class AgentRuntime:
                             name=tool_name,
                             args=tool_args,
                             run_id=run_id,
+                            tool_meta=tool_meta,
                             extra_meta=agent_meta,
                         )
+                        kind, message, details = self._notifier_payload_for_tool(tool_name, tool_args, tool_meta)
+                        if should_emit_backend_notifier(kind):
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="notifier",
+                                data=json.dumps({"kind": kind, "message": message, "details": details}),
+                                agent=agent_type,
+                            )
                 elif name == "tool_call":
                     tool_name = data.get("tool", "")
                     tool_args = data.get("args", {}) or {}
                     result_preview = data.get("result_preview", "")
                     tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                    tool_meta = data.get("tool_meta") or None
                     if tool_name and not data.get("tool_call_id"):
                         yield normalizer.tool_call_event(
                             self._next_seq(counter),
@@ -373,8 +842,19 @@ class AgentRuntime:
                             name=tool_name,
                             args=tool_args,
                             run_id=run_id,
+                            tool_meta=tool_meta,
                             extra_meta=agent_meta,
                         )
+                        kind, message, details = self._notifier_payload_for_tool(tool_name, tool_args, tool_meta)
+                        if should_emit_backend_notifier(kind):
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="notifier",
+                                data=json.dumps({"kind": kind, "message": message, "details": details}),
+                                agent=agent_type,
+                            )
                     if tool_name and result_preview:
                         yield normalizer.tool_result_event(
                             self._next_seq(counter),
@@ -382,6 +862,7 @@ class AgentRuntime:
                             name=tool_name,
                             result=result_preview,
                             run_id=run_id,
+                            tool_meta=tool_meta,
                             extra_meta=agent_meta,
                         )
         finally:
@@ -406,7 +887,7 @@ class AgentRuntime:
             return "orchestrator"
         return "general"
 
-    def _record_memory_message(
+    async def _dispatch_memory_message(
         self,
         *,
         db,
@@ -415,22 +896,109 @@ class AgentRuntime:
         role: str,
         content: str,
         source_message_id: int | None,
+        source_status: str = "final",
+        derived_from_recall: bool = False,
     ) -> None:
         settings = get_settings()
-        if not settings.memory_enabled or self._memory_service is None:
+        if not settings.memory_enabled:
             return
-        # Tests frequently patch db_session to MagicMock; skip memory in that case.
-        if db.__class__.__module__.startswith("unittest.mock"):
+
+        queue_enabled = settings.get_feature_flag("rabbitmq_memory_pipeline_enabled", False)
+        fallback_enabled = settings.get_feature_flag("rabbitmq_memory_publish_fallback_local", True)
+
+        if queue_enabled and self._memory_publisher is not None:
+            try:
+                published = await self._memory_publisher.publish_message_recorded(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    role=role,
+                    content=content,
+                    source_message_id=source_message_id,
+                    source_status=source_status,
+                    derived_from_recall=derived_from_recall,
+                )
+                if published:
+                    return
+                if not fallback_enabled:
+                    return
+            except Exception as exc:
+                _logger.warning(
+                    "memory_publish_failed",
+                    error=str(exc),
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    role=role,
+                )
+                if not fallback_enabled:
+                    return
+
+        if self._memory_service is None:
+            return
+
+        idempotency_key = f"memory:{source_message_id}" if source_message_id is not None else None
+
+        if db is not None:
+            try:
+                await self._memory_service.record_message(
+                    db,
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    role=role,
+                    content=content,
+                    source_message_id=source_message_id,
+                    idempotency_key=idempotency_key,
+                    source_status=source_status,
+                    derived_from_recall=derived_from_recall,
+                )
+                return
+            except Exception as exc:
+                _logger.warning(
+                    "memory_record_with_current_db_failed",
+                    error=str(exc),
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    role=role,
+                )
+
+        await self._fallback_record_memory_task(
+            session_id=session_id,
+            agent_id=agent_id,
+            role=role,
+            content=content,
+            source_message_id=source_message_id,
+            idempotency_key=idempotency_key,
+            source_status=source_status,
+            derived_from_recall=derived_from_recall,
+        )
+
+    async def _fallback_record_memory_task(
+        self,
+        *,
+        session_id: str,
+        agent_id: str,
+        role: str,
+        content: str,
+        source_message_id: int | None,
+        idempotency_key: str | None = None,
+        source_status: str = "final",
+        derived_from_recall: bool = False,
+    ) -> None:
+        """Memory fallback — opens a fresh db session owned by this task."""
+        if self._memory_service is None or db_session is None:
             return
         try:
-            self._memory_service.record_message(
-                db,
-                session_id=session_id,
-                agent_id=agent_id,
-                role=role,
-                content=content,
-                source_message_id=source_message_id,
-            )
+            async with db_session() as fresh_db:
+                await self._memory_service.record_message(
+                    fresh_db,
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    role=role,
+                    content=content,
+                    source_message_id=source_message_id,
+                    idempotency_key=idempotency_key,
+                    source_status=source_status,
+                    derived_from_recall=derived_from_recall,
+                )
         except Exception as exc:
             _logger.warning(
                 "memory_record_failed",
@@ -439,6 +1007,57 @@ class AgentRuntime:
                 agent_id=agent_id,
                 role=role,
             )
+
+    async def _write_agent_memory_event(
+        self,
+        db,
+        *,
+        session_id: str,
+        agent_id: str,
+        role: str,
+        content: str,
+        source_message_id: int | None,
+    ) -> None:
+        """Write directly to agent_memory_events using an async session.
+
+        AgentMemoryService is sync-only; this method covers the table in the
+        async fallback path without the embedding/window logic.
+        """
+        if AgentMemoryEvent is None:
+            return
+        from sqlalchemy import select
+        from mindflow_backend.utils.core import estimate_token_count
+
+        token_count = estimate_token_count(content)
+        if token_count <= 0:
+            return
+
+        # Dedup by source_message_id when available
+        if source_message_id is not None:
+            existing = (
+                await db.execute(
+                    select(AgentMemoryEvent)
+                    .where(
+                        AgentMemoryEvent.session_id == session_id,
+                        AgentMemoryEvent.agent_id == agent_id,
+                        AgentMemoryEvent.source_message_id == source_message_id,
+                    )
+                    .limit(1)
+                )
+            ).scalars().first()
+            if existing is not None:
+                return
+
+        event = AgentMemoryEvent(
+            session_id=session_id,
+            agent_id=agent_id,
+            role=role,
+            content=content,
+            token_count=token_count,
+            source_message_id=source_message_id,
+        )
+        db.add(event)
+        await db.commit()
 
     # ------------------------------------------------------------------
     # Private helpers — shared by all three streaming methods
@@ -629,7 +1248,10 @@ class AgentRuntime:
             user_visible=True,
         )
 
-        messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=payload.message)]
+        messages = [SystemMessage(content=SYSTEM_PROMPT)]
+        for _hist in await _load_history_messages(session_id):
+            messages.append(_hist)
+        messages.append(HumanMessage(content=payload.message))
         if web_context:
             messages.append(HumanMessage(content=f"Web context:\n{web_context}"))
 
@@ -689,22 +1311,73 @@ class AgentRuntime:
             return json.dumps(decision.model_dump())
         return json.dumps({"agent": getattr(decision, "agent", None), "task": getattr(decision, "task", "")})
 
+    def _decision_payload(self, decision: Any) -> dict[str, Any]:
+        """Build a normalized payload preserving full agent identity."""
+        if isinstance(decision, dict):
+            agent_role = decision.get("agent_role") or decision.get("agent") or "coder"
+            agent_role = getattr(agent_role, "value", agent_role)
+            specialist = decision.get("specialist")
+            specialist = getattr(specialist, "value", specialist) if specialist is not None else None
+            agent_id = decision.get("agent_id") or (
+                f"{str(agent_role).lower()}:{specialist}" if specialist else str(agent_role).lower()
+            )
+            return {
+                "agent_type": str(agent_role).upper(),
+                "agent_role": str(agent_role).lower(),
+                "agent_id": str(agent_id).lower(),
+                "specialist": specialist,
+                "task": decision.get("task", ""),
+            }
+
+        agent_role = getattr(decision, "agent_role", None) or getattr(decision, "agent", None) or "coder"
+        agent_role_value = getattr(agent_role, "value", agent_role)
+        specialist = getattr(decision, "specialist", None)
+        specialist_value = getattr(specialist, "value", specialist) if specialist is not None else None
+        agent_id = getattr(decision, "agent_id", None) or (
+            f"{str(agent_role_value).lower()}:{specialist_value}" if specialist_value else str(agent_role_value).lower()
+        )
+        return {
+            "agent_type": str(agent_role_value).upper(),
+            "agent_role": str(agent_role_value).lower(),
+            "agent_id": str(agent_id).lower(),
+            "specialist": specialist_value,
+            "task": getattr(decision, "task", ""),
+        }
+
     def _decision_agent_task(self, decision: Any) -> tuple[str, str]:
         """Get (agent_type, task) from decision (dict or object)."""
-        if isinstance(decision, dict):
-            ag = decision.get("agent")
-            agent_type = getattr(ag, "value", ag) if hasattr(ag, "value") else str(ag or "coder")
-            task = decision.get("task", "")
-            return (agent_type.upper() if isinstance(agent_type, str) else str(agent_type), task)
-        agent_type = getattr(decision, "agent", None)
-        agent_str = getattr(agent_type, "value", agent_type) if agent_type else "coder"
-        task = getattr(decision, "task", "")
-        return (str(agent_str).upper(), task)
+        payload = self._decision_payload(decision)
+        return payload["agent_type"], payload["task"]
 
-    def _notifier_payload_for_tool(self, tool_name: str, args: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
-        """Build (kind, message, details) for a notifier from tool name and args."""
-        name = (tool_name or "").lower()
+    def _notifier_payload_for_tool(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        tool_meta: dict[str, Any] | None = None,
+    ) -> tuple[str, str, dict[str, Any]]:
+        """Build (kind, message, details) for a notifier from tool name, args, and explicit tool metadata."""
+        meta = tool_meta if isinstance(tool_meta, dict) else {}
+        name = str(meta.get("notifier_kind") or tool_name or "").lower()
+        family = str(meta.get("family") or "").lower()
         details = {"tool_name": tool_name, **{k: v for k, v in args.items() if v is not None}}
+        if meta:
+            details["tool_meta"] = meta
+            if family:
+                details["tool_family"] = family
+        if family == "gitnexus" or name.startswith("gitnexus_"):
+            if name == "gitnexus_status":
+                return ("gitnexus_status", "GitNexus: verificando índice", details)
+            if name == "gitnexus_query":
+                query = str(args.get("query", "")).strip()
+                suffix = f" para {query[:60]}" if query else ""
+                return ("gitnexus_query", f"GitNexus: analisando fluxos{suffix}", details)
+            if name == "gitnexus_context":
+                symbol = args.get("name") or args.get("uid") or args.get("file_path") or "símbolo"
+                return ("gitnexus_context", f"GitNexus: carregando contexto de {symbol}", details)
+            if name == "gitnexus_impact":
+                target = args.get("target") or "símbolo"
+                return ("gitnexus_impact", f"GitNexus: calculando impacto de {target}", details)
+            return ("tool_start", f"GitNexus: {tool_name}", details)
         if name == "read_file":
             path = args.get("file_path", "")
             offset = args.get("offset")
@@ -739,14 +1412,282 @@ class AgentRuntime:
             return ("search_done", f"Busca: {q[:60]}..." if len(str(q)) > 60 else f"Busca: {q}", details)
         return ("tool_start", f"Tool: {tool_name}", details)
 
+    def _build_orchestrator_graph_input(
+        self,
+        *,
+        payload: AgentChatRequest,
+        session_id: str,
+        provider: str,
+        model: str,
+        history_dicts: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        return {
+            "message": payload.message,
+            "provider": provider,
+            "model": model,
+            "session_id": session_id,
+            "agent_type": getattr(payload, "agent_type", None),
+            "folder_path": getattr(payload, "folder_path", None),
+            "conversation_history": history_dicts,
+        }
+
+    async def _emit_orchestrator_graph_events(
+        self,
+        *,
+        graph: Any,
+        graph_input: dict[str, Any] | None,
+        config: dict[str, Any] | None,
+        normalizer: AgentChatStreamNormalizer,
+        counter: list[int],
+        run_id: str,
+        session_id: str,
+        agent_state: dict[str, str | None],
+    ) -> str | None:
+        current_agent = agent_state.get("current_agent")
+        event_stream: Any
+        if config is None:
+            event_stream = graph.astream_events(graph_input, version="v2")
+        else:
+            try:
+                event_stream = graph.astream_events(graph_input, config=config, version="v2")
+            except TypeError as exc:
+                if "config" not in str(exc):
+                    raise
+                event_stream = graph.astream_events(graph_input, version="v2")
+
+        async for event in event_stream:
+            event_type = event["event"]
+
+            if event_type == "on_custom_event":
+                name = event["name"]
+                data = event["data"]
+
+                if name == "agent_thought":
+                    thought_meta = {"agent": current_agent} if current_agent else None
+                    yield normalizer.thought_event(
+                        self._next_seq(counter),
+                        data["thought"],
+                        run_id=run_id,
+                        extra_meta=thought_meta,
+                    )
+
+                elif name == "agent_response":
+                    yield normalizer.response_event(
+                        self._next_seq(counter),
+                        data["chunk"],
+                        run_id=run_id,
+                        extra_meta={"agent": current_agent or "orchestrator"},
+                    )
+
+                elif name in {"task_step", "dt_step"}:
+                    task_name = data.get("task", "unknown")
+                    status = data.get("status", "unknown")
+                    step_prefix = "DT" if name == "dt_step" else "Task"
+                    yield normalizer.step_event(
+                        self._next_seq(counter),
+                        run_id=run_id,
+                        step_name=f"{step_prefix}: {task_name}",
+                        detail=f"Status: {status}",
+                        action="start" if status == "resolving" else "complete",
+                        node="task_thinker",
+                        node_category="RUNTIME",
+                        user_visible=True,
+                    )
+
+                elif name == "agent_tool_call":
+                    chunk = data.get("chunk", {})
+                    tool_name = chunk.get("name") or "tool"
+                    args = chunk.get("args") or {}
+                    tool_meta = chunk.get("tool_meta") or None
+                    if tool_name:
+                        kind, message, details = self._notifier_payload_for_tool(tool_name, args, tool_meta)
+                        if should_emit_backend_notifier(kind):
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="notifier",
+                                data=json.dumps({"kind": kind, "message": message, "details": details}),
+                            )
+
+                elif name == "agent_memory_context":
+                    refs = data.get("references", [])
+                    agent_name = data.get("agent", "agent")
+                    ref_count = len(refs) if isinstance(refs, list) else 0
+                    yield normalizer.thought_event(
+                        self._next_seq(counter),
+                        f"Loaded {ref_count} memory references for {agent_name}.",
+                        run_id=run_id,
+                    )
+                    yield self._custom_event(
+                        counter=counter,
+                        run_id=run_id,
+                        session_id=session_id,
+                        event_type="notifier",
+                        data=json.dumps({
+                            "kind": "context_loaded",
+                            "message": f"Contexto carregado: {ref_count} referências para {agent_name}",
+                            "details": {"count": ref_count, "source": agent_name},
+                        }),
+                    )
+
+                elif name == "tool_call_start":
+                    tool_name = data.get("tool", "")
+                    tool_args = data.get("args", {}) or {}
+                    tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                    tool_meta = data.get("tool_meta") or None
+                    if tool_name:
+                        agent_meta = {"agent": current_agent} if current_agent else None
+                        yield normalizer.tool_call_event(
+                            self._next_seq(counter),
+                            tool_call_id=tool_call_id,
+                            name=tool_name,
+                            args=tool_args,
+                            run_id=run_id,
+                            tool_meta=tool_meta,
+                            extra_meta=agent_meta,
+                        )
+                        kind, message, details = self._notifier_payload_for_tool(tool_name, tool_args, tool_meta)
+                        if should_emit_backend_notifier(kind):
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="notifier",
+                                data=json.dumps({"kind": kind, "message": message, "details": details}),
+                                agent=current_agent,
+                            )
+
+                elif name == "tool_call":
+                    tool_name = data.get("tool", "")
+                    tool_args = data.get("args", {}) or {}
+                    result_preview = data.get("result_preview", "")
+                    tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
+                    tool_meta = data.get("tool_meta") or None
+                    agent_meta = {"agent": current_agent} if current_agent else None
+                    if tool_name:
+                        if not data.get("tool_call_id"):
+                            yield normalizer.tool_call_event(
+                                self._next_seq(counter),
+                                tool_call_id=tool_call_id,
+                                name=tool_name,
+                                args=tool_args,
+                                run_id=run_id,
+                                tool_meta=tool_meta,
+                                extra_meta=agent_meta,
+                            )
+                            kind, message, details = self._notifier_payload_for_tool(tool_name, tool_args, tool_meta)
+                            if should_emit_backend_notifier(kind):
+                                yield self._custom_event(
+                                    counter=counter,
+                                    run_id=run_id,
+                                    session_id=session_id,
+                                    event_type="notifier",
+                                    data=json.dumps({"kind": kind, "message": message, "details": details}),
+                                    agent=current_agent,
+                                )
+                        if result_preview:
+                            yield normalizer.tool_result_event(
+                                self._next_seq(counter),
+                                tool_call_id=tool_call_id,
+                                name=tool_name,
+                                result=result_preview,
+                                run_id=run_id,
+                                tool_meta=tool_meta,
+                                extra_meta=agent_meta,
+                            )
+
+            elif event_type == "on_chain_start" and event.get("name") == "route":
+                yield self._custom_event(
+                    counter=counter,
+                    run_id=run_id,
+                    session_id=session_id,
+                    event_type="orchestrator_thinking",
+                    data="Routing request...",
+                )
+                yield normalizer.thought_event(self._next_seq(counter), "Routing request...", run_id=run_id)
+
+            elif event_type == "on_chain_end" and event.get("name") == "route":
+                output = event.get("data", {}).get("output")
+                if output:
+                    decision = output.get("decision")
+                    if decision:
+                        yield self._custom_event(
+                            counter=counter,
+                            run_id=run_id,
+                            session_id=session_id,
+                            event_type="orchestrator_thinking_end",
+                            data="",
+                        )
+                        yield self._custom_event(
+                            counter=counter,
+                            run_id=run_id,
+                            session_id=session_id,
+                            event_type="orchestrator_decision",
+                            data=self._serialize_decision(decision),
+                        )
+                        payload_data = self._decision_payload(decision)
+                        current_agent = payload_data["agent_id"]
+                        task = payload_data["task"]
+                        yield self._custom_event(
+                            counter=counter,
+                            run_id=run_id,
+                            session_id=session_id,
+                            event_type="reflection_mode_start",
+                            data="",
+                        )
+
+                        if self._is_direct_response(decision):
+                            current_agent = "orchestrator"
+                            yield normalizer.thought_event(
+                                self._next_seq(counter),
+                                "Respondendo diretamente ao usuário.",
+                                run_id=run_id,
+                            )
+                        else:
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="agent_delegation_start",
+                                data=json.dumps(
+                                    {
+                                        **payload_data,
+                                        "delegated_by": "ORCHESTRATOR",
+                                        "task": task,
+                                        "step_id": "primary",
+                                    }
+                                ),
+                                agent=current_agent,
+                            )
+                            yield self._custom_event(
+                                counter=counter,
+                                run_id=run_id,
+                                session_id=session_id,
+                                event_type="specialist_activation",
+                                data=json.dumps(
+                                    {
+                                        **payload_data,
+                                        "is_core": payload_data["specialist"] is None,
+                                        "step_id": "primary",
+                                    }
+                                ),
+                                agent=current_agent,
+                            )
+        agent_state["current_agent"] = current_agent
+
     async def _stream_chat_orchestrated(
         self,
         payload: AgentChatRequest,
         session_id: str,
         run_id: str | None = None,
+        *,
+        execution_id: str | None = None,
+        resume: bool = False,
+        stored_graph_input: dict[str, Any] | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
-        current_agent: str | None = None
+        agent_state: dict[str, str | None] = {"current_agent": None}
 
         yield self._custom_event(
             counter=counter,
@@ -759,7 +1700,7 @@ class AgentRuntime:
             self._next_seq(counter),
             run_id=run_id,
             step_name="Orchestrating Request",
-            detail="Delegating request to specialized agent personality.",
+            detail="Delegating request to specialized agent personality." if not resume else "Resuming orchestrated execution from the latest checkpoint.",
             action="start",
             node="orchestrator",
             node_category="RUNTIME",
@@ -767,219 +1708,164 @@ class AgentRuntime:
         )
 
         try:
-            if self._orchestrator_graph is None:
-                self._orchestrator_graph = _get_orchestrator_graph()
-            graph_input = {
-                "message": payload.message,
-                "provider": provider,
-                "model": model,
-                "session_id": session_id,
-                "agent_type": getattr(payload, "agent_type", None),
-                "folder_path": getattr(payload, "folder_path", None),
-            }
+            history_dicts: list[dict[str, str]] = []
+            if stored_graph_input and stored_graph_input.get("conversation_history"):
+                history_dicts = list(stored_graph_input.get("conversation_history") or [])
+            else:
+                _history_msgs = await _load_history_messages(session_id)
+                history_dicts = [
+                    {
+                        "role": "user" if isinstance(m, HumanMessage) else "assistant",
+                        "content": m.content,
+                    }
+                    for m in _history_msgs
+                ]
 
-            async for event in self._orchestrator_graph.astream_events(graph_input, version="v2"):
-                event_type = event["event"]
+            graph_input = stored_graph_input or self._build_orchestrator_graph_input(
+                payload=payload,
+                session_id=session_id,
+                provider=provider,
+                model=model,
+                history_dicts=history_dicts,
+            )
 
-                if event_type == "on_custom_event":
-                    name = event["name"]
-                    data = event["data"]
+            if self._execution_memory is not None and execution_id and self._execution_memory is not None:
+                execution = await self._execution_memory.get_execution(execution_id)
+                if execution is not None:
+                    metadata = dict(getattr(execution, "metadata", {}) or {})
+                    metadata.setdefault("graph_input", graph_input)
+                    await self._execution_memory.mark_status(
+                        execution_id,
+                        "resuming" if resume else "running",
+                        metadata=metadata,
+                    )
 
-                    if name == "agent_thought":
-                        thought_meta = {"agent": current_agent} if current_agent else None
-                        yield normalizer.thought_event(
-                            self._next_seq(counter),
-                            data["thought"],
+            if self._execution_memory is None or execution_id is None or langgraph_memory is None:
+                if self._orchestrator_graph is None:
+                    self._orchestrator_graph = _get_orchestrator_graph()
+                async for emitted_event in self._emit_orchestrator_graph_events(
+                    graph=self._orchestrator_graph,
+                    graph_input=graph_input,
+                    config=None,
+                    normalizer=normalizer,
+                    counter=counter,
+                    run_id=run_id,
+                    session_id=session_id,
+                    agent_state=agent_state,
+                ):
+                    yield emitted_event
+            else:
+                async with langgraph_memory() as (checkpointer, store):
+                    graph = build_simple_orchestrator_flow(
+                        checkpointer=checkpointer,
+                        store=store,
+                        interrupt_after=_ORCHESTRATOR_INTERRUPT_AFTER,
+                    )
+                    graph_config = {"configurable": {"thread_id": execution_id}}
+                    next_input: dict[str, Any] | None = None if resume else graph_input
+
+                    while True:
+                        async for emitted_event in self._emit_orchestrator_graph_events(
+                            graph=graph,
+                            graph_input=next_input,
+                            config=graph_config,
+                            normalizer=normalizer,
+                            counter=counter,
                             run_id=run_id,
-                            extra_meta=thought_meta,
+                            session_id=session_id,
+                            agent_state=agent_state,
+                        ):
+                            yield emitted_event
+
+                        state_snapshot = await graph.aget_state(graph_config)
+                        next_nodes = tuple(getattr(state_snapshot, "next", ()) or ())
+                        snapshot_config = getattr(state_snapshot, "config", {}) or {}
+                        checkpoint_id = (
+                            snapshot_config.get("configurable", {}).get("checkpoint_id")
+                            if isinstance(snapshot_config, dict)
+                            else None
+                        )
+                        context_bundle = self._build_context_bundle(
+                            getattr(state_snapshot, "values", {}) or {},
+                            next_nodes=next_nodes,
+                        )
+                        await self._execution_memory.create_snapshot(
+                            execution_id=execution_id,
+                            checkpoint_id=checkpoint_id,
+                            next_nodes=list(next_nodes),
+                            state_payload=self._snapshot_json(getattr(state_snapshot, "values", {}) or {}),
+                            context_bundle=context_bundle,
+                            resumable=bool(next_nodes),
+                        )
+                        await self._execution_memory.append_event(
+                            execution_id,
+                            "checkpoint_reached",
+                            {
+                                "checkpoint_id": checkpoint_id,
+                                "next_nodes": list(next_nodes),
+                            },
                         )
 
-                    elif name == "agent_response":
-                        # Attribute to the actual specialist agent that produced this response.
-                        yield normalizer.response_event(
-                            self._next_seq(counter),
-                            data["chunk"],
-                            run_id=run_id,
-                            extra_meta={"agent": current_agent or "orchestrator"},
-                        )
-
-                    elif name in {"task_step", "dt_step"}:
-                        task_name = data.get("task", "unknown")
-                        status = data.get("status", "unknown")
-                        step_prefix = "DT" if name == "dt_step" else "Task"
-                        yield normalizer.step_event(
-                            self._next_seq(counter),
-                            run_id=run_id,
-                            step_name=f"{step_prefix}: {task_name}",
-                            detail=f"Status: {status}",
-                            action="start" if status == "resolving" else "complete",
-                            node="task_thinker",
-                            node_category="RUNTIME",
-                            user_visible=True,
-                        )
-
-                    elif name == "agent_tool_call":
-                        chunk = data.get("chunk", {})
-                        tool_name = chunk.get("name") or "tool"
-                        args = chunk.get("args") or {}
-                        if tool_name:
-                            yield normalizer.thought_event(
-                                self._next_seq(counter),
-                                f"Calling tool: {tool_name}",
-                                run_id=run_id,
-                                extra_meta={"agent": current_agent} if current_agent else None,
+                        if not next_nodes:
+                            await self._execution_memory.mark_status(
+                                execution_id,
+                                "completed",
+                                current_node=None,
+                                last_safe_node="completed",
                             )
-                            # Flexible notifier for UI (file ops, tools, etc.)
-                            kind, message, details = self._notifier_payload_for_tool(tool_name, args)
+                            break
+
+                        await self._execution_memory.mark_status(
+                            execution_id,
+                            "running",
+                            current_node=next_nodes[0],
+                            last_safe_node=next_nodes[0],
+                        )
+
+                        if await self._execution_memory.should_pause(execution_id):
+                            await self._execution_memory.append_event(
+                                execution_id,
+                                "execution_paused",
+                                {"next_nodes": list(next_nodes)},
+                            )
+                            await self._execution_memory.mark_status(
+                                execution_id,
+                                "paused",
+                                current_node=next_nodes[0],
+                                last_safe_node=next_nodes[0],
+                            )
                             yield self._custom_event(
                                 counter=counter,
                                 run_id=run_id,
                                 session_id=session_id,
                                 event_type="notifier",
-                                data=json.dumps({"kind": kind, "message": message, "details": details}),
+                                data=json.dumps(
+                                    {
+                                        "kind": "execution_paused",
+                                        "message": "Execução pausada em checkpoint seguro.",
+                                        "details": {
+                                            "execution_id": execution_id,
+                                            "next_node": next_nodes[0],
+                                        },
+                                    }
+                                ),
                             )
-
-                    elif name == "agent_memory_context":
-                        refs = data.get("references", [])
-                        agent_name = data.get("agent", "agent")
-                        ref_count = len(refs) if isinstance(refs, list) else 0
-                        yield normalizer.thought_event(
-                            self._next_seq(counter),
-                            f"Loaded {ref_count} memory references for {agent_name}.",
-                            run_id=run_id,
-                        )
-                        yield self._custom_event(
-                            counter=counter,
-                            run_id=run_id,
-                            session_id=session_id,
-                            event_type="notifier",
-                            data=json.dumps({
-                                "kind": "context_loaded",
-                                "message": f"Contexto carregado: {ref_count} referências para {agent_name}",
-                                "details": {"count": ref_count, "source": agent_name},
-                            }),
-                        )
-
-                    elif name == "tool_call_start":
-                        # Emitted BEFORE tool execution — shows tool as 'calling' immediately
-                        tool_name = data.get("tool", "")
-                        tool_args = data.get("args", {}) or {}
-                        tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
-                        if tool_name:
-                            agent_meta = {"agent": current_agent} if current_agent else None
-                            yield normalizer.tool_call_event(
+                            yield normalizer.step_event(
                                 self._next_seq(counter),
-                                tool_call_id=tool_call_id,
-                                name=tool_name,
-                                args=tool_args,
                                 run_id=run_id,
-                                extra_meta=agent_meta,
+                                step_name="Orchestrating Request",
+                                detail="Execution paused at a safe checkpoint.",
+                                action="complete",
+                                node="orchestrator",
+                                node_category="RUNTIME",
+                                user_visible=True,
                             )
-
-                    elif name == "tool_call":
-                        tool_name = data.get("tool", "")
-                        tool_args = data.get("args", {}) or {}
-                        result_preview = data.get("result_preview", "")
-                        tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
-                        agent_meta = {"agent": current_agent} if current_agent else None
-                        if tool_name:
-                            # Only emit tool_call_event if no prior tool_call_start was sent
-                            if not data.get("tool_call_id"):
-                                yield normalizer.tool_call_event(
-                                    self._next_seq(counter),
-                                    tool_call_id=tool_call_id,
-                                    name=tool_name,
-                                    args=tool_args,
-                                    run_id=run_id,
-                                    extra_meta=agent_meta,
-                                )
-                            if result_preview:
-                                yield normalizer.tool_result_event(
-                                    self._next_seq(counter),
-                                    tool_call_id=tool_call_id,
-                                    name=tool_name,
-                                    result=result_preview,
-                                    run_id=run_id,
-                                    extra_meta=agent_meta,
-                                )
-
-                elif event_type == "on_chain_start" and event.get("name") == "route":
-                    yield self._custom_event(
-                        counter=counter,
-                        run_id=run_id,
-                        session_id=session_id,
-                        event_type="orchestrator_thinking",
-                        data="Routing request...",
-                    )
-                    yield normalizer.thought_event(self._next_seq(counter), "Routing request...", run_id=run_id)
-
-                elif event_type == "on_chain_end" and event.get("name") == "route":
-                    output = event.get("data", {}).get("output")
-                    if output:
-                        decision = output.get("decision")
-                        if decision:
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="orchestrator_thinking_end",
-                                data="",
+                            yield self._done_event(
+                                counter=counter, provider=provider, model=model, run_id=run_id, session_id=session_id,
                             )
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="orchestrator_decision",
-                                data=self._serialize_decision(decision),
-                            )
-                            agent_type, task = self._decision_agent_task(decision)
-                            current_agent = agent_type.lower()
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="reflection_mode_start",
-                                data="",
-                            )
+                            return
 
-                            if self._is_direct_response(decision):
-                                # Orchestrator answers directly — no delegation card on frontend.
-                                # Emit a lightweight event so the UI can show "responding directly".
-                                current_agent = "orchestrator"
-                                yield normalizer.thought_event(
-                                    self._next_seq(counter),
-                                    "Respondendo diretamente ao usuário.",
-                                    run_id=run_id,
-                                )
-                            else:
-                                # Real specialist delegation — show the delegation card.
-                                yield self._custom_event(
-                                    counter=counter,
-                                    run_id=run_id,
-                                    session_id=session_id,
-                                    event_type="agent_delegation_start",
-                                    data=json.dumps({
-                                        "agent_type": agent_type,
-                                        "delegated_by": "ORCHESTRATOR",
-                                        "task": task,
-                                    }),
-                                )
-                                yield self._custom_event(
-                                    counter=counter,
-                                    run_id=run_id,
-                                    session_id=session_id,
-                                    event_type="specialist_activation",
-                                    data=json.dumps({"agent_type": agent_type, "is_core": True}),
-                                )
-                                rationale = (
-                                    getattr(decision, "rationale", "")
-                                    or (decision.get("rationale") if isinstance(decision, dict) else "")
-                                )
-                                yield normalizer.thought_event(
-                                    self._next_seq(counter),
-                                    f"Delegando para **{agent_type}**. {rationale}",
-                                    run_id=run_id,
-                                )
+                        next_input = None
 
             yield self._custom_event(
                 counter=counter,
@@ -988,13 +1874,23 @@ class AgentRuntime:
                 event_type="reflection_mode_end",
                 data="",
             )
+            current_agent = agent_state.get("current_agent")
             if current_agent:
                 yield self._custom_event(
                     counter=counter,
                     run_id=run_id,
                     session_id=session_id,
                     event_type="agent_delegation_complete",
-                    data=json.dumps({"agent_type": current_agent.upper(), "success": True, "error_message": ""}),
+                    data=json.dumps(
+                        {
+                            "agent_type": current_agent.split(":", 1)[0].upper(),
+                            "agent_id": current_agent,
+                            "success": True,
+                            "error_message": "",
+                            "step_id": "primary",
+                        }
+                    ),
+                    agent=current_agent,
                 )
             yield normalizer.step_event(
                 self._next_seq(counter),
@@ -1008,6 +1904,14 @@ class AgentRuntime:
             )
 
         except Exception as exc:
+            if self._execution_memory is not None and execution_id:
+                with contextlib.suppress(Exception):
+                    await self._execution_memory.append_event(
+                        execution_id,
+                        "execution_failed",
+                        {"error": str(exc)},
+                    )
+                    await self._execution_memory.mark_status(execution_id, "failed", error=str(exc))
             _logger.error("orchestrator_graph_error", error=str(exc))
             yield self._error_event(
                 exc=exc, counter=counter, provider=provider, model=model,

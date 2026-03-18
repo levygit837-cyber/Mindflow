@@ -60,14 +60,14 @@ class DelegationEngine:
             messages.append({"role": "user", "content": task_prompt})
             
             # Set up sandbox and tools
-            sandbox = self._create_sandbox_for_agent(agent)
+            sandbox = self._create_sandbox_for_agent(agent, task)
             tool_registry = create_default_registry(sandbox)
             
             # Get authorized tools (none for sandbox NONE agents)
             if agent.sandbox == SandboxMode.NONE:
                 tools = []
             else:
-                tools = tool_registry.get_tools_for_agent(agent.agent_type)
+                tools = tool_registry.get_tools_for_agent(agent)
 
             # Inject root_dir into system prompt when tools are available
             if sandbox.cwd and tools:
@@ -201,14 +201,14 @@ Use this context to inform your work, but focus on the current objective.
         
         return task_prompt
     
-    def _create_sandbox_for_agent(self, agent):
+    def _create_sandbox_for_agent(self, agent, task=None):
         """Create appropriate sandbox for the agent."""
+        # Priority: task.root_dir > settings.working_path > None
         sandbox_root = (
-            self.settings.working_path 
-            if hasattr(self.settings, "working_path") 
-            else None
+            (task.root_dir if task and getattr(task, "root_dir", None) else None)
+            or (self.settings.working_path if hasattr(self.settings, "working_path") else None)
         )
-        
+
         return MindFlowSandbox(
             root_dir=sandbox_root,
             read_only=(agent.sandbox == SandboxMode.READ_ONLY),

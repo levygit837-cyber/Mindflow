@@ -12,9 +12,12 @@ import hashlib
 import math
 import os
 import re
+from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 from typing import Protocol, runtime_checkable
+
+import httpx
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -169,7 +172,7 @@ class OpenAIProvider:
 # ---------------------------------------------------------------------------
 
 class OllamaProvider:
-    def __init__(self, *, model_name: str = "nomic-embed-text", dims: int = 768, base_url: str | None = None) -> None:
+    def __init__(self, *, model_name: str = "nomic-embed-text-v2-moe:latest", dims: int = 768, base_url: str | None = None) -> None:
         self._model_name = model_name
         self._dims = dims
         self._base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -299,18 +302,25 @@ class EmbeddingProviderFactory:
         from mindflow_backend.infra.config import get_settings
         settings = get_settings()
 
-        backend_str = getattr(settings, "embedding_backend", EmbeddingBackend.GEMINI.value)
+        backend_str = getattr(settings, "embedding_backend", EmbeddingBackend.OLLAMA.value)
         try:
             backend = EmbeddingBackend(backend_str)
         except ValueError:
-            _logger.warning("unknown_embedding_backend", value=backend_str, fallback="gemini")
-            backend = EmbeddingBackend.GEMINI
+            _logger.warning("unknown_embedding_backend", value=backend_str, fallback="ollama")
+            backend = EmbeddingBackend.OLLAMA
 
         model_name = getattr(settings, "embedding_model_name", None)
         dims = getattr(settings, "embedding_dims", 768)
         api_key = getattr(settings, "google_api_key", None)
+        base_url = getattr(settings, "ollama_base_url", None)
 
-        return cls.create(backend, model_name=model_name, dims=dims, api_key=api_key)
+        return cls.create(
+            backend,
+            model_name=model_name,
+            dims=dims,
+            api_key=api_key,
+            base_url=base_url,
+        )
 
     @classmethod
     def create(
@@ -331,7 +341,11 @@ class EmbeddingProviderFactory:
         if backend == EmbeddingBackend.OPENAI:
             return OpenAIProvider(model_name=model_name or "text-embedding-3-small", dims=dims, api_key=api_key)
         if backend == EmbeddingBackend.OLLAMA:
-            return OllamaProvider(model_name=model_name or "nomic-embed-text", dims=dims, base_url=base_url)
+            return OllamaProvider(
+                model_name=model_name or "nomic-embed-text-v2-moe:latest",
+                dims=dims,
+                base_url=base_url,
+            )
         if backend == EmbeddingBackend.SENTENCE_TRANSFORMER:
             return SentenceTransformerProvider(model_name=model_name or "all-MiniLM-L6-v2", dims=dims)
         if backend == EmbeddingBackend.TFIDF:
@@ -340,6 +354,116 @@ class EmbeddingProviderFactory:
             return SentenceTransformerProvider(model_name=model_name or "all-MiniLM-L6-v2", dims=dims)
         # HASH_FALLBACK or unknown
         return HashFallbackProvider(dims=dims)
+
+    @classmethod
+    async def validate_provider(cls, provider: IEmbeddingProvider) -> "EmbeddingProviderHealth":
+        backend = provider.backend().value if hasattr(provider.backend(), "value") else str(provider.backend())
+        model = getattr(provider, "_model_name", None)
+        dims = provider.dimension()
+
+        try:
+            if isinstance(provider, OllamaProvider):
+                is_healthy, reason = await _probe_ollama_model(
+                    provider._base_url,
+                    provider._model_name,
+                    provider.dimension(),
+                )
+                return EmbeddingProviderHealth(
+                    is_healthy=is_healthy,
+                    backend=backend,
+                    model=model,
+                    dimension=dims,
+                    reason=reason,
+                )
+
+            vector = await provider.embed("__mindflow_embedding_healthcheck__")
+            if len(vector) != dims:
+                return EmbeddingProviderHealth(
+                    is_healthy=False,
+                    backend=backend,
+                    model=model,
+                    dimension=dims,
+                    reason=f"embedding_dim_mismatch:{len(vector)}",
+                )
+            return EmbeddingProviderHealth(
+                is_healthy=True,
+                backend=backend,
+                model=model,
+                dimension=dims,
+            )
+        except Exception as exc:
+            return EmbeddingProviderHealth(
+                is_healthy=False,
+                backend=backend,
+                model=model,
+                dimension=dims,
+                reason=str(exc),
+            )
+
+
+@dataclass(slots=True)
+class EmbeddingProviderHealth:
+    is_healthy: bool
+    backend: str
+    model: str | None
+    dimension: int
+    reason: str | None = None
+
+
+_embedding_provider_health: EmbeddingProviderHealth | None = None
+
+
+async def _probe_ollama_model(
+    base_url: str,
+    model_name: str,
+    expected_dims: int,
+) -> tuple[bool, str | None]:
+    async with httpx.AsyncClient(base_url=base_url, timeout=5.0) as client:
+        response = await client.post("/api/show", json={"name": model_name})
+        response.raise_for_status()
+        payload = response.json()
+
+    capabilities = payload.get("capabilities") or []
+    if "embedding" not in capabilities:
+        return False, "missing_embedding_capability"
+
+    model_info = payload.get("model_info") or {}
+    reported_dims = (
+        model_info.get("general.embedding_length")
+        or model_info.get("embedding_length")
+        or expected_dims
+    )
+    if int(reported_dims) != int(expected_dims):
+        return False, f"embedding_dim_mismatch:{reported_dims}"
+
+    return True, None
+
+
+async def startup_validate_embedding_provider() -> EmbeddingProviderHealth:
+    global _embedding_provider_health
+
+    provider = get_embedding_provider()
+    _embedding_provider_health = await EmbeddingProviderFactory.validate_provider(provider)
+    if _embedding_provider_health.is_healthy:
+        _logger.info(
+            "embedding_provider_validated",
+            backend=_embedding_provider_health.backend,
+            model=_embedding_provider_health.model,
+            dimension=_embedding_provider_health.dimension,
+        )
+    else:
+        _logger.warning(
+            "embedding_provider_degraded",
+            backend=_embedding_provider_health.backend,
+            model=_embedding_provider_health.model,
+            dimension=_embedding_provider_health.dimension,
+            reason=_embedding_provider_health.reason,
+        )
+    return _embedding_provider_health
+
+
+def get_embedding_provider_health() -> EmbeddingProviderHealth | None:
+    return _embedding_provider_health
 
 
 @lru_cache(maxsize=1)

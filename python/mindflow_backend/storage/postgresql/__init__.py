@@ -3,7 +3,10 @@
 Primary relational database for MindFlow backend.
 """
 
-from .connection import db_session
+try:
+    from .connection import db_session
+except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test envs
+    db_session = None
 from .models import (
     AgentMemoryCursor,
     AgentMemoryEvent,
@@ -16,10 +19,14 @@ from .models import (
     ResearchFinding,
     ResearchSession,
 )
-from .repositories import (
-    ChatRepository,
-    NeuralRepository,
-)
+try:
+    from .repositories import (
+        ChatRepository,
+        NeuralRepository,
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test envs
+    ChatRepository = None
+    NeuralRepository = None
 
 __all__ = [
     "db_session",

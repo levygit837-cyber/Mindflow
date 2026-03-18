@@ -12,6 +12,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
@@ -22,6 +24,7 @@ from mindflow_backend.schemas.orchestrator import ToolScope
 from mindflow_backend.schemas.research import ResearchConfig
 
 
+@pytest.mark.asyncio
 async def test_query_engine():
     """Test the query engine intent analysis and planning."""
     print("🔍 Testing Query Engine...")
@@ -57,6 +60,7 @@ async def test_query_engine():
     print("✅ Query Engine tests completed successfully!")
 
 
+@pytest.mark.asyncio
 async def test_agent_configuration():
     """Test the researcher agent configuration."""
     print("\n🤖 Testing Agent Configuration...")
@@ -69,13 +73,15 @@ async def test_agent_configuration():
     print(f"  🔧 Tools: {[tool.value for tool in agent.tools]}")
     print(f"  💾 Keep Context: {agent.keep_context}")
     
-    # Verify BROWSER_SEARCH tool is included
-    assert ToolScope.BROWSER_SEARCH in agent.tools, "BROWSER_SEARCH tool not found in agent tools!"
+    # Verify PinchTab fleet/browser tools are included
+    assert ToolScope.PINCHTAB_FLEET in agent.tools, "PINCHTAB_FLEET tool not found in agent tools!"
+    assert ToolScope.PINCHTAB_BROWSER in agent.tools, "PINCHTAB_BROWSER tool not found in agent tools!"
     assert ToolScope.WEB_SEARCH in agent.tools, "WEB_SEARCH tool not found in agent tools!"
     
     print("✅ Agent Configuration tests completed successfully!")
 
 
+@pytest.mark.asyncio
 async def test_enhanced_researcher():
     """Test the enhanced researcher agent capabilities."""
     print("\n🚀 Testing Enhanced Researcher...")

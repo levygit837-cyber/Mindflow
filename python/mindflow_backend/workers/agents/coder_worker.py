@@ -29,6 +29,7 @@ class CoderWorker(BaseWorker):
         - code_generation: Generate code snippets
         - refactoring: Code refactoring tasks
         """
+        message_data = self._normalize_message_data(message_data)
         start_time = time.time()
         task_type = message_data.get("task_type", "unknown")
         task_id = message_data.get("task_id", "unknown")

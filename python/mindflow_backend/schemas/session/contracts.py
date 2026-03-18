@@ -2,6 +2,14 @@
 
 Defines the core contracts for session management, context retrieval,
 and summarization in the context governance system.
+
+Note on RetrievedContext
+------------------------
+``RetrievedContext`` is a **backward-compatibility alias** for
+``mindflow_backend.schemas.memory.contracts.MemoryRecallResponse``.
+New code must use ``MemoryRecallResponse`` directly.
+Existing callers that import ``RetrievedContext`` continue to work
+without modification.
 """
 
 from __future__ import annotations
@@ -12,6 +20,8 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from mindflow_backend.schemas.memory.contracts import MemoryRecallResponse
 
 
 class SessionMode(StrEnum):
@@ -143,15 +153,6 @@ class ContextControlResult(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class RetrievedContext(BaseModel):
-    """Retrieved context for agent consumption."""
-    
-    context_id: UUID
-    session_id: UUID
-    query: str
-    context_windows: list[tuple[int, int]] = Field(description="Token ranges included")
-    content: str = Field(description="Retrieved context content")
-    relevance_score: float = Field(ge=0.0, le=1.0)
-    source_sessions: list[UUID] = Field(description="Sessions context was retrieved from")
-    metadata: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+# Backward-compatibility alias.  The primary contract lives in
+# mindflow_backend.schemas.memory.contracts.MemoryRecallResponse.
+RetrievedContext = MemoryRecallResponse

@@ -14,10 +14,13 @@ import {
   XCircle,
 } from 'lucide-react';
 
+type AgentType = 'orchestrator' | 'coder' | 'analyst' | 'researcher' | 'default';
+
 export interface ToolCallData {
   id: string;
   name: string;
   args: Record<string, unknown>;
+  toolMeta?: Record<string, unknown>;
   result?: string;
   error?: string;
   status: 'calling' | 'success' | 'error';
@@ -37,6 +40,10 @@ const TOOL_META: Record<string, ToolMeta> = {
   glob_search: { category: 'filesystem', Icon: ({ size }) => <Folder size={size} /> },
   list_directory: { category: 'filesystem', Icon: ({ size }) => <Folder size={size} /> },
   list_dir: { category: 'filesystem', Icon: ({ size }) => <Folder size={size} /> },
+  gitnexus_status: { category: 'gitnexus', Icon: ({ size }) => <Box size={size} /> },
+  gitnexus_query: { category: 'gitnexus', Icon: ({ size }) => <Box size={size} /> },
+  gitnexus_context: { category: 'gitnexus', Icon: ({ size }) => <Box size={size} /> },
+  gitnexus_impact: { category: 'gitnexus', Icon: ({ size }) => <Box size={size} /> },
   shell_execute: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
   shell_tab_open: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
   shell_tab_list: { category: 'system', Icon: ({ size }) => <Terminal size={size} /> },
@@ -55,8 +62,40 @@ const DEFAULT_META: ToolMeta = {
   Icon: ({ size }) => <Wrench size={size} />,
 };
 
-function getToolMeta(name: string): ToolMeta {
-  return TOOL_META[name.toLowerCase()] ?? DEFAULT_META;
+const TOOL_TONE: Record<ToolCallData['status'], 'warning' | 'success' | 'error'> = {
+  calling: 'warning',
+  success: 'success',
+  error: 'error',
+};
+
+const TOOL_STATUS_LABELS: Record<ToolCallData['status'], string> = {
+  calling: 'executando ferramenta',
+  success: 'resultado recebido',
+  error: 'falha de execução',
+};
+
+function getToolMeta(name: string, explicitMeta?: Record<string, unknown>): ToolMeta {
+  const normalized = name.toLowerCase();
+  const explicitCategory = typeof explicitMeta?.category === 'string'
+    ? explicitMeta.category
+    : typeof explicitMeta?.family === 'string'
+      ? explicitMeta.family
+      : undefined;
+
+  if ((typeof explicitMeta?.family === 'string' && explicitMeta.family === 'gitnexus') || normalized.startsWith('gitnexus_')) {
+    return {
+      ...(TOOL_META[normalized] ?? { category: 'gitnexus', Icon: ({ size }) => <Box size={size} /> }),
+      category: explicitCategory ?? 'gitnexus',
+    };
+  }
+
+  const base = TOOL_META[normalized] ?? DEFAULT_META;
+  if (!explicitCategory) return base;
+
+  return {
+    ...base,
+    category: explicitCategory,
+  };
 }
 
 function formatValue(value: unknown, maxLength = 220): string {
@@ -65,7 +104,7 @@ function formatValue(value: unknown, maxLength = 220): string {
 }
 
 function formatArgs(args: Record<string, unknown>): string {
-  if (Object.keys(args).length === 0) return 'sem argumentos';
+  if (Object.keys(args).length === 0) return 'no params';
 
   return Object.entries(args)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -91,14 +130,51 @@ function isErrorResult(result: string): boolean {
   }
 }
 
-interface ToolCallBlockProps {
-  toolCall: ToolCallData;
+function humanizeToolName(name: string) {
+  return name.replaceAll('_', ' ');
 }
 
-export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
+function formatAgentBadge(agentType?: AgentType, agentName?: string) {
+  if (!agentName) return null;
+  return agentType === 'default' ? agentName : `${agentName} · agent`;
+}
+
+const detailSurfaceStyle: React.CSSProperties = {
+  margin: 0,
+  padding: '14px 16px',
+  borderRadius: 18,
+  border: '1px solid var(--line-soft)',
+  background: 'color-mix(in srgb, var(--surface-glass) 62%, var(--surface) 38%)',
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 'calc(13px * var(--font-scale, 1))',
+  lineHeight: 1.7,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+};
+
+interface ToolCallBlockProps {
+  toolCall: ToolCallData;
+  agentType?: AgentType;
+  agentName?: string;
+}
+
+export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({
+  toolCall,
+  agentType,
+  agentName,
+}) => {
   const [expanded, setExpanded] = useState(true);
-  const meta = useMemo(() => getToolMeta(toolCall.name), [toolCall.name]);
-  const hasArgs = Object.keys(toolCall.args).length > 0;
+  const meta = useMemo(
+    () => getToolMeta(toolCall.name, toolCall.toolMeta),
+    [toolCall.name, toolCall.toolMeta],
+  );
+  const tone = TOOL_TONE[toolCall.status];
+  const agentBadge = formatAgentBadge(agentType, agentName);
+  const argCount = Object.values(toolCall.args).filter(
+    (value) => value !== undefined && value !== null && value !== '',
+  ).length;
+  const hasArgs = argCount > 0;
   const hasOutput = Boolean(toolCall.result || toolCall.error);
 
   const statusIcon = (() => {
@@ -124,7 +200,7 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="event-shell min-w-0 max-w-[760px] w-full"
+      className="event-shell min-w-0 w-full"
     >
       <div className="event-track">
         <span className={toolCall.status === 'calling' ? 'signal-dot' : 'signal-dot idle'} />
@@ -134,44 +210,55 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="flex w-full items-start gap-3 text-left"
+          className={`tool-event-card tool-event-card--${tone}`}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
         >
-          <div className="min-w-0 flex-1">
-            <div className="event-header">
-              <meta.Icon size={14} />
-              <span
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {toolCall.name}
-              </span>
-              <span className="event-badge">{meta.category}</span>
-              <span className="event-badge" style={{ marginLeft: 'auto' }}>
-                {toolCall.status === 'calling' ? 'calling' : toolCall.status === 'success' ? 'ready' : 'error'}
-              </span>
-              <span style={{ color: 'var(--text-meta)' }}>{statusIcon}</span>
-              <span className="event-toggle">
-                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </span>
+          <div className="tool-event-card-header">
+            <div className="tool-event-topline">
+              <span className="tool-event-lead" />
+
+              <div className="tool-event-topline-copy">
+                <span className="tool-event-title">Tool</span>
+                <span className="tool-event-sep">/</span>
+                <span className="tool-event-status">{TOOL_STATUS_LABELS[toolCall.status]}</span>
+              </div>
+
+              {toolCall.status === 'calling' ? (
+                <span className="tool-event-live">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              ) : (
+                <span className="tool-event-icon">{statusIcon}</span>
+              )}
             </div>
 
-            <div
-              style={{
-                marginTop: 10,
-                color: 'var(--text-secondary)',
-                fontSize: 13,
-                lineHeight: 1.6,
-              }}
-            >
-              {hasArgs
-                ? `--- ${Object.keys(toolCall.args).length} parâmetro${Object.keys(toolCall.args).length > 1 ? 's' : ''}`
-                : '--- execução direta'}
+            <div className="tool-event-meta">
+              <div className="tool-event-name-row">
+                <meta.Icon size={14} />
+                <span className="tool-event-name">{toolCall.name}</span>
+              </div>
+
+              <div className="tool-event-badges">
+                <span className="event-badge">{meta.category}</span>
+                <span className="event-badge">{humanizeToolName(toolCall.name)}</span>
+                {agentBadge ? <span className="event-badge">{agentBadge}</span> : null}
+                <span className="event-badge">
+                  {toolCall.status === 'calling' ? 'running' : toolCall.status === 'success' ? 'ready' : 'error'}
+                </span>
+              </div>
             </div>
+
+            <div className="tool-event-summary">
+              {hasArgs ? `${argCount} ${argCount === 1 ? 'param' : 'params'}` : 'direct execution'}
+            </div>
+
+            <span className="event-toggle">
+              <span className="tool-event-icon">
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+            </span>
           </div>
         </button>
 
@@ -190,19 +277,7 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
                 {hasArgs && (
                   <div>
                     <div className="mono-label mb-2">input</div>
-                    <pre
-                      style={{
-                        margin: 0,
-                        color: 'var(--text-secondary)',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 12,
-                        lineHeight: 1.7,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {formatArgs(toolCall.args)}
-                    </pre>
+                    <pre style={detailSurfaceStyle}>{formatArgs(toolCall.args)}</pre>
                   </div>
                 )}
 
@@ -214,10 +289,10 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
                         style={{
                           color: 'var(--text-meta)',
                           fontFamily: 'var(--font-mono)',
-                          fontSize: 12,
+                          fontSize: 'calc(13px * var(--font-scale, 1))',
                         }}
                       >
-                        aguardando retorno do notifier
+                        waiting for tool response
                       </div>
                     </div>
                   </div>
@@ -226,17 +301,12 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall }) => {
                 {hasOutput && (
                   <div>
                     <div className="mono-label mb-2">
-                      {toolCall.error ? 'erro' : 'output'}
+                      {toolCall.error ? 'error' : 'result'}
                     </div>
                     <pre
                       style={{
-                        margin: 0,
+                        ...detailSurfaceStyle,
                         color: toolCall.error ? 'var(--state-error)' : 'var(--text-secondary)',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 12,
-                        lineHeight: 1.7,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
                       }}
                     >
                       {toolCall.error ? toolCall.error : formatResult(toolCall.result!)}
@@ -262,6 +332,7 @@ export function parseToolCallEvent(data: string, metaToolCallId?: string, timest
       id,
       name: parsed.name ?? parsed.tool ?? 'tool',
       args: parsed.args ?? {},
+      toolMeta: parsed.tool_meta ?? undefined,
       status: 'calling',
       timestamp: timestamp ?? new Date(),
     };
@@ -285,6 +356,7 @@ export function parseToolResultEvent(
     return {
       ...existing,
       id: parsed.id ?? metaToolCallId ?? existing.id,
+      toolMeta: parsed.tool_meta ?? existing.toolMeta,
       result: error ? undefined : resultStr,
       error: error ? resultStr : undefined,
       status: error ? 'error' : 'success',

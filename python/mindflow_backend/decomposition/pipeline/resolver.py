@@ -285,7 +285,7 @@ class ContextAwareResolver(TaskResolver):
         tools: list = []
         if agent.sandbox != SandboxMode.NONE:
             registry = create_default_registry(sandbox)
-            tools = registry.get_tools_for_agent(agent.agent_type)
+            tools = registry.get_tools_for_agent(agent)
 
         llm = get_model_for_provider(provider, model)
         if tools:

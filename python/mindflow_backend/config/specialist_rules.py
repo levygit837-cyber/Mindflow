@@ -41,7 +41,7 @@ class SpecialistRuleConfig:
     security_audit: RuleConfig
     architecture_design: RuleConfig
     code_review: RuleConfig
-    creative_exploration: RuleConfig
+    brainstorm: RuleConfig
     deep_analysis: RuleConfig
     
     # Rule evaluation
@@ -60,7 +60,7 @@ class SpecialistRuleConfig:
             self.security_audit,
             self.architecture_design,
             self.code_review,
-            self.creative_exploration,
+            self.brainstorm,
             self.deep_analysis,
         ]
     
@@ -113,19 +113,19 @@ def create_default_rules() -> SpecialistRuleConfig:
             estimated_tokens_saved=150,
             estimated_efficiency_gain=0.15,
         ),
-        
-        creative_exploration=RuleConfig(
-            name="creative_exploration",
+
+        brainstorm=RuleConfig(
+            name="brainstorm",
             target_specialist=SpecialistType.BRAINSTORM,
-            priority=3,
-            confidence_boost=0.15,
-            description="Creative tasks use Brainstorm specialist",
-            condition_task_types=["brainstorm", "explore", "design", "ideate"],
-            condition_keywords=["brainstorm", "explore", "creative", "alternative", "ideate"],
+            priority=2,
+            confidence_boost=0.2,
+            description="Ideation and alternatives exploration use Brainstorm specialist",
+            condition_task_types=["brainstorm", "ideate", "explore", "alternative"],
+            condition_keywords=["brainstorm", "creative", "alternative", "explore", "ideas", "ideation"],
             condition_complexity=[],
-            required_specialization=SpecializationRequirement.CREATIVE,
-            estimated_tokens_saved=300,
-            estimated_efficiency_gain=0.3,
+            required_specialization=SpecializationRequirement.BRAINSTORM,
+            estimated_tokens_saved=120,
+            estimated_efficiency_gain=0.12,
         ),
         
         deep_analysis=RuleConfig(

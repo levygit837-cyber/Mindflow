@@ -11,6 +11,20 @@ from typing import Any, Dict
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from mindflow_backend.agents.tools.security import (
+    WorkspaceSecurityError,
+    is_read_only_mode,
+    resolve_workspace_path,
+)
+
+
+def _resolve_tool_path(tool: AsyncToolInterface, raw_path: str) -> Path:
+    if tool.root_dir or tool.secure_mode:
+        return resolve_workspace_path(raw_path, tool.root_dir)
+    path = Path(raw_path)
+    if tool.root_dir and not path.is_absolute():
+        path = Path(tool.root_dir) / path
+    return path.resolve()
 
 
 class DirectoryListTool(AsyncToolInterface):
@@ -30,10 +44,10 @@ class DirectoryListTool(AsyncToolInterface):
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         raw_path = kwargs["path"]
-        # Resolve relative paths against root_dir (agent working directory)
-        if self.root_dir and not Path(raw_path).is_absolute():
-            raw_path = str(Path(self.root_dir) / raw_path)
-        path = Path(raw_path)
+        try:
+            path = _resolve_tool_path(self, raw_path)
+        except WorkspaceSecurityError as e:
+            return {"success": False, "error": f"Workspace security error: {str(e)}"}
         if not path.exists() or not path.is_dir():
             return {"success": False, "error": f"Not a directory: {path}"}
         return {"success": True, "entries": [p.name for p in path.iterdir()]}
@@ -58,7 +72,12 @@ class FileDeleteTool(AsyncToolInterface):
         )
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
-        path = Path(kwargs["path"])
+        try:
+            if is_read_only_mode(self.sandbox_mode):
+                return {"success": False, "error": "Delete operation blocked in read-only sandbox mode"}
+            path = _resolve_tool_path(self, kwargs["path"])
+        except WorkspaceSecurityError as e:
+            return {"success": False, "error": f"Workspace security error: {str(e)}"}
         if not path.exists() or not path.is_file():
             return {"success": False, "error": f"Not a file: {path}"}
         path.unlink()
@@ -86,7 +105,12 @@ class DirectoryCreateTool(AsyncToolInterface):
         )
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
-        path = Path(kwargs["path"])
+        try:
+            if is_read_only_mode(self.sandbox_mode):
+                return {"success": False, "error": "Create directory blocked in read-only sandbox mode"}
+            path = _resolve_tool_path(self, kwargs["path"])
+        except WorkspaceSecurityError as e:
+            return {"success": False, "error": f"Workspace security error: {str(e)}"}
         parents = bool(kwargs.get("parents", True))
         exist_ok = bool(kwargs.get("exist_ok", True))
         path.mkdir(parents=parents, exist_ok=exist_ok)
@@ -94,4 +118,3 @@ class DirectoryCreateTool(AsyncToolInterface):
 
     def get_schema(self) -> Dict[str, Any]:
         return self._schema.dict()
-

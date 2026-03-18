@@ -10,12 +10,13 @@ from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.memory.shared.embeddings.factory import get_embedding_provider
+from mindflow_backend.memory.shared.embeddings.factory import HashFallbackProvider, get_embedding_provider
 from mindflow_backend.memory.shared.retrieval.semantic import SemanticRetriever
 from mindflow_backend.memory.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
     AgentMemoryEvent,
+    AgentMemoryFact,
     AgentMemoryWindow,
     SessionEmbedding,
 )
@@ -64,10 +65,26 @@ class AgentMemoryService:
         role: str,
         content: str,
         source_message_id: int | None = None,
+        idempotency_key: str | None = None,
     ) -> None:
         """Record a message and immediately store its embedding."""
         token_count = estimate_token_count(content)
         if token_count <= 0:
+            return
+
+        if self._message_already_recorded(
+            db,
+            session_id=session_id,
+            agent_id=agent_id,
+            source_message_id=source_message_id,
+        ):
+            _logger.info(
+                "agent_memory_duplicate_skipped",
+                session_id=session_id,
+                agent_id=agent_id,
+                source_message_id=source_message_id,
+                idempotency_key=idempotency_key,
+            )
             return
 
         event = AgentMemoryEvent(
@@ -96,6 +113,28 @@ class AgentMemoryService:
                 cursor=cursor,
                 event_end_id=event.id,
             )
+
+    def _message_already_recorded(
+        self,
+        db: Session,
+        *,
+        session_id: str,
+        agent_id: str,
+        source_message_id: int | None,
+    ) -> bool:
+        """Check whether the same chat message was already persisted."""
+        if source_message_id is None:
+            return False
+
+        existing = db.execute(
+            select(AgentMemoryEvent).where(
+                AgentMemoryEvent.session_id == session_id,
+                AgentMemoryEvent.agent_id == agent_id,
+                AgentMemoryEvent.source_message_id == source_message_id,
+            )
+        ).scalar_one_or_none()
+
+        return existing is not None
 
     def retrieve_context_for_query(
         self,
@@ -222,25 +261,35 @@ class AgentMemoryService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _store_event_embedding(self, db: Session, *, event: AgentMemoryEvent) -> None:
-        """Embed an event and persist to agent_memory_embeddings immediately."""
+    def _embed_text(self, text: str) -> list[float] | None:
         import asyncio
 
         async def _embed():
             provider = get_embedding_provider()
-            return await provider.embed(event.content)
+            try:
+                return await provider.embed(text)
+            except Exception as exc:
+                dims = provider.dimension() if hasattr(provider, "dimension") else self.embedding_dims
+                _logger.warning("embedding_provider_failed_using_hash_fallback", error=str(exc), dims=dims)
+                return await HashFallbackProvider(dims=dims).embed(text)
 
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # Schedule as a task without blocking — embedding is best-effort
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    vector = pool.submit(asyncio.run, _embed()).result()
-            else:
-                vector = loop.run_until_complete(_embed())
+                    return pool.submit(asyncio.run, _embed()).result()
+            return loop.run_until_complete(_embed())
         except Exception as exc:
-            _logger.warning("event_embedding_failed", event_id=event.id, error=str(exc))
+            _logger.warning("embedding_execution_failed", error=str(exc))
+            return None
+
+    def _store_event_embedding(self, db: Session, *, event: AgentMemoryEvent) -> None:
+        """Embed an event and persist to agent_memory_embeddings immediately."""
+        vector = self._embed_text(event.content)
+        if vector is None:
+            _logger.warning("event_embedding_failed", event_id=event.id)
             return
 
         embedding = AgentMemoryEmbedding(
@@ -264,22 +313,9 @@ class AgentMemoryService:
         content_excerpt: str,
     ) -> None:
         """Embed arbitrary content and persist to agent_memory_embeddings."""
-        import asyncio
-
-        async def _embed():
-            provider = get_embedding_provider()
-            return await provider.embed(content_excerpt)
-
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    vector = pool.submit(asyncio.run, _embed()).result()
-            else:
-                vector = loop.run_until_complete(_embed())
-        except Exception as exc:
-            _logger.warning("embedding_failed", source_type=source_type, source_id=source_id, error=str(exc))
+        vector = self._embed_text(content_excerpt)
+        if vector is None:
+            _logger.warning("embedding_failed", source_type=source_type, source_id=source_id)
             return
 
         db.add(AgentMemoryEmbedding(
@@ -357,6 +393,19 @@ class AgentMemoryService:
         )
         db.add(window)
         db.flush()
+
+        fact_contents = key_points[:3] or [summary_md[:500]]
+        for fact_content in fact_contents:
+            db.add(
+                AgentMemoryFact(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    window_id=window.id,
+                    fact_type="insight",
+                    content=fact_content,
+                    weight=1.0,
+                )
+            )
 
         self._store_embedding(
             db,

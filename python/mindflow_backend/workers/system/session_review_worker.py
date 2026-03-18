@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any, Dict
+
+from pydantic import ValidationError
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
 from mindflow_backend.workers.config.queues import QueueConfig
+from mindflow_backend.workers.system.consumers.session_review_consumer import (
+    SessionReviewTaskConsumer,
+)
 
 _logger = get_logger(__name__)
 
@@ -18,11 +24,13 @@ class SessionReviewWorker(BaseWorker):
     def __init__(self, queue_config: QueueConfig) -> None:
         """Initialize the Session Review worker."""
         super().__init__(queue_config, worker_name="session_review_worker")
+        self._session_review_consumer = SessionReviewTaskConsumer()
     
     async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
         """Process session review tasks.
         
         Supported task types:
+        - session_review.requested: Execute a queued review request for a token window
         - window_review: Review session windows when limits reached
         - context_summarization: Summarize session context
         - memory_consolidation: Consolidate session memories
@@ -30,13 +38,16 @@ class SessionReviewWorker(BaseWorker):
         - session_cleanup: Clean up old session data
         """
         start_time = time.time()
+        message_data = self._normalize_message_data(message_data)
         task_type = message_data.get("task_type", "unknown")
         task_id = message_data.get("task_id", "unknown")
         
         try:
             _logger.info(f"SessionReviewWorker processing {task_type} task {task_id}")
             
-            if task_type == "window_review":
+            if task_type in {"session_review.requested", "review_requested"}:
+                result = await self._handle_review_requested(message_data)
+            elif task_type == "window_review":
                 result = await self._handle_window_review(message_data)
             elif task_type == "context_summarization":
                 result = await self._handle_context_summarization(message_data)
@@ -59,6 +70,19 @@ class SessionReviewWorker(BaseWorker):
             )
             
             return result
+
+        except ValidationError as e:
+            message_data["retry_count"] = self.queue_config.max_retries
+            _logger.error(
+                f"SessionReviewWorker invalid payload for {task_type} task {task_id}: {e}",
+                exc_info=True
+            )
+            return WorkerResult(
+                success=False,
+                message=f"Invalid session review payload: {e}",
+                error=e,
+                processing_time=time.time() - start_time,
+            )
             
         except Exception as e:
             _logger.error(
@@ -71,6 +95,15 @@ class SessionReviewWorker(BaseWorker):
                 error=e,
                 processing_time=time.time() - start_time,
             )
+
+    async def _handle_review_requested(self, message_data: Dict[str, Any]) -> WorkerResult:
+        """Handle the real queued session review path."""
+        result = await self._session_review_consumer.consume_requested_review(message_data)
+        return WorkerResult(
+            success=True,
+            message="Session review request processed successfully",
+            data=result,
+        )
     
     async def _handle_window_review(self, message_data: Dict[str, Any]) -> WorkerResult:
         """Handle session window review when token limits reached."""

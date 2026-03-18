@@ -7,6 +7,7 @@ from enum import Enum
 from typing import ClassVar
 
 from mindflow_backend.infra.config import get_settings
+from mindflow_backend.workers.contracts.schemas.retry_policy import RetryPolicy
 
 
 class QueuePriority(Enum):
@@ -38,6 +39,8 @@ class QueueConfig:
     retry_delay: int = 60  # seconds
     message_ttl: int = 3600  # seconds
     dead_letter_queue: str | None = None
+    backoff_multiplier: float = 1.0
+    max_retry_delay: int | None = None
     
     def get_full_queue_name(self) -> str:
         """Get the full queue name with hierarchy."""
@@ -46,6 +49,19 @@ class QueueConfig:
     def get_routing_key(self) -> str:
         """Get the routing key for the queue."""
         return f"{self.domain.value}.{self.worker_type}.{self.priority.value}"
+
+    def get_dead_letter_queue_name(self) -> str:
+        """Get the canonical dead-letter queue for the queue domain."""
+        return self.dead_letter_queue or f"mindflow.{self.domain.value}.dlq"
+
+    def get_retry_policy(self) -> RetryPolicy:
+        """Build a retry policy from the queue configuration."""
+        return RetryPolicy(
+            max_retries=self.max_retries,
+            retry_delay_seconds=self.retry_delay,
+            backoff_multiplier=self.backoff_multiplier,
+            max_delay_seconds=self.max_retry_delay,
+        )
 
 
 class QueueDefinitions:
@@ -124,6 +140,17 @@ class QueueDefinitions:
         max_retries=1,
         retry_delay=600,
     )
+
+    SESSION_REVIEW_HIGH = QueueConfig(
+        name="session_review_high",
+        domain=WorkerDomain.SYSTEM,
+        worker_type="session_review",
+        priority=QueuePriority.HIGH,
+        routing_key="system.session_review.high",
+        concurrency=1,
+        max_retries=2,
+        retry_delay=180,
+    )
     
     HEALTH_LOW = QueueConfig(
         name="health_low",
@@ -162,7 +189,7 @@ class QueueDefinitions:
         # Agent queues
         CODER_CRITICAL, CODER_HIGH, ANALYST_HIGH, RESEARCHER_HIGH, ORCHESTRATOR_CRITICAL,
         # System queues
-        VECTOR_MEDIUM, MEMORY_LOW, HEALTH_LOW,
+        VECTOR_MEDIUM, MEMORY_LOW, SESSION_REVIEW_HIGH, HEALTH_LOW,
         # Research queues
         BROWSER_HIGH, CONTENT_MEDIUM,
     ]

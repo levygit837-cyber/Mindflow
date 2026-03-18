@@ -29,6 +29,7 @@ class AnalystWorker(BaseWorker):
         - trend_analysis: Analyze trends and patterns
         - performance_analysis: Performance metrics analysis
         """
+        message_data = self._normalize_message_data(message_data)
         start_time = time.time()
         task_type = message_data.get("task_type", "unknown")
         task_id = message_data.get("task_id", "unknown")

@@ -9,3 +9,4 @@ export { WorkflowBadge } from './WorkflowBadge';
 export { ModelSelector } from './ModelSelector';
 export { DelegationCard } from './DelegationCard';
 export { SimpleDelegation } from './SimpleDelegation';
+export { StreamNotifier } from './StreamNotifier';

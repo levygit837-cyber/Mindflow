@@ -5,7 +5,6 @@ from .core.common import LLMProvider
 
 # Agent schemas
 from .agents.analyst import AnalysisMode, AnalystOutput
-from .agents.creative import CreativeWorkType, PathEvaluation
 from .agents.research import IterationType, SourceType, QuestionType
 from .agents.security_guard import Severity, Exploitability, RemediationPriority
 
@@ -68,7 +67,6 @@ __all__ = [
     
     # Agents
     "AnalysisMode", "AnalystOutput",
-    "CreativeWorkType", "PathEvaluation", 
     "IterationType", "SourceType", "QuestionType",
     "Severity", "Exploitability", "RemediationPriority",
     

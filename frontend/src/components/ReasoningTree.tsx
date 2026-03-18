@@ -1,7 +1,3 @@
-// TODO: Add Markdown rendering for agent response content.
-// Currently displayed as raw text. Replace with react-markdown +
-// react-syntax-highlighter for code blocks, so LLM output renders
-// properly formatted with syntax highlighting.
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,6 +9,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import type { StreamEvent } from '../hooks/useOmniStream';
+import { RichText } from './common/RichText';
 
 interface ReasoningTreeProps {
   events: StreamEvent[];
@@ -105,15 +102,19 @@ const ReasoningTree: React.FC<ReasoningTreeProps> = ({ events }) => {
                 )}
                 {event.type}
               </div>
-              <div style={{ 
-                fontSize: '15px', 
-                color: event.type === 'thought' ? 'var(--text-secondary)' : 'var(--text-primary)',
-                fontFamily: event.type === 'thought' ? 'var(--font-mono)' : 'var(--font-sans)',
-                lineHeight: '1.6',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {formatData(event)}
-              </div>
+              {event.type === 'response' ? (
+                <RichText content={formatData(event)} className="reasoning-rich-text" />
+              ) : (
+                <div style={{ 
+                  fontSize: '15px', 
+                  color: event.type === 'thought' ? 'var(--text-secondary)' : 'var(--text-primary)',
+                  fontFamily: event.type === 'thought' ? 'var(--font-mono)' : 'var(--font-sans)',
+                  lineHeight: '1.6',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {formatData(event)}
+                </div>
+              )}
             </div>
           </motion.div>
         ))}

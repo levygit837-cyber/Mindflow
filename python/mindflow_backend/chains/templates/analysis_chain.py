@@ -267,7 +267,7 @@ class AnalysisChain:
         )
         
         tool_registry = create_default_registry(sandbox)
-        tools = [] if agent.sandbox == SandboxMode.NONE else tool_registry.get_tools_for_agent(agent.agent_type)
+        tools = [] if agent.sandbox == SandboxMode.NONE else tool_registry.get_tools_for_agent(agent)
 
         # Execute LLM call
         try:

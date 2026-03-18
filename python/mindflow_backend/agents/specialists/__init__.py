@@ -6,7 +6,7 @@ has been resolved - specialists now contain their own prompts and behaviors.
 
 Key concepts:
 - Specialists: Complete agent configurations with prompts, tools, and behaviors
-- Specialized variants: Specialized variants (e.g., security_guard, critic, creative)
+- Specialized variants: Specialized variants (e.g., security_guard, critic, brainstorm)
 - Dynamic prompts: Context-aware prompt generation
 - Orchestrator: Decides which specialist to use
 """
@@ -25,7 +25,6 @@ from mindflow_backend.agents.specialists.rule_engine import get_specialist_rule_
 from mindflow_backend.agents.specialists.specialists import (
     SecuritySpecialist,
     ReviewSpecialist,
-    CreativeSpecialist,
     ArchitectureSpecialist,
     BrainstormSpecialist,
     DeepAnalysisSpecialist,
@@ -40,7 +39,7 @@ from mindflow_backend.agents.specialists.factories import (
     create_security_agent,
     create_review_agent,
     create_architecture_agent,
-    create_creative_agent,
+    create_brainstorm_agent,
     create_deep_analysis_agent,
     ANALYST_SUB_PERSONALITIES,
     CODER_SUB_PERSONALITIES,
@@ -62,7 +61,6 @@ __all__ = [
     # Specialists
     "SecuritySpecialist",
     "ReviewSpecialist", 
-    "CreativeSpecialist",
     "ArchitectureSpecialist",
     "BrainstormSpecialist",
     "DeepAnalysisSpecialist",
@@ -75,7 +73,7 @@ __all__ = [
     "create_security_agent",
     "create_review_agent",
     "create_architecture_agent",
-    "create_creative_agent",
+    "create_brainstorm_agent",
     "create_deep_analysis_agent",
     "ANALYST_SUB_PERSONALITIES",
     "CODER_SUB_PERSONALITIES",

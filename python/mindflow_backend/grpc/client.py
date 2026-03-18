@@ -523,3 +523,12 @@ class LocalAgentClient:
             run_id=run_id,
         ):
             yield event
+
+    async def get_execution_status(self, *, execution_id: str) -> dict[str, Any]:
+        return await self._service.runtime.get_execution_status(execution_id)
+
+    async def pause_execution(self, *, execution_id: str) -> dict[str, Any]:
+        return await self._service.runtime.pause_execution(execution_id)
+
+    async def resume_execution(self, *, execution_id: str) -> dict[str, Any]:
+        return await self._service.runtime.mark_execution_resumed(execution_id)

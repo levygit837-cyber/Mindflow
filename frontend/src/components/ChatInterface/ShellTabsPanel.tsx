@@ -29,7 +29,14 @@ function stateTone(state: string) {
 }
 
 export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStreaming }) => {
-  const { tabs, isLoading, error, refresh } = useShellTabs(sessionId, isStreaming ? 1500 : 3500);
+  const { tabs, isLoading, error, refresh, isSupported } = useShellTabs(
+    sessionId,
+    isStreaming ? 1500 : 3500,
+  );
+
+  if (isSupported === false && tabs.length === 0) {
+    return null;
+  }
 
   return (
     <section className="event-shell w-full">
@@ -40,7 +47,7 @@ export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStr
       <div className="event-node-lab">
         <div className="event-header">
           <Terminal size={14} />
-          <span className="mono-label">shell tabs / session</span>
+          <span className="mono-label">shell tabs / delegated runtime</span>
           <span className="event-badge">{tabs.length}</span>
           <button
             type="button"
@@ -48,7 +55,7 @@ export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStr
             className="subtle-button"
             style={{ marginLeft: 'auto', minHeight: 28, paddingInline: 10 }}
           >
-            <RefreshCcw size={13} />
+              <RefreshCcw size={13} />
             <span className="mono-label">refresh</span>
           </button>
         </div>
@@ -64,10 +71,10 @@ export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStr
             }}
           >
             {error
-              ? `falha / ${error}`
+              ? `error / ${error}`
               : isLoading
-                ? 'carregando abas shell...'
-                : 'nenhuma aba shell registrada para esta sessão'}
+                ? 'loading shell tabs...'
+                : 'runtime trace is quiet for this session'}
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-3">
@@ -138,7 +145,7 @@ export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStr
                         lineHeight: 1.6,
                       }}
                     >
-                      {truncate(tab.stdout_buffer, 320) || 'sem saída'}
+                      {truncate(tab.stdout_buffer, 320) || 'no output'}
                     </pre>
                   </div>
 
@@ -155,7 +162,7 @@ export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStr
                         lineHeight: 1.6,
                       }}
                     >
-                      {truncate(tab.stderr_buffer, 320) || 'sem erros'}
+                      {truncate(tab.stderr_buffer, 320) || 'no errors'}
                     </pre>
                   </div>
                 </div>
@@ -167,4 +174,3 @@ export const ShellTabsPanel: React.FC<ShellTabsPanelProps> = ({ sessionId, isStr
     </section>
   );
 };
-

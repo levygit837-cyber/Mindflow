@@ -17,6 +17,13 @@ from pathlib import Path
 from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.agents.tools.security import (
+    WorkspaceSecurityError,
+    resolve_workspace_path,
+    resolve_workspace_root,
+    sanitize_environment,
+    validate_shell_command,
+)
 from mindflow_backend.schemas.tools.shell_tabs import (
     ShellTabContract,
     ShellTabSnapshot,
@@ -25,6 +32,16 @@ from mindflow_backend.schemas.tools.shell_tabs import (
 )
 
 _logger = get_logger(__name__)
+
+
+def _get_session_runtime_state_service():
+    try:
+        from mindflow_backend.services.core import get_session_runtime_state_service
+
+        return get_session_runtime_state_service()
+    except Exception as exc:
+        _logger.warning("shell_session_runtime_state_service_unavailable", error=str(exc))
+        return None
 
 
 class ShellTabService:
@@ -37,20 +54,37 @@ class ShellTabService:
         self._subscribers: dict[str, set[asyncio.Queue[dict[str, Any]]]] = defaultdict(set)
         self._max_buffer_chars = max_buffer_chars
         self._service_lock = asyncio.Lock()
+        self._runtime_state_service = None
 
     async def create_tab(
         self,
         session_id: str,
         cwd: str | None = None,
         title: str | None = None,
+        workspace_root: str | None = None,
+        read_only: bool = False,
+        secure_mode: bool = False,
     ) -> ShellTabContract:
-        resolved_cwd = str(Path(cwd or Path.cwd()).resolve())
+        await self._ensure_session_loaded(session_id)
+        try:
+            if workspace_root or secure_mode:
+                resolved_workspace = str(resolve_workspace_root(workspace_root))
+                resolved_cwd = str(resolve_workspace_path(cwd or resolved_workspace, resolved_workspace))
+            else:
+                resolved_workspace = str(resolve_workspace_root(workspace_root)) if workspace_root else None
+                resolved_cwd = str(Path(cwd or Path.cwd()).resolve())
+        except WorkspaceSecurityError as exc:
+            raise ValueError(f"cwd must remain inside the configured workspace: {exc}") from exc
+
         now = self._now()
         tab = ShellTabContract(
             tab_id=f"tab-{uuid.uuid4().hex[:10]}",
             session_id=session_id,
             cwd=resolved_cwd,
             title=title or Path(resolved_cwd).name or "shell-tab",
+            workspace_root=resolved_workspace,
+            read_only=read_only,
+            secure_mode=secure_mode,
             created_at=now,
             updated_at=now,
         )
@@ -58,18 +92,22 @@ class ShellTabService:
             self._tabs[session_id][tab.tab_id] = tab
             self._locks[(session_id, tab.tab_id)] = asyncio.Lock()
         _logger.info("shell_tab_created", session_id=session_id, tab_id=tab.tab_id, cwd=resolved_cwd)
+        await self._persist_session_state(session_id)
         await self._publish_event("shell_tab_created", tab)
         return tab.model_copy(deep=True)
 
     async def list_tabs(self, session_id: str) -> list[ShellTabContract]:
+        await self._ensure_session_loaded(session_id)
         tabs = self._tabs.get(session_id, {})
         return [tab.model_copy(deep=True) for tab in tabs.values()]
 
     async def get_tab_status(self, session_id: str, tab_id: str) -> ShellTabStatusResponse:
+        await self._ensure_session_loaded(session_id)
         tab = self._get_tab(session_id, tab_id)
         return self._to_status(tab)
 
     async def exec_in_tab(self, session_id: str, tab_id: str, command: str) -> ShellTabContract:
+        await self._ensure_session_loaded(session_id)
         key = (session_id, tab_id)
         lock = self._locks.setdefault(key, asyncio.Lock())
         async with lock:
@@ -77,11 +115,27 @@ class ShellTabService:
             if tab.state == ShellTabState.TERMINATED:
                 raise ValueError(f"Shell tab {tab_id} is terminated")
 
+            if tab.secure_mode:
+                validation_error = validate_shell_command(command, "read_only" if tab.read_only else "full")
+                if validation_error:
+                    now = self._now()
+                    tab.state = ShellTabState.FAILED
+                    tab.last_command = command
+                    tab.last_exit_code = 1
+                    tab.started_at = now
+                    tab.completed_at = now
+                    tab.updated_at = now
+                    tab.stderr_buffer = self._append_buffer(tab.stderr_buffer, f"{validation_error}\n")
+                    await self._persist_session_state(session_id)
+                    await self._publish_event("shell_tab_failed", tab)
+                    return tab.model_copy(deep=True)
+
             process = await asyncio.create_subprocess_shell(
                 command,
                 cwd=tab.cwd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=sanitize_environment(cwd=tab.cwd) if tab.secure_mode else None,
             )
 
             now = self._now()
@@ -115,6 +169,7 @@ class ShellTabService:
                 exit_code=process.returncode,
                 state=tab.state,
             )
+            await self._persist_session_state(session_id)
             await self._publish_event(
                 "shell_tab_completed" if process.returncode == 0 else "shell_tab_failed",
                 tab,
@@ -122,6 +177,7 @@ class ShellTabService:
             return tab.model_copy(deep=True)
 
     async def read_tab_buffer(self, session_id: str, tab_id: str) -> ShellTabSnapshot:
+        await self._ensure_session_loaded(session_id)
         tab = self._get_tab(session_id, tab_id)
         return ShellTabSnapshot(
             tab_id=tab.tab_id,
@@ -133,6 +189,7 @@ class ShellTabService:
         )
 
     async def close_tab(self, session_id: str, tab_id: str) -> ShellTabContract:
+        await self._ensure_session_loaded(session_id)
         key = (session_id, tab_id)
         tab = self._get_tab(session_id, tab_id)
         process = self._active_processes.pop(key, None)
@@ -155,6 +212,7 @@ class ShellTabService:
             tab.last_exit_code = process.returncode
 
         _logger.info("shell_tab_closed", session_id=session_id, tab_id=tab_id)
+        await self._persist_session_state(session_id)
         await self._publish_event("shell_tab_terminated", tab)
         return tab.model_copy(deep=True)
 
@@ -198,6 +256,83 @@ class ShellTabService:
         if tab_id not in session_tabs:
             raise ValueError(f"Shell tab not found: {tab_id}")
         return session_tabs[tab_id]
+
+    async def _ensure_session_loaded(self, session_id: str) -> None:
+        if self._tabs.get(session_id):
+            return
+
+        service = self._get_session_runtime_state_service()
+        if service is None:
+            return
+
+        try:
+            snapshot = await service.load_session_state(session_id)
+        except Exception as exc:
+            _logger.warning("shell_session_state_load_failed", session_id=session_id, error=str(exc))
+            return
+
+        if not snapshot:
+            return
+
+        shell_state = snapshot.get("shell_tabs")
+        if not isinstance(shell_state, dict):
+            return
+
+        tabs = shell_state.get("tabs")
+        if not isinstance(tabs, dict):
+            return
+
+        session_tabs = self._tabs[session_id]
+        for tab_id, tab_state in tabs.items():
+            tab_payload: Any
+            if isinstance(tab_state, dict) and "tab" in tab_state:
+                tab_payload = tab_state["tab"]
+            else:
+                tab_payload = tab_state
+
+            try:
+                tab = ShellTabContract.model_validate(tab_payload)
+            except Exception as exc:
+                _logger.warning(
+                    "shell_session_state_restore_failed",
+                    session_id=session_id,
+                    tab_id=tab_id,
+                    error=str(exc),
+                )
+                continue
+
+            session_tabs[tab_id] = tab
+            self._locks.setdefault((session_id, tab_id), asyncio.Lock())
+
+    async def _persist_session_state(self, session_id: str) -> None:
+        service = self._get_session_runtime_state_service()
+        if service is None:
+            return
+
+        session_tabs = self._tabs.get(session_id, {})
+        payload = {
+            "shell_tabs": {
+                "tabs": {
+                    tab_id: {
+                        "tab": tab.model_dump(mode="json"),
+                        "status": self._to_status(tab).model_dump(mode="json"),
+                    }
+                    for tab_id, tab in session_tabs.items()
+                }
+            }
+        }
+
+        try:
+            await service.save_session_state(session_id, payload)
+        except Exception as exc:
+            _logger.warning("shell_session_state_persist_failed", session_id=session_id, error=str(exc))
+
+    def _get_session_runtime_state_service(self):
+        if self._runtime_state_service is not None:
+            return self._runtime_state_service
+
+        self._runtime_state_service = _get_session_runtime_state_service()
+        return self._runtime_state_service
 
     def _append_buffer(self, current: str, addition: str) -> str:
         if not addition:

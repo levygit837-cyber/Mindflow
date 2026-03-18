@@ -42,10 +42,21 @@ from .task_memory.api import CrossTaskContextAPI, get_cross_task_api
 # Utils
 from mindflow_backend.utils.core import estimate_token_count
 
+_memory_facade = None
+
 
 def get_memory_service():
-    """Get the main memory service instance."""
-    return SessionMemoryService()
+    """Return the canonical MemoryFacade instance.
+
+    The facade exposes the three public methods defined in Phase 1:
+        record_message, recall, get_agent_snapshot.
+    """
+    global _memory_facade
+    from .facade import MemoryFacade
+
+    if _memory_facade is None:
+        _memory_facade = MemoryFacade()
+    return _memory_facade
 
 __all__ = [
     # Session Memory
@@ -85,4 +96,7 @@ __all__ = [
     # Utils
     "estimate_token_count",
     "get_memory_service",
+
+    # Canonical facade (Phase 1)
+    "MemoryFacade",
 ]

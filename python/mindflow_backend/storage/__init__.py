@@ -30,7 +30,12 @@ from .interfaces import (
 )
 
 # PostgreSQL - Primary Storage
-from .postgresql.connection import db_session, async_db_session
+try:
+    from .postgresql.connection import db_session, async_db_session
+except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test envs
+    db_session = None
+    async_db_session = None
+
 from .postgresql.models import (
     Base,
     AgentMemoryCursor,
@@ -43,11 +48,18 @@ from .postgresql.models import (
     BrowserInstance,
     ResearchFinding,
     ResearchSession,
+    SessionReview,
+    SessionReviewResult,
 )
-from .postgresql.repositories import (
-    ChatRepository,
-    NeuralRepository,
-)
+
+try:
+    from .postgresql.repositories import (
+        ChatRepository,
+        NeuralRepository,
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test envs
+    ChatRepository = None
+    NeuralRepository = None
 
 # KuzuDB - Vector Storage
 from .kuzudb.vector_store import KuzuDBVectorStore, KuzuDBVectorManager
@@ -109,6 +121,8 @@ __all__ = [
     "AgentMemoryWindow",
     "AgentMemoryFact",
     "ResearchSession",
+    "SessionReview",
+    "SessionReviewResult",
     "BrowserActionTrail",
     "ResearchFinding",
     "BrowserInstance",

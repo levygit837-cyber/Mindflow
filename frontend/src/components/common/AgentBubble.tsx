@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
+import { RichText } from './RichText';
 
 type AgentType =
   | 'orchestrator'
@@ -22,16 +23,16 @@ interface AgentBubbleProps {
   className?: string;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  orchestrator: 'root',
-  coder: 'build',
-  analyst: 'trace',
-  researcher: 'lookup',
-  architect: 'frame',
-  critic: 'audit',
-  creative: 'draft',
-  security: 'guard',
-  default: 'agent',
+const AGENT_ACCENTS: Record<string, string> = {
+  orchestrator: 'var(--signal-synapse)',
+  coder: '#8ac79d',
+  analyst: '#d1a957',
+  researcher: '#79c1d6',
+  architect: 'var(--signal-synapse)',
+  critic: '#c68ba6',
+  creative: '#b899e4',
+  security: '#93b1a4',
+  default: 'var(--signal-synapse)',
 };
 
 export const AgentBubble: React.FC<AgentBubbleProps> = ({
@@ -42,9 +43,12 @@ export const AgentBubble: React.FC<AgentBubbleProps> = ({
   model,
   className = '',
 }) => {
+  const accent = AGENT_ACCENTS[agentType] ?? AGENT_ACCENTS.default;
+
   return (
     <motion.section
       className={`event-shell w-full ${className}`}
+      data-model={model || undefined}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24, ease: 'easeOut' }}
@@ -53,46 +57,23 @@ export const AgentBubble: React.FC<AgentBubbleProps> = ({
         <span className="signal-dot" />
       </div>
 
-      <div className="event-node-lab">
-        <div className="event-header">
-          <span className="mono-label">{ROLE_LABELS[agentType] ?? ROLE_LABELS.default}</span>
-          <span className="event-title">
-            {agentName}
-          </span>
-
-          {model && (
-            <span className="event-badge">
-              <span style={{ color: 'var(--text-meta)' }}>model</span>
-              {model}
-            </span>
-          )}
-
-          <span
-            style={{
-              color: 'var(--text-meta)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              marginLeft: 'auto',
-            }}
-          >
+      <div
+        className="agent-thread"
+        style={
+          {
+            '--agent-accent': accent,
+          } as CSSProperties
+        }
+      >
+        <div className="agent-thread-header">
+          <span className="agent-thread-name">{agentName}</span>
+          <span className="agent-thread-time">
             {format(timestamp, 'HH:mm')}
           </span>
         </div>
 
-        <div className="event-expand">
-          <div
-            style={{
-              color: 'var(--text-secondary)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            --- {agentName}
-          </div>
-
-          <div className="event-inline-copy">{content}</div>
+        <div className="agent-thread-bubble">
+          <RichText content={content} className="agent-thread-copy" />
         </div>
       </div>
     </motion.section>

@@ -8,11 +8,16 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel, Field
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.grpc.monitoring.alerting import AlertSeverity, NotificationChannel, AlertConfig, AlertCondition
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
-router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+router = APIRouter(
+    prefix="/monitoring",
+    tags=["monitoring"],
+    dependencies=protected_route_dependencies,
+)
 
 
 class AlertConfigRequest(BaseModel):

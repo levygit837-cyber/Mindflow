@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
 from mindflow_backend.workers.infrastructure.queue_manager import get_queue_manager
 
 _logger = get_logger(__name__)
@@ -36,15 +37,23 @@ class AgentTask:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert task to dictionary for queue publishing."""
-        return {
-            "task_type": self.task_type,
-            "task_id": self.task_id,
-            "session_id": self.session_id,
-            "agent_type": self.agent_type,
-            "priority": self.priority,
-            "task_data": self.task_data,
-            "metadata": self.metadata,
-        }
+        envelope = QueueMessageEnvelope(
+            schema_version="1.0",
+            task_id=self.task_id,
+            task_type=self.task_type,
+            session_id=self.session_id,
+            correlation_id=self.task_id,
+            idempotency_key=self.task_id,
+            created_at=datetime.now(timezone.utc),
+            metadata={
+                **self.metadata,
+                "agent_type": self.agent_type,
+                "priority": self.priority,
+            },
+            payload=self.task_data,
+        )
+
+        return envelope.model_dump(mode="json")
 
 
 class AgentTaskDefinitions:

@@ -13,6 +13,69 @@ from mindflow_backend.schemas.core.common import LLMProvider
 _logger = get_logger(__name__)
 
 
+class ModelCapabilityError(ValueError):
+    """Raised when a model cannot satisfy required runtime capabilities."""
+
+
+_OLLAMA_UNSUPPORTED_TOOL_MODELS: frozenset[str] = frozenset(
+    {
+        "orch:latest",
+        "qwen3th:latest",
+        "qwen36:latest",
+    }
+)
+_OLLAMA_TOOL_MODEL_FALLBACKS: dict[str, str] = {
+    "orch:latest": "qwen3:8b",
+    "qwen3th:latest": "qwen3:8b",
+    "qwen36:latest": "qwen3:8b",
+}
+
+
+def _normalized_model(model: str) -> str:
+    return model.strip().lower()
+
+
+def _supports_tools(provider: LLMProvider, model: str) -> bool:
+    if provider != "ollama":
+        return True
+    return _normalized_model(model) not in _OLLAMA_UNSUPPORTED_TOOL_MODELS
+
+
+def ensure_tools_supported(
+    provider: LLMProvider,
+    model: str,
+    *,
+    tools_required: bool = False,
+) -> None:
+    """Raise when a requested model cannot satisfy tool binding requirements."""
+    if not tools_required:
+        return
+    if _supports_tools(provider, model):
+        return
+    raise ModelCapabilityError(f"{provider}/{model} does not support tools")
+
+
+def resolve_provider_model_for_tools(
+    provider: LLMProvider,
+    model: str,
+    *,
+    tools_required: bool = False,
+) -> tuple[LLMProvider, str]:
+    """Resolve a tool-capable provider/model pair when tools are required."""
+    if not tools_required:
+        return provider, model
+    if _supports_tools(provider, model):
+        return provider, model
+
+    if provider == "ollama":
+        fallback_model = _OLLAMA_TOOL_MODEL_FALLBACKS.get(_normalized_model(model))
+        if fallback_model:
+            return provider, fallback_model
+
+    ensure_tools_supported(provider, model, tools_required=True)
+    return provider, model
+
+
 def _normalized(value: str | None) -> str | None:
     if value is None:
         return None
@@ -249,42 +312,5 @@ def get_model_for_provider(
             model=model,
             base_url=base_url or settings.ollama_base_url,
         )
-
-    if provider == "codex":
-        from langchain_openai import ChatOpenAI
-        
-        # CodeX uses OpenAI-compatible API with custom base URL
-        codex_base_url = os.getenv("CODEX_API_URL", "https://api.openai.com/v1")
-        codex_api_key = api_key or os.getenv("CODEX_API_KEY")
-        codex_organization = os.getenv("CODEX_ORGANIZATION")  # Business account support
-        
-        if not codex_api_key:
-            raise ValueError("CODEX_API_KEY environment variable is required for CodeX provider")
-            
-        kwargs = {
-            "model": model,
-            "api_key": codex_api_key,
-            "base_url": codex_base_url,
-            "timeout": 60,
-            "max_retries": 3,
-        }
-        
-        # Add organization for business accounts
-        if codex_organization:
-            kwargs["organization"] = codex_organization
-            _logger.info("codex_organization_configured", organization=codex_organization)
-        
-        # Use CodeX 5.4 as default model if not specified
-        if model == "default" or model == "codex":
-            kwargs["model"] = "gpt-5.4"
-        
-        _logger.info(
-            "codex_provider_initialized",
-            model=kwargs["model"],
-            base_url=codex_base_url,
-            organization=codex_organization or "none"
-        )
-        
-        return ChatOpenAI(**kwargs)
 
     raise ValueError(f"Unknown provider: {provider}")

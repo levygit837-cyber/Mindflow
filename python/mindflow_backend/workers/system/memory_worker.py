@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any, Dict
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
 from mindflow_backend.workers.config.queues import QueueConfig
+from mindflow_backend.workers.system.consumers.memory_consumer import MemoryTaskConsumer
 
 _logger = get_logger(__name__)
 
@@ -18,12 +20,14 @@ class MemoryWorker(BaseWorker):
     def __init__(self, queue_config: QueueConfig) -> None:
         """Initialize the Memory worker."""
         super().__init__(queue_config, worker_name="memory_worker")
+        self._memory_consumer = MemoryTaskConsumer()
     
     async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
         """Process memory management tasks.
         
         Supported task types:
         - memory_cleanup: Clean up old or unused memory data
+        - memory.message.recorded: Persist chat memory and embedding asynchronously
         - storage_optimization: Optimize storage usage
         - cache_management: Manage cache data and policies
         - data_archival: Archive old data to long-term storage
@@ -31,13 +35,16 @@ class MemoryWorker(BaseWorker):
         - memory_monitoring: Monitor memory usage and patterns
         """
         start_time = time.time()
+        message_data = self._normalize_message_data(message_data)
         task_type = message_data.get("task_type", "unknown")
         task_id = message_data.get("task_id", "unknown")
         
         try:
             _logger.info(f"MemoryWorker processing {task_type} task {task_id}")
             
-            if task_type == "memory_cleanup":
+            if task_type in {"memory.message.recorded", "message_recorded"}:
+                result = await self._handle_message_recorded(message_data)
+            elif task_type == "memory_cleanup":
                 result = await self._handle_memory_cleanup(message_data)
             elif task_type == "storage_optimization":
                 result = await self._handle_storage_optimization(message_data)
@@ -74,6 +81,15 @@ class MemoryWorker(BaseWorker):
                 error=e,
                 processing_time=time.time() - start_time,
             )
+
+    async def _handle_message_recorded(self, message_data: Dict[str, Any]) -> WorkerResult:
+        """Handle queued memory persistence for recorded chat messages."""
+        result = await self._memory_consumer.consume_message_recorded(message_data)
+        return WorkerResult(
+            success=True,
+            message="Memory message recorded successfully",
+            data=result,
+        )
     
     async def _handle_memory_cleanup(self, message_data: Dict[str, Any]) -> WorkerResult:
         """Handle cleanup of old or unused memory data."""

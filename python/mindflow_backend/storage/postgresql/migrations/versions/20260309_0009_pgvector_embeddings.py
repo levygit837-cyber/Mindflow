@@ -27,55 +27,90 @@ VECTOR_DIM = 768
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+
     # ------------------------------------------------------------------
-    # 1. Enable pgvector extension
+    # 1. Enable pgvector extension (no-op if already installed)
     # ------------------------------------------------------------------
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     # ------------------------------------------------------------------
     # 2. agent_memory_embeddings: JSON → vector(768)
     # ------------------------------------------------------------------
-    op.execute(
-        f"ALTER TABLE agent_memory_embeddings ADD COLUMN vector_v2 vector({VECTOR_DIM})"
-    )
-    # Backfill rows whose JSON array has exactly VECTOR_DIM elements
-    op.execute(
-        f"""
-        UPDATE agent_memory_embeddings
-           SET vector_v2 = vector::text::vector
-         WHERE vector IS NOT NULL
-           AND json_typeof(vector::json) = 'array'
-           AND json_array_length(vector::json) = {VECTOR_DIM}
-        """
-    )
-    op.drop_column("agent_memory_embeddings", "vector")
-    op.execute("ALTER TABLE agent_memory_embeddings RENAME COLUMN vector_v2 TO vector")
-    op.execute(
-        "CREATE INDEX ix_agent_memory_embeddings_vector "
-        "ON agent_memory_embeddings USING hnsw (vector vector_cosine_ops)"
-    )
+    if "agent_memory_embeddings" in existing_tables:
+        existing_cols = {c["name"] for c in inspector.get_columns("agent_memory_embeddings")}
+
+        # Skip if vector column already migrated (vector_v2 doesn't exist and
+        # the current 'vector' column is already a native vector type — i.e.
+        # this migration was applied before).
+        if "vector_v2" not in existing_cols and "vector" not in existing_cols:
+            pass  # nothing to migrate
+        elif "vector_v2" not in existing_cols and "vector" in existing_cols:
+            # Need to add temp column and migrate
+            op.execute(
+                f"ALTER TABLE agent_memory_embeddings ADD COLUMN vector_v2 vector({VECTOR_DIM})"
+            )
+            # Backfill rows whose JSON array has exactly VECTOR_DIM elements
+            op.execute(
+                f"""
+                UPDATE agent_memory_embeddings
+                   SET vector_v2 = vector::text::vector
+                 WHERE vector IS NOT NULL
+                   AND json_typeof(vector::json) = 'array'
+                   AND json_array_length(vector::json) = {VECTOR_DIM}
+                """
+            )
+            op.drop_column("agent_memory_embeddings", "vector")
+            op.execute("ALTER TABLE agent_memory_embeddings RENAME COLUMN vector_v2 TO vector")
+            op.execute(
+                "CREATE INDEX IF NOT EXISTS ix_agent_memory_embeddings_vector "
+                "ON agent_memory_embeddings USING hnsw (vector vector_cosine_ops)"
+            )
+        elif "vector_v2" in existing_cols:
+            # Resume an interrupted migration: drop old JSON col, finish rename
+            if "vector" in existing_cols:
+                op.drop_column("agent_memory_embeddings", "vector")
+            op.execute("ALTER TABLE agent_memory_embeddings RENAME COLUMN vector_v2 TO vector")
+            op.execute(
+                "CREATE INDEX IF NOT EXISTS ix_agent_memory_embeddings_vector "
+                "ON agent_memory_embeddings USING hnsw (vector vector_cosine_ops)"
+            )
 
     # ------------------------------------------------------------------
     # 3. session_embeddings: JSON → vector(768)
     # ------------------------------------------------------------------
-    op.execute(
-        f"ALTER TABLE session_embeddings ADD COLUMN embedding_v2 vector({VECTOR_DIM})"
-    )
-    op.execute(
-        f"""
-        UPDATE session_embeddings
-           SET embedding_v2 = embedding::text::vector
-         WHERE embedding IS NOT NULL
-           AND json_typeof(embedding::json) = 'array'
-           AND json_array_length(embedding::json) = {VECTOR_DIM}
-        """
-    )
-    op.drop_column("session_embeddings", "embedding")
-    op.execute("ALTER TABLE session_embeddings RENAME COLUMN embedding_v2 TO embedding")
-    op.execute(
-        "CREATE INDEX ix_session_embeddings_embedding "
-        "ON session_embeddings USING hnsw (embedding vector_cosine_ops)"
-    )
+    if "session_embeddings" in existing_tables:
+        se_cols = {c["name"] for c in inspector.get_columns("session_embeddings")}
+        if "embedding_v2" in se_cols:
+            # Resume interrupted migration
+            if "embedding" in se_cols:
+                op.drop_column("session_embeddings", "embedding")
+            op.execute("ALTER TABLE session_embeddings RENAME COLUMN embedding_v2 TO embedding")
+            op.execute(
+                "CREATE INDEX IF NOT EXISTS ix_session_embeddings_embedding "
+                "ON session_embeddings USING hnsw (embedding vector_cosine_ops)"
+            )
+        elif "embedding" in se_cols:
+            op.execute(
+                f"ALTER TABLE session_embeddings ADD COLUMN embedding_v2 vector({VECTOR_DIM})"
+            )
+            op.execute(
+                f"""
+                UPDATE session_embeddings
+                   SET embedding_v2 = embedding::text::vector
+                 WHERE embedding IS NOT NULL
+                   AND json_typeof(embedding::json) = 'array'
+                   AND json_array_length(embedding::json) = {VECTOR_DIM}
+                """
+            )
+            op.drop_column("session_embeddings", "embedding")
+            op.execute("ALTER TABLE session_embeddings RENAME COLUMN embedding_v2 TO embedding")
+            op.execute(
+                "CREATE INDEX IF NOT EXISTS ix_session_embeddings_embedding "
+                "ON session_embeddings USING hnsw (embedding vector_cosine_ops)"
+            )
 
     # ------------------------------------------------------------------
     # 4. Drop session_chunks table and chunk tracking cursor columns
@@ -84,11 +119,18 @@ def upgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_session_chunks_chunk_type")
     op.execute("DROP INDEX IF EXISTS ix_session_chunks_agent_id")
     op.execute("DROP INDEX IF EXISTS ix_session_chunks_session_id")
-    op.drop_table("session_chunks")
+    if "session_chunks" in existing_tables:
+        op.drop_table("session_chunks")
 
-    op.drop_column("agent_memory_cursor", "tokens_since_chunk")
-    op.drop_column("agent_memory_cursor", "last_chunked_event_id")
-    op.drop_column("agent_memory_cursor", "chunk_sequence")
+    cursor_columns = {
+        column["name"] for column in inspector.get_columns("agent_memory_cursor")
+    }
+    if "tokens_since_chunk" in cursor_columns:
+        op.drop_column("agent_memory_cursor", "tokens_since_chunk")
+    if "last_chunked_event_id" in cursor_columns:
+        op.drop_column("agent_memory_cursor", "last_chunked_event_id")
+    if "chunk_sequence" in cursor_columns:
+        op.drop_column("agent_memory_cursor", "chunk_sequence")
 
 
 def downgrade() -> None:

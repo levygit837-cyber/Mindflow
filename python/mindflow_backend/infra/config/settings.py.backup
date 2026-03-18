@@ -74,8 +74,8 @@ class Settings(BaseSettings):
     auth_token_expiry_hours: int = Field(default=24, alias="AUTH_TOKEN_EXPIRY_HOURS")
 
     # AI/ML Configuration
-    default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
-    default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")
+    default_provider: str = Field(default="google", alias="DEFAULT_PROVIDER")
+    default_model: str = Field(default="gemini-3.1-flash-lite-preview", alias="DEFAULT_MODEL")
     enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
     
     # Memory Configuration

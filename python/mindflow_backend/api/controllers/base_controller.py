@@ -81,12 +81,12 @@ class BaseController:
         
         return session_id
     
-    def log_request(self, request: Request, operation: str, **kwargs) -> None:
+    def log_request(self, request: Request | None, operation: str, **kwargs) -> None:
         """Log API request with context."""
         self.logger.info(
             f"API request: {operation}",
-            path=request.url.path,
-            method=request.method,
+            path=request.url.path if request is not None else None,
+            method=request.method if request is not None else None,
             **kwargs
         )
 

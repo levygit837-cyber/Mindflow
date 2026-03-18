@@ -11,13 +11,19 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
+from mindflow_backend.api.dependencies.security import require_admin
 from mindflow_backend.grpc.config import GrpcConfig
 from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
 from mindflow_backend.grpc.config.profiles import get_environment_loader
 from mindflow_backend.grpc.config.features import get_feature_toggles
 from mindflow_backend.infra.logging import get_logger
 
-router = APIRouter(prefix="/config", tags=["Configuration"])
+router = APIRouter(
+    prefix="/config",
+    tags=["Configuration"],
+    dependencies=protected_route_dependencies,
+)
 _logger = get_logger(__name__)
 
 
@@ -83,7 +89,8 @@ async def get_current_configuration(
 @router.put("/")
 async def update_configuration(
     request: ConfigurationUpdateRequest,
-    config_manager=Depends(get_config_manager_dependency())
+    config_manager=Depends(get_config_manager_dependency()),
+    _role: str = Depends(require_admin),
 ) -> Dict[str, Any]:
     """Update gRPC configuration dynamically."""
     try:
@@ -157,7 +164,8 @@ async def get_configuration_history(
 
 @router.post("/reload")
 async def reload_configuration(
-    config_manager=Depends(get_config_manager_dependency())
+    config_manager=Depends(get_config_manager_dependency()),
+    _role: str = Depends(require_admin),
 ) -> Dict[str, Any]:
     """Trigger configuration reload from storage."""
     try:
@@ -177,7 +185,8 @@ async def reload_configuration(
 @router.post("/rollback/{version}")
 async def rollback_configuration(
     version: str,
-    config_manager=Depends(get_config_manager_dependency())
+    config_manager=Depends(get_config_manager_dependency()),
+    _role: str = Depends(require_admin),
 ) -> Dict[str, Any]:
     """Rollback configuration to a specific version."""
     try:
@@ -232,7 +241,8 @@ async def get_feature_flags(
 async def update_feature_flag(
     flag_name: str,
     request: FeatureFlagRequest,
-    config_manager=Depends(get_config_manager_dependency())
+    config_manager=Depends(get_config_manager_dependency()),
+    _role: str = Depends(require_admin),
 ) -> Dict[str, Any]:
     """Update a specific feature flag."""
     try:
@@ -317,7 +327,8 @@ async def get_environment_profiles() -> Dict[str, Any]:
 async def apply_environment_profile(
     profile_name: str,
     request: ProfileApplyRequest,
-    config_manager=Depends(get_config_manager_dependency())
+    config_manager=Depends(get_config_manager_dependency()),
+    _role: str = Depends(require_admin),
 ) -> Dict[str, Any]:
     """Apply an environment profile."""
     try:

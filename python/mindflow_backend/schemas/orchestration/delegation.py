@@ -99,11 +99,15 @@ class DelegationTask(BaseModel):
     )
     priority: Priority = Priority.NORMAL
     tools: list[ToolScope] = Field(default_factory=list)
+    root_dir: str | None = Field(
+        default=None,
+        description="Working directory for filesystem tools (propagated from the calling orchestrator).",
+    )
     context_continuity: ContextContinuity = ContextContinuity.MAINTAIN
     max_iterations: int = Field(
         default=1,
         ge=1,
-        le=10,
+        le=100,
         description="How many iteration rounds the agent may perform.",
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

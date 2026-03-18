@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -25,6 +26,8 @@ from mindflow_backend.infra.logging import configure_logging, get_logger
 from mindflow_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
 from mindflow_backend.infra.middleware.request_context import RequestContextMiddleware
 from mindflow_backend.infra.middleware.security_headers import SecurityHeadersMiddleware
+from mindflow_backend.api.middleware.content_negotiation import ContentNegotiationMiddleware
+from mindflow_backend.api.middleware.error_handler import ErrorHandlerMiddleware
 from mindflow_backend.api.middleware.validation import ValidationMiddleware
 from mindflow_backend.api.middleware.performance import PerformanceMiddleware
 from mindflow_backend.api.middleware.caching import AdvancedCacheMiddleware, MemoryCacheBackend
@@ -59,6 +62,16 @@ async def lifespan(app: FastAPI):
         _logger.info("database_initialized")
     except Exception as exc:
         _logger.error("database_initialization_failed", error=str(exc))
+
+    if settings.memory_enabled:
+        try:
+            from mindflow_backend.memory.shared.embeddings.factory import (
+                startup_validate_embedding_provider,
+            )
+
+            await startup_validate_embedding_provider()
+        except Exception as exc:
+            _logger.warning("embedding_provider_startup_validation_failed", error=str(exc))
 
     # Initialize dynamic configuration system
     config_manager = await get_config_manager()
@@ -143,6 +156,10 @@ app.add_middleware(
     expose_headers=cors_expose_headers,
 )
 
+trusted_hosts = settings.get_trusted_hosts_list()
+if trusted_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+
 app.include_router(router)
 
 # Add SlowAPI middleware for rate limiting (add first)
@@ -152,10 +169,29 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(PerformanceMiddleware, cache_ttl=300, max_cache_size=1000)
 
 # Security and validation middleware
-app.add_middleware(ValidationMiddleware)
+app.add_middleware(ErrorHandlerMiddleware, debug=settings.app_env != "production")
+app.add_middleware(ContentNegotiationMiddleware)
+app.add_middleware(ValidationMiddleware, enable_in_memory_rate_limit=False)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(RequestContextMiddleware)
+
+# HTTPS enforcement: redirect HTTP→HTTPS in production when behind a proxy.
+# Requires SECURITY_TRUST_PROXY_HEADERS=true and a trusted proxy that sets
+# X-Forwarded-Proto.  No-op in development.
+if settings.app_env == "production" and settings.security_trust_proxy_headers:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import RedirectResponse
+
+    class _HttpsRedirectMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            proto = request.headers.get("x-forwarded-proto", "https")
+            if proto == "http":
+                url = request.url.replace(scheme="https")
+                return RedirectResponse(url=str(url), status_code=301)
+            return await call_next(request)
+
+    app.add_middleware(_HttpsRedirectMiddleware)
 
 
 @app.get("/health")

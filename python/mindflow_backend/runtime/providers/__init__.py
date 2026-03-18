@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from mindflow_backend.runtime.providers.providers import get_model_for_provider
+from mindflow_backend.runtime.providers.providers import (
+    ModelCapabilityError,
+    ensure_tools_supported,
+    get_model_for_provider,
+    resolve_provider_model_for_tools,
+)
 
-__all__ = ["get_model_for_provider"]
-
+__all__ = [
+    "ModelCapabilityError",
+    "ensure_tools_supported",
+    "get_model_for_provider",
+    "resolve_provider_model_for_tools",
+]

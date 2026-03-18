@@ -8,13 +8,18 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel, Field
 
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.grpc.config import get_config_manager
 from mindflow_backend.grpc.performance.compression.compressor import CompressionAlgorithm
 from mindflow_backend.grpc.performance.caching.cache import CacheEvictionPolicy
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
-router = APIRouter(prefix="/performance", tags=["performance"])
+router = APIRouter(
+    prefix="/performance",
+    tags=["performance"],
+    dependencies=protected_route_dependencies,
+)
 
 
 class CompressionConfigRequest(BaseModel):

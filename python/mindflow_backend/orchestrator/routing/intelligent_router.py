@@ -28,8 +28,102 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
 )
 from mindflow_backend.schemas.orchestration.workflow import WorkflowRouteDecision
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
+from mindflow_backend.agents.specialists.runtime_policy import (
+    get_agent_runtime_policy,
+    list_agent_runtime_policies,
+)
 
 _logger = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Static capability descriptions for each agent_id (role or role:specialist).
+# These are used to build the dynamic routing prompt at request time.
+# ---------------------------------------------------------------------------
+
+_AGENT_CAPABILITIES: dict[str, tuple[str, str]] = {
+    policy.agent_id: (policy.summary, policy.use_when)
+    for policy in list_agent_runtime_policies()
+}
+
+
+def _build_available_agents_section() -> str:
+    """Build dynamic agent roster section for the routing prompt.
+
+    Reads from the global registry and generates a formatted description
+    of all available agents and specialists. Falls back to a static list
+    if the registry is not yet populated.
+    """
+    try:
+        from mindflow_backend.agents._registry import get_registry
+        registry = get_registry()
+        agents = registry.list_all()
+    except Exception:
+        agents = []
+
+    if not agents:
+        # Fallback — registry not yet initialized
+        return (
+            "### Base Agents (always available)\n"
+            "- **ANALYST** — Code investigation, explaining, tracing | default for most tasks\n"
+            "- **CODER** — Code writing, fixing, refactoring\n"
+            "- **RESEARCHER** — Web search, documentation lookup\n"
+            "- **ORCHESTRATOR** — Direct response for greetings only\n"
+            "\n### Registered Specialists\n"
+            "- `arch_tech` (CODER) — Architecture design\n"
+            "- `security_guard` (ANALYST) — Security audits\n"
+            "- `critic` (ANALYST) — Code review\n"
+            "- `brainstorm` (ANALYST) — Idea generation and alternatives exploration\n"
+            "- `deep_iteration` (ANALYST) — Deep exhaustive analysis\n"
+        )
+
+    base_agents = [a for a in agents if a.specialist is None]
+    specialist_agents = [a for a in agents if a.specialist is not None]
+
+    lines = ["### Base Agents (always available)"]
+    for agent in base_agents:
+        caps = _AGENT_CAPABILITIES.get(agent.agent_id, ("General purpose agent", "General tasks"))
+        lines.append(
+            f"- **{agent.agent_role.value.upper()}** — {caps[0]}\n"
+            f"  ↳ Use when: {caps[1]}"
+        )
+
+    if specialist_agents:
+        lines.append("\n### Registered Specialists (set recommended_specialist + base agent)")
+        for agent in specialist_agents:
+            caps = _AGENT_CAPABILITIES.get(agent.agent_id, ("Domain specialist", "Domain-specific tasks"))
+            base = agent.agent_role.value.upper()
+            spec = agent.specialist.value
+            lines.append(
+                f"- `{spec}` (base: {base}) — {caps[0]}\n"
+                f"  ↳ Use when: {caps[1]}"
+            )
+
+    return "\n".join(lines)
+
+
+def _get_valid_agent_and_specialist_values() -> tuple[str, str]:
+    """Return pipe-separated valid values for recommended_agent and recommended_specialist.
+
+    Used to make the JSON format hint in the routing prompt dynamic.
+    Falls back to static defaults if registry is unavailable.
+    """
+    try:
+        from mindflow_backend.agents._registry import get_registry
+        registry = get_registry()
+        agents = registry.list_all()
+    except Exception:
+        agents = []
+
+    if not agents:
+        return (
+            "CODER|ANALYST|RESEARCHER|ORCHESTRATOR",
+            "security_guard|critic|arch_tech|brainstorm|deep_iteration|null",
+        )
+
+    base_roles = sorted({a.agent_role.value.upper() for a in agents if a.specialist is None})
+    specialists = sorted(a.specialist.value for a in agents if a.specialist is not None)
+
+    return "|".join(base_roles), "|".join(specialists) + "|null"
 
 
 class IntentAnalysis(BaseModel):
@@ -86,6 +180,9 @@ class IntelligentRouter:
     ) -> IntentAnalysis:
         """Use LLM to analyze user intent and decide execution strategy."""
 
+        available_agents_section = _build_available_agents_section()
+        valid_agents_str, valid_specialists_str = _get_valid_agent_and_specialist_values()
+
         analysis_prompt = f"""You are the MindFlow Orchestrator routing engine. Classify the user request into EXACTLY ONE execution strategy.
 
 User Request: {message}
@@ -94,7 +191,13 @@ Session Context: {session_context if session_context else "No previous context"}
 Workspace Root: {folder_path if folder_path else "No folder_path provided"}
 Has Workspace Root: {str(has_folder_path).lower()}
 
-## Strategy Selection Rules (strictly in priority order)
+## Step 1 — Analyze Available Agents
+
+IMPORTANT: Before choosing an agent, read the full roster below carefully and reason about which agent best matches the task. Do NOT assume a fixed set of agents — always route based on what is registered here.
+
+{available_agents_section}
+
+## Step 2 — Choose Execution Strategy (strictly in priority order)
 
 ### 1. direct_response — EXTREMELY RARE. Only these exact cases qualify:
 - Pure greetings: "hi", "hello", "oi", "olá", "tudo bem?"
@@ -102,10 +205,7 @@ Has Workspace Root: {str(has_folder_path).lower()}
 - Ask who you are: "who are you?", "quem é você?"
 - NO other case qualifies. If the user asks anything that requires thinking, answering, explaining, coding, or researching → DO NOT use direct_response.
 
-### 2. single_agent — DEFAULT for almost everything. Use when ONE specialist can handle it alone:
-- **ANALYST** → Understanding, explaining, tracing, auditing ANY existing code or system; "how does X work"; "why does X fail"; "explain Y"; "what is Z"; "como funciona"; "por que"; "explica". Also handles general knowledge questions and conversational chat that requires reasoning.
-- **CODER** → Write, create, fix, refactor, implement, modify code; create tests; make code changes.
-- **RESEARCHER** → Web search, docs lookup, external information, "search for X", "find documentation on Y".
+### 2. single_agent — DEFAULT for almost everything. Use when ONE agent from the roster above can handle it alone. Match the task to the agent whose capabilities and "Use when" description best fit.
 
 ### 3. chain — Only when the task EXPLICITLY requires multiple distinct phases:
 | chain_id | Use when |
@@ -113,6 +213,17 @@ Has Workspace Root: {str(has_folder_path).lower()}
 | coding_task | Must read context AND write code (e.g., "implement feature X based on existing patterns") |
 | analysis_task | Must research AND synthesize (e.g., "compare A and B then recommend") |
 | file_analysis | User has set a folder_path and wants files analyzed, mapped, explained, audited, or traced |
+
+## Step 3 — Select Specialist (if applicable)
+
+Set `recommended_specialist` ONLY when the task clearly matches a registered specialist in the roster above. Leave it `null` if no specialist is a clear fit. Only use specialist names that appear in the roster — do NOT invent names.
+
+Specialist routing examples (based on the registered roster):
+- "design a arquitetura do sistema de pagamentos" → single_agent, CODER, recommended_specialist: "arch_tech"
+- "audita a segurança do sistema de auth" → single_agent, ANALYST, recommended_specialist: "security_guard"
+- "revisa este código e aponta problemas" → single_agent, ANALYST, recommended_specialist: "critic"
+- "brainstorm ideias para melhorar a performance" → single_agent, ANALYST, recommended_specialist: "brainstorm"
+- "pense em alternativas para resolver X" → single_agent, ANALYST, recommended_specialist: "brainstorm"
 
 ## Decision Examples
 - "hello" → direct_response, ORCHESTRATOR
@@ -141,8 +252,8 @@ Has Workspace Root: {str(has_folder_path).lower()}
     "needs_code_context": false,
     "context_needed": "",
     "suggested_scope": [],
-    "recommended_agent": "CODER|ANALYST|RESEARCHER|ORCHESTRATOR",
-    "recommended_specialist": "security_guard|critic|arch_tech|brainstorm|null",
+    "recommended_agent": "{valid_agents_str}",
+    "recommended_specialist": "{valid_specialists_str}",
     "formulated_objective": "precise objective for the specialist (empty if direct_response)",
     "confidence": 0.9,
     "is_multi_agent": false,
@@ -153,7 +264,8 @@ Has Workspace Root: {str(has_folder_path).lower()}
 STRICT RULES:
 - "ORCHESTRATOR" as recommended_agent ONLY when execution_strategy is "direct_response"
 - When in doubt → single_agent + ANALYST (never direct_response for doubt cases)
-- "direct_response" is reserved for the ~5% of messages that are pure social interaction"""
+- "direct_response" is reserved for the ~5% of messages that are pure social interaction
+- Only use agent names and specialist names that appear in the registered roster above"""
 
         try:
             llm = get_model_for_provider(
@@ -260,7 +372,7 @@ STRICT RULES:
                 thinking=ThinkingLevel.MEDIUM,
                 priority=Priority.NORMAL,
                 execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
-                tools=[],
+                tools=self._get_tools_for_agent(AgentType.ORCHESTRATOR),
                 confidence=intent.confidence,
             )
 
@@ -278,7 +390,7 @@ STRICT RULES:
                 specialist=specialist,
                 task=intent.formulated_objective or intent.user_intent or message,
                 thinking=ThinkingLevel.HIGH,
-                tools=self._get_tools_for_agent(target_role),
+                tools=self._get_tools_for_agent(target_role, specialist),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.CHAIN,
                 confidence=intent.confidence,
@@ -297,7 +409,7 @@ STRICT RULES:
                 specialist=specialist,
                 task=intent.formulated_objective or intent.user_intent or message,
                 thinking=ThinkingLevel.HIGH,
-                tools=self._get_tools_for_agent(target_role),
+                tools=self._get_tools_for_agent(target_role, specialist),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.GRAPH,
                 confidence=intent.confidence,
@@ -325,7 +437,7 @@ STRICT RULES:
             specialist=specialist,
             task=intent.formulated_objective or message,
             thinking=ThinkingLevel.HIGH,
-            tools=self._get_tools_for_agent(target_agent),
+            tools=self._get_tools_for_agent(target_agent, specialist),
             priority=Priority.NORMAL,
             execution_strategy=ExecutionStrategy.SINGLE_AGENT,
             confidence=intent.confidence,
@@ -351,15 +463,14 @@ STRICT RULES:
             folder_path=folder_path,
         )
 
-    def _get_tools_for_agent(self, agent_type: AgentType) -> list[ToolScope]:
-        """Get appropriate tool scopes for an agent type."""
-        tool_mapping = {
-            AgentType.CODER: [ToolScope.FILESYSTEM, ToolScope.SHELL],
-            AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
-            AgentType.RESEARCHER: [ToolScope.WEB_SEARCH],
-            AgentType.ORCHESTRATOR: [],
-        }
-        return tool_mapping.get(agent_type, [])
+    def _get_tools_for_agent(
+        self,
+        agent_type: AgentType,
+        specialist: SpecialistType | None = None,
+    ) -> list[ToolScope]:
+        """Get tool scopes from the canonical runtime policy."""
+        policy = get_agent_runtime_policy(agent_type, specialist=specialist)
+        return list(policy.tools)
 
 
 # Global router instance

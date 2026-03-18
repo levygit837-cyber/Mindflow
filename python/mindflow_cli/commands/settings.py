@@ -68,10 +68,10 @@ def register_settings_commands(app: typer.Typer) -> None:
         api_url = settings.get("api_url", os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000"))
         console.print(f"  Base URL: {api_url}")
         
-        default_provider = settings.get("default_provider", "vertexai")
+        default_provider = settings.get("default_provider", "google")
         console.print(f"  Default Provider: {default_provider}")
-        
-        default_model = settings.get("default_model", "gemini-3-flash")
+
+        default_model = settings.get("default_model", "gemini-3.1-flash-lite-preview")
         console.print(f"  Default Model: {default_model}")
         
         console.print(f"[bold]🤖 Agent Configuration:[/]")
@@ -163,8 +163,8 @@ def register_settings_commands(app: typer.Typer) -> None:
         # Default settings
         default_settings = {
             "api_url": os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000"),
-            "default_provider": "vertexai",
-            "default_model": "gemini-3-flash",
+            "default_provider": "google",
+            "default_model": "gemini-3.1-flash-lite-preview",
             "default_agent": "auto",
             "auto_orchestrate": True,
             "debug_mode": False,

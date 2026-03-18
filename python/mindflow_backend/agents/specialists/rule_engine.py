@@ -98,7 +98,7 @@ class SpecialistRuleEngine(RuleEngine):
         try:
             rule_config = RuleConfig(
                 name=rule["name"],
-                target_personality=SpecialistType(rule["target_personality"]),
+                target_specialist=SpecialistType(rule["target_specialist"]),
                 priority=rule.get("priority", 10),
                 confidence_boost=rule.get("confidence_boost", 0.0),
                 description=rule.get("description", ""),
@@ -170,7 +170,7 @@ class SpecialistRuleEngine(RuleEngine):
             confidence = min(0.5 + rule.confidence_boost + (score / 10), 1.0)
             
             return SpecialistCandidate(
-                specialist=rule.target_personality,
+                specialist=rule.target_specialist,
                 rule_name=rule.name,
                 confidence=confidence,
                 reason=self._generate_reason(rule, score, description_lower),
@@ -224,7 +224,7 @@ class SpecialistRuleEngine(RuleEngine):
         # Count by specialist
         specialist_counts = {}
         for rule in all_rules:
-            specialist = rule.target_personality
+            specialist = rule.target_specialist
             specialist_counts[specialist] = specialist_counts.get(specialist, 0) + 1
         
         # Count by priority

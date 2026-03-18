@@ -23,6 +23,7 @@ import { useOmniStream } from '../hooks/useOmniStream';
 import type { StreamEvent } from '../hooks/useOmniStream';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useAppStore } from '../stores/appStore';
+import { normalizeProvider, resolveModelForProvider } from '../utils/llm';
 import ReasoningTree from './ReasoningTree';
 
 const AGENTS = [
@@ -39,7 +40,9 @@ const BASE_URL = 'http://localhost:8000';
 
 const AgentDashboard: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
-  const { setActiveAgent: setActiveAgentStore, activeAgent } = useAppStore();
+  const { setActiveAgent: setActiveAgentStore, activeAgent, settings } = useAppStore();
+  const selectedProvider = normalizeProvider(settings.provider);
+  const selectedModel = resolveModelForProvider(selectedProvider, settings.model);
   
   const { 
     sessions, 
@@ -112,6 +115,8 @@ const AgentDashboard: React.FC = () => {
     startStream({
       message: inputValue,
       session_id: sessionId,
+      provider: selectedProvider,
+      model: selectedModel,
       agent: (activeAgent || 'coder').toUpperCase(),
       orchestrate: true
     }).then(() => {

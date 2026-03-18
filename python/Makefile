@@ -1,4 +1,4 @@
-.PHONY: format lint typecheck test check precommit-install precommit-run
+.PHONY: format lint typecheck test check security-audit precommit-install precommit-run
 
 format:
 	uv run --extra dev ruff check --fix .
@@ -18,6 +18,9 @@ check:
 	uv run --extra dev ruff format --check .
 	uv run --extra dev mypy mindflow_backend mindflow_cli mindflow_desktop
 	uv run --extra dev pytest
+
+security-audit:
+	uv run --extra dev pip-audit --desc
 
 precommit-install:
 	uvx pre-commit install

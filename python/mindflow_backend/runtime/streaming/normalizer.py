@@ -143,6 +143,7 @@ class AgentChatStreamNormalizer:
         args: dict[str, Any],
         *,
         run_id: str | None = None,
+        tool_meta: dict[str, Any] | None = None,
         extra_meta: dict[str, Any] | None = None,
     ) -> StreamEvent:
         return StreamEvent(
@@ -150,7 +151,7 @@ class AgentChatStreamNormalizer:
             seq=seq,
             type="tool_call",
             mode="updates",
-            data=json.dumps({"id": tool_call_id, "name": name, "args": args}),
+            data=json.dumps({"id": tool_call_id, "name": name, "args": args, "tool_meta": tool_meta}),
             meta=self._meta(
                 run_id=run_id,
                 node="tool_call",
@@ -171,6 +172,7 @@ class AgentChatStreamNormalizer:
         result: str,
         *,
         run_id: str | None = None,
+        tool_meta: dict[str, Any] | None = None,
         extra_meta: dict[str, Any] | None = None,
     ) -> StreamEvent:
         return StreamEvent(
@@ -178,7 +180,7 @@ class AgentChatStreamNormalizer:
             seq=seq,
             type="tool_result",
             mode="updates",
-            data=json.dumps({"id": tool_call_id, "name": name, "result": result}),
+            data=json.dumps({"id": tool_call_id, "name": name, "result": result, "tool_meta": tool_meta}),
             meta=self._meta(
                 run_id=run_id,
                 node="tool_result",

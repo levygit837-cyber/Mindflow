@@ -11,17 +11,17 @@ interface ThinkingNotifierProps {
   className?: string;
 }
 
-const STATUS_LABELS: Record<AgentType, string> = {
-  orchestrator: 'routing',
-  analyst: 'analyzing',
-  coder: 'building',
-  researcher: 'searching',
-  default: 'processing',
+const STATUS_LABELS: Record<NonNullable<ThinkingNotifierProps['status']>, string> = {
+  thinking: 'thinking',
+  processing: 'processing',
+  analyzing: 'analyzing',
+  waiting: 'waiting',
 };
 
 export const ThinkingNotifier: React.FC<ThinkingNotifierProps> = ({
   agentType = 'orchestrator',
   agentName,
+  status = 'thinking',
   lastThought,
   className = '',
 }) => {
@@ -43,53 +43,32 @@ export const ThinkingNotifier: React.FC<ThinkingNotifierProps> = ({
         />
       </div>
 
-      <div className="event-node-lab">
-        <div className="event-header">
-          <span className="mono-label">--- Thinking</span>
-
-          <span className="event-title">
-            {displayName}
+      <div className="thought-stack">
+        <div className="thought-pill">
+          <span className={`thought-synapse thought-synapse--${agentType}`}>
+            <span className="thought-synapse-link thought-synapse-link-a" />
+            <span className="thought-synapse-link thought-synapse-link-b" />
+            <span className="thought-synapse-node thought-synapse-node-a" />
+            <span className="thought-synapse-node thought-synapse-node-b" />
+            <span className="thought-synapse-node thought-synapse-node-c" />
           </span>
 
-          <span className="event-badge">
-            {STATUS_LABELS[agentType] ?? STATUS_LABELS.default}
-          </span>
+          <span className="thought-name">{displayName}</span>
+          <span className="thought-sep">/</span>
+          <span className="thought-status">{STATUS_LABELS[status]}</span>
 
-          <div className="ml-auto flex items-center gap-2">
-            {[0, 1, 2].map((index) => (
-              <motion.span
-                key={index}
-                style={{
-                  width: index === 2 ? 18 : 8,
-                  height: 1,
-                  background: index === 2
-                    ? 'linear-gradient(90deg, rgba(255,255,255,0.88) 0%, rgba(139,92,246,0.8) 100%)'
-                    : 'rgba(255,255,255,0.36)',
-                  borderRadius: 999,
-                }}
-                animate={{ opacity: [0.35, 1, 0.35] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: index * 0.16 }}
-              />
-            ))}
-          </div>
+          <motion.span
+            className="thought-pulse"
+            animate={{ opacity: [0.32, 1, 0.32] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+          />
         </div>
 
-        {lastThought && (
-          <div className="event-expand">
-            <p
-              style={{
-                margin: 0,
-                color: 'var(--text-meta)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-                lineHeight: 1.72,
-                whiteSpace: 'pre-wrap',
-              }}
-            >
-              {lastThought}
-            </p>
+        {lastThought ? (
+          <div className="thought-body">
+            <p className="thought-note">{lastThought}</p>
           </div>
-        )}
+        ) : null}
       </div>
     </motion.section>
   );

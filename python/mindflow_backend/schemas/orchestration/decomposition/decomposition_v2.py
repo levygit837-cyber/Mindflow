@@ -87,6 +87,8 @@ class SubTaskContract(BaseModel):
     expected_artifacts: list[str] = Field(default_factory=list)
     owner_agent: ComponentOwner
     priority: Literal["low", "medium", "high"] = "medium"
+    complexity_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    complexity_reason: str = ""
 
 
 # ---------------------------------------------------------------------------

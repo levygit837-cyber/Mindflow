@@ -54,7 +54,7 @@ export interface Message {
 
 export interface MessageMetadata {
   model?: string;
-  provider?: string;
+  provider?: LlmProvider;
   tokens?: number;
   duration?: number;
   tools?: ToolCall[];
@@ -139,9 +139,15 @@ export interface ChatRequest {
   sessionId?: string;
   agentType?: AgentType;
   orchestrationMode?: OrchestrationMode;
-  provider?: string;
+  provider?: LlmProvider;
   model?: string;
 }
+
+export type LlmProvider =
+  | 'google'
+  | 'openai'
+  | 'anthropic'
+  | 'ollama';
 
 export interface AppState {
   // Agent state
@@ -167,7 +173,7 @@ export interface AppState {
 }
 
 export interface AppSettings {
-  provider: string;
+  provider: LlmProvider;
   model: string;
   orchestrationMode: OrchestrationMode;
   autoSaveSessions: boolean;

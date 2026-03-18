@@ -210,10 +210,10 @@ class SpecialistSelector(SpecialistSelectorInterface):
                for keyword in ["review", "critique", "evaluate", "quality"]):
             return SpecializationRequirement.CODE_REVIEW
         
-        # Creative keywords
+        # Brainstorm / ideation keywords
         if any(keyword in description_lower or keyword in context_lower 
                for keyword in ["brainstorm", "creative", "alternative", "explore"]):
-            return SpecializationRequirement.CREATIVE
+            return SpecializationRequirement.ANALYSIS
         
         # Implementation keywords
         if any(keyword in description_lower or keyword in context_lower 

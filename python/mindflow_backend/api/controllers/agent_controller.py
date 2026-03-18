@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
-from fastapi import Request, Depends
+from fastapi import HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse
 
 from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, sanitize_input, rate_limit, audit_log
@@ -12,7 +13,7 @@ from mindflow_backend.api.schemas.responses import AgentResponse
 from mindflow_backend.services import get_agent_service
 from mindflow_backend.grpc.factory import get_runtime_client
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
-from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
+from mindflow_backend.schemas.chat.agent import AgentExecutionResponse, StreamEvent, StreamEventMeta
 
 # ── Module-level client access ────────────────────────────────────────────────
 # Use the transport factory so the active transport mode is respected.
@@ -44,7 +45,8 @@ class AgentController(BaseController):
             sanitized_message = self.sanitize_input(payload.message)
             
             # Validate session ID
-            session_id = self.validate_session_id(payload.sessionId)
+            raw_session_id = getattr(payload, "session_id", None) or getattr(payload, "sessionId", None)
+            session_id = self.validate_session_id(raw_session_id)
             
             # Log request
             self.log_request(request, "agent_chat_stream", 
@@ -153,10 +155,10 @@ class AgentController(BaseController):
     
     @require_auth
     @audit_log("agent_list")
-    async def list_agents(self) -> AgentResponse:
+    async def list_agents(self, request: Request | None = None) -> AgentResponse:
         """List all available agents."""
         try:
-            self.log_request(None, "list_agents")
+            self.log_request(request, "list_agents")
             
             agents_data = await self.agent_service.list_available_agents()
             
@@ -187,3 +189,108 @@ class AgentController(BaseController):
             
         except Exception as e:
             raise self.handle_error(e, "validate_request")
+
+    @require_auth
+    @audit_log("agent_execution_status")
+    async def get_execution_status(self, execution_id: str, req: Request | None = None) -> AgentExecutionResponse:
+        """Get execution status for an agent runtime execution."""
+        return await self._resolve_execution_action(
+            execution_id=execution_id,
+            runtime_method_name="get_execution_status",
+            req=req,
+            action=None,
+            default_message="Execution status retrieved",
+        )
+
+    @require_auth
+    @audit_log("agent_execution_pause")
+    async def pause_execution(self, execution_id: str, req: Request | None = None) -> AgentExecutionResponse:
+        """Request a pause for an agent runtime execution."""
+        return await self._resolve_execution_action(
+            execution_id=execution_id,
+            runtime_method_name="pause_execution",
+            req=req,
+            action="pause",
+            default_status="pause_requested",
+            default_message="Pause requested",
+        )
+
+    @require_auth
+    @audit_log("agent_execution_resume")
+    async def resume_execution(self, execution_id: str, req: Request | None = None) -> AgentExecutionResponse:
+        """Request a resume for an agent runtime execution."""
+        return await self._resolve_execution_action(
+            execution_id=execution_id,
+            runtime_method_name="resume_execution",
+            req=req,
+            action="resume",
+            default_status="resume_requested",
+            default_message="Resume requested",
+        )
+
+    async def _resolve_execution_action(
+        self,
+        *,
+        execution_id: str,
+        runtime_method_name: str,
+        req: Request | None,
+        action: str | None,
+        default_message: str,
+        default_status: str | None = None,
+    ) -> AgentExecutionResponse:
+        self.log_request(req, runtime_method_name, execution_id=execution_id)
+
+        runtime_client = _get_local_agent_client()
+        runtime_method = getattr(runtime_client, runtime_method_name, None)
+        if runtime_method is None or not callable(runtime_method):
+            raise HTTPException(
+                status_code=501,
+                detail=f"Runtime does not implement {runtime_method_name}",
+            )
+
+        result = runtime_method(execution_id=execution_id)
+        if inspect.isawaitable(result):
+            result = await result
+
+        payload = self._normalize_execution_payload(result)
+        status = payload.get("status") or default_status or action or "unknown"
+        snapshot = payload.get("snapshot")
+        if snapshot is None:
+            snapshot = payload.get("state") or {}
+
+        metadata = payload.get("metadata")
+        if metadata is None:
+            metadata = {
+                key: value
+                for key, value in payload.items()
+                if key not in {"execution_id", "status", "action", "paused", "can_resume", "progress", "snapshot", "state", "metadata", "message"}
+            }
+
+        return AgentExecutionResponse(
+            success=payload.get("success", True),
+            message=payload.get("message") or default_message,
+            execution_id=payload.get("execution_id", execution_id),
+            status=status,
+            action=payload.get("action", action),
+            paused=payload.get("paused", status == "paused"),
+            can_resume=payload.get("can_resume", status in {"paused", "pause_requested"}),
+            progress=payload.get("progress"),
+            snapshot=snapshot if isinstance(snapshot, dict) else {"value": snapshot},
+            metadata=metadata if isinstance(metadata, dict) else {"value": metadata},
+            timestamp=payload.get("timestamp"),
+        )
+
+    def _normalize_execution_payload(self, payload: Any) -> dict[str, Any]:
+        if payload is None:
+            return {}
+        if isinstance(payload, dict):
+            return payload
+        if hasattr(payload, "model_dump"):
+            return payload.model_dump()
+        if hasattr(payload, "__dict__"):
+            return {
+                key: value
+                for key, value in vars(payload).items()
+                if not key.startswith("_")
+            }
+        return {"value": payload}

@@ -18,7 +18,10 @@ from pathlib import Path
 from .base.tool_registry import ToolRegistry
 from .base.tool_schemas import ToolSchema
 from .sandbox import MindFlowSandbox
+from .security import normalize_sandbox_mode, secure_sandbox_enabled
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
+from mindflow_backend.agents.specialists.runtime_policy import AGENT_RUNTIME_POLICY
 
 _logger = get_logger(__name__)
 
@@ -33,16 +36,15 @@ class _DefaultRegistry:
         self._initialized_tools = {}  # Cache for tool instances
 
     def _build_tool_mapping(self) -> dict[Any, list[Any]]:
-        """Build mapping from AgentType to ToolScope based on agent configurations."""
+        """Build mapping from AgentType to ToolScope based on canonical policy."""
         try:
             from mindflow_backend.schemas.orchestration.orchestrator import AgentType, ToolScope
-            
-            return {
-                AgentType.CODER: [ToolScope.FILESYSTEM, ToolScope.SHELL],
-                AgentType.ANALYST: [ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL],
-                AgentType.RESEARCHER: [ToolScope.WEB_SEARCH, ToolScope.BROWSER_SEARCH],
-                AgentType.ORCHESTRATOR: [],  # Orchestrator delegates, doesn't use tools directly
-            }
+
+            mapping: dict[Any, list[Any]] = {}
+            for policy in AGENT_RUNTIME_POLICY.values():
+                if policy.specialist is None:
+                    mapping[policy.agent_role] = list(policy.tools)
+            return mapping
         except ImportError as e:
             _logger.warning(f"Could not import AgentType/ToolScope: {e}")
             return {}
@@ -66,10 +68,20 @@ class _DefaultRegistry:
                 tools = self._get_web_search_tools()
             elif scope == ToolScope.BROWSER_SEARCH:
                 tools = self._get_browser_search_tools()
+            elif scope == ToolScope.PINCHTAB_FLEET:
+                tools = self._get_pinchtab_fleet_tools()
+            elif scope == ToolScope.PINCHTAB_BROWSER:
+                tools = self._get_pinchtab_browser_tools()
             elif scope == ToolScope.CODE_ANALYSIS:
                 tools = self._get_code_analysis_tools()
             elif scope == ToolScope.DATABASE:
                 tools = self._get_database_tools()
+            elif scope == ToolScope.MEMORY:
+                tools = self._get_memory_tools()
+            elif scope == ToolScope.PLANNING:
+                tools = self._get_planning_tools()
+            elif scope == ToolScope.DELEGATION:
+                tools = self._get_delegation_tools()
 
             # Propagate root_dir from sandbox to all tool instances (root_dir feature).
             # Tools that are aware of root_dir will use it as their base working path.
@@ -161,16 +173,14 @@ class _DefaultRegistry:
         try:
             from .web import (
                 WebScraperTool,
-                BrowserSearchTool,
                 HttpClientTool,
-                ApiClientTool
+                ApiClientTool,
             )
             
             tools = [
                 WebScraperTool(),
-                BrowserSearchTool(),
                 HttpClientTool(),
-                ApiClientTool()
+                ApiClientTool(),
             ]
             _logger.info(f"Loaded {len(tools)} web search tools")
             
@@ -197,31 +207,24 @@ class _DefaultRegistry:
             except ImportError as e2:
                 _logger.warning(f"Could not import ApiClientTool: {e2}")
                 
-            try:
-                from .web import BrowserSearchTool
-                tools.append(BrowserSearchTool())
-                _logger.info("Loaded BrowserSearchTool")
-            except ImportError as e2:
-                _logger.warning(f"Could not import BrowserSearchTool: {e2}")
-                
             if not tools:
                 _logger.warning(f"Could not import any web search tools: {e}")
             
         return tools
 
     def _get_browser_search_tools(self) -> list[Any]:
-        """Get browser search tools (subset of web tools)."""
+        """Get compatibility tools for the legacy browser_search scope."""
         tools = []
         
         try:
             from .web import (
                 BrowserSearchTool,
-                WebScraperTool
+                PinchTabFleetTool,
             )
             
             tools = [
                 BrowserSearchTool(),
-                WebScraperTool()
+                PinchTabFleetTool(),
             ]
             _logger.info(f"Loaded {len(tools)} browser search tools")
             
@@ -235,15 +238,43 @@ class _DefaultRegistry:
                 _logger.warning(f"Could not import BrowserSearchTool: {e2}")
                 
             try:
-                from .web import WebScraperTool
-                tools.append(WebScraperTool())
-                _logger.info("Loaded WebScraperTool")
+                from .web import PinchTabFleetTool
+                tools.append(PinchTabFleetTool())
+                _logger.info("Loaded PinchTabFleetTool")
             except ImportError as e2:
-                _logger.warning(f"Could not import WebScraperTool: {e2}")
+                _logger.warning(f"Could not import PinchTabFleetTool: {e2}")
                 
             if not tools:
                 _logger.warning(f"Could not import any browser search tools: {e}")
             
+        return tools
+
+    def _get_pinchtab_fleet_tools(self) -> list[Any]:
+        """Get PinchTab fleet management tools."""
+        tools = []
+
+        try:
+            from .web import PinchTabFleetTool
+
+            tools = [PinchTabFleetTool()]
+            _logger.info(f"Loaded {len(tools)} PinchTab fleet tools")
+        except ImportError as e:
+            _logger.warning(f"Could not import PinchTab fleet tools: {e}")
+
+        return tools
+
+    def _get_pinchtab_browser_tools(self) -> list[Any]:
+        """Get PinchTab per-browser control tools."""
+        tools = []
+
+        try:
+            from .web import PinchTabBrowserTool
+
+            tools = [PinchTabBrowserTool()]
+            _logger.info(f"Loaded {len(tools)} PinchTab browser tools")
+        except ImportError as e:
+            _logger.warning(f"Could not import PinchTab browser tools: {e}")
+
         return tools
 
     def _get_code_analysis_tools(self) -> list[Any]:
@@ -251,19 +282,28 @@ class _DefaultRegistry:
         tools = []
         
         try:
-            # Code tools directory is mostly empty, use filesystem tools as fallback
+            from .code import (
+                GitNexusStatusTool,
+                GitNexusQueryTool,
+                GitNexusContextTool,
+                GitNexusImpactTool,
+            )
             from .filesystem import (
-                GrepSearchTool,  # Can be used for code search
-                FileReadTool,    # Can read code files
-                GlobSearchTool   # Can find code files
+                FileReadTool,
+                GrepSearchTool,
+                GlobSearchTool,
             )
             
             tools = [
-                GrepSearchTool(),
+                GitNexusStatusTool(),
+                GitNexusQueryTool(),
+                GitNexusContextTool(),
+                GitNexusImpactTool(),
                 FileReadTool(),
+                GrepSearchTool(),
                 GlobSearchTool()
             ]
-            _logger.info(f"Loaded {len(tools)} code analysis tools (filesystem-based)")
+            _logger.info(f"Loaded {len(tools)} code analysis tools (GitNexus + filesystem fallback)")
             
         except ImportError as e:
             _logger.warning(f"Could not import code analysis tools: {e}")
@@ -291,23 +331,154 @@ class _DefaultRegistry:
             
         return tools
 
-    def get_tools_for_agent(self, agent_type: Any) -> list[Any]:
-        """Get tools for a specific agent type."""
+    def _get_memory_tools(self) -> list[Any]:
+        """Get memory tools (facts, task context, session recall)."""
+        tools = []
+
         try:
-            # Get ToolScope list for this agent type
-            scopes = self._tool_mapping.get(agent_type, [])
-            
-            # Convert ToolScope to concrete tool instances
-            tools = []
-            for scope in scopes:
-                scope_tools = self._get_tools_for_scope(scope)
-                tools.extend(scope_tools)
-                
-            _logger.info(f"Agent {agent_type} got {len(tools)} tools from scopes: {[str(s) for s in scopes]}")
+            from .integration.memory_tools import (
+                StoreFactTool,
+                SearchFactsTool,
+                RetrieveTaskContextTool,
+                RecallSessionMemoryTool,
+            )
+
+            tools = [
+                StoreFactTool(),
+                SearchFactsTool(),
+                RetrieveTaskContextTool(),
+                RecallSessionMemoryTool(),
+            ]
+            _logger.info(f"Loaded {len(tools)} memory tools")
+
+        except ImportError as e:
+            _logger.warning(f"Could not import memory tools: {e}")
+
+        return tools
+
+    def _get_planning_tools(self) -> list[Any]:
+        """Get planning tools for orchestrator todo-list workflows."""
+        tools = []
+
+        try:
+            from .planning import (
+                WriteTodosTool,
+                ReadTodosTool,
+                FocusTodosTool,
+            )
+
+            tools = [
+                WriteTodosTool(),
+                ReadTodosTool(),
+                FocusTodosTool(),
+            ]
+            _logger.info(f"Loaded {len(tools)} planning tools")
+
+        except ImportError as e:
+            _logger.warning(f"Could not import planning tools: {e}")
+
+        return tools
+
+    def _get_delegation_tools(self) -> list[Any]:
+        """Get delegation tools for the orchestrator."""
+        tools = []
+
+        try:
+            from .orchestration import DelegateToAgentTool
+
+            tools = [DelegateToAgentTool()]
+            _logger.info(f"Loaded {len(tools)} delegation tools")
+
+        except ImportError as e:
+            _logger.warning(f"Could not import delegation tools: {e}")
+
+        return tools
+
+    def get_tools_for_scopes(self, scopes: list[Any]) -> list[Any]:
+        """Get concrete tool instances for an explicit scope list."""
+        tools = []
+        for scope in scopes:
+            tools.extend(self._get_tools_for_scope(scope))
+        return tools
+
+    def get_all_tool_names(self) -> list[str]:
+        """Return the union of all known tool names, including legacy aliases."""
+        tool_names: set[str] = set()
+        for scopes in self._tool_mapping.values():
+            for tool in self.get_tools_for_scopes(scopes):
+                tool_names.add(tool.name)
+                if tool.name == "list_dir":
+                    tool_names.add("ls_info")
+        return sorted(tool_names)
+
+    def _apply_tool_policy(self, tools: list[Any], sandbox_mode: Any) -> list[Any]:
+        """Filter tools according to the secure sandbox policy."""
+        if not secure_sandbox_enabled():
+            return tools
+
+        filtered = []
+        normalized_mode = normalize_sandbox_mode(sandbox_mode)
+        blocked_in_secure_mode = {"process_manager"}
+        blocked_in_read_only = {"write_file", "edit_file", "delete_file", "mkdir"}
+        safe_without_system_access = {
+            "write_todos",
+            "read_todos",
+            "focus_todos",
+            "store_fact",
+            "search_facts",
+            "retrieve_task_context",
+            "recall_session_memory",
+            "delegate_to_agent",
+        }
+
+        for tool in tools:
+            if tool.name in blocked_in_secure_mode:
+                continue
+            if normalized_mode == SandboxMode.NONE and tool.name not in safe_without_system_access:
+                continue
+            if normalized_mode == SandboxMode.READ_ONLY and tool.name in blocked_in_read_only:
+                continue
+            if normalized_mode != SandboxMode.FULL and tool.name.startswith("shell_tab_"):
+                continue
+            filtered.append(tool)
+        return filtered
+
+    def _configure_tool_instances(self, tools: list[Any], agent: Any | None, sandbox_mode: Any) -> list[Any]:
+        """Propagate runtime sandbox state to tool instances."""
+        root_dir = getattr(agent, "root_dir", None) or str(self.sandbox.cwd)
+        secure_mode = secure_sandbox_enabled()
+        for tool in tools:
+            if hasattr(tool, "root_dir"):
+                tool.root_dir = root_dir
+            if self.session_id and hasattr(tool, "session_id"):
+                tool.session_id = self.session_id
+            if hasattr(tool, "sandbox_mode"):
+                tool.sandbox_mode = sandbox_mode
+            if hasattr(tool, "secure_mode"):
+                tool.secure_mode = secure_mode
+        return tools
+
+    def get_tools_for_agent(self, agent_or_type: Any) -> list[Any]:
+        """Get tools for a specific agent configuration or agent type."""
+        try:
+            agent = agent_or_type if hasattr(agent_or_type, "tools") else None
+            if agent is not None:
+                sandbox_mode = getattr(agent, "sandbox", getattr(self.sandbox, "mode", None))
+                scopes = list(getattr(agent, "tools", []) or [])
+                agent_label = getattr(agent, "agent_id", getattr(agent, "agent_role", "unknown"))
+            else:
+                sandbox_mode = getattr(self.sandbox, "mode", None)
+                scopes = self._tool_mapping.get(agent_or_type, [])
+                agent_label = agent_or_type
+
+            tools = self.get_tools_for_scopes(scopes)
+            tools = self._configure_tool_instances(tools, agent, sandbox_mode)
+            tools = self._apply_tool_policy(tools, sandbox_mode)
+            _logger.info(f"Agent {agent_label} got {len(tools)} tools from scopes: {[str(s) for s in scopes]}")
             return tools
             
         except Exception as e:
-            _logger.error(f"Error getting tools for agent {agent_type}: {e}")
+            _logger.error(f"Error getting tools for agent {agent_or_type}: {e}")
             return []
 
 

@@ -1132,7 +1132,6 @@ Total: 910 arquivos Python
 
 @python/schemas/agents/__init__.py
 @python/schemas/agents/analyst.py
-@python/schemas/agents/creative.py
 @python/schemas/agents/research.py
 @python/schemas/agents/security_guard.py
 
@@ -1653,4 +1652,3 @@ Total: 910 arquivos Python
 @python/workers/tasks/agent_tasks.py
 @python/workers/tasks/research_tasks.py
 @python/workers/tasks/system_tasks.py
-

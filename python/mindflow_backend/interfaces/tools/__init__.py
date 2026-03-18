@@ -33,6 +33,16 @@ from .web import (
     RssFeedTool,
     WebSecurityTool,
 )
+from .pinchtab import (
+    PinchTabBrowserHandleInterface,
+    PinchTabFleetToolInterface,
+)
+from .planning import (
+    PlanningToolInterface,
+    TodoListWriteTool,
+    TodoListReadTool,
+    TodoListFocusTool,
+)
 
 __all__ = [
     # Base tool interfaces
@@ -69,4 +79,10 @@ __all__ = [
     "WebhookTool",
     "RssFeedTool",
     "WebSecurityTool",
+    "PinchTabBrowserHandleInterface",
+    "PinchTabFleetToolInterface",
+    "PlanningToolInterface",
+    "TodoListWriteTool",
+    "TodoListReadTool",
+    "TodoListFocusTool",
 ]

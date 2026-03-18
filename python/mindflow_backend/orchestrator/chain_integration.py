@@ -33,7 +33,9 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
     ChainType,
     OrchestratorDecision,
 )
-from mindflow_backend.schemas.orchestration.workflow import WorkflowPlan, WorkflowRouteDecision
+from mindflow_backend.schemas.orchestration.workflow import WorkflowPlan, WorkflowRouteDecision, WorkflowStep
+from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 _logger = get_logger(__name__)
 
@@ -501,23 +503,111 @@ def build_workflow_plan(
     """
     plan = WorkflowPlan(route=route, tools=list(route.tools))
 
+    def _make_step(
+        *,
+        step_id: str,
+        agent_role: AgentType,
+        specialist: SpecialistType | None,
+        objective: str,
+        depends_on: list[str] | None = None,
+        context_strategy: str = "maintain",
+    ) -> WorkflowStep:
+        policy = get_agent_runtime_policy(agent_role, specialist=specialist)
+        return WorkflowStep(
+            step_id=step_id,
+            agent_id=policy.agent_id,
+            agent_role=policy.agent_role,
+            specialist=policy.specialist,
+            objective=objective,
+            tools=list(policy.tools),
+            sandbox=policy.sandbox.value,
+            thinking=policy.thinking_level,
+            context_strategy=context_strategy,
+            depends_on=list(depends_on or []),
+        )
+
+    if route.execution_strategy == ExecutionStrategy.GRAPH:
+        plan.chain_id = "plan_execute"
+        plan.chain_type = ChainType.ANALYSIS_TASK
+        plan.steps = [
+            _make_step(
+                step_id="graph-entry",
+                agent_role=route.agent_role,
+                specialist=route.specialist,
+                objective=route.task,
+            )
+        ]
+        plan.planner_rule = "graph_execution"
+        return plan
+
     if route.execution_strategy != ExecutionStrategy.CHAIN:
+        plan.steps = [
+            _make_step(
+                step_id="single-agent",
+                agent_role=route.agent_role,
+                specialist=route.specialist,
+                objective=route.task,
+            )
+        ]
         return plan
 
     if folder_path and route.agent_role == AgentType.ANALYST:
         plan.chain_id = "file_analysis"
         plan.chain_type = ChainType.FILE_ANALYSIS
+        plan.steps = [
+            _make_step(
+                step_id="file-analysis",
+                agent_role=route.agent_role,
+                specialist=route.specialist,
+                objective=route.task,
+            )
+        ]
         plan.planner_rule = "workspace_analysis"
         return plan
 
     if route.agent_role == AgentType.CODER:
         plan.chain_id = "coding_task"
         plan.chain_type = ChainType.CODING_TASK
+        implementation_specialist = (
+            SpecialistType.ARCH_TECH if route.specialist == SpecialistType.ARCH_TECH else None
+        )
+        plan.steps = [
+            _make_step(
+                step_id="analysis",
+                agent_role=AgentType.ANALYST,
+                specialist=SpecialistType.DEEP_ITERATION,
+                objective="Gather the deepest possible implementation context before coding.",
+            ),
+            _make_step(
+                step_id="implementation",
+                agent_role=AgentType.CODER,
+                specialist=implementation_specialist,
+                objective=route.task,
+                depends_on=["analysis"],
+                context_strategy="carry_summary",
+            ),
+            _make_step(
+                step_id="review",
+                agent_role=AgentType.ANALYST,
+                specialist=SpecialistType.CRITIC,
+                objective="Review the proposed implementation for correctness, regressions, and code quality.",
+                depends_on=["implementation"],
+                context_strategy="carry_summary",
+            ),
+        ]
         plan.planner_rule = "implementation_pipeline"
         return plan
 
     plan.chain_id = "analysis_task"
     plan.chain_type = ChainType.ANALYSIS_TASK
+    plan.steps = [
+        _make_step(
+            step_id="analysis",
+            agent_role=route.agent_role,
+            specialist=route.specialist,
+            objective=route.task,
+        )
+    ]
     plan.planner_rule = "analysis_pipeline"
     return plan
 
