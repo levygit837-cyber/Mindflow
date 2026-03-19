@@ -215,38 +215,98 @@ class AgentBridge(StatefulNode, BaseNode):
         await super().cleanup()
     
     async def _execute_agent_properly(
-        self, 
-        agent: Any, 
-        message: str, 
-        session_id: str, 
-        tools_registry: Any, 
+        self,
+        agent: Any,
+        message: str,
+        session_id: str,
+        tools_registry: Any,
         memory_context: str
     ) -> Any:
-        """Execute agent using the proper architecture."""
+        """Execute agent using the proper architecture with LLM and tools."""
         from mindflow_backend.infra.logging import get_logger
+        from mindflow_backend.infra.config import get_settings
+        from mindflow_backend.runtime import get_model_for_provider
+        from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+        from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+        from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
+
         _logger = get_logger(__name__)
-        
+        settings = get_settings()
+
         try:
-            # Get tools for the agent type
+            # Get runtime policy for max_iterations
+            policy = get_agent_runtime_policy(agent_id=agent.agent_id)
+
+            # Build messages
+            messages = [{"role": "system", "content": agent.system_prompt}]
+
+            if memory_context.strip():
+                messages.append({
+                    "role": "system",
+                    "content": f"Memory Context (RAG from agent history):\n{memory_context}"
+                })
+
+            messages.append({"role": "user", "content": message})
+
+            # Get tools for agent
             tools = tools_registry.get_tools_for_agent(agent)
-            
-            # Create a simple response object for compatibility
+
+            # Get LLM
+            llm = get_model_for_provider(
+                settings.default_provider,
+                settings.default_model
+            )
+
+            # Execute with tools if available
+            if tools:
+                lc_tools = to_langchain_tools(tools)
+                if lc_tools:
+                    llm_with_tools = llm.bind_tools(lc_tools)
+
+                    _logger.info(
+                        "agent_bridge_executing",
+                        agent_id=agent.agent_id,
+                        max_iterations=policy.max_iterations,
+                        tools_count=len(lc_tools)
+                    )
+
+                    response_text = await invoke_with_tools(
+                        llm=llm_with_tools,
+                        messages=messages,
+                        lc_tools=lc_tools,
+                        event_dispatcher=None,
+                        max_iterations=policy.max_iterations,
+                    )
+                else:
+                    # No LangChain tools, use LLM directly
+                    response = await llm.ainvoke(messages)
+                    response_text = response.content if hasattr(response, "content") else str(response)
+            else:
+                # No tools, use LLM directly
+                response = await llm.ainvoke(messages)
+                response_text = response.content if hasattr(response, "content") else str(response)
+
+            # Create response object
+            class AgentResponse:
+                def __init__(self, content: str):
+                    self.content = content
+                    self.execution_time = 0
+                    self.tokens_used = len(content.split())  # Simple approximation
+                    self.tools_used = []
+
+            return AgentResponse(response_text)
+
+        except Exception as exc:
+            _logger.error("agent_execution_failed", agent_id=agent.agent_id, error=str(exc))
+
             class AgentResponse:
                 def __init__(self, content: str):
                     self.content = content
                     self.execution_time = 0
                     self.tokens_used = 0
                     self.tools_used = []
-            
-            # For now, return a simple response
-            # In a full implementation, this would use the LLM with tools
-            response_content = f"[{agent.agent_type.value}] Processing: {message}"
-            
-            if memory_context:
-                response_content += f"\n\nContext: {memory_context[:200]}..."
-            
-            response_content += f"\n\nAvailable tools: {len(tools)} tools loaded"
-            
+
+            return AgentResponse(f"Error executing agent: {exc}")
             return AgentResponse(response_content)
             
         except Exception as exc:

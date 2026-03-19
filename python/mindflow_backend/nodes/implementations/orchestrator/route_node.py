@@ -24,33 +24,71 @@ class RouteNode(StatefulNode, BaseNode):
         self.config.outputs = {"decision", "complexity_score"}
     
     async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Route all requests to the Orchestrator as sole entry point."""
+        """Route requests using IntelligentRouter with LLM-based intent analysis."""
         from mindflow_backend.infra.logging import get_logger
-        from mindflow_backend.schemas.orchestration.orchestrator import (
-            AgentType,
-            ExecutionStrategy,
-            OrchestratorDecision,
-        )
+        from mindflow_backend.orchestrator.routing.intelligent_router import get_intelligent_router
 
         _logger = get_logger(__name__)
 
-        decision = OrchestratorDecision(
-            agent=AgentType.ORCHESTRATOR,
-            execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
-            rationale="Orchestrator handles all requests directly.",
-        )
-        score = 0.0
+        # Use IntelligentRouter for LLM-based routing
+        router = get_intelligent_router()
+        folder_path = state.get("folder_path")
 
-        _logger.info("route_node_completed", agent="orchestrator", strategy="direct_response")
+        _logger.info("route_node_starting", message=state["message"][:100], has_folder_path=bool(folder_path))
 
-        self.set_node_state("last_agent", "orchestrator")
-        self.set_node_state("last_complexity", score)
-        self.set_node_state("routing_count", self.get_node_state("routing_count", 0) + 1)
+        try:
+            decision = await router.route_message_intelligently(
+                message=state["message"],
+                session=None,
+                folder_path=folder_path,
+            )
 
-        return {
-            "decision": decision,
-            "complexity_score": score,
-        }
+            # Calculate complexity score based on strategy
+            complexity_map = {
+                "direct_response": 0.0,
+                "single_agent": 0.5,
+                "chain": 0.7,
+                "graph": 0.9,
+            }
+            score = complexity_map.get(decision.execution_strategy.value, 0.5)
+
+            _logger.info(
+                "route_node_completed",
+                agent=decision.agent.value,
+                strategy=decision.execution_strategy.value,
+                specialist=decision.specialist.value if decision.specialist else None,
+                confidence=decision.confidence,
+                tools_count=len(decision.tools) if hasattr(decision, 'tools') else 0,
+            )
+
+            self.set_node_state("last_agent", decision.agent.value)
+            self.set_node_state("last_complexity", score)
+            self.set_node_state("routing_count", self.get_node_state("routing_count", 0) + 1)
+
+            return {
+                "decision": decision,
+                "complexity_score": score,
+            }
+
+        except Exception as exc:
+            _logger.error("route_node_error", error=str(exc), exc_info=True)
+            # Fallback to analyst on error
+            from mindflow_backend.schemas.orchestration.orchestrator import (
+                AgentType,
+                ExecutionStrategy,
+                OrchestratorDecision,
+            )
+
+            fallback_decision = OrchestratorDecision(
+                agent=AgentType.ANALYST,
+                execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                rationale=f"Routing failed, defaulting to analyst: {exc}",
+            )
+
+            return {
+                "decision": fallback_decision,
+                "complexity_score": 0.5,
+            }
     
     def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
         """Validate routing inputs."""
