@@ -30,15 +30,22 @@ class ExecuteNode(StreamableNode, BaseNode):
         self.config.enable_streaming = True
     
     async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute the agent logic using AgentBridge."""
+        """Execute the agent logic using AgentBridge with Deep Work continuation support."""
         from mindflow_backend.nodes.implementations.integration.agent_bridge import AgentBridge
-        
+        from mindflow_backend.orchestrator.deep_work import should_continue_investigation, build_continuation_context
+
         _logger = get_logger(__name__)
-        
+
         decision = state["decision"]
         settings = get_settings()
         session_id = str(state.get("session_id", ""))
-        
+
+        # Deep Work state
+        investigation_history: list[str] = []
+        current_depth = 0
+        max_depth = 1000  # Practically unlimited
+        accumulated_response = ""
+
         try:
             # Create AgentBridge for the specified agent
             agent_bridge = AgentBridge(
@@ -46,47 +53,82 @@ class ExecuteNode(StreamableNode, BaseNode):
                 agent_type=decision.agent.value,
                 sandbox_mode=SandboxMode.FULL
             )
-            
+
             # Initialize the bridge
             await agent_bridge.initialize()
-            
-            # Prepare agent execution context
-            agent_context = {
-                "message": state["message"],
-                "session_id": session_id,
-                "provider": state.get("provider") or settings.default_provider,
-                "model": decision.model or state.get("model") or settings.default_model
-            }
-            
-            # Execute agent through bridge
-            bridge_result = await agent_bridge.execute(agent_context)
-            
-            # Extract response from bridge result
-            response = bridge_result.get("agent_response", "")
-            error = bridge_result.get("error")
-            
-            if error:
-                _logger.error("execute_node_bridge_error", error=error)
-                self.set_node_state("error_count", self.get_node_state("error_count", 0) + 1)
-                return {"response": "", "error": error}
-            
-            # Update node state with bridge metadata
-            self.set_node_state("execution_count", self.get_node_state("execution_count", 0) + 1)
-            self.set_node_state("last_agent", decision.agent.value)
-            self.set_node_state("tokens_used", self.get_node_state("tokens_used", 0) + bridge_result.get("tokens_used", 0))
-            self.set_node_state("bridge_metadata", bridge_result.get("metadata", {}))
-            
-            # Capture thoughts if available
-            thought = bridge_result.get("agent_thoughts")
-            if thought:
-                self.set_node_state("last_thought", thought)
-            
-            return {"response": response, "error": None}
-            
+
+            # Initial message
+            current_message = state["message"]
+
+            # Deep Work Loop
+            while current_depth < max_depth:
+                # Prepare agent execution context
+                agent_context = {
+                    "message": current_message,
+                    "session_id": session_id,
+                    "provider": state.get("provider") or settings.default_provider,
+                    "model": decision.model or state.get("model") or settings.default_model
+                }
+
+                # Execute agent through bridge
+                bridge_result = await agent_bridge.execute(agent_context)
+
+                # Extract response from bridge result
+                response = bridge_result.get("agent_response", "")
+                error = bridge_result.get("error")
+
+                if error:
+                    _logger.error("execute_node_bridge_error", error=error, depth=current_depth)
+                    self.set_node_state("error_count", self.get_node_state("error_count", 0) + 1)
+                    return {"response": accumulated_response or "", "error": error}
+
+                # Accumulate response
+                if accumulated_response:
+                    accumulated_response += f"\n\n--- CONTINUATION TURN {current_depth + 1} ---\n\n{response}"
+                else:
+                    accumulated_response = response
+
+                # Update node state
+                self.set_node_state("execution_count", self.get_node_state("execution_count", 0) + 1)
+                self.set_node_state("last_agent", decision.agent.value)
+                self.set_node_state("tokens_used", self.get_node_state("tokens_used", 0) + bridge_result.get("tokens_used", 0))
+
+                # Capture thoughts if available
+                thought = bridge_result.get("agent_thoughts")
+                if thought:
+                    self.set_node_state("last_thought", thought)
+
+                # Check if agent wants to continue investigating
+                should_continue, reason = should_continue_investigation(response, current_depth, max_depth)
+
+                if not should_continue:
+                    _logger.info("deep_work_completed", depth=current_depth, reason=reason)
+                    break
+
+                # Agent wants to continue - prepare next turn
+                _logger.info("deep_work_continuing", depth=current_depth, reason=reason)
+                investigation_history.append(response[:200])  # Store summary
+                current_depth += 1
+
+                # Build continuation context for next turn
+                current_message = build_continuation_context(
+                    previous_response=response,
+                    investigation_history=investigation_history,
+                    current_depth=current_depth
+                )
+
+            # Update deep work metrics
+            if current_depth > 0:
+                self.set_node_state("deep_work_sessions", self.get_node_state("deep_work_sessions", 0) + 1)
+                self.set_node_state("max_depth_reached", max(self.get_node_state("max_depth_reached", 0), current_depth))
+                _logger.info("deep_work_session_completed", total_turns=current_depth + 1)
+
+            return {"response": accumulated_response, "error": None}
+
         except Exception as exc:
-            _logger.error("execute_node_error", error=str(exc))
+            _logger.error("execute_node_error", error=str(exc), depth=current_depth)
             self.set_node_state("error_count", self.get_node_state("error_count", 0) + 1)
-            return {"response": "", "error": str(exc)}
+            return {"response": accumulated_response or "", "error": str(exc)}
     
     async def _stream_execution(self, state: Dict[str, Any]) -> Any:
         """Stream execution for LLM responses."""
@@ -333,3 +375,5 @@ class ExecuteNode(StreamableNode, BaseNode):
         self.set_node_state("dt_executions", 0)
         self.set_node_state("tokens_used", 0)
         self.set_node_state("error_count", 0)
+        self.set_node_state("deep_work_sessions", 0)
+        self.set_node_state("max_depth_reached", 0)

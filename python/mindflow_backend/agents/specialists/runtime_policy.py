@@ -70,7 +70,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.MEMORY, ToolScope.PLANNING, ToolScope.DELEGATION),
         sandbox=SandboxMode.NONE,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=50,
+        max_iterations=1000,  # Practically unlimited for deep orchestration
         summary="Central conversational agent that delegates to specialists via delegate_to_agent tool.",
         use_when="All user messages — the Orchestrator is the sole entry point.",
     ),
@@ -80,7 +80,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.MEDIUM,
-        max_iterations=25,  # Increased from 10 to 25 for deeper analysis
+        max_iterations=500,  # Unlimited for deep code investigation
         summary="Code investigation, structure analysis, symbol tracing, workspace exploration.",
         use_when="Understanding code, tracing bugs, auditing and explaining implementations.",
     ),
@@ -91,7 +91,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=1,
+        max_iterations=500,  # Unlimited for thorough security audits
         summary="Security audits, auth flow review, vulnerability-oriented investigation.",
         use_when="Security reviews, auth analysis and vulnerability checks.",
     ),
@@ -102,7 +102,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.MEDIUM,
-        max_iterations=1,
+        max_iterations=500,  # Unlimited for comprehensive code review
         summary="Code review, critique, regression and best-practice assessment.",
         use_when="Focused review of implementation quality and risks.",
     ),
@@ -113,7 +113,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.MEDIUM,
-        max_iterations=2,
+        max_iterations=500,  # Unlimited for extensive ideation
         summary="Structured idea generation, alternatives exploration and option scoring.",
         use_when="Ideation, alternatives exploration and brainstorming requests.",
     ),
@@ -124,7 +124,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=15,  # Increased from 3 to 15 for exhaustive analysis
+        max_iterations=1000,  # Unlimited for exhaustive multi-pass analysis
         summary="Deep multi-file investigation with iterative exhaustive analysis.",
         use_when="Cross-cutting, high-complexity analysis requiring multiple passes.",
     ),
@@ -135,7 +135,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.PLANNING),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=3,
+        max_iterations=500,  # Unlimited for complex planning
         summary="Structured implementation planning with file impact analysis and task decomposition.",
         use_when="Complex tasks requiring explicit planning before implementation.",
     ),
@@ -145,7 +145,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.FULL,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=30,  # Increased from 10 to 30 for complex implementations
+        max_iterations=1000,  # Unlimited for complex implementations
         summary="Code writing, implementation, refactoring and bug fixing.",
         use_when="Implementing features, fixing bugs and editing the codebase.",
     ),
@@ -156,7 +156,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
         sandbox=SandboxMode.FULL,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=10,
+        max_iterations=1000,  # Unlimited for architectural work
         summary="Architecture design, structural decisions and implementation planning.",
         use_when="Architecture-heavy coding or structural refactoring requests.",
     ),
@@ -166,7 +166,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         tools=(ToolScope.WEB_SEARCH, ToolScope.PINCHTAB_FLEET, ToolScope.PINCHTAB_BROWSER),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
-        max_iterations=20,  # Increased from 5 to 20 for thorough research
+        max_iterations=500,  # Unlimited for thorough research
         summary="Web search, documentation lookup and external research.",
         use_when="External research, documentation lookup and technology comparisons.",
     ),

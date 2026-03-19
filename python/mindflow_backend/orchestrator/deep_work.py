@@ -25,7 +25,7 @@ class ContinuationSignal(TypedDict, total=False):
 def should_continue_investigation(
     agent_response: str,
     current_depth: int,
-    max_depth: int = 10,
+    max_depth: int = 1000,
 ) -> tuple[bool, str]:
     """
     Determine if agent wants to continue investigating.
@@ -33,7 +33,7 @@ def should_continue_investigation(
     Args:
         agent_response: The agent's response text
         current_depth: Current investigation depth
-        max_depth: Maximum allowed depth
+        max_depth: Maximum allowed depth (default: 1000, practically unlimited)
 
     Returns:
         (should_continue, reason)
