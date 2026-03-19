@@ -103,10 +103,10 @@ def _run_chat(
     model: str | None,
     base_url: str | None,
     debug_steps: bool,
-    orchestrate: bool = False,
+    orchestrate: bool | None = None,  # Changed from False to None
 ) -> None:
     settings = get_settings()
-    
+
     # Use settings defaults if not provided
     if not provider:
         provider = settings.get("default_provider", "google")
@@ -114,7 +114,7 @@ def _run_chat(
         model = settings.get("default_model", "gemini-3.1-flash-lite-preview")
     if not base_url:
         base_url = settings.get("api_url")
-    
+
     # Auto-orchestration based on settings
     if orchestrate is None:
         orchestrate = settings.get("auto_orchestrate", True)
@@ -146,7 +146,7 @@ def register_chat_commands(app: typer.Typer) -> None:
         provider: str | None = typer.Option(None, "--provider", help="Provider override"),
         model: str | None = typer.Option(None, "--model", help="Model override"),
         debug_steps: bool = typer.Option(False, "--debug-steps", help="Enable debug-oriented stream flags"),
-        orchestrate: bool = typer.Option(False, "--orchestrate", help="Use orchestrator (route to specialist agents)"),
+        orchestrate: bool | None = typer.Option(None, "--orchestrate", help="Use orchestrator (route to specialist agents). If not set, uses auto_orchestrate from settings."),
         base_url: str | None = typer.Option(
             None,
             "--base-url",
