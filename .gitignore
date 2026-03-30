@@ -97,6 +97,9 @@ start_dev.sh
 .windsurf/
 .claude/
 
+# Context+ MCP cache
+.mcp_data/
+
 # CodeX integration (local development artifacts)
 .codex/
 .vscode/settings.json
@@ -109,5 +112,7 @@ start_dev.sh
 ANALYSIS_REPORT.md
 MIGRATION_GUIDE.md
 SERVICES_RESTRUCTURE_SUMMARY.md
-CLAUDE.md
 AGENTS.md
+
+# Personal Claude Code preferences (not shared with team)
+CLAUDE.local.md

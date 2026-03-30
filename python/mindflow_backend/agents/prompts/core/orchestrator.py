@@ -144,7 +144,7 @@ def compose_orchestrator_prompt(*segments: str) -> str:
     Args:
         *segments: One or more segment keys: ``"core"``, ``"governance"``,
             ``"delegation"``, ``"reflection"``, ``"architecture"``, ``"chains"``,
-            ``"planning"``.
+            ``"planning"``, ``"memory"``.
 
     Returns:
         A fully composed system prompt with the MindFlow preamble.
@@ -165,6 +165,9 @@ def compose_orchestrator_prompt(*segments: str) -> str:
         
         # With planning capability
         prompt = compose_orchestrator_prompt("core", "delegation", "planning")
+        
+        # With memory protocol (MANDATORY for all agents)
+        prompt = compose_orchestrator_prompt("core", "delegation", "memory")
     """
     parts = []
     for seg in segments:
@@ -188,14 +191,17 @@ def compose_orchestrator_prompt(*segments: str) -> str:
         elif seg == "planning":
             from mindflow_backend.agents.prompts.specialized.orchestrator_planning import ORCHESTRATOR_PLANNING
             parts.append(ORCHESTRATOR_PLANNING)
+        elif seg == "memory":
+            from mindflow_backend.agents.prompts.specialized.memory_protocol import MEMORY_PROTOCOL
+            parts.append(MEMORY_PROTOCOL)
         else:
             raise KeyError(
                 f"Unknown orchestrator prompt segment {seg!r}. "
-                "Valid: core, governance, delegation, reflection, architecture, chains, planning"
+                "Valid: core, governance, delegation, reflection, architecture, chains, planning, memory"
             )
 
     return build_system_prompt("\n\n".join(parts))
 
 
-# Default export — Core + Delegation + Planning (Orchestrator as central entry point with tools)
-ORCHESTRATOR_SYSTEM_PROMPT = compose_orchestrator_prompt("core", "delegation", "planning")
+# Default export — Core + Delegation + Memory (Orchestrator as central entry point with tools and memory)
+ORCHESTRATOR_SYSTEM_PROMPT = compose_orchestrator_prompt("core", "delegation", "memory", "planning")

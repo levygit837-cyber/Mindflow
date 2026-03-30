@@ -140,8 +140,8 @@ class IntentAnalysis(BaseModel):
     is_multi_agent: bool = Field(default=False, description="Requires multiple agents")
     agent_sequence: list[AgentType] = Field(default_factory=list, description="Sequence of agents needed")
     execution_strategy: ExecutionStrategy = Field(
-        default=ExecutionStrategy.SINGLE_AGENT,
-        description="How to execute: direct_response, single_agent, chain, or graph",
+        default=ExecutionStrategy.DELEGATE,
+        description="How to execute: direct_response, delegate, chain, or graph",
     )
 
     @field_validator("recommended_agent", mode="before")
@@ -205,7 +205,11 @@ IMPORTANT: Before choosing an agent, read the full roster below carefully and re
 - Ask who you are: "who are you?", "quem é você?"
 - NO other case qualifies. If the user asks anything that requires thinking, answering, explaining, coding, or researching → DO NOT use direct_response.
 
-### 2. single_agent — DEFAULT for almost everything. Use when ONE agent from the roster above can handle it alone. Match the task to the agent whose capabilities and "Use when" description best fit.
+### 2. delegate — DEFAULT for almost everything. Delegates to ONE OR MORE agents based on task complexity. The LLM decides how many agents are needed:
+   - Simple tasks → delegate to 1 agent (e.g., "fix this bug" → CODER)
+   - Complex tasks → delegate to multiple agents (e.g., "analyze, fix, and review" → [ANALYST, CODER, REVIEWER])
+   - Set `is_multi_agent: true` and fill `agent_sequence` when multiple agents are needed
+   - Match the task to the agent(s) whose capabilities and "Use when" description best fit
 
 ### 3. chain — Only when the task EXPLICITLY requires multiple distinct phases:
 | chain_id | Use when |
@@ -219,22 +223,22 @@ IMPORTANT: Before choosing an agent, read the full roster below carefully and re
 Set `recommended_specialist` ONLY when the task clearly matches a registered specialist in the roster above. Leave it `null` if no specialist is a clear fit. Only use specialist names that appear in the roster — do NOT invent names.
 
 Specialist routing examples (based on the registered roster):
-- "design a arquitetura do sistema de pagamentos" → single_agent, CODER, recommended_specialist: "arch_tech"
-- "audita a segurança do sistema de auth" → single_agent, ANALYST, recommended_specialist: "security_guard"
-- "revisa este código e aponta problemas" → single_agent, ANALYST, recommended_specialist: "critic"
-- "brainstorm ideias para melhorar a performance" → single_agent, ANALYST, recommended_specialist: "brainstorm"
-- "pense em alternativas para resolver X" → single_agent, ANALYST, recommended_specialist: "brainstorm"
+- "design a arquitetura do sistema de pagamentos" → delegate, CODER, recommended_specialist: "arch_tech"
+- "audita a segurança do sistema de auth" → delegate, ANALYST, recommended_specialist: "security_guard"
+- "revisa este código e aponta problemas" → delegate, ANALYST, recommended_specialist: "critic"
+- "brainstorm ideias para melhorar a performance" → delegate, ANALYST, recommended_specialist: "brainstorm"
+- "pense em alternativas para resolver X" → delegate, ANALYST, recommended_specialist: "brainstorm"
 
 ## Decision Examples
 - "hello" → direct_response, ORCHESTRATOR
 - "olá como você está?" → direct_response, ORCHESTRATOR
-- "como funciona o orchestrator?" → single_agent, ANALYST
-- "explica o fluxo de delegação" → single_agent, ANALYST
-- "por que o agente está lento?" → single_agent, ANALYST
-- "o que é o MindFlow?" → single_agent, ANALYST
-- "cria uma função X" → single_agent, CODER
-- "corrige o bug Y" → single_agent, CODER
-- "pesquisa sobre langchain" → single_agent, RESEARCHER
+- "como funciona o orchestrator?" → delegate, ANALYST
+- "explica o fluxo de delegação" → delegate, ANALYST
+- "por que o agente está lento?" → delegate, ANALYST
+- "o que é o MindFlow?" → delegate, ANALYST
+- "cria uma função X" → delegate, CODER
+- "corrige o bug Y" → delegate, CODER
+- "pesquisa sobre langchain" → delegate, RESEARCHER
 - "implementa feature X lendo o código atual" → chain, coding_task
 - "analise esta codebase" with folder_path → chain, file_analysis
 
@@ -258,12 +262,12 @@ Specialist routing examples (based on the registered roster):
     "confidence": 0.9,
     "is_multi_agent": false,
     "agent_sequence": [],
-    "execution_strategy": "direct_response|single_agent|chain|graph"
+    "execution_strategy": "direct_response|delegate|chain|graph"
 }}
 
 STRICT RULES:
 - "ORCHESTRATOR" as recommended_agent ONLY when execution_strategy is "direct_response"
-- When in doubt → single_agent + ANALYST (never direct_response for doubt cases)
+- When in doubt → delegate + ANALYST (never direct_response for doubt cases)
 - "direct_response" is reserved for the ~5% of messages that are pure social interaction
 - Only use agent names and specialist names that appear in the registered roster above"""
 
@@ -300,7 +304,7 @@ STRICT RULES:
                             recommended_agent=AgentType.ANALYST,
                             formulated_objective=message,
                             confidence=0.5,
-                            execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                            execution_strategy=ExecutionStrategy.DELEGATE,
                         )
                 else:
                     _logger.warning("intent_parse_failed_no_json", raw_response=response_text[:500], error=str(e))
@@ -309,7 +313,7 @@ STRICT RULES:
                         recommended_agent=AgentType.ANALYST,
                         formulated_objective=message,
                         confidence=0.5,
-                        execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                        execution_strategy=ExecutionStrategy.DELEGATE,
                     )
 
             _logger.info(
@@ -328,7 +332,7 @@ STRICT RULES:
                 recommended_agent=AgentType.CODER,
                 formulated_objective=message,
                 confidence=0.3,
-                execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                execution_strategy=ExecutionStrategy.DELEGATE,
             )
 
     async def route_message_strategy(
@@ -415,11 +419,12 @@ STRICT RULES:
                 confidence=intent.confidence,
             )
 
-        # --- SINGLE_AGENT or multi-agent (both route to single_agent decision) ---
+        # --- DELEGATE: delegate to one or more agents ---
         if intent.is_multi_agent and intent.agent_sequence:
             target_agent = intent.agent_sequence[0]
             rationale = (
-                f"Multi-agent task: starting with {target_agent.value}. "
+                f"Multi-agent delegation: {len(intent.agent_sequence)} agents. "
+                f"Starting with {target_agent.value}. "
                 f"Sequence: {[a.value for a in intent.agent_sequence]}"
             )
         else:
@@ -429,7 +434,7 @@ STRICT RULES:
                 f"(confidence: {intent.confidence:.0%})"
             )
 
-        _logger.info("orchestrator_single_agent", agent=target_agent.value, rationale=rationale)
+        _logger.info("orchestrator_delegate", agent=target_agent.value, rationale=rationale)
 
         return WorkflowRouteDecision(
             rationale=rationale,
@@ -439,7 +444,7 @@ STRICT RULES:
             thinking=ThinkingLevel.HIGH,
             tools=self._get_tools_for_agent(target_agent, specialist),
             priority=Priority.NORMAL,
-            execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+            execution_strategy=ExecutionStrategy.DELEGATE,
             confidence=intent.confidence,
         )
 

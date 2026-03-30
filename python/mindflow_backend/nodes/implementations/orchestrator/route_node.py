@@ -81,7 +81,7 @@ class RouteNode(StatefulNode, BaseNode):
 
             fallback_decision = OrchestratorDecision(
                 agent=AgentType.ANALYST,
-                execution_strategy=ExecutionStrategy.SINGLE_AGENT,
+                execution_strategy=ExecutionStrategy.DELEGATE,
                 rationale=f"Routing failed, defaulting to analyst: {exc}",
             )
 

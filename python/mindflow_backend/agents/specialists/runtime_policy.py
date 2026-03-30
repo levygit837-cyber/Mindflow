@@ -77,7 +77,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
     "analyst": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
         system_prompt=ANALYST_SYSTEM_PROMPT,
-        tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL),
+        tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL, ToolScope.MEMORY),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.MEDIUM,
         max_iterations=500,  # Unlimited for deep code investigation
@@ -142,7 +142,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
     "coder": AgentRuntimePolicy(
         agent_role=AgentType.CODER,
         system_prompt=CODER_SYSTEM_PROMPT,
-        tools=(ToolScope.FILESYSTEM, ToolScope.SHELL),
+        tools=(ToolScope.FILESYSTEM, ToolScope.SHELL, ToolScope.MEMORY),
         sandbox=SandboxMode.FULL,
         thinking_level=ThinkingLevel.HIGH,
         max_iterations=1000,  # Unlimited for complex implementations
@@ -163,7 +163,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
     "researcher": AgentRuntimePolicy(
         agent_role=AgentType.RESEARCHER,
         system_prompt=RESEARCHER_SYSTEM_PROMPT,
-        tools=(ToolScope.WEB_SEARCH, ToolScope.PINCHTAB_FLEET, ToolScope.PINCHTAB_BROWSER),
+        tools=(ToolScope.WEB_SEARCH, ToolScope.PINCHTAB_FLEET, ToolScope.PINCHTAB_BROWSER, ToolScope.MEMORY),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
         max_iterations=500,  # Unlimited for thorough research

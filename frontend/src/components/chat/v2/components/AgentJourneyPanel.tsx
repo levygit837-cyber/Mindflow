@@ -17,8 +17,9 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { DelegationCardProps } from './DelegationCard';
-import { JourneyTimeline, JourneyStep } from './JourneyTimeline';
+import type { DelegationCardProps } from './DelegationCard';
+import { JourneyTimeline } from './JourneyTimeline';
+import type { JourneyStep } from './JourneyTimeline';
 import { getMindflowV2AgentTheme } from '../utils';
 import { useThemeController } from '../../../theme/useThemeController';
 

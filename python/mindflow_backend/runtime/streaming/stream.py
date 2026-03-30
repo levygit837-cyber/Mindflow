@@ -591,6 +591,8 @@ class AgentRuntime:
         settings = get_settings()
         provider = payload.provider or settings.default_provider
         model = payload.model or settings.default_model
+        run_id = run_id or str(uuid.uuid4())
+        counter = [0]  # Initialize sequence counter for stream events
         memory_agent_id = self._resolve_memory_agent_id(payload)
         derived_from_recall = is_continuation_prompt(payload.message)
         execution = None

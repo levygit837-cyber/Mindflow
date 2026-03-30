@@ -213,7 +213,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
             )
 
         # -1. DIRECT_RESPONSE: Orchestrator is the entity — it answers the user directly.
-        if getattr(decision, "execution_strategy", ExecutionStrategy.SINGLE_AGENT) == ExecutionStrategy.DIRECT_RESPONSE:
+        if getattr(decision, "execution_strategy", ExecutionStrategy.DELEGATE) == ExecutionStrategy.DIRECT_RESPONSE:
             return await self._orchestrator_direct_response(
                 state,
                 provider,
@@ -223,7 +223,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
             )
 
         # -0.5. GRAPH: Delegate to Plan-and-Execute multi-step graph
-        if getattr(decision, "execution_strategy", ExecutionStrategy.SINGLE_AGENT) == ExecutionStrategy.GRAPH:
+        if getattr(decision, "execution_strategy", ExecutionStrategy.DELEGATE) == ExecutionStrategy.GRAPH:
             from mindflow_backend.graphs.implementations.orchestrator.plan_execute import build_plan_execute_flow
             plan_graph = build_plan_execute_flow()
             result = await plan_graph.ainvoke({
@@ -258,7 +258,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
         await adispatch_custom_event("agent_thought", {"thought": delegation_msg})
 
         # 1. Chain Execution Mode (explicit orchestrator strategy)
-        if getattr(decision, "execution_strategy", ExecutionStrategy.SINGLE_AGENT) == ExecutionStrategy.CHAIN:
+        if getattr(decision, "execution_strategy", ExecutionStrategy.DELEGATE) == ExecutionStrategy.CHAIN:
             chain_id = getattr(decision, "chain_id", None)
 
             # Use enhanced chain integration if available

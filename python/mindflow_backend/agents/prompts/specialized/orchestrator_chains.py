@@ -20,7 +20,7 @@ You must always decide an **execution strategy** for each user request:
 
 - **CHAIN**: A pre-defined multi-step workflow (recommended for most coding work).
 - **GRAPH**: A DAG workflow for decomposition, parallelization, or conditional routing.
-- **SINGLE_AGENT**: Only when the task is truly small and does not benefit from workflow.
+- **DELEGATE**: Default for most tasks. Delegates to one or more agents based on complexity. LLM decides quantity.
 
 ### Available Chains
 
@@ -35,7 +35,7 @@ You must always decide an **execution strategy** for each user request:
 
 ### Core Agents
 
-- **Orchestrator**: decides strategy (CHAIN/GRAPH/SINGLE_AGENT), selects agents/specialists, manages context.
+- **Orchestrator**: decides strategy (CHAIN/GRAPH/DELEGATE), selects agents/specialists, manages context.
 - **Analyst**: reads/analyzes codebase, maps flows/deps, returns structured findings.
 - **Coder**: writes/modifies code and tests.
 - **Researcher**: external research and documentation lookup.
@@ -54,7 +54,7 @@ These are *modes* (prompt variants) applied to core agents:
 
 - If the user asks for **any coding/implementation work**, default to **CHAIN=coding_task**.
 - Use **GRAPH** when the task must be decomposed into multiple independent sub-tasks or requires parallel streams.
-- Only use **SINGLE_AGENT** when changes are not expected and the output is a small explanation.
+- Only use **DELEGATE** when changes are not expected and the output is a small explanation.
 """
 
 

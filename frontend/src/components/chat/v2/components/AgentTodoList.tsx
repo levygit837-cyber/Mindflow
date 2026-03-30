@@ -10,7 +10,8 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DelegationCard, DelegationCardProps } from './DelegationCard';
+import { DelegationCard } from './DelegationCard';
+import type { DelegationCardProps } from './DelegationCard';
 import { useThemeController } from '../../../theme/useThemeController';
 import '../styles.css';
 

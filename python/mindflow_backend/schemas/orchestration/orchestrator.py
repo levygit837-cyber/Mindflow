@@ -83,7 +83,7 @@ class ExecutionStrategy(StrEnum):
     """How the orchestrator intends to execute a request."""
 
     DIRECT_RESPONSE = "direct_response"  # Orchestrator responds directly without delegating
-    SINGLE_AGENT = "single_agent"
+    DELEGATE = "delegate"  # Delegate to one or more agents (LLM decides quantity)
     CHAIN = "chain"
     GRAPH = "graph"
 
@@ -169,7 +169,7 @@ class OrchestratorDecision(BaseModel):
     keep_context: bool = True
     sandbox: SandboxMode = SandboxMode.NONE
     chain: list[ChainStep] = Field(default_factory=list)
-    execution_strategy: ExecutionStrategy = ExecutionStrategy.SINGLE_AGENT
+    execution_strategy: ExecutionStrategy = ExecutionStrategy.DELEGATE
     chain_id: str | None = None
     chain_type: ChainType | None = None
     graph_id: str | None = None

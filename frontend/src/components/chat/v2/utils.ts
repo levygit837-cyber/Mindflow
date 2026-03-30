@@ -1,15 +1,11 @@
-/**
- * Chat Visualization V2 - Utility Functions
- * 
- * Helper functions for agent type resolution, theme management,
- * duration formatting, and value transformation.
- */
+// Chat Visualization V2 - Utility Functions
+// Helper functions for agent resolution, theme management, duration formatting, and value transformation.
 
-import {
+import { MINDFLOW_V2_AGENT_THEME } from './types';
+import type {
   MindflowV2AgentType,
   MindflowV2AgentTheme,
   MindflowV2Tone,
-  MINDFLOW_V2_AGENT_THEME,
 } from './types';
 
 /**

@@ -12,7 +12,8 @@
 import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, ExternalLink } from 'lucide-react';
-import { MindflowV2AgentType, getMindflowV2AgentTheme } from '../index';
+import { getMindflowV2AgentTheme } from '../index';
+import type { MindflowV2AgentType } from '../index';
 import { useThemeController } from '../../../theme/useThemeController';
 import '../styles.css';
 

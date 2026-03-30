@@ -25,7 +25,7 @@ class WorkflowRouteDecision(BaseModel):
     """Final router output before planning-specific expansion."""
 
     rationale: str = ""
-    execution_strategy: ExecutionStrategy = ExecutionStrategy.SINGLE_AGENT
+    execution_strategy: ExecutionStrategy = ExecutionStrategy.DELEGATE
     agent_role: AgentType = AgentType.CODER
     specialist: SpecialistType | None = None
     task: str = ""

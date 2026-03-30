@@ -18,7 +18,7 @@ import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { RichText } from '../../../common/RichText';
-import { MindflowV2AgentType } from '../types';
+import type { MindflowV2AgentType } from '../types';
 import { getMindflowV2AgentTheme } from '../utils';
 import { useThemeController } from '../../../theme/useThemeController';
 

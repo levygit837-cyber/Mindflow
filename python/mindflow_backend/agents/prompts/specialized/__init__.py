@@ -14,6 +14,7 @@ from mindflow_backend.agents.prompts.specialized.brainstorming import BRAINSTORM
 from mindflow_backend.agents.prompts.specialized.code_review import CODE_REVIEW_PROMPT
 from mindflow_backend.agents.prompts.specialized.context_governance import CONTEXT_GOVERNANCE_PROMPT
 from mindflow_backend.agents.prompts.specialized.deep_analysis import DEEP_ANALYSIS_PROMPT
+from mindflow_backend.agents.prompts.specialized.memory_protocol import MEMORY_PROTOCOL_PROMPT
 from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import (
     ORCHESTRATOR_REFLECTION_PROMPT,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "DEEP_ANALYSIS_PROMPT",
     "CONTEXT_GOVERNANCE_PROMPT",
     "AGENT_DELEGATION_PROMPT",
+    "MEMORY_PROTOCOL_PROMPT",
     "ORCHESTRATOR_REFLECTION_PROMPT",
     "ORCHESTRATOR_CHAINS_PROMPT",
     "ORCHESTRATOR_PLANNING_PROMPT",

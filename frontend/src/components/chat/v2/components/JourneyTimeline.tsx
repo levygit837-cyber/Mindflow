@@ -17,7 +17,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle2, AlertCircle, Loader2, Circle } from 'lucide-react';
-import { MindflowV2AgentType } from '../types';
+import type { MindflowV2AgentType } from '../types';
 import { getMindflowV2AgentTheme } from '../utils';
 import { useThemeController } from '../../../theme/useThemeController';
 
