@@ -1,10 +1,9 @@
 """Streaming infrastructure and execution runtime."""
 
-# from mindflow_backend.runtime.deep_agent_factory import (
-#     DeepAgentConfig,
-#     create_omnimind_deep_agent,
-#     search_web_tool,
-# )
+from mindflow_backend.runtime.core.agent_runtime import AgentRuntime as RuntimeAgentRuntime
+from mindflow_backend.runtime.routing.runtime_router import RuntimeRouter
+from mindflow_backend.runtime.execution.executor import RuntimeExecutor
+from mindflow_backend.runtime.memory.memory_integration import MemoryIntegration
 from mindflow_backend.runtime.monitoring.log_bus import AgentLogBus, log_bus
 from mindflow_backend.runtime.registry.node_registry import (
     NodeCategory,
@@ -13,6 +12,7 @@ from mindflow_backend.runtime.registry.node_registry import (
     is_streamable_node,
 )
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
+from mindflow_backend.runtime.streaming.stream_manager import StreamManager
 from mindflow_backend.runtime.processing.output_categorizer import OutputCategory, categorize_output
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.runtime.execution.safe_backend import (
@@ -33,10 +33,16 @@ from mindflow_backend.runtime.utils.response_parser import (
 )
 
 __all__ = [
+    # Modular runtime (new)
+    "RuntimeAgentRuntime",
+    "RuntimeRouter",
+    "RuntimeExecutor",
+    "MemoryIntegration",
+    "StreamManager",
+    # Existing exports
     "AgentChatStreamNormalizer",
     "AgentLogBus",
     "BackendProtocol",
-    # "DeepAgentConfig",
     "ExecuteResult",
     "NodeCategory",
     "OutputCategory",
@@ -45,7 +51,6 @@ __all__ = [
     "StreamEventQueue",
     "categorize_output",
     "classify_node",
-    # "create_omnimind_deep_agent",
     "extract_ai_message_content",
     "extract_text_only",
     "extract_thinking_only",
@@ -55,5 +60,4 @@ __all__ = [
     "is_streamable_node",
     "log_bus",
     "normalize_response_for_json",
-    # "search_web_tool",
 ]
