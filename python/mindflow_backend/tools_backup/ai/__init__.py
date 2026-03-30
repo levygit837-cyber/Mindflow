@@ -1,1 +1,0 @@
-"""AI tools for MindFlow backend. Provides local model management, embedding generation, and AI-powered text processing capabilities. """ from __future__ import annotations # Local AI models from .local_models import ( LocalModelManager, EmbeddingGenerator, ) __all__ = [ # Local AI models "LocalModelManager", "EmbeddingGenerator", ] 

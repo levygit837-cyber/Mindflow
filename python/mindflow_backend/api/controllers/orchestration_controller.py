@@ -82,7 +82,7 @@ class OrchestrationController(BaseController):
                 execution_id=execution["execution_id"],
                 status=execution["status"],
                 sub_tasks=decomposition["sub_tasks"],
-                results=execution["results"],
+                results=execution.get("execution_results", []),
                 metadata={
                     "decomposition": decomposition,
                     "execution": execution
@@ -131,14 +131,15 @@ class OrchestrationController(BaseController):
                 task_complexity=request.task_complexity,
                 current_specialist=request.current_specialist
             )
-            
+
+            selected = result["selected_specialist"]
             return SpecialistSelectionResponse(
                 success=True,
                 message="Specialist selection completed",
                 task_id=result["task_id"],
-                selected_specialist=result["selected_specialist"],
-                rationale=result["rationale"],
-                confidence=result["confidence"],
+                selected_specialist=selected,
+                rationale=selected.get("reasoning", ""),
+                confidence=selected.get("confidence", 0.0),
                 alternatives=result.get("alternatives", []),
                 metadata=result
             )
@@ -164,12 +165,12 @@ class OrchestrationController(BaseController):
                 agent_sequence=agent_sequence,
                 session_id=session_id
             )
-            
+
             return OrchestrationResponse(
                 success=True,
                 message="Agent coordination started",
                 task_id=task_id,
-                execution_id=result["coordination_id"],
+                execution_id=result.get("task_id", task_id),
                 status=result["status"],
                 metadata={
                     "coordination": result,

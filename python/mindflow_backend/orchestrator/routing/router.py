@@ -52,7 +52,7 @@ async def route_message(
     - Eliminates keyword matching fragility
     - Handles complex and ambiguous requests intelligently
     """
-    from mindflow_backend.orchestrator.intelligent_router import route_message_intelligently
+    from mindflow_backend.orchestrator.routing.intelligent_router import route_message_intelligently
     
     # Use intelligent routing instead of keyword matching
     return await route_message_intelligently(message, folder_path=folder_path)

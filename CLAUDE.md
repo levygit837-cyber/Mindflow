@@ -190,6 +190,108 @@ Input: { point_id: string }
 Output: Confirmação dos arquivos restaurados
 ```
 
+---
+
+## 🔴 PRIORIDADE ABSOLUTA: Leitura Real do Código > Memórias
+
+> **REGRA FUNDAMENTAL:** As ferramentas de leitura e análise de código do Context+ são INFINITAMENTE mais importantes que as memórias. Memórias são úteis como contexto suplementar, mas NUNCA substituem a leitura real do código-fonte atual.
+
+### Por que o código real tem prioridade?
+
+1. **Memórias podem estar desatualizadas** — O código muda constantemente. Uma memória salva há 3 sessões pode descrever uma arquitetura que já foi refatorada.
+2. **Memórias são resumos, não verdade** — Elas capturam a *interpretação* de quem as escreveu, não o estado exato do código.
+3. **O código-fonte é a única fonte de verdade** — Sempre que houver conflito entre uma memória e o código real, **o código real vence**.
+4. **Memórias não capturam efeitos colaterais** — Uma mudança em um arquivo pode ter alterado o comportamento de outro sem que a memória reflita isso.
+
+### Hierarquia de Confiança (do mais confiável ao menos confiável)
+
+```
+🥇 1. Código real via get_file_skeleton / get_context_tree  → VERDADE ABSOLUTA
+🥈 2. Resultados de semantic_code_search / semantic_identifier_search → VERDADE VERIFICÁVEL
+🥉 3. Resultados de get_blast_radius / run_static_analysis → VERDADE COMPUTADA
+🏅 4. Memórias via search_memory_graph → CONTEXTO SUPLEMENTAR (pode estar desatualizado)
+```
+
+### Workflow Correto: Ferramentas PRIMEIRO, Memórias DEPOIS
+
+```
+PASSO 1 — LEITURA REAL DO CÓDIGO (OBRIGATÓRIO, NUNCA PULE):
+├── get_context_tree         → Mapear a estrutura ATUAL do projeto
+├── get_file_skeleton        → Ver assinaturas REAIS dos arquivos relevantes
+├── semantic_code_search     → Encontrar arquivos por conceito no código REAL
+├── semantic_identifier_search → Rastrear funções/classes/variáveis REAIS
+└── semantic_navigate        → Entender a organização lógica REAL por clusters
+
+PASSO 2 — MEMÓRIAS COMO CONTEXTO EXTRA (ÚTIL, MAS SECUNDÁRIO):
+├── search_memory_graph      → Buscar decisões anteriores e contexto acumulado
+└── retrieve_with_traversal  → Expandir contexto a partir de um nó conhecido
+
+PASSO 3 — ANTES DE MODIFICAR (OBRIGATÓRIO):
+├── get_blast_radius         → Medir impacto REAL no código atual
+└── run_static_analysis      → Validar estado REAL do código
+
+PASSO 4 — APÓS CONCLUIR (OBRIGATÓRIO):
+├── propose_commit           → Salvar mudanças (ÚNICA forma permitida)
+├── run_static_analysis      → Revalidar qualidade
+└── upsert_memory_node       → Persistir aprendizados para próximas sessões
+```
+
+### Como Usar Cada Ferramenta do Context+ — Guia Detalhado
+
+#### 🗺️ Ferramentas de Descoberta (Discovery) — USE SEMPRE PRIMEIRO
+
+| Ferramenta | Para que serve | Quando usar | Exemplo de uso |
+|------------|---------------|-------------|----------------|
+| `get_context_tree` | Gera a árvore AST do projeto com arquivos, funções, classes e enums. Faz poda automática baseada em tokens. | **SEMPRE no início de QUALQUER tarefa.** É o mapa do código. | `{ target_path: "./python/src", depth_limit: 3 }` |
+| `get_file_skeleton` | Retorna assinaturas de funções e tipos SEM o corpo. Mostra o "esqueleto" do arquivo. | **SEMPRE antes de ler um arquivo completo.** Se o esqueleto for suficiente, NÃO leia mais. | `{ file_path: "python/src/api/routes.py" }` |
+| `semantic_code_search` | Busca arquivos por **significado semântico**, não por texto exato. Usa embeddings vetoriais. | Quando você sabe o *conceito* mas não o *nome do arquivo*. Ex: "autenticação JWT" | `{ query: "autenticação de usuário com tokens", top_k: 5 }` |
+| `semantic_identifier_search` | Busca funções, classes e variáveis por significado. Retorna definições + cadeias de chamada. | Quando você precisa encontrar uma função/classe específica e saber onde ela é chamada. | `{ query: "validação de permissões", top_k: 3, include_kinds: ["function", "class"] }` |
+| `semantic_navigate` | Agrupa arquivos em clusters semânticos rotulados. Usa spectral clustering para organizar por domínio. | Quando precisa entender a arquitetura lógica do projeto, ignorando a estrutura de pastas. | `{ max_depth: 2, max_clusters: 8 }` |
+
+#### 🔬 Ferramentas de Análise (Analysis) — USE ANTES DE MODIFICAR
+
+| Ferramenta | Para que serve | Quando usar | Exemplo de uso |
+|------------|---------------|-------------|----------------|
+| `get_blast_radius` | Rastreia TODOS os arquivos e linhas onde um símbolo é usado em todo o codebase. | **OBRIGATÓRIO antes de modificar, renomear ou deletar qualquer símbolo.** | `{ symbol_name: "authenticate_user", file_context: "auth/service.py" }` |
+| `run_static_analysis` | Executa linters e compiladores nativos (tsc, eslint, py_compile, cargo, go vet). | **OBRIGATÓRIO após cada edição.** Detecta variáveis não usadas, erros de tipo, código morto. | `{ target_path: "./python/src" }` |
+
+#### ⚙️ Ferramentas de Operação (Code Ops) — USE PARA SALVAR
+
+| Ferramenta | Para que serve | Quando usar | Exemplo de uso |
+|------------|---------------|-------------|----------------|
+| `propose_commit` | **ÚNICA forma de salvar código.** Valida qualidade e cria restore point automático. | **SEMPRE que precisar salvar qualquer modificação.** Nunca use write_file ou ferramentas nativas. | `{ file_path: "src/auth.ts", new_content: "..." }` |
+| `get_feature_hub` | Navega hubs .md com wikilinks que mapeiam features → arquivos de código. | Para entender como features se relacionam com código, ou encontrar arquivos órfãos. | `{ show_orphans: true }` |
+
+#### 🔄 Ferramentas de Versionamento (Version Control) — USE PARA DESFAZER
+
+| Ferramenta | Para que serve | Quando usar | Exemplo de uso |
+|------------|---------------|-------------|----------------|
+| `list_restore_points` | Lista todos os restore points criados pelo propose_commit. | Antes de usar undo_change, para ver o que pode ser revertido. | `{}` |
+| `undo_change` | Restaura arquivos ao estado anterior. Não afeta o git real. | Quando uma mudança via propose_commit causou problemas. | `{ point_id: "rp_abc123" }` |
+
+#### 🧠 Ferramentas de Memória (RAG Memory) — USE COMO COMPLEMENTO
+
+> ⚠️ **LEMBRETE:** Estas ferramentas fornecem contexto SUPLEMENTAR. Elas NÃO substituem a leitura real do código via ferramentas de Discovery e Analysis acima.
+
+| Ferramenta | Para que serve | Quando usar | Exemplo de uso |
+|------------|---------------|-------------|----------------|
+| `search_memory_graph` | Busca semântica + travessia de grafo nas memórias persistidas. | Para recuperar decisões e contexto de sessões anteriores. **Útil, mas CONFIRME contra o código real.** | `{ query: "decisão sobre cache layer", top_k: 5 }` |
+| `upsert_memory_node` | Cria ou atualiza nós de memória com embedding automático. | **Ao final de cada tarefa** para persistir aprendizados para próximas sessões. | `{ id: "auth-refactor-v2", type: "concept", content: "..." }` |
+| `create_relation` | Cria arestas tipadas entre nós de memória. | Para mapear relacionamentos entre componentes documentados na memória. | `{ from_id: "auth-service", to_id: "jwt-handler", relation_type: "depends_on" }` |
+| `add_interlinked_context` | Adiciona múltiplos nós em bulk com auto-linking por similaridade. | Após sessões de exploração extensas, para persistir tudo de uma vez. | `{ nodes: [{id: "...", type: "file", content: "..."}] }` |
+| `retrieve_with_traversal` | Caminha pelo grafo a partir de um nó e retorna vizinhos pontuados. | Para expandir contexto a partir de algo que você já encontrou na memória. | `{ node_id: "auth-service", max_depth: 2 }` |
+| `prune_stale_links` | Remove arestas decaídas e nós órfãos do grafo de memória. | Manutenção periódica, especialmente após grandes refatorações. | `{ threshold: 0.3 }` |
+
+### ❌ O Que NUNCA Fazer
+
+1. **NUNCA confie cegamente em memórias** — Sempre valide contra o código real com `get_file_skeleton` ou `semantic_code_search`.
+2. **NUNCA pule a leitura real do código** porque uma memória "parece" ter a resposta — A memória pode estar desatualizada.
+3. **NUNCA use memórias como substituto para `get_blast_radius`** — O impacto real só se mede no código real.
+4. **NUNCA assuma que a arquitetura não mudou** desde a última memória — Use `get_context_tree` para confirmar.
+5. **NUNCA inicie uma tarefa lendo APENAS memórias** — Leia o código real PRIMEIRO, use memórias como complemento.
+
+---
+
 ### 🧠 RAG Memory — Memória entre Sessões
 
 #### `search_memory_graph`

@@ -33,40 +33,208 @@ class PersonalityManagerContract(Protocol):
         task_description: str,
         task_complexity: str,
         context_requirements: list[str] | None = None,
-        current_specialist: str | None = None,
+        current_specialist: SpecialistType | None = None,
     ) -> SpecialistDecisionResult:
-        """Select optimal specialist for task execution."""
+        """Select optimal personality for a given task.
+        
+        Args:
+            task_id: Unique task identifier.
+            task_description: Description of the task.
+            task_complexity: Complexity level (simple/medium/complex).
+            context_requirements: Required context capabilities.
+            current_specialist: Currently active personality.
+            
+        Returns:
+            Complete personality selection decision with configuration.
+        """
         ...
 
     async def switch_personality(
         self,
-        task_id: str,
-        from_specialist: SpecialistType,
-        to_specialist: SpecialistType,
-        context: SpecialistSwitchContext,
-    ) -> bool:
-        """Execute personality switch during task execution."""
+        session_id: str,
+        from_personality: SpecialistType,
+        to_personality: SpecialistType,
+        trigger: str,
+        rationale: str,
+        carry_over_context: str = "",
+    ) -> SpecialistSwitchContext:
+        """Execute a personality switch operation.
+        
+        Args:
+            session_id: Session identifier.
+            from_personality: Current personality.
+            to_personality: Target personality.
+            trigger: What triggered the switch.
+            rationale: Reason for switching.
+            carry_over_context: Context to preserve.
+            
+        Returns:
+            Context for the personality switch operation.
+        """
         ...
 
-    async def evaluate_personality_rules(
+    async def configure_personality(
         self,
-        task_context: dict[str, Any],
-        rules: list[SpecialistSelectionRule],
-    ) -> list[SpecialistSelection]:
-        """Evaluate personality selection rules."""
+        personality: SpecialistType,
+        configuration: SpecialistConfiguration,
+    ) -> None:
+        """Configure a specific personality.
+        
+        Args:
+            personality: Personality type to configure.
+            configuration: Personality configuration parameters.
+        """
         ...
 
-    async def get_specialist_config(
+    async def get_personality_configuration(
         self,
-        specialist_type: SpecialistType,
+        personality: SpecialistType,
     ) -> SpecialistConfiguration:
-        """Get configuration for specialist type."""
+        """Get current configuration for a personality.
+        
+        Args:
+            personality: Personality type.
+            
+        Returns:
+            Current personality configuration.
+        """
         ...
 
-    async def update_specialist_config(
+    async def evaluate_selection_rules(
         self,
-        specialist_type: SpecialistType,
-        config: SpecialistConfiguration,
+        task_description: str,
+        task_complexity: str,
+        specialization: str | None = None,
+    ) -> list[SpecialistSelectionRule]:
+        """Evaluate personality selection rules.
+        
+        Args:
+            task_description: Task description.
+            task_complexity: Complexity level.
+            specialization: Required specialization.
+            
+        Returns:
+            List of applicable selection rules ranked by priority.
+        """
+        ...
+
+    async def add_selection_rule(
+        self,
+        rule: SpecialistSelectionRule,
+    ) -> None:
+        """Add a new personality selection rule.
+        
+        Args:
+            rule: Selection rule to add.
+        """
+        ...
+
+    async def remove_selection_rule(
+        self,
+        rule_name: str,
     ) -> bool:
-        """Update specialist configuration."""
+        """Remove a personality selection rule.
+        
+        Args:
+            rule_name: Name of rule to remove.
+            
+        Returns:
+            True if rule was removed.
+        """
+        ...
+
+    async def get_personality_performance(
+        self,
+        personality: SpecialistType,
+        time_window: str = "24h",
+    ) -> dict[str, float]:
+        """Get performance metrics for a personality.
+        
+        Args:
+            personality: Personality type.
+            time_window: Time window for metrics.
+            
+        Returns:
+            Performance metrics dictionary.
+        """
+        ...
+
+    async def should_switch_personality(
+        self,
+        current_task: dict,
+        current_specialist: SpecialistType,
+        performance_metrics: dict[str, float],
+    ) -> bool:
+        """Determine if personality should be switched.
+        
+        Args:
+            current_task: Current task context.
+            current_specialist: Active personality.
+            performance_metrics: Current performance metrics.
+            
+        Returns:
+            True if personality switch is recommended.
+        """
+        ...
+
+    async def create_switch_context(
+        self,
+        session_id: str,
+        from_personality: SpecialistType,
+        to_personality: SpecialistType,
+        trigger: str,
+        rationale: str,
+        carry_over_context: str = "",
+    ) -> dict[str, any]:
+        """Create context for personality switching.
+        
+        Args:
+            session_id: Session identifier.
+            from_personality: Source personality.
+            to_personality: Target personality.
+            trigger: Switch trigger.
+            rationale: Switch rationale.
+            carry_over_context: Context to preserve.
+            
+        Returns:
+            Context dictionary for personality switch.
+        """
+        ...
+
+    async def optimize_personality_selection(
+        self,
+        task_history: list[dict],
+        performance_data: dict[str, dict],
+    ) -> list[SpecialistSelectionRule]:
+        """Optimize personality selection rules based on performance.
+        
+        Args:
+            task_history: Historical task data.
+            performance_data: Performance metrics by personality.
+            
+        Returns:
+            Optimized selection rules.
+        """
+        ...
+
+    async def get_available_specialists(self) -> list[SpecialistType]:
+        """Get list of available specialist types.
+        
+        Returns:
+            List of configured specialist types.
+        """
+        ...
+
+    async def validate_personality_configuration(
+        self,
+        configuration: SpecialistConfiguration,
+    ) -> bool:
+        """Validate personality configuration.
+        
+        Args:
+            configuration: Configuration to validate.
+            
+        Returns:
+            True if configuration is valid.
+        """
         ...

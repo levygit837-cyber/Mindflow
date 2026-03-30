@@ -784,3 +784,36 @@ def get_redis_client() -> RedisClient:
     if _redis_client is None:
         _redis_client = RedisClient()
     return _redis_client
+
+
+# ---------------------------------------------------------------------------
+# Raw connection helpers — canonical replacements for the former infra.redis shim
+# ---------------------------------------------------------------------------
+
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def get_async_redis():
+    """Return a cached async Redis connection (raw redis.asyncio.Redis instance).
+
+    Use this when you need direct access to the Redis protocol (xadd, pipeline,
+    pub/sub, etc.) rather than the high-level RedisClient wrapper.
+    """
+    import redis.asyncio as _redis_async  # type: ignore
+
+    settings = get_settings()
+    return _redis_async.from_url(settings.cache.redis_url, decode_responses=True)
+
+
+@lru_cache(maxsize=1)
+def get_sync_redis():
+    """Return a cached synchronous Redis connection (raw redis.Redis instance).
+
+    Use this for sync contexts (workers, CLI scripts).  Prefer the async
+    variant in async code paths.
+    """
+    import redis as _redis  # type: ignore
+
+    settings = get_settings()
+    return _redis.from_url(settings.cache.redis_url, decode_responses=True)

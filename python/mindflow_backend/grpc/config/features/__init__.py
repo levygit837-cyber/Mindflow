@@ -313,7 +313,7 @@ class FeatureToggles:
         # Check dependencies first
         for dependency in flag.dependencies:
             if not await self.is_enabled(dependency, context):
-                _logger.debug("feature_dependency_disabled", flag=flag_name, dependency=dependency)
+                _logger.debug("feature_dependency_disabled", flag=flag.name, dependency=dependency)
                 return False
         
         # Evaluate based on current state

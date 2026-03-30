@@ -22,10 +22,6 @@ from .base.business_new import (
     NotFoundError,
 )
 
-# Legacy exceptions (maintained for backward compatibility)
-from .base.core import MindFlowError as LegacyMindFlowError
-from .base.business import BusinessLogicError as LegacyBusinessLogicError
-
 # Domain-specific exceptions
 from .agents import (
     AgentSystemError,

@@ -128,7 +128,7 @@ class ProviderController(BaseController):
                 provider_id=provider_id,
                 name=provider_id,
                 status="configured",
-                config=config_data["config"],
+                config=config_data.get("settings", {}),
                 metadata=config_data
             )
             
@@ -215,8 +215,8 @@ class ProviderController(BaseController):
                 "success": True,
                 "message": f"Failure handled for {provider_id}",
                 "failed_provider": result["failed_provider"],
-                "fallback_triggered": result["fallback_triggered"],
-                "next_provider": result.get("next_provider"),
+                "fallback_triggered": len(result.get("fallback_options", [])) > 0,
+                "next_provider": result.get("recommended_alternative"),
                 "error": result["error"],
                 "metadata": result
             }

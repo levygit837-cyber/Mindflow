@@ -46,6 +46,13 @@ class TaskRetriever(BaseAbstractService):
             from mindflow_backend.services import get_vector_service
             self._vector_service = get_vector_service()
         return self._vector_service
+
+    def _get_embedding_service(self):
+        """Get embedding service instance (lazy loading)."""
+        if not hasattr(self, "_embedding_service") or self._embedding_service is None:
+            from mindflow_backend.services import get_embedding_service
+            self._embedding_service = get_embedding_service()
+        return self._embedding_service
     
     async def retrieve_task_context(
         self,

@@ -1,26 +1,13 @@
-"""Analyst agent interface.
+"""Analyst agent interfaces.
 
-Defines contracts for code analysis, system evaluation,
-and technical assessment operations.
+DEPRECATED: This module has been moved to mindflow_backend.interfaces.agents.analyst
+This file is maintained for backward compatibility during migration.
+
+Use: from mindflow_backend.interfaces.agents import Analyst
 """
 
-from __future__ import annotations
+# Forward compatibility alias - import from new location
+from mindflow_backend.interfaces.agents.analyst import Analyst
 
-from typing import Protocol, runtime_checkable, Any
-
-
-@runtime_checkable
-class Analyst(Protocol):
-    """Contract for analyst agent implementations."""
-    
-    async def analyze_code(self, code: str, context: dict) -> dict[str, Any]:
-        """Analyze code structure and quality."""
-        ...
-
-    async def evaluate_system(self, system_description: str) -> dict[str, Any]:
-        """Evaluate system architecture and design."""
-        ...
-
-    async def generate_insights(self, data: Any) -> list[str]:
-        """Generate analytical insights from data."""
-        ...
+# Maintain backward compatibility
+__all__ = ["Analyst"]

@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from mindflow_backend.agents.interfaces.core import SpecialistSelector as SpecialistSelectorInterface
+from mindflow_backend.interfaces.agents import SpecialistSelector as SpecialistSelectorInterface
 from mindflow_backend.exceptions import SpecialistSelectionError
 from mindflow_backend.agents.specialists.rule_engine import (
     get_specialist_rule_engine,

@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.agents.interfaces.agents.enhanced_analyst import EnhancedAnalyst
-from mindflow_backend.agents.interfaces.agents.enhanced_coder import EnhancedCoder
+from mindflow_backend.interfaces.agents import EnhancedAnalyst
+from mindflow_backend.interfaces.agents import EnhancedCoder
 from mindflow_backend.agents.tools.specialist.research.core.enhanced_researcher import get_enhanced_researcher_agent
-from mindflow_backend.agents.interfaces.agents.enhanced_reviewer import EnhancedReviewer
+from mindflow_backend.interfaces.agents import EnhancedReviewer
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.core_interfaces import AgentServiceInterface

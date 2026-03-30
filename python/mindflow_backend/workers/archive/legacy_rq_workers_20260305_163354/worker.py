@@ -1,6 +1,6 @@
 from rq import Connection, Worker
 
-from mindflow_backend.infra.redis import get_sync_redis
+from mindflow_backend.infra.cache.redis_client import get_sync_redis
 
 
 def run() -> None:

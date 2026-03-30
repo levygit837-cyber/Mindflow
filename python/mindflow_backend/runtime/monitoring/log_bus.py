@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import orjson
 
-from mindflow_backend.infra.redis import get_async_redis
+from mindflow_backend.infra.cache.redis_client import get_async_redis
 from mindflow_backend.schemas.chat.agent import LogEntry, StreamEvent
 
 

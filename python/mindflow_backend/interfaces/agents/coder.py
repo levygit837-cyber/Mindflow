@@ -1,30 +1,13 @@
-"""Coder agent interface.
+"""Coder agent interfaces.
 
-Defines contracts for code generation, modification,
-and implementation operations.
+DEPRECATED: This module has been moved to mindflow_backend.interfaces.agents.coder
+This file is maintained for backward compatibility during migration.
+
+Use: from mindflow_backend.interfaces.agents import Coder
 """
 
-from __future__ import annotations
+# Forward compatibility alias - import from new location
+from mindflow_backend.interfaces.agents.coder import Coder
 
-from typing import Protocol, runtime_checkable, Any
-
-
-@runtime_checkable
-class Coder(Protocol):
-    """Contract for coder agent implementations."""
-    
-    async def generate_code(self, requirements: str, context: dict) -> str:
-        """Generate code based on requirements."""
-        ...
-
-    async def modify_code(self, code: str, modifications: list) -> str:
-        """Apply modifications to existing code."""
-        ...
-
-    async def review_code(self, code: str) -> dict[str, Any]:
-        """Review code for quality and best practices."""
-        ...
-
-    async def implement_feature(self, feature_spec: dict) -> dict[str, Any]:
-        """Implement a complete feature based on specification."""
-        ...
+# Maintain backward compatibility
+__all__ = ["Coder"]

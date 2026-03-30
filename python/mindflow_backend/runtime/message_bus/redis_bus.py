@@ -10,7 +10,7 @@ from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
 
 from mindflow_backend.communication.circuit_breaker.breaker import CircuitBreaker
-from mindflow_backend.infra.redis import get_async_redis
+from mindflow_backend.infra.cache.redis_client import get_async_redis
 
 from .protocol import MindFlowMessage, MessageType
 

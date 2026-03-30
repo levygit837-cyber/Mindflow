@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from rq import Queue
 
-from mindflow_backend.infra.redis import get_sync_redis
+from mindflow_backend.infra.cache.redis_client import get_sync_redis
 
 
 @lru_cache(maxsize=1)

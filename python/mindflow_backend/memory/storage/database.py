@@ -20,8 +20,8 @@ class MemoryDatabase:
 
     @contextmanager
     def get_db_session(self):
-        from mindflow_backend.storage.postgresql.connection import db_session
-        with db_session() as db:
+        from mindflow_backend.infra.database.connection import get_db_session
+        with get_db_session() as db:
             yield db
 
     def get_memory_events(

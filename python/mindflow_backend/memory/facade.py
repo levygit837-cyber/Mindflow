@@ -44,19 +44,21 @@ def _get_db_session_factory():
 
     return get_db_session
 
-_STOPWORDS = {
-    "a", "ao", "as", "como", "com", "da", "das", "de", "do", "dos", "e",
-    "em", "essa", "esse", "foi", "o", "os", "para", "por", "que", "se",
-    "um", "uma", "the", "and", "for", "with", "from",
-}
-_CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
-    ("decision", ("decid", "defin", "escolh", "opt", "adot", "vamos usar")),
-    ("debugging", ("erro", "bug", "falha", "debug", "corrig", "fix", "exception")),
-    ("implementation", ("implement", "codigo", "refactor", "schema", "migration", "endpoint", "api")),
-    ("testing", ("teste", "pytest", "assert", "valid", "verification")),
-    ("research", ("pesquis", "research", "benchmark", "compar", "investig")),
-    ("planning", ("planej", "roadmap", "fases", "next step", "estrateg", "plan")),
-]
+from .facade_helpers import (
+    build_excerpt,
+    build_summary,
+    cosine_similarity,
+    derive_title,
+    extract_tags,
+    filter_and_rerank_hits,
+    format_context,
+    infer_category,
+    is_answer_bearing,
+    normalize_vector,
+    row_to_retrieval_hit,
+    to_memory_hit,
+    to_session_block_schema,
+)
 
 
 @dataclass(slots=True)

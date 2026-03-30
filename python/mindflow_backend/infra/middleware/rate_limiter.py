@@ -72,7 +72,7 @@ async def _check_memory_rate_limit(
 
 def _get_redis():
     """Lazy import of async Redis client — patchable for tests."""
-    from mindflow_backend.infra.redis import get_async_redis
+    from mindflow_backend.infra.cache.redis_client import get_async_redis
 
     return get_async_redis()
 

@@ -10,133 +10,16 @@ import asyncio
 import time
 import threading
 from typing import Dict, Any, Optional, List, Callable
-from dataclasses import dataclass, field
-from enum import Enum
-from collections import deque
-import statistics
 
 from mindflow_backend.grpc.resilience.circuit_breaker import (
-    CircuitState, CircuitBreakerConfig, CallResult, CircuitBreakerOpenError
+    CircuitState, CallResult, CircuitBreakerOpenError
 )
 from mindflow_backend.infra.logging import get_logger
 
+from .circuit_breaker.config import AdaptiveThresholdType, EnhancedCircuitBreakerConfig
+from .circuit_breaker.metrics import CircuitBreakerMetrics
+
 _logger = get_logger(__name__)
-
-
-class AdaptiveThresholdType(Enum):
-    """Types of adaptive threshold strategies."""
-    FIXED = "fixed"
-    PERCENTILE_BASED = "percentile_based"
-    RATE_BASED = "rate_based"
-    PERFORMANCE_BASED = "performance_based"
-
-
-@dataclass
-class EnhancedCircuitBreakerConfig(CircuitBreakerConfig):
-    """Enhanced configuration for circuit breaker."""
-    
-    # Adaptive thresholds
-    adaptive_threshold_type: AdaptiveThresholdType = AdaptiveThresholdType.FIXED
-    min_failure_threshold: int = 3
-    max_failure_threshold: int = 20
-    adaptive_window_size: int = 100
-    
-    # Performance-based thresholds
-    performance_threshold_ms: float = 1000.0  # Open if avg response time exceeds this
-    performance_window_size: int = 50
-    
-    # Rate-based thresholds
-    failure_rate_threshold: float = 0.5  # Open if 50%+ failure rate
-    rate_window_size: int = 100
-    
-    # Dynamic configuration
-    enable_dynamic_config: bool = True
-    config_update_interval_seconds: float = 60.0
-    auto_tune_thresholds: bool = True
-    
-    # Advanced metrics
-    enable_detailed_metrics: bool = True
-    metrics_retention_count: int = 10000
-    
-    # Event handling
-    enable_event_callbacks: bool = True
-    state_change_callbacks: List[Callable] = field(default_factory=list)
-
-
-@dataclass
-class CircuitBreakerMetrics:
-    """Enhanced metrics for circuit breaker."""
-    
-    # Basic metrics
-    total_calls: int = 0
-    successful_calls: int = 0
-    failed_calls: int = 0
-    timeout_calls: int = 0
-    
-    # Performance metrics
-    response_times: deque = field(default_factory=lambda: deque(maxlen=1000))
-    failure_reasons: Dict[str, int] = field(default_factory=dict)
-    
-    # State metrics
-    state_durations: Dict[str, float] = field(default_factory=dict)
-    state_transitions: List[Dict[str, Any]] = field(default_factory=list)
-    last_state_change: float = 0.0
-    
-    # Adaptive metrics
-    current_threshold: int = 5
-    threshold_history: deque = field(default_factory=lambda: deque(maxlen=100))
-    performance_trend: deque = field(default_factory=lambda: deque(maxlen=100))
-    
-    def calculate_success_rate(self, window_size: Optional[int] = None) -> float:
-        """Calculate success rate with optional window."""
-        if self.total_calls == 0:
-            return 0.0
-        
-        if window_size and len(self.response_times) >= window_size:
-            recent_times = list(self.response_times)[-window_size:]
-            recent_success = len([t for t in recent_times if t > 0])  # Positive = success
-            return (recent_success / len(recent_times)) * 100
-        
-        return (self.successful_calls / self.total_calls) * 100
-    
-    def calculate_failure_rate(self, window_size: Optional[int] = None) -> float:
-        """Calculate failure rate with optional window."""
-        if self.total_calls == 0:
-            return 0.0
-        
-        return 100.0 - self.calculate_success_rate(window_size)
-    
-    def calculate_average_response_time(self, window_size: Optional[int] = None) -> float:
-        """Calculate average response time with optional window."""
-        if not self.response_times:
-            return 0.0
-        
-        if window_size and len(self.response_times) >= window_size:
-            recent_times = list(self.response_times)[-window_size:]
-            return statistics.mean([abs(t) for t in recent_times if t != 0])
-        
-        return statistics.mean([abs(t) for t in self.response_times if t != 0])
-    
-    def get_percentile_response_time(self, percentile: float, window_size: Optional[int] = None) -> float:
-        """Get percentile response time."""
-        if not self.response_times:
-            return 0.0
-        
-        if window_size and len(self.response_times) >= window_size:
-            recent_times = list(self.response_times)[-window_size:]
-        else:
-            recent_times = list(self.response_times)
-        
-        positive_times = [abs(t) for t in recent_times if t != 0]
-        if not positive_times:
-            return 0.0
-        
-        sorted_times = sorted(positive_times)
-        index = int((percentile / 100) * len(sorted_times))
-        if index >= len(sorted_times):
-            index = len(sorted_times) - 1
-        
-        return sorted_times[index]
 
 
 class EnhancedGrpcCircuitBreaker:

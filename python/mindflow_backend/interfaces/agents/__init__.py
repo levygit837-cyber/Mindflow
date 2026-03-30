@@ -13,6 +13,12 @@ from .core_personality import CorePersonalityContract
 from .personality import SpecialistSelector as PersonalitySpecialistSelector, RuleEngine as PersonalityRuleEngine
 from .researcher import EnhancedResearcher
 from .task_rag_agent import TaskRagAgent
+from .analyst import Analyst
+from .coder import Coder
+from .reviewer import Reviewer
+from .enhanced_coder import EnhancedCoder
+from .enhanced_analyst import EnhancedAnalyst
+from .enhanced_reviewer import EnhancedReviewer
 
 __all__ = [
     # Core agent contracts
@@ -35,4 +41,10 @@ __all__ = [
     "PersonalityRuleEngine",
     "EnhancedResearcher",
     "TaskRagAgent",
+    "Analyst",
+    "Coder",
+    "Reviewer",
+    "EnhancedCoder",
+    "EnhancedAnalyst",
+    "EnhancedReviewer",
 ]

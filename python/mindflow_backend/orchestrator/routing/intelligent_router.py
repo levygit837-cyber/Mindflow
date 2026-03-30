@@ -11,11 +11,9 @@ import json
 from contextlib import suppress
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
-
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.orchestrator.delegation_engine import DelegationEngine
+from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
 from mindflow_backend.runtime import get_model_for_provider, normalize_response_for_json
 from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
 from mindflow_backend.schemas.orchestration.orchestrator import (
@@ -30,137 +28,15 @@ from mindflow_backend.schemas.orchestration.workflow import WorkflowRouteDecisio
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 from mindflow_backend.agents.specialists.runtime_policy import (
     get_agent_runtime_policy,
-    list_agent_runtime_policies,
+)
+
+from .intent_analysis import (
+    IntentAnalysis,
+    _build_available_agents_section,
+    _get_valid_agent_and_specialist_values,
 )
 
 _logger = get_logger(__name__)
-
-# ---------------------------------------------------------------------------
-# Static capability descriptions for each agent_id (role or role:specialist).
-# These are used to build the dynamic routing prompt at request time.
-# ---------------------------------------------------------------------------
-
-_AGENT_CAPABILITIES: dict[str, tuple[str, str]] = {
-    policy.agent_id: (policy.summary, policy.use_when)
-    for policy in list_agent_runtime_policies()
-}
-
-
-def _build_available_agents_section() -> str:
-    """Build dynamic agent roster section for the routing prompt.
-
-    Reads from the global registry and generates a formatted description
-    of all available agents and specialists. Falls back to a static list
-    if the registry is not yet populated.
-    """
-    try:
-        from mindflow_backend.agents._registry import get_registry
-        registry = get_registry()
-        agents = registry.list_all()
-    except Exception:
-        agents = []
-
-    if not agents:
-        # Fallback — registry not yet initialized
-        return (
-            "### Base Agents (always available)\n"
-            "- **ANALYST** — Code investigation, explaining, tracing | default for most tasks\n"
-            "- **CODER** — Code writing, fixing, refactoring\n"
-            "- **RESEARCHER** — Web search, documentation lookup\n"
-            "- **ORCHESTRATOR** — Direct response for greetings only\n"
-            "\n### Registered Specialists\n"
-            "- `arch_tech` (CODER) — Architecture design\n"
-            "- `security_guard` (ANALYST) — Security audits\n"
-            "- `critic` (ANALYST) — Code review\n"
-            "- `brainstorm` (ANALYST) — Idea generation and alternatives exploration\n"
-            "- `deep_iteration` (ANALYST) — Deep exhaustive analysis\n"
-        )
-
-    base_agents = [a for a in agents if a.specialist is None]
-    specialist_agents = [a for a in agents if a.specialist is not None]
-
-    lines = ["### Base Agents (always available)"]
-    for agent in base_agents:
-        caps = _AGENT_CAPABILITIES.get(agent.agent_id, ("General purpose agent", "General tasks"))
-        lines.append(
-            f"- **{agent.agent_role.value.upper()}** — {caps[0]}\n"
-            f"  ↳ Use when: {caps[1]}"
-        )
-
-    if specialist_agents:
-        lines.append("\n### Registered Specialists (set recommended_specialist + base agent)")
-        for agent in specialist_agents:
-            caps = _AGENT_CAPABILITIES.get(agent.agent_id, ("Domain specialist", "Domain-specific tasks"))
-            base = agent.agent_role.value.upper()
-            spec = agent.specialist.value
-            lines.append(
-                f"- `{spec}` (base: {base}) — {caps[0]}\n"
-                f"  ↳ Use when: {caps[1]}"
-            )
-
-    return "\n".join(lines)
-
-
-def _get_valid_agent_and_specialist_values() -> tuple[str, str]:
-    """Return pipe-separated valid values for recommended_agent and recommended_specialist.
-
-    Used to make the JSON format hint in the routing prompt dynamic.
-    Falls back to static defaults if registry is unavailable.
-    """
-    try:
-        from mindflow_backend.agents._registry import get_registry
-        registry = get_registry()
-        agents = registry.list_all()
-    except Exception:
-        agents = []
-
-    if not agents:
-        return (
-            "CODER|ANALYST|RESEARCHER|ORCHESTRATOR",
-            "security_guard|critic|arch_tech|brainstorm|deep_iteration|null",
-        )
-
-    base_roles = sorted({a.agent_role.value.upper() for a in agents if a.specialist is None})
-    specialists = sorted(a.specialist.value for a in agents if a.specialist is not None)
-
-    return "|".join(base_roles), "|".join(specialists) + "|null"
-
-
-class IntentAnalysis(BaseModel):
-    """Result of LLM intent analysis."""
-
-    user_intent: str = Field(description="Clear interpretation of what user wants to accomplish")
-    needs_code_context: bool = Field(default=False, description="Unused — kept for schema compatibility")
-    context_needed: str = Field(default="", description="Unused — kept for schema compatibility")
-    suggested_scope: list[str] = Field(default_factory=list, description="Suggested files/modules to analyze")
-    recommended_agent: AgentType = Field(description="Which agent should handle this")
-    recommended_specialist: str | None = Field(default=None, description="Optional specialist/profile identifier")
-    formulated_objective: str = Field(description="Precise objective for the target agent")
-    confidence: float = Field(description="Confidence in this analysis (0-1)")
-    is_multi_agent: bool = Field(default=False, description="Requires multiple agents")
-    agent_sequence: list[AgentType] = Field(default_factory=list, description="Sequence of agents needed")
-    execution_strategy: ExecutionStrategy = Field(
-        default=ExecutionStrategy.DELEGATE,
-        description="How to execute: direct_response, delegate, chain, or graph",
-    )
-
-    @field_validator("recommended_agent", mode="before")
-    @classmethod
-    def normalize_agent(cls, v: str) -> str:
-        return v.lower() if isinstance(v, str) else v
-
-    @field_validator("agent_sequence", mode="before")
-    @classmethod
-    def normalize_agent_sequence(cls, v: list) -> list:
-        return [x.lower() if isinstance(x, str) else x for x in (v or [])]
-
-    @field_validator("recommended_specialist", mode="before")
-    @classmethod
-    def nullify_null_string(cls, v):
-        """Convert the literal string 'null' returned by LLMs to Python None."""
-        if isinstance(v, str) and v.lower() in ("null", "none", ""):
-            return None
-        return v
 
 
 class IntelligentRouter:
@@ -278,7 +154,10 @@ STRICT RULES:
             )
 
             messages = [
-                {"role": "system", "content": "You are a precise task analyzer. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a precise task analyzer. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": analysis_prompt},
             ]
 
@@ -291,14 +170,19 @@ STRICT RULES:
             except (json.JSONDecodeError, TypeError) as e:
                 # Try extracting JSON from within the response (LLM may add prose)
                 import re as _re
-                json_match = _re.search(r'\{[\s\S]*\}', response_text)
+
+                json_match = _re.search(r"\{[\s\S]*\}", response_text)
                 if json_match:
                     try:
                         data = json.loads(json_match.group())
                         intent_analysis = IntentAnalysis(**data)
                         _logger.info("intent_parse_recovered_from_prose")
                     except (json.JSONDecodeError, TypeError) as e2:
-                        _logger.warning("intent_parse_failed", raw_response=response_text[:500], error=str(e2))
+                        _logger.warning(
+                            "intent_parse_failed",
+                            raw_response=response_text[:500],
+                            error=str(e2),
+                        )
                         intent_analysis = IntentAnalysis(
                             user_intent=message,
                             recommended_agent=AgentType.ANALYST,
@@ -307,7 +191,11 @@ STRICT RULES:
                             execution_strategy=ExecutionStrategy.DELEGATE,
                         )
                 else:
-                    _logger.warning("intent_parse_failed_no_json", raw_response=response_text[:500], error=str(e))
+                    _logger.warning(
+                        "intent_parse_failed_no_json",
+                        raw_response=response_text[:500],
+                        error=str(e),
+                    )
                     intent_analysis = IntentAnalysis(
                         user_intent=message,
                         recommended_agent=AgentType.ANALYST,
@@ -486,7 +374,8 @@ def get_intelligent_router() -> IntelligentRouter:
     """Get or create the global intelligent router instance."""
     global _intelligent_router
     if _intelligent_router is None:
-        from mindflow_backend.orchestrator.delegation_engine import get_delegation_engine
+        from mindflow_backend.orchestrator.delegation.engine import get_delegation_engine
+
         _intelligent_router = IntelligentRouter(get_delegation_engine())
     return _intelligent_router
 
@@ -498,4 +387,5 @@ async def route_message_intelligently(
 ) -> OrchestratorDecision:
     """Route a user message using LLM intent analysis (no keyword routing)."""
     router = get_intelligent_router()
+
     return await router.route_message_intelligently(message, session, folder_path=folder_path)

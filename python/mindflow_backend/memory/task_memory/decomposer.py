@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy.orm import Session
+
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
     MainTaskContract,

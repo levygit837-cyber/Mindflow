@@ -28,6 +28,18 @@ from .services.base import BaseServiceInterface, ServiceLifecycleInterface, Cach
 from .services.communication import CommunicationServiceInterface, GrpcServiceInterface, StreamingServiceInterface
 from .services.context import RetrievalServiceInterface, EmbeddingServiceInterface
 from .services.core import CoreServiceInterface, AgentServiceInterface, SessionServiceInterface, MemoryServiceInterface, ProviderServiceInterface
+
+# Orchestrator interfaces
+from .orchestrator import (
+    OrchestratorCoreContract,
+    PersonalityManagerContract,
+    DelegationManagerContract,
+    TaskerProtocol,
+    SchedulerProtocol,
+    ResolverProtocol,
+    SynthesizerProtocol,
+    ScorerProtocol,
+)
 from .services.monitoring import MonitoringServiceInterface, HealthServiceInterface, MetricsServiceInterface
 from .services.orchestration import OrchestrationServiceInterface, TaskServiceInterface, RoutingServiceInterface
 

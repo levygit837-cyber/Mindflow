@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from mindflow_backend.runtime.stream import AgentRuntime
+from mindflow_backend.runtime.streaming.stream import AgentRuntime
 from mindflow_backend.grpc.generated import mindflow_backend_pb2_grpc as pb2_grpc
 from mindflow_backend.grpc.generated import mindflow_backend_pb2 as pb2
 from mindflow_backend.grpc.serialization import stream_event_to_proto

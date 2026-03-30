@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 
