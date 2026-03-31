@@ -6,46 +6,46 @@ with unified interfaces and schemas integration.
 
 # Core Storage System
 from .core import (
-    StorageInterface,
-    DatabaseInterface,
-    VectorDatabaseInterface,
-    CacheInterface,
-    RepositoryInterface,
-    ConnectionPoolInterface,
-    MigrationInterface,
-    StorageError,
-    DatabaseError,
-    VectorError,
     CacheError,
+    CacheInterface,
     ConnectionError,
+    ConnectionPoolInterface,
+    DatabaseError,
+    DatabaseInterface,
     MigrationError,
+    MigrationInterface,
+    RepositoryInterface,
+    StorageError,
+    StorageInterface,
+    VectorDatabaseInterface,
+    VectorError,
 )
 
 # Storage-specific Interfaces
 from .interfaces import (
-    DatabaseRepositoryInterface,
-    VectorStoreInterface,
     CacheManagerInterface,
+    DatabaseRepositoryInterface,
     MemoryStoreInterface,
+    VectorStoreInterface,
 )
 
 # PostgreSQL - Primary Storage
 try:
-    from .postgresql.connection import db_session, async_db_session
+    from .postgresql.connection import async_db_session, db_session
 except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test envs
     db_session = None
     async_db_session = None
 
 from .postgresql.models import (
-    Base,
     AgentMemoryCursor,
     AgentMemoryEvent,
     AgentMemoryFact,
     AgentMemoryWindow,
-    ChatMessage,
-    ChatSession,
+    Base,
     BrowserActionTrail,
     BrowserInstance,
+    ChatMessage,
+    ChatSession,
     ResearchFinding,
     ResearchSession,
     SessionReview,
@@ -62,22 +62,22 @@ except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test e
     NeuralRepository = None
 
 # KuzuDB - Vector Storage
-from .kuzudb.vector_store import KuzuDBVectorStore, KuzuDBVectorManager
+from .kuzudb.vector_store import KuzuDBVectorManager, KuzuDBVectorStore
 
 # LangGraph - Checkpointing
 from .langgraph.checkpointer import langgraph_checkpointer
 
 # Storage Schemas
 from .schemas import (
-    DatabaseConfig,
-    ConnectionConfig,
-    PoolConfig,
-    VectorConfig,
-    VectorCollection,
     CacheConfig,
+    ConnectionConfig,
+    DatabaseConfig,
+    PoolConfig,
     StorageMemoryEntry,
-    StorageMemoryWindow,
     StorageMemoryStats,
+    StorageMemoryWindow,
+    VectorCollection,
+    VectorConfig,
 )
 
 # Migration utilities

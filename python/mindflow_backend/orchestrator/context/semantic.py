@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from mindflow_backend.agents.context.vector_store import get_vector_store
 from mindflow_backend.agents.core.interfaces import VectorStore
@@ -38,9 +37,9 @@ class ContextMatch:
         self,
         content: str,
         similarity: float,
-        task_id: Optional[str] = None,
-        agent_type: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        task_id: str | None = None,
+        agent_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         self.content = content
         self.similarity = similarity
@@ -48,7 +47,7 @@ class ContextMatch:
         self.agent_type = agent_type
         self.metadata = metadata or {}
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "content": self.content,
@@ -67,10 +66,10 @@ class ContextEntry:
         task_id: str,
         agent_type: str,
         content: str,
-        embedding: List[float],
-        metadata: Optional[Dict[str, Any]] = None,
-        dependencies: Optional[List[str]] = None,
-        created_at: Optional[datetime] = None,
+        embedding: list[float],
+        metadata: dict[str, Any] | None = None,
+        dependencies: list[str] | None = None,
+        created_at: datetime | None = None,
     ):
         self.task_id = task_id
         self.agent_type = agent_type
@@ -89,7 +88,7 @@ class SemanticContextManager:
     using multilingual embeddings for semantic search.
     """
     
-    def __init__(self, vector_store: Optional[VectorStore] = None):
+    def __init__(self, vector_store: VectorStore | None = None):
         """Initialize the semantic context manager.
 
         Args:
@@ -97,13 +96,13 @@ class SemanticContextManager:
         """
         self.vector_store = vector_store
         self.embedding_service = None
-        self.context_cache: Dict[str, ContextEntry] = {}
+        self.context_cache: dict[str, ContextEntry] = {}
         self._lock = asyncio.Lock()
         self._initialized = False
 
         # Task Registry — keyed by session_id → main_task_id → MainTaskSummary
         # Populated by register_main_task(); queried by get_tasks().
-        self._task_registry: Dict[str, Dict[str, Any]] = {}
+        self._task_registry: dict[str, dict[str, Any]] = {}
 
         # Configuration
         settings = get_settings()
@@ -140,8 +139,8 @@ class SemanticContextManager:
         task_id: str,
         agent_type: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        dependencies: Optional[List[str]] = None,
+        metadata: dict[str, Any] | None = None,
+        dependencies: list[str] | None = None,
     ) -> str:
         """Store context for a specific task.
         
@@ -207,9 +206,9 @@ class SemanticContextManager:
         task_id: str,
         query: str,
         session_id: str = "default",
-        dependency_task_ids: Optional[List[str]] = None,
+        dependency_task_ids: list[str] | None = None,
         limit: int = 10,
-    ) -> List[ContextMatch]:
+    ) -> list[ContextMatch]:
         """Find context relevant to a specific task.
         
         Args:
@@ -279,10 +278,10 @@ class SemanticContextManager:
     async def wait_for_context(
         self,
         task_id: str,
-        required_context_ids: List[str],
+        required_context_ids: list[str],
         session_id: str = "default",
-        timeout: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
         """Wait for required context to become available.
         
         Args:
@@ -327,9 +326,9 @@ class SemanticContextManager:
     async def get_task_dependencies_context(
         self,
         task_id: str,
-        dependency_task_ids: List[str],
+        dependency_task_ids: list[str],
         session_id: str = "default",
-    ) -> List[ContextMatch]:
+    ) -> list[ContextMatch]:
         """Get context from specific dependency tasks.
         
         Args:
@@ -380,7 +379,7 @@ class SemanticContextManager:
         task_id: str,
         status: str,
         session_id: str = "default",
-        completion_data: Optional[Dict[str, Any]] = None,
+        completion_data: dict[str, Any] | None = None,
     ) -> None:
         """Update the status of a task.
         
@@ -416,7 +415,7 @@ class SemanticContextManager:
         except Exception as exc:
             _logger.error("failed_to_update_task_status", task_id=task_id, error=str(exc))
     
-    async def get_cached_context(self, task_id: str) -> Optional[ContextEntry]:
+    async def get_cached_context(self, task_id: str) -> ContextEntry | None:
         """Get cached context entry for a task.
         
         Args:
@@ -430,7 +429,7 @@ class SemanticContextManager:
             
         return self.context_cache.get(task_id)
     
-    async def clear_cache(self, task_id: Optional[str] = None) -> None:
+    async def clear_cache(self, task_id: str | None = None) -> None:
         """Clear context cache.
         
         Args:
@@ -450,8 +449,8 @@ class SemanticContextManager:
     async def register_main_task(
         self,
         session_id: str,
-        main_contract: "MainTaskContract",
-        subtasks: "list[SubTaskContract]",
+        main_contract: MainTaskContract,
+        subtasks: list[SubTaskContract],
     ) -> None:
         """Register a MainTask and its SubTasks in the per-session task registry.
 
@@ -495,7 +494,7 @@ class SemanticContextManager:
             subtasks=len(subtasks),
         )
 
-    async def get_tasks(self, session_id: str) -> "list[MainTaskSummary]":
+    async def get_tasks(self, session_id: str) -> list[MainTaskSummary]:
         """Return all MainTasks registered for a session, ordered by creation time.
 
         Each entry includes the list of SubTaskSummaries that compose it, providing
@@ -618,7 +617,7 @@ class SemanticContextManager:
     async def get_context_statistics(
         self,
         session_id: str = "default",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get statistics about stored contexts.
         
         Args:
@@ -652,7 +651,7 @@ class SemanticContextManager:
 
 
 # Global instance for singleton pattern
-_context_manager: Optional[SemanticContextManager] = None
+_context_manager: SemanticContextManager | None = None
 
 
 async def get_semantic_context_manager() -> SemanticContextManager:

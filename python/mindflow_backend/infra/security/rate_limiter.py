@@ -6,19 +6,18 @@ distributed coordination, and intelligent throttling.
 
 from __future__ import annotations
 
-import asyncio
-import time
 import hashlib
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union, Callable
-from datetime import datetime, UTC, timedelta
-from enum import Enum
 import json
+import time
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from enum import Enum
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.cache.redis_client import get_redis_client
-from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -49,9 +48,9 @@ class RateLimitConfig:
     scope: RateLimitScope = RateLimitScope.GLOBAL
     limit: int = 100
     window_seconds: int = 60
-    burst_size: Optional[int] = None
-    refill_rate: Optional[float] = None
-    key_extractor: Optional[Callable[[Dict[str, Any]], str]] = None
+    burst_size: int | None = None
+    refill_rate: float | None = None
+    key_extractor: Callable[[dict[str, Any]], str] | None = None
     penalty_multiplier: float = 1.0
     adaptive_threshold: float = 0.8
     enabled: bool = True
@@ -69,14 +68,14 @@ class RateLimitResult:
     allowed: bool
     remaining: int
     reset_time: datetime
-    retry_after: Optional[float] = None
+    retry_after: float | None = None
     limit: int = 0
     window_seconds: int = 0
     scope: str = ""
     key: str = ""
     reason: str = ""
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "allowed": self.allowed,
@@ -99,7 +98,7 @@ class RateLimitAlgorithm(ABC):
         self, 
         key: str, 
         config: RateLimitConfig, 
-        request_time: Optional[datetime] = None
+        request_time: datetime | None = None
     ) -> RateLimitResult:
         """Check if request should be rate limited.
         
@@ -138,7 +137,7 @@ class TokenBucketAlgorithm(RateLimitAlgorithm):
         self, 
         key: str, 
         config: RateLimitConfig, 
-        request_time: Optional[datetime] = None
+        request_time: datetime | None = None
     ) -> RateLimitResult:
         """Check token bucket rate limit."""
         if request_time is None:
@@ -227,7 +226,7 @@ class SlidingWindowAlgorithm(RateLimitAlgorithm):
         self, 
         key: str, 
         config: RateLimitConfig, 
-        request_time: Optional[datetime] = None
+        request_time: datetime | None = None
     ) -> RateLimitResult:
         """Check sliding window rate limit."""
         if request_time is None:
@@ -299,7 +298,7 @@ class FixedWindowAlgorithm(RateLimitAlgorithm):
         self, 
         key: str, 
         config: RateLimitConfig, 
-        request_time: Optional[datetime] = None
+        request_time: datetime | None = None
     ) -> RateLimitResult:
         """Check fixed window rate limit."""
         if request_time is None:
@@ -366,7 +365,7 @@ class AdaptiveAlgorithm(RateLimitAlgorithm):
         self, 
         key: str, 
         config: RateLimitConfig, 
-        request_time: Optional[datetime] = None
+        request_time: datetime | None = None
     ) -> RateLimitResult:
         """Check adaptive rate limit."""
         # Get system load metrics
@@ -400,7 +399,7 @@ class AdaptiveAlgorithm(RateLimitAlgorithm):
         """Reset adaptive rate limit for key."""
         await self.base_algorithm.reset(key)
         
-    async def _get_load_metrics(self) -> Dict[str, float]:
+    async def _get_load_metrics(self) -> dict[str, float]:
         """Get system load metrics for adaptive adjustments."""
         # This would integrate with monitoring system
         # For now, return dummy metrics
@@ -426,8 +425,8 @@ class RateLimiter:
     
     def __init__(self):
         """Initialize rate limiter."""
-        self._algorithms: Dict[RateLimitAlgorithm, RateLimitAlgorithm] = {}
-        self._configs: Dict[str, RateLimitConfig] = {}
+        self._algorithms: dict[RateLimitAlgorithm, RateLimitAlgorithm] = {}
+        self._configs: dict[str, RateLimitConfig] = {}
         self._redis_client = None
         self._is_initialized = False
         
@@ -488,8 +487,8 @@ class RateLimiter:
     async def check_rate_limit(
         self,
         config_name: str,
-        context: Dict[str, Any],
-        request_time: Optional[datetime] = None
+        context: dict[str, Any],
+        request_time: datetime | None = None
     ) -> RateLimitResult:
         """Check rate limit for given configuration and context.
         
@@ -557,7 +556,7 @@ class RateLimiter:
         
         return result
         
-    def _extract_key(self, config: RateLimitConfig, context: Dict[str, Any]) -> str:
+    def _extract_key(self, config: RateLimitConfig, context: dict[str, Any]) -> str:
         """Extract rate limit key from context.
         
         Args:
@@ -591,7 +590,7 @@ class RateLimiter:
             context_str = json.dumps(context, sort_keys=True)
             return f"custom:{hashlib.md5(context_str.encode()).hexdigest()}"
             
-    async def reset_rate_limit(self, config_name: str, context: Dict[str, Any]) -> bool:
+    async def reset_rate_limit(self, config_name: str, context: dict[str, Any]) -> bool:
         """Reset rate limit for given configuration and context.
         
         Args:
@@ -615,7 +614,7 @@ class RateLimiter:
             
         return False
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get rate limiting statistics.
         
         Returns:
@@ -646,7 +645,7 @@ class RateLimiter:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform rate limiter health check.
         
         Returns:
@@ -689,7 +688,7 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter() -> RateLimiter:

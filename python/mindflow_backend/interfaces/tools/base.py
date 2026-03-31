@@ -8,7 +8,8 @@ enhanced tool registry system.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 from pydantic import BaseModel
 
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
@@ -25,10 +26,10 @@ class ToolInterface(ABC):
         """Initialize tool with default configuration."""
         self.name = self.__class__.__name__.replace("Tool", "").lower()
         self.description = self.__doc__ or "No description available"
-        self._capabilities: Optional[Dict[str, Any]] = None
+        self._capabilities: dict[str, Any] | None = None
     
     @abstractmethod
-    async def execute(self, *args, **kwargs) -> Dict[str, Any]:
+    async def execute(self, *args, **kwargs) -> dict[str, Any]:
         """Execute the tool with given parameters.
         
         Args:
@@ -47,7 +48,7 @@ class ToolInterface(ABC):
         pass
     
     @abstractmethod
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Return the tool schema for validation and documentation.
         
         Returns:
@@ -61,7 +62,7 @@ class ToolInterface(ABC):
         """
         pass
     
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return tool capabilities and requirements.
         
         Returns:
@@ -84,7 +85,7 @@ class ToolInterface(ABC):
             }
         return self._capabilities
     
-    def validate_parameters(self, parameters: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+    def validate_parameters(self, parameters: dict[str, Any]) -> tuple[bool, str | None]:
         """Validate input parameters before execution.
         
         Args:
@@ -132,7 +133,7 @@ class ToolInterface(ABC):
         supported_agents = capabilities.get("supported_agents", list(AgentType))
         return agent_type in supported_agents
     
-    def get_execution_context(self, **kwargs) -> Dict[str, Any]:
+    def get_execution_context(self, **kwargs) -> dict[str, Any]:
         """Prepare execution context for tool.
         
         Args:
@@ -157,9 +158,9 @@ class ToolInterface(ABC):
         self, 
         success: bool, 
         result: Any = None, 
-        error: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        error: str | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Format standardized tool result.
         
         Args:
@@ -188,7 +189,7 @@ class AsyncToolInterface(ToolInterface):
     context management for concurrent execution.
     """
     
-    async def execute_async(self, *args, **kwargs) -> Dict[str, Any]:
+    async def execute_async(self, *args, **kwargs) -> dict[str, Any]:
         """Async wrapper for execute method.
         
         Provides consistent async interface and error handling.
@@ -230,10 +231,10 @@ class StatefulToolInterface(AsyncToolInterface):
     
     def __init__(self):
         super().__init__()
-        self._state: Dict[str, Any] = {}
-        self._state_ttl: Optional[int] = None  # Time-to-live in seconds
+        self._state: dict[str, Any] = {}
+        self._state_ttl: int | None = None  # Time-to-live in seconds
     
-    def set_state(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set_state(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set state value with optional TTL.
         
         Args:
@@ -275,7 +276,7 @@ class StatefulToolInterface(AsyncToolInterface):
                 
         return state_entry["value"]
     
-    def clear_state(self, key: Optional[str] = None) -> None:
+    def clear_state(self, key: str | None = None) -> None:
         """Clear state entries.
         
         Args:
@@ -292,14 +293,14 @@ class ToolSchema(BaseModel):
     """Schema definition for tool parameters and returns."""
     name: str
     description: str
-    parameters: Dict[str, Any]
-    returns: Dict[str, Any]
-    examples: Optional[List[Dict[str, Any]]] = None
+    parameters: dict[str, Any]
+    returns: dict[str, Any]
+    examples: list[dict[str, Any]] | None = None
 
 
 class ToolPermission(BaseModel):
     """Permission definition for tool access control."""
     required_level: str
-    allowed_agents: List[str]
-    resource_requirements: Dict[str, Any]
-    security_constraints: Optional[Dict[str, Any]] = None
+    allowed_agents: list[str]
+    resource_requirements: dict[str, Any]
+    security_constraints: dict[str, Any] | None = None

@@ -8,10 +8,13 @@ base role, with optional specialization when the planner/delegation layer opts i
 from __future__ import annotations
 
 from mindflow_backend.agents._base import BaseAgent
+from mindflow_backend.agents.core.initialization import (
+    initialize_agent_system,
+    validate_dependencies,
+)
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
-from mindflow_backend.agents.core.initialization import initialize_agent_system, validate_dependencies
 
 _logger = get_logger(__name__)
 
@@ -170,14 +173,14 @@ def register_all_specialists() -> None:
         # Import and register specialist factories
         from mindflow_backend.agents.specialists import (
             create_analyst_agent,
-            create_coder_agent,
-            create_researcher_agent,
-            create_orchestrator_agent,
-            create_security_agent,
-            create_review_agent,
             create_architecture_agent,
             create_brainstorm_agent,
+            create_coder_agent,
             create_deep_analysis_agent,
+            create_orchestrator_agent,
+            create_researcher_agent,
+            create_review_agent,
+            create_security_agent,
         )
 
         for factory in (

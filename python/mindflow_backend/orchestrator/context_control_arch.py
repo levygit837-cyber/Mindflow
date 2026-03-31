@@ -16,9 +16,9 @@ def __getattr__(name: str):
 # Keep explicit re-exports for static analysis / IDE support
 if TYPE_CHECKING:
     from mindflow_backend.orchestrator.context.control import (  # noqa: F401
-        context_control_arch,
-        get_window_position,
-        get_window_bounds,
-        is_window_boundary_crossed,
         calculate_session_hierarchy,
+        context_control_arch,
+        get_window_bounds,
+        get_window_position,
+        is_window_boundary_crossed,
     )

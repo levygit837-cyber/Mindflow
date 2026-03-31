@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -8,7 +8,10 @@ from pydantic import ValidationError
 from mindflow_backend.workers.contracts.interfaces.consumer import MessageConsumer
 from mindflow_backend.workers.contracts.interfaces.message_bus import MessageBus
 from mindflow_backend.workers.contracts.interfaces.publisher import MessagePublisher
-from mindflow_backend.workers.contracts.interfaces.serializer import JsonMessageSerializer, MessageSerializer
+from mindflow_backend.workers.contracts.interfaces.serializer import (
+    JsonMessageSerializer,
+    MessageSerializer,
+)
 from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
 from mindflow_backend.workers.contracts.schemas.health import WorkerHealthSnapshot
 from mindflow_backend.workers.contracts.schemas.result import MessageProcessingResult
@@ -22,7 +25,7 @@ def test_queue_message_envelope_requires_schema_version() -> None:
             task_type="system.health.check",
             correlation_id="corr-1",
             idempotency_key="idem-1",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             payload={"ok": True},
         )
 
@@ -46,7 +49,7 @@ def test_json_serializer_round_trip() -> None:
         run_id="run-1",
         correlation_id="corr-1",
         idempotency_key="idem-1",
-        created_at=datetime(2026, 3, 16, tzinfo=timezone.utc),
+        created_at=datetime(2026, 3, 16, tzinfo=UTC),
         payload={"ok": True},
         metadata={"source": "test"},
     )

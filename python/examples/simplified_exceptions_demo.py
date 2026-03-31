@@ -5,18 +5,25 @@ This demonstrates the new simplified exception system that follows
 the patterns observed in examples - simple, direct, and practical.
 """
 
-import sys
 import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mindflow_backend.exceptions import (
-    MindFlowError, AgentSystemError, ContextRetrievalError,
-    NetworkError, TimeoutError, ErrorFactory, AgentErrors,
-    AgentCommunicationError, InfrastructureError
+    AgentCommunicationError,
+    AgentErrors,
+    AgentSystemError,
+    ContextRetrievalError,
+    ErrorFactory,
+    MindFlowError,
 )
-from mindflow_backend.exceptions.base.core_simple import NetworkError as BaseNetworkError, TimeoutError as BaseTimeoutError, InfrastructureError as BaseInfrastructureError
+from mindflow_backend.exceptions.base.core_simple import (
+    InfrastructureError as BaseInfrastructureError,
+)
+from mindflow_backend.exceptions.base.core_simple import NetworkError as BaseNetworkError
+from mindflow_backend.exceptions.base.core_simple import TimeoutError as BaseTimeoutError
 
 
 def demo_simple_exceptions():

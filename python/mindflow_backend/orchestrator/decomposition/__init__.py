@@ -7,13 +7,14 @@ All imports are forwarded so that existing code that references
 
 from __future__ import annotations
 
-# Forward the canonical implementations from the new package
-from mindflow_backend.decomposition.pipeline.tasker import EnhancedTasker as TaskerV2
+from mindflow_backend.decomposition.engine import DecompositionEngine
 from mindflow_backend.decomposition.pipeline.resolver import ContextAwareResolver
 from mindflow_backend.decomposition.pipeline.scheduler import SemanticScheduler as SchedulerV2
 from mindflow_backend.decomposition.pipeline.synthesizer import TaskSynthesizer as SynthesizerV2
+
+# Forward the canonical implementations from the new package
+from mindflow_backend.decomposition.pipeline.tasker import EnhancedTasker as TaskerV2
 from mindflow_backend.decomposition.scoring import TaskScorer
-from mindflow_backend.decomposition.engine import DecompositionEngine
 
 __all__ = [
     "TaskerV2",

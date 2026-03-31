@@ -103,7 +103,7 @@ async def main():
     print()
     test2_result = await test_vertex_question()
     
-    print(f"\n=== Test Results ===")
+    print("\n=== Test Results ===")
     print(f"Basic Response Test: {'PASSED' if test1_result else 'FAILED'}")
     print(f"Question Test: {'PASSED' if test2_result else 'FAILED'}")
     

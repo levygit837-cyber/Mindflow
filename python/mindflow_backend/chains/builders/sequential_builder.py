@@ -6,10 +6,11 @@ with the output of each step becoming input for the next step.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Callable
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.chains.base.chain import BaseChain, ChainType, ChainStatus
-from mindflow_backend.chains.base.step import ChainStep, StepType, StepStatus
+from mindflow_backend.chains.base.chain import BaseChain, ChainStatus, ChainType
+from mindflow_backend.chains.base.step import ChainStep, StepStatus, StepType
 from mindflow_backend.chains.base.types import ChainConfig, ExecutionContext
 
 
@@ -22,9 +23,9 @@ class SequentialChainBuilder:
     
     def __init__(self, chain_id: str = "sequential_chain") -> None:
         self.chain_id = chain_id
-        self.steps: List[ChainStep] = []
+        self.steps: list[ChainStep] = []
         self.config = ChainConfig(chain_type=ChainType.SEQUENTIAL)
-        self.error_handlers: Dict[str, Callable] = {}
+        self.error_handlers: dict[str, Callable] = {}
         self.step_timeout: float = 30.0
         self.continue_on_error: bool = False
     
@@ -34,7 +35,7 @@ class SequentialChainBuilder:
         step_function: Callable,
         step_type: StepType = StepType.PROCESSING,
         description: str = "",
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         retry_count: int = 3
     ) -> SequentialChainBuilder:
         """Add a step to the sequential chain.
@@ -80,7 +81,7 @@ class SequentialChainBuilder:
         Returns:
             Self for method chaining
         """
-        def validation_wrapper(context: ExecutionContext) -> Dict[str, Any]:
+        def validation_wrapper(context: ExecutionContext) -> dict[str, Any]:
             data = context.get("input", {})
             is_valid = validation_function(data)
             
@@ -112,7 +113,7 @@ class SequentialChainBuilder:
         Returns:
             Self for method chaining
         """
-        def transform_wrapper(context: ExecutionContext) -> Dict[str, Any]:
+        def transform_wrapper(context: ExecutionContext) -> dict[str, Any]:
             data = context.get("input", {})
             transformed_data = transform_function(data)
             
@@ -130,7 +131,7 @@ class SequentialChainBuilder:
         step_id: str,
         condition_function: Callable[[Any], bool],
         true_step: Callable,
-        false_step: Optional[Callable] = None,
+        false_step: Callable | None = None,
         description: str = ""
     ) -> SequentialChainBuilder:
         """Add a conditional step to the chain.
@@ -145,7 +146,7 @@ class SequentialChainBuilder:
         Returns:
             Self for method chaining
         """
-        def conditional_wrapper(context: ExecutionContext) -> Dict[str, Any]:
+        def conditional_wrapper(context: ExecutionContext) -> dict[str, Any]:
             data = context.get("input", {})
             condition_result = condition_function(data)
             
@@ -184,7 +185,7 @@ class SequentialChainBuilder:
     def with_error_handling(
         self,
         continue_on_error: bool = True,
-        error_handlers: Optional[Dict[str, Callable]] = None
+        error_handlers: dict[str, Callable] | None = None
     ) -> SequentialChainBuilder:
         """Configure error handling for the chain.
         
@@ -241,9 +242,9 @@ class SequentialChain(BaseChain):
     def __init__(
         self,
         chain_id: str,
-        steps: List[ChainStep],
+        steps: list[ChainStep],
         config: ChainConfig,
-        error_handlers: Optional[Dict[str, Callable]] = None,
+        error_handlers: dict[str, Callable] | None = None,
         continue_on_error: bool = False
     ) -> None:
         super().__init__(chain_id, config)
@@ -251,7 +252,7 @@ class SequentialChain(BaseChain):
         self.error_handlers = error_handlers or {}
         self.continue_on_error = continue_on_error
     
-    async def execute(self, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute(self, initial_context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute the sequential chain.
         
         Args:
@@ -294,7 +295,7 @@ class SequentialChain(BaseChain):
         
         return context.to_dict()
     
-    async def _execute_step(self, step: ChainStep, context: ExecutionContext) -> Dict[str, Any]:
+    async def _execute_step(self, step: ChainStep, context: ExecutionContext) -> dict[str, Any]:
         """Execute a single step with error handling and retries."""
         import asyncio
         import time
@@ -327,7 +328,7 @@ class SequentialChain(BaseChain):
                 
                 return result
                 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 last_error = f"Step {step.step_id} timed out after {step.timeout}s"
                 
             except Exception as e:
@@ -352,7 +353,7 @@ class SequentialChain(BaseChain):
             "output": None
         }
     
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate the sequential chain configuration."""
         issues = []
         
@@ -374,7 +375,7 @@ class SequentialChain(BaseChain):
         
         return issues
     
-    def get_step_summary(self) -> Dict[str, Any]:
+    def get_step_summary(self) -> dict[str, Any]:
         """Get a summary of all steps in the chain."""
         return {
             "chain_id": self.chain_id,

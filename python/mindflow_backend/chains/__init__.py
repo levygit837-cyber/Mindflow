@@ -10,15 +10,15 @@ from mindflow_backend.chains.templates.coding_task_chain import (
     CodingTaskChain,
     CodingTaskChainConfig,
 )
-from mindflow_backend.chains.templates.file_analysis_chain import (
-    FileAnalysisChain,
-    FileAnalysisChainConfig,
-    create_file_analysis_chain,
-)
 from mindflow_backend.chains.templates.conditional_file_chain import (
     ConditionalFileChain,
     ConditionalFileChainConfig,
     create_conditional_file_chain,
+)
+from mindflow_backend.chains.templates.file_analysis_chain import (
+    FileAnalysisChain,
+    FileAnalysisChainConfig,
+    create_file_analysis_chain,
 )
 from mindflow_backend.chains.templates.parallel_file_chain import (
     ParallelFileChain,

@@ -23,7 +23,9 @@ class _FakeRuntimeStateBackend:
 
 @pytest.mark.asyncio
 async def test_session_runtime_state_service_saves_loads_and_lists_sessions() -> None:
-    from mindflow_backend.services.core.session_runtime_state_service import SessionRuntimeStateService
+    from mindflow_backend.services.core.session_runtime_state_service import (
+        SessionRuntimeStateService,
+    )
 
     backend = _FakeRuntimeStateBackend()
     service = SessionRuntimeStateService(backend=backend)

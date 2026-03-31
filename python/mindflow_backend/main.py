@@ -1,6 +1,4 @@
 import logging
-import signal
-import sys
 import time
 from contextlib import asynccontextmanager
 
@@ -9,29 +7,28 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from mindflow_backend.agents._registry import register_all_specialists
+from mindflow_backend.api.docs import (
+    add_operation_examples,
+    custom_openapi,
+    setup_documentation_routes,
+)
+from mindflow_backend.api.middleware.content_negotiation import ContentNegotiationMiddleware
+from mindflow_backend.api.middleware.error_handler import ErrorHandlerMiddleware
+from mindflow_backend.api.middleware.performance import PerformanceMiddleware
+from mindflow_backend.api.middleware.validation import ValidationMiddleware
 from mindflow_backend.api.router import router
-from mindflow_backend.api.docs import custom_openapi, setup_documentation_routes, add_operation_examples
-from mindflow_backend.grpc.server import start_grpc_server, stop_grpc_server, setup_signal_handlers
-from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager, get_config_manager
-from mindflow_backend.grpc.config.profiles import get_environment_loader
-from mindflow_backend.grpc.config.features import get_feature_toggles
-from mindflow_backend.grpc.config.config import GrpcConfig
+from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
+from mindflow_backend.grpc.server import setup_signal_handlers, start_grpc_server, stop_grpc_server
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import configure_logging, get_logger
 from mindflow_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
 from mindflow_backend.infra.middleware.request_context import RequestContextMiddleware
 from mindflow_backend.infra.middleware.security_headers import SecurityHeadersMiddleware
-from mindflow_backend.api.middleware.content_negotiation import ContentNegotiationMiddleware
-from mindflow_backend.api.middleware.error_handler import ErrorHandlerMiddleware
-from mindflow_backend.api.middleware.validation import ValidationMiddleware
-from mindflow_backend.api.middleware.performance import PerformanceMiddleware
-from mindflow_backend.api.middleware.caching import AdvancedCacheMiddleware, MemoryCacheBackend
-from mindflow_backend.storage import Base
 
 settings = get_settings()
 configure_logging(logging.DEBUG if settings.app_env == "development" else logging.INFO)

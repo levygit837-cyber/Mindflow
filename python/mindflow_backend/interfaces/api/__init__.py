@@ -6,11 +6,11 @@ controllers, services, middleware, and routing.
 
 from .controllers import (
     AgentControllerInterface,
-    SessionControllerInterface,
+    BaseControllerInterface,
+    MemoryControllerInterface,
     OrchestrationControllerInterface,
     ProviderControllerInterface,
-    MemoryControllerInterface,
-    BaseControllerInterface,
+    SessionControllerInterface,
 )
 
 __all__ = [

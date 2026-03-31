@@ -6,11 +6,7 @@ HTTP clients, API interactions, web scraping, and browser automation.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-
 from mindflow_backend.schemas.tools.tool_config import ToolParameter, ToolSchema
-
 
 # API Client Tool Schema
 API_CLIENT_SCHEMA = ToolSchema(

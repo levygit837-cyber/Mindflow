@@ -14,23 +14,27 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
     ThinkingMode,
     ToolScope,
 )
+from mindflow_backend.schemas.orchestration.planning import (
+    PlanConfirmationRequest,
+    PlanConfirmationResponse,
+    PlanDocument,
+    PlanningAnalysisRequest,
+    PlanningDecision,
+    PlanningRequest,
+    PlanningResponse,
+    PlanningTriggerMetrics,
+    PlanStatus,
+    PlanTask,
+)
+from mindflow_backend.schemas.orchestration.communication import (
+    CommRole,
+    MissionGraphType,
+)
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 from mindflow_backend.schemas.orchestration.workflow import (
     WorkflowPlan,
     WorkflowRouteDecision,
     WorkflowStep,
-)
-from mindflow_backend.schemas.orchestration.planning import (
-    PlanConfirmationRequest,
-    PlanConfirmationResponse,
-    PlanDocument,
-    PlanStatus,
-    PlanTask,
-    PlanningRequest,
-    PlanningResponse,
-    PlanningDecision,
-    PlanningAnalysisRequest,
-    PlanningTriggerMetrics,
 )
 
 __all__ = [
@@ -45,6 +49,9 @@ __all__ = [
     "ThinkingLevel",
     "ThinkingMode",
     "ToolScope",
+    # Communication
+    "CommRole",
+    "MissionGraphType",
     # Specialists
     "SpecialistType",
     # Workflow

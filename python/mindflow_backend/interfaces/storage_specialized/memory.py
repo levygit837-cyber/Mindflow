@@ -7,18 +7,16 @@ and implementation patterns.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.interfaces.services.memory import MemoryServiceInterface
+
 from ...schemas.storage_specialized.memory import (
-    StorageMemoryEntry,
-    StorageMemoryWindow,
-    StorageMemoryStats,
-    MemoryStorageConfig,
-    MemoryMigrationRequest,
-    MemoryMigrationResponse,
     MemoryCleanupRequest,
     MemoryCleanupResponse,
+    MemoryMigrationResponse,
+    StorageMemoryEntry,
+    StorageMemoryStats,
 )
 
 
@@ -31,7 +29,7 @@ class MemoryStoreInterface(MemoryServiceInterface):
         session_id: str,
         agent_id: str,
         content: str,
-        storage_metadata: Optional[Dict[str, Any]] = None
+        storage_metadata: dict[str, Any] | None = None
     ) -> StorageMemoryEntry:
         """Store memory with storage metadata."""
         pass
@@ -41,7 +39,7 @@ class MemoryStoreInterface(MemoryServiceInterface):
         self,
         memory_id: str,
         include_storage_info: bool = True
-    ) -> Optional[StorageMemoryEntry]:
+    ) -> StorageMemoryEntry | None:
         """Retrieve memory with storage metadata."""
         pass
     
@@ -49,13 +47,13 @@ class MemoryStoreInterface(MemoryServiceInterface):
     async def update_storage_metadata(
         self,
         memory_id: str,
-        storage_metadata: Dict[str, Any]
-    ) -> Optional[StorageMemoryEntry]:
+        storage_metadata: dict[str, Any]
+    ) -> StorageMemoryEntry | None:
         """Update storage metadata."""
         pass
     
     @abstractmethod
-    async def get_storage_stats(self, session_id: Optional[str] = None) -> StorageMemoryStats:
+    async def get_storage_stats(self, session_id: str | None = None) -> StorageMemoryStats:
         """Get storage statistics."""
         pass
 
@@ -66,7 +64,7 @@ class MemoryPersistenceInterface(ABC):
     @abstractmethod
     async def backup_memory(
         self,
-        backup_config: Dict[str, Any]
+        backup_config: dict[str, Any]
     ) -> MemoryMigrationResponse:
         """Backup memory data."""
         pass
@@ -75,7 +73,7 @@ class MemoryPersistenceInterface(ABC):
     async def restore_memory(
         self,
         backup_path: str,
-        restore_config: Optional[Dict[str, Any]] = None
+        restore_config: dict[str, Any] | None = None
     ) -> MemoryMigrationResponse:
         """Restore memory data."""
         pass
@@ -84,8 +82,8 @@ class MemoryPersistenceInterface(ABC):
     async def export_memory(
         self,
         export_format: str,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        filters: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Export memory data."""
         pass
     
@@ -107,30 +105,30 @@ class MemoryOptimizationInterface(ABC):
     async def optimize_storage(
         self,
         optimization_type: str = "auto",
-        target_backends: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        target_backends: list[str] | None = None
+    ) -> dict[str, Any]:
         """Optimize storage."""
         pass
     
     @abstractmethod
     async def compact_memory(
         self,
-        session_id: Optional[str] = None,
-        older_than_days: Optional[int] = None
-    ) -> Dict[str, Any]:
+        session_id: str | None = None,
+        older_than_days: int | None = None
+    ) -> dict[str, Any]:
         """Compact memory data."""
         pass
     
     @abstractmethod
     async def reindex_memory(
         self,
-        index_types: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        index_types: list[str] | None = None
+    ) -> dict[str, Any]:
         """Reindex memory data."""
         pass
     
     @abstractmethod
-    async def analyze_storage_efficiency(self) -> Dict[str, Any]:
+    async def analyze_storage_efficiency(self) -> dict[str, Any]:
         """Analyze storage efficiency."""
         pass
 
@@ -150,16 +148,16 @@ class MemoryArchivingInterface(ABC):
     async def retrieve_archived(
         self,
         archive_id: str,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[StorageMemoryEntry]:
+        filters: dict[str, Any] | None = None
+    ) -> list[StorageMemoryEntry]:
         """Retrieve archived memory."""
         pass
     
     @abstractmethod
     async def list_archives(
         self,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """List available archives."""
         pass
     
@@ -175,21 +173,21 @@ class MemoryCompressionInterface(ABC):
     @abstractmethod
     async def compress_memory(
         self,
-        compression_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        compression_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Compress memory data."""
         pass
     
     @abstractmethod
     async def decompress_memory(
         self,
-        compressed_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        compressed_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Decompress memory data."""
         pass
     
     @abstractmethod
-    async def get_compression_stats(self) -> Dict[str, Any]:
+    async def get_compression_stats(self) -> dict[str, Any]:
         """Get compression statistics."""
         pass
 
@@ -200,29 +198,29 @@ class MemoryEncryptionInterface(ABC):
     @abstractmethod
     async def encrypt_memory(
         self,
-        memory_data: Dict[str, Any],
-        encryption_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        memory_data: dict[str, Any],
+        encryption_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Encrypt memory data."""
         pass
     
     @abstractmethod
     async def decrypt_memory(
         self,
-        encrypted_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        encrypted_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Decrypt memory data."""
         pass
     
     @abstractmethod
     async def rotate_encryption_keys(
         self,
-        rotation_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        rotation_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Rotate encryption keys."""
         pass
     
     @abstractmethod
-    async def get_encryption_status(self) -> Dict[str, Any]:
+    async def get_encryption_status(self) -> dict[str, Any]:
         """Get encryption status."""
         pass

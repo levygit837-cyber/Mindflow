@@ -8,8 +8,8 @@ import pytest
 
 from mindflow_backend.orchestrator.planning_flow import (
     should_trigger_planning,
-    should_trigger_planning_v2,
     should_trigger_planning_hybrid,
+    should_trigger_planning_v2,
 )
 from mindflow_backend.schemas.orchestration.planning import PlanningDecision
 
@@ -114,7 +114,7 @@ async def test_v2_trigger_with_active_plan(monkeypatch):
     """Test v2 trigger when active plan exists."""
     
     # Mock planning service with active plan
-    from mindflow_backend.schemas.orchestration.planning import PlanStatus, PlanDocument
+    from mindflow_backend.schemas.orchestration.planning import PlanDocument, PlanStatus
     
     active_plan = PlanDocument(
         plan_id="plan-123",

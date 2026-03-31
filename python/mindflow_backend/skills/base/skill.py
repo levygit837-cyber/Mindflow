@@ -1,24 +1,24 @@
 """Base skill implementation."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
 import uuid
+from abc import abstractmethod
 from datetime import datetime
+from typing import Any
 
 from mindflow_backend.interfaces.skills.base import (
+    SkillConfigurableInterface,
     SkillInterface,
     SkillLifecycleInterface,
-    SkillConfigurableInterface,
-    SkillValidatableInterface
+    SkillValidatableInterface,
 )
 from mindflow_backend.schemas.skills.base import (
-    SkillInput,
-    SkillOutput,
+    SkillCategory,
     SkillConfiguration,
+    SkillInput,
     SkillMetadata,
+    SkillOutput,
     SkillStatus,
     SkillType,
-    SkillCategory
 )
 
 
@@ -30,7 +30,7 @@ class BaseSkill(SkillInterface, SkillLifecycleInterface, SkillConfigurableInterf
         skill_type: SkillType,
         category: SkillCategory,
         metadata: SkillMetadata,
-        configuration: Optional[SkillConfiguration] = None
+        configuration: SkillConfiguration | None = None
     ):
         self._skill_type = skill_type
         self._category = category
@@ -121,12 +121,12 @@ class BaseSkill(SkillInterface, SkillLifecycleInterface, SkillConfigurableInterf
         """Internal input validation to be implemented by subclasses."""
         return True
     
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """Get list of skill capabilities."""
         return self._get_capabilities_internal()
     
     @abstractmethod
-    def _get_capabilities_internal(self) -> List[str]:
+    def _get_capabilities_internal(self) -> list[str]:
         """Internal capabilities to be implemented by subclasses."""
         return []
     
@@ -195,7 +195,7 @@ class BaseSkill(SkillInterface, SkillLifecycleInterface, SkillConfigurableInterf
         """Internal configuration validation to be implemented by subclasses."""
         return True
     
-    def get_configuration_schema(self) -> Dict[str, Any]:
+    def get_configuration_schema(self) -> dict[str, Any]:
         """Get JSON schema for configuration."""
         return {
             "type": "object",
@@ -208,7 +208,7 @@ class BaseSkill(SkillInterface, SkillLifecycleInterface, SkillConfigurableInterf
             }
         }
     
-    def validate_execution_context(self, context: Dict[str, Any]) -> bool:
+    def validate_execution_context(self, context: dict[str, Any]) -> bool:
         """Validate execution context."""
         # Basic context validation
         if not isinstance(context, dict):
@@ -216,11 +216,11 @@ class BaseSkill(SkillInterface, SkillLifecycleInterface, SkillConfigurableInterf
         
         return self._validate_execution_context_internal(context)
     
-    def _validate_execution_context_internal(self, context: Dict[str, Any]) -> bool:
+    def _validate_execution_context_internal(self, context: dict[str, Any]) -> bool:
         """Internal context validation to be implemented by subclasses."""
         return True
     
-    def validate_permissions(self, permissions: List[str]) -> bool:
+    def validate_permissions(self, permissions: list[str]) -> bool:
         """Validate required permissions."""
         required_permissions = self.get_requirements().get("permissions", [])
         
@@ -231,12 +231,12 @@ class BaseSkill(SkillInterface, SkillLifecycleInterface, SkillConfigurableInterf
         
         return True
     
-    def get_requirements(self) -> Dict[str, Any]:
+    def get_requirements(self) -> dict[str, Any]:
         """Get skill requirements."""
         return self._get_requirements_internal()
     
     @abstractmethod
-    def _get_requirements_internal(self) -> Dict[str, Any]:
+    def _get_requirements_internal(self) -> dict[str, Any]:
         """Internal requirements to be implemented by subclasses."""
         return {
             "permissions": [],

@@ -3,11 +3,11 @@ Sandbox tool for secure command execution.
 """
 
 from __future__ import annotations
-import os
+
 import subprocess
 import uuid
-from typing import TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mindflow_backend.infra.logging import get_logger
 

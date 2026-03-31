@@ -15,8 +15,7 @@ new code.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
-from uuid import UUID
+from typing import Any, Protocol, runtime_checkable
 
 from mindflow_backend.schemas.memory.contracts import (
     AgentMemorySnapshot,
@@ -36,8 +35,8 @@ class MemoryServiceInterface(Protocol):
         session_id: str,
         agent_id: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Store a memory entry.
         
         Args:
@@ -54,9 +53,9 @@ class MemoryServiceInterface(Protocol):
     async def retrieve_memory(
         self,
         session_id: str,
-        limit: Optional[int] = None,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        limit: int | None = None,
+        filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Retrieve memory entries for a session.
         
         Args:
@@ -72,9 +71,9 @@ class MemoryServiceInterface(Protocol):
     async def search_memory(
         self,
         query: str,
-        session_id: Optional[str] = None,
-        limit: Optional[int] = 10
-    ) -> List[Dict[str, Any]]:
+        session_id: str | None = None,
+        limit: int | None = 10
+    ) -> list[dict[str, Any]]:
         """Search memory entries by content.
         
         Args:
@@ -103,8 +102,8 @@ class MemoryServiceInterface(Protocol):
     
     async def get_memory_stats(
         self,
-        session_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        session_id: str | None = None
+    ) -> dict[str, Any]:
         """Get memory statistics.
         
         Args:
@@ -123,9 +122,9 @@ class ContextMemoryInterface(Protocol):
     async def store_context(
         self,
         session_id: str,
-        context_window: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        context_window: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Store context window.
         
         Args:
@@ -141,8 +140,8 @@ class ContextMemoryInterface(Protocol):
     async def retrieve_context(
         self,
         session_id: str,
-        window_size: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        window_size: int | None = None
+    ) -> list[dict[str, Any]]:
         """Retrieve context window.
         
         Args:
@@ -157,8 +156,8 @@ class ContextMemoryInterface(Protocol):
     async def update_context(
         self,
         session_id: str,
-        context_updates: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        context_updates: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Update context window.
         
         Args:
@@ -178,8 +177,8 @@ class VectorMemoryInterface(Protocol):
     async def create_embedding(
         self,
         text: str,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> List[float]:
+        metadata: dict[str, Any] | None = None
+    ) -> list[float]:
         """Create embedding for text.
         
         Args:
@@ -193,10 +192,10 @@ class VectorMemoryInterface(Protocol):
     
     async def search_similar(
         self,
-        query_vector: List[float],
-        limit: Optional[int] = 10,
-        threshold: Optional[float] = 0.7
-    ) -> List[Dict[str, Any]]:
+        query_vector: list[float],
+        limit: int | None = 10,
+        threshold: float | None = 0.7
+    ) -> list[dict[str, Any]]:
         """Search for similar memories by vector.
         
         Args:
@@ -212,9 +211,9 @@ class VectorMemoryInterface(Protocol):
     async def store_embedding(
         self,
         text: str,
-        embedding: List[float],
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        embedding: list[float],
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Store text with embedding.
         
         Args:
@@ -240,8 +239,8 @@ class AgentMemoryServiceInterface(ABC):
         self,
         agent_id: str,
         session_id: str,
-        token_limit: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        token_limit: int | None = None,
+    ) -> dict[str, Any]:
         """Retorna eventos e janelas de memória do agente."""
         ...
 
@@ -253,8 +252,8 @@ class AgentMemoryServiceInterface(ABC):
         role: str,
         content: str,
         token_count: int,
-        source_message_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        source_message_id: int | None = None,
+    ) -> dict[str, Any]:
         """Adiciona evento de memória e gera embedding em tempo real."""
         ...
 
@@ -265,7 +264,7 @@ class AgentMemoryServiceInterface(ABC):
         session_id: str,
         top_k: int = 5,
         min_score: float = 0.3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Busca contexto semanticamente similar via pgvector."""
         ...
 
@@ -275,7 +274,7 @@ class AgentMemoryServiceInterface(ABC):
         query: str,
         session_id: str,
         agent_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Recupera contexto relevante para uma query."""
         ...
 
@@ -284,8 +283,8 @@ class AgentMemoryServiceInterface(ABC):
         self,
         agent_id: str,
         session_id: str,
-        window_range: Tuple[int, int],
-    ) -> Dict[str, Any]:
+        window_range: tuple[int, int],
+    ) -> dict[str, Any]:
         """Cria sumário extrativista de uma janela de tokens."""
         ...
 
@@ -294,14 +293,14 @@ class AgentMemoryServiceInterface(ABC):
         self,
         agent_id: str,
         session_id: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Lista janelas de memória do agente na sessão."""
         ...
 
     @abstractmethod
     async def initialize_session_memory(
-        self, session_id: str, agent_types: List[str]
-    ) -> Dict[str, Any]:
+        self, session_id: str, agent_types: list[str]
+    ) -> dict[str, Any]:
         """Inicializa cursores e coleções para uma nova sessão."""
         ...
 
@@ -311,7 +310,7 @@ class AgentMemoryServiceInterface(ABC):
         ...
 
     @abstractmethod
-    async def get_session_memory_summary(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_memory_summary(self, session_id: str) -> dict[str, Any]:
         """Retorna sumário consolidado de memória da sessão."""
         ...
 
@@ -332,8 +331,8 @@ class MemoryFacadeInterface(Protocol):
         agent_id: str,
         role: str,
         content: str,
-        source_message_id: Optional[int] = None,
-        idempotency_key: Optional[str] = None,
+        source_message_id: int | None = None,
+        idempotency_key: str | None = None,
         source_status: str = "final",
         derived_from_recall: bool = False,
     ) -> MemoryPersistResult:
@@ -351,7 +350,7 @@ class MemoryFacadeInterface(Protocol):
         self,
         session_id: str,
         agent_id: str,
-        token_limit: Optional[int] = None,
+        token_limit: int | None = None,
     ) -> AgentMemorySnapshot:
         """Return a lightweight snapshot of an agent's memory state."""
         ...
@@ -359,9 +358,9 @@ class MemoryFacadeInterface(Protocol):
     async def list_session_blocks(
         self,
         session_id: str,
-        categories: Optional[List[str]] = None,
+        categories: list[str] | None = None,
         limit: int = 10,
-    ) -> List[SessionBlockSchema]:
+    ) -> list[SessionBlockSchema]:
         """Return the latest categorical session blocks."""
         ...
 

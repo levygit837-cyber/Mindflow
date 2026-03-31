@@ -4,14 +4,13 @@ Provides REST API endpoints for managing gRPC performance features
 including compression, caching, connection pooling, and optimization.
 """
 
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Query, Body
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.config import get_config_manager
 from mindflow_backend.grpc.performance.compression.compressor import CompressionAlgorithm
-from mindflow_backend.grpc.performance.caching.cache import CacheEvictionPolicy
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -36,7 +35,7 @@ class CacheConfigRequest(BaseModel):
     max_size: int = Field(default=1000, ge=1)
     max_memory_mb: int = Field(default=100, ge=1)
     default_ttl_seconds: int = Field(default=300, ge=1)
-    eviction_policy: Optional[str] = None
+    eviction_policy: str | None = None
 
 
 class ConnectionPoolConfigRequest(BaseModel):
@@ -56,7 +55,7 @@ class ProfilerConfigRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_performance_status() -> Dict[str, Any]:
+async def get_performance_status() -> dict[str, Any]:
     """Get current performance configuration and metrics."""
     try:
         # Get global gRPC server instance
@@ -75,7 +74,7 @@ async def get_performance_status() -> Dict[str, Any]:
 
 
 @router.get("/compression/stats")
-async def get_compression_stats() -> Dict[str, Any]:
+async def get_compression_stats() -> dict[str, Any]:
     """Get compression statistics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -92,7 +91,7 @@ async def get_compression_stats() -> Dict[str, Any]:
 
 
 @router.post("/compression/config")
-async def update_compression_config(config: CompressionConfigRequest) -> Dict[str, Any]:
+async def update_compression_config(config: CompressionConfigRequest) -> dict[str, Any]:
     """Update compression configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -124,7 +123,7 @@ async def update_compression_config(config: CompressionConfigRequest) -> Dict[st
 
 
 @router.get("/cache/stats")
-async def get_cache_stats() -> Dict[str, Any]:
+async def get_cache_stats() -> dict[str, Any]:
     """Get cache statistics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -141,7 +140,7 @@ async def get_cache_stats() -> Dict[str, Any]:
 
 
 @router.post("/cache/config")
-async def update_cache_config(config: CacheConfigRequest) -> Dict[str, Any]:
+async def update_cache_config(config: CacheConfigRequest) -> dict[str, Any]:
     """Update cache configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -173,7 +172,7 @@ async def update_cache_config(config: CacheConfigRequest) -> Dict[str, Any]:
 
 
 @router.delete("/cache/clear")
-async def clear_cache() -> Dict[str, Any]:
+async def clear_cache() -> dict[str, Any]:
     """Clear all cache entries."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -194,7 +193,7 @@ async def clear_cache() -> Dict[str, Any]:
 
 
 @router.get("/connection-pool/status")
-async def get_connection_pool_status() -> Dict[str, Any]:
+async def get_connection_pool_status() -> dict[str, Any]:
     """Get connection pool status."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -211,7 +210,7 @@ async def get_connection_pool_status() -> Dict[str, Any]:
 
 
 @router.post("/connection-pool/config")
-async def update_connection_pool_config(config: ConnectionPoolConfigRequest) -> Dict[str, Any]:
+async def update_connection_pool_config(config: ConnectionPoolConfigRequest) -> dict[str, Any]:
     """Update connection pool configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -232,7 +231,7 @@ async def update_connection_pool_config(config: ConnectionPoolConfigRequest) -> 
 
 
 @router.get("/profiler/status")
-async def get_profiler_status() -> Dict[str, Any]:
+async def get_profiler_status() -> dict[str, Any]:
     """Get profiler status and statistics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -249,7 +248,7 @@ async def get_profiler_status() -> Dict[str, Any]:
 
 
 @router.post("/profiler/config")
-async def update_profiler_config(config: ProfilerConfigRequest) -> Dict[str, Any]:
+async def update_profiler_config(config: ProfilerConfigRequest) -> dict[str, Any]:
     """Update profiler configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -259,7 +258,10 @@ async def update_profiler_config(config: ProfilerConfigRequest) -> Dict[str, Any
             raise HTTPException(status_code=404, detail="Profiler not available")
         
         # Update profiler configuration
-        from mindflow_backend.grpc.performance.monitoring.profiler import ProfileConfig, ProfileLevel
+        from mindflow_backend.grpc.performance.monitoring.profiler import (
+            ProfileConfig,
+            ProfileLevel,
+        )
         level_map = {
             "basic": ProfileLevel.BASIC,
             "detailed": ProfileLevel.DETAILED,
@@ -286,7 +288,7 @@ async def update_profiler_config(config: ProfilerConfigRequest) -> Dict[str, Any
 
 
 @router.get("/optimizer/status")
-async def get_optimizer_status() -> Dict[str, Any]:
+async def get_optimizer_status() -> dict[str, Any]:
     """Get optimizer status and recommendations."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -303,7 +305,7 @@ async def get_optimizer_status() -> Dict[str, Any]:
 
 
 @router.post("/optimizer/tune")
-async def trigger_optimization() -> Dict[str, Any]:
+async def trigger_optimization() -> dict[str, Any]:
     """Trigger performance optimization analysis."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -331,10 +333,10 @@ async def trigger_optimization() -> Dict[str, Any]:
 
 @router.get("/metrics")
 async def get_performance_metrics(
-    start_time: Optional[float] = Query(None, description="Start timestamp"),
-    end_time: Optional[float] = Query(None, description="End timestamp"),
-    metric_type: Optional[str] = Query(None, description="Metric type filter")
-) -> Dict[str, Any]:
+    start_time: float | None = Query(None, description="Start timestamp"),
+    end_time: float | None = Query(None, description="End timestamp"),
+    metric_type: str | None = Query(None, description="Metric type filter")
+) -> dict[str, Any]:
     """Get performance metrics for analysis."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -364,6 +366,12 @@ async def get_performance_metrics(
 
 # Import required modules at the end to avoid circular imports
 import time
-from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor, CompressionAlgorithm
+
 from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache
-from mindflow_backend.grpc.performance.monitoring.profiler import GrpcProfiler, ProfileConfig, ProfileLevel
+from mindflow_backend.grpc.performance.compression.compressor import (
+    CompressionAlgorithm,
+    GrpcMessageCompressor,
+)
+from mindflow_backend.grpc.performance.monitoring.profiler import (
+    GrpcProfiler,
+)

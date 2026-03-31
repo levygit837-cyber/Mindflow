@@ -6,28 +6,25 @@ web search, result synthesis, and integration with core personality contract.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
+from typing import Any, Protocol, runtime_checkable
 
 from mindflow_backend.interfaces.agents.core_personality import (
     CorePersonalityContract,
 )
-from mindflow_backend.schemas.orchestration.delegation import DelegationTask, DelegationResult
 from mindflow_backend.schemas.agents.research import (
-    BrowserAction,
     BrowserActionRequest,
     BrowserActionResponse,
     QueryPlan,
     ResearchBrowserSelection,
-    ResearchConfig,
     ResearchFinding,
     ResearchRequest,
     ResearchResponse,
     SourceClassification,
 )
+from mindflow_backend.schemas.orchestration.delegation import DelegationTask
 from mindflow_backend.schemas.tools.pinchtab_schemas import (
     BrowserCommandRequest,
     BrowserCommandResponse,
-    BrowserInstanceState,
     CreateBrowserRequest,
     CreateBrowserResponse,
     ListBrowsersRequest,

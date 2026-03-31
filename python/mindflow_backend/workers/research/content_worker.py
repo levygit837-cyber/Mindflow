@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -23,7 +23,7 @@ class ContentWorker(BaseWorker):
         super().__init__(queue_config, worker_name="content_worker")
         self._content_consumer = ContentTaskConsumer()
 
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process content synthesis and related research tasks."""
         start_time = time.time()
         message_data = self._normalize_message_data(message_data)
@@ -68,7 +68,7 @@ class ContentWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
 
-    async def _handle_content_synthesis(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_content_synthesis(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle the real queued content synthesis path."""
         result = await self._content_consumer.consume_content_synthesis(message_data)
         return WorkerResult(
@@ -80,7 +80,7 @@ class ContentWorker(BaseWorker):
     async def _simulate_legacy_task(
         self,
         task_type: str,
-        message_data: Dict[str, Any],
+        message_data: dict[str, Any],
     ) -> WorkerResult:
         """Keep lightweight compatibility for non-migrated content tasks."""
         await asyncio.sleep(0)

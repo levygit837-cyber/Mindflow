@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +17,7 @@ class WorkerHealthSnapshot(BaseModel):
     worker_type: str
     queue_name: str
     status: str
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     tasks_processed: int = Field(default=0, ge=0)
     tasks_successful: int = Field(default=0, ge=0)
     tasks_failed: int = Field(default=0, ge=0)
@@ -49,7 +49,7 @@ class QueueHealthSnapshot(BaseModel):
     retry_rate: float = Field(default=0.0, ge=0.0)
     dead_letter_queue: str
     connection_status: Literal["connected", "degraded", "disconnected", "unknown"] = "unknown"
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class RabbitConnectionSnapshot(BaseModel):
@@ -69,7 +69,7 @@ class WorkerSystemHealthReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     correlation_id: str | None = None
     overall_health_score: float = Field(default=0.0, ge=0.0)
     total_workers: int = Field(default=0, ge=0)

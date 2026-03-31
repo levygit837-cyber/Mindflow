@@ -6,41 +6,31 @@ semantic search, context retrieval, and coordination with vector services.
 
 from __future__ import annotations
 
-import hashlib
-import math
-import os
-import re
 from dataclasses import dataclass
-from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
-from mindflow_backend.utils.core import estimate_token_count
-from mindflow_backend.schemas.memory.contracts import MemoryEntry, ContextWindow, MemoryCursor
-from mindflow_backend.schemas.session.contracts import RetrievedContext
+from mindflow_backend.memory.core.interfaces import MemoryServiceInterface
 from mindflow_backend.memory.storage.models import (
     AgentMemoryCursor,
-    AgentMemoryEmbedding,
     AgentMemoryEvent,
-    AgentMemoryFact,
     AgentMemoryWindow,
-    SessionEmbedding,
 )
-from mindflow_backend.storage import db_session
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
-from mindflow_backend.memory.core.interfaces import MemoryServiceInterface
+from mindflow_backend.storage import db_session
+from mindflow_backend.utils.core import estimate_token_count
 
 
 @dataclass(slots=True)
 class MemoryRetrievalResult:
     """Result of memory retrieval operation."""
     context: str
-    references: List[str]
-    metadata: Dict[str, Any] | None = None
+    references: list[str]
+    metadata: dict[str, Any] | None = None
 
 
 class MemoryService(BaseAbstractService, MemoryServiceInterface):
@@ -53,9 +43,9 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
     def __init__(
         self,
         *,
-        summary_window_tokens: Optional[int] = None,
-        retrieval_top_k: Optional[int] = None,
-        embedding_dims: Optional[int] = None,
+        summary_window_tokens: int | None = None,
+        retrieval_top_k: int | None = None,
+        embedding_dims: int | None = None,
     ) -> None:
         """Initialize memory service with configuration."""
         super().__init__()
@@ -90,8 +80,8 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         agent_id: str,
         session_id: str,
-        token_limit: Optional[int] = None
-    ) -> Dict[str, Any]:
+        token_limit: int | None = None
+    ) -> dict[str, Any]:
         """Get agent memory with optional token limit.
         
         Args:
@@ -178,8 +168,8 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         role: str,
         content: str,
         token_count: int,
-        source_message_id: Optional[int] = None
-    ) -> Dict[str, Any]:
+        source_message_id: int | None = None
+    ) -> dict[str, Any]:
         """Add a memory event for an agent.
         
         Args:
@@ -277,7 +267,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         session_id: str,
         window_start: int,
         window_end: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get context window for a specific token range.
         
         Args:
@@ -327,7 +317,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         session_id: str,
         top_k: int = 5,
         min_score: float = 0.3
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for semantically similar context.
         
         Args:
@@ -396,8 +386,8 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         agent_id: str,
         session_id: str,
-        window_range: Tuple[int, int]
-    ) -> Dict[str, Any]:
+        window_range: tuple[int, int]
+    ) -> dict[str, Any]:
         """Create a memory summary for a token window.
         
         Args:
@@ -476,7 +466,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         agent_id: str,
         session_id: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get all memory windows for an agent in a session.
         
         Args:
@@ -521,7 +511,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         session_id: str,
         token_total: int,
         tokens_since_summary: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update memory cursor for an agent.
         
         Args:
@@ -566,7 +556,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         query: str,
         session_id: str,
         agent_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Retrieve relevant context for a query.
         
         Args:
@@ -672,7 +662,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
     
     # Additional methods for session management
     
-    async def initialize_session_memory(self, session_id: str, agent_types: List[str]) -> Dict[str, Any]:
+    async def initialize_session_memory(self, session_id: str, agent_types: list[str]) -> dict[str, Any]:
         """Initialize memory for a new session.
         
         Args:
@@ -762,7 +752,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
             self._logger.error(f"Error cleaning up session memory: {str(exc)}")
             return False
     
-    async def get_session_memory_summary(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_memory_summary(self, session_id: str) -> dict[str, Any]:
         """Get comprehensive memory summary for a session.
         
         Args:
@@ -825,7 +815,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
             self._logger.error(f"Error getting session memory summary: {str(exc)}")
             return {"session_id": session_id, "error": str(exc)}
     
-    async def get_agent_interaction_history(self, session_id: str) -> List[Dict[str, Any]]:
+    async def get_agent_interaction_history(self, session_id: str) -> list[dict[str, Any]]:
         """Get interaction history for all agents in a session.
         
         Args:
@@ -862,4 +852,4 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
 
 
 # Import datetime for timestamp generation
-from datetime import datetime, UTC
+from datetime import UTC, datetime

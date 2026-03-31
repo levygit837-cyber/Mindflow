@@ -9,7 +9,7 @@ from __future__ import annotations
 import statistics
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -28,11 +28,11 @@ class CircuitBreakerMetrics:
 
     # Performance metrics
     response_times: deque = field(default_factory=lambda: deque(maxlen=1000))
-    failure_reasons: Dict[str, int] = field(default_factory=dict)
+    failure_reasons: dict[str, int] = field(default_factory=dict)
 
     # State metrics
-    state_durations: Dict[str, float] = field(default_factory=dict)
-    state_transitions: List[Dict[str, Any]] = field(default_factory=list)
+    state_durations: dict[str, float] = field(default_factory=dict)
+    state_transitions: list[dict[str, Any]] = field(default_factory=list)
     last_state_change: float = 0.0
 
     # Adaptive metrics
@@ -40,7 +40,7 @@ class CircuitBreakerMetrics:
     threshold_history: deque = field(default_factory=lambda: deque(maxlen=100))
     performance_trend: deque = field(default_factory=lambda: deque(maxlen=100))
 
-    def calculate_success_rate(self, window_size: Optional[int] = None) -> float:
+    def calculate_success_rate(self, window_size: int | None = None) -> float:
         """Calculate success rate with optional window.
 
         Args:
@@ -59,7 +59,7 @@ class CircuitBreakerMetrics:
 
         return (self.successful_calls / self.total_calls) * 100
 
-    def calculate_failure_rate(self, window_size: Optional[int] = None) -> float:
+    def calculate_failure_rate(self, window_size: int | None = None) -> float:
         """Calculate failure rate with optional window.
 
         Args:
@@ -73,7 +73,7 @@ class CircuitBreakerMetrics:
 
         return 100.0 - self.calculate_success_rate(window_size)
 
-    def calculate_average_response_time(self, window_size: Optional[int] = None) -> float:
+    def calculate_average_response_time(self, window_size: int | None = None) -> float:
         """Calculate average response time with optional window.
 
         Args:
@@ -91,7 +91,7 @@ class CircuitBreakerMetrics:
 
         return statistics.mean([abs(t) for t in self.response_times if t != 0])
 
-    def get_percentile_response_time(self, percentile: float, window_size: Optional[int] = None) -> float:
+    def get_percentile_response_time(self, percentile: float, window_size: int | None = None) -> float:
         """Get percentile response time.
 
         Args:

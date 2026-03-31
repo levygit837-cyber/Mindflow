@@ -6,14 +6,17 @@ feature flags, and monitoring configuration changes.
 
 from __future__ import annotations
 
-import asyncio
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager, get_config_manager
-from mindflow_backend.grpc.config.dynamic.validator import ValidationResult
-from mindflow_backend.grpc.config.features import FeatureToggles, get_feature_toggles, FeatureEvaluationContext
+from mindflow_backend.grpc.config.features import (
+    FeatureEvaluationContext,
+    FeatureToggles,
+    get_feature_toggles,
+)
 from mindflow_backend.grpc.config.profiles import EnvironmentLoader, get_environment_loader
 from mindflow_backend.infra.logging import get_logger
 
@@ -26,32 +29,32 @@ router = APIRouter(prefix="/api/v1/config", tags=["configuration"])
 # Pydantic models for API
 class ConfigUpdateRequest(BaseModel):
     """Request model for configuration updates."""
-    updates: Dict[str, Any] = Field(..., description="Configuration updates")
+    updates: dict[str, Any] = Field(..., description="Configuration updates")
     validate_only: bool = Field(default=False, description="Only validate, don't apply")
-    description: Optional[str] = Field(default=None, description="Update description")
+    description: str | None = Field(default=None, description="Update description")
 
 
 class ConfigResponse(BaseModel):
     """Response model for configuration data."""
-    config: Dict[str, Any]
-    profile: Optional[str] = None
+    config: dict[str, Any]
+    profile: str | None = None
     version: str
     last_updated: float
     auto_reload: bool
-    validation_result: Optional[Dict[str, Any]] = None
+    validation_result: dict[str, Any] | None = None
 
 
 class ConfigHistoryResponse(BaseModel):
     """Response model for configuration history."""
-    history: List[Dict[str, Any]]
+    history: list[dict[str, Any]]
     total_count: int
 
 
 class FeatureFlagRequest(BaseModel):
     """Request model for feature flag updates."""
-    enabled: Optional[bool] = None
-    rollout_percentage: Optional[float] = Field(None, ge=0, le=100)
-    description: Optional[str] = None
+    enabled: bool | None = None
+    rollout_percentage: float | None = Field(None, ge=0, le=100)
+    description: str | None = None
 
 
 class FeatureFlagResponse(BaseModel):
@@ -60,32 +63,32 @@ class FeatureFlagResponse(BaseModel):
     description: str
     state: str
     rollout_percentage: float
-    dependencies: List[str]
+    dependencies: list[str]
     requires_restart: bool
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class ProfileResponse(BaseModel):
     """Response model for environment profile."""
     name: str
     description: str
-    parent_profile: Optional[str]
-    overrides: Dict[str, Any]
-    inherited_overrides: Dict[str, Any]
+    parent_profile: str | None
+    overrides: dict[str, Any]
+    inherited_overrides: dict[str, Any]
 
 
 class ValidationRequest(BaseModel):
     """Request model for configuration validation."""
-    config: Dict[str, Any]
-    profile: Optional[str] = None
+    config: dict[str, Any]
+    profile: str | None = None
 
 
 class ValidationResponse(BaseModel):
     """Response model for validation results."""
     is_valid: bool
-    errors: List[Dict[str, str]]
-    warnings: List[Dict[str, str]]
-    info: List[Dict[str, str]]
+    errors: list[dict[str, str]]
+    warnings: list[dict[str, str]]
+    info: list[dict[str, str]]
 
 
 # Dependency injection
@@ -136,11 +139,11 @@ async def get_current_config(
         raise HTTPException(status_code=500, detail="Failed to get configuration")
 
 
-@router.put("/", response_model=Dict[str, Any])
+@router.put("/", response_model=dict[str, Any])
 async def update_config(
     request: ConfigUpdateRequest,
     manager: DynamicConfigManager = Depends(get_config_manager_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update gRPC configuration."""
     try:
         if request.validate_only:
@@ -174,10 +177,10 @@ async def update_config(
         raise HTTPException(status_code=500, detail="Failed to update configuration")
 
 
-@router.post("/reload", response_model=Dict[str, Any])
+@router.post("/reload", response_model=dict[str, Any])
 async def reload_config(
     manager: DynamicConfigManager = Depends(get_config_manager_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Reload configuration from storage."""
     try:
         success = await manager.reload_configuration()
@@ -217,11 +220,11 @@ async def get_config_history(
         raise HTTPException(status_code=500, detail="Failed to get configuration history")
 
 
-@router.get("/history/{version}", response_model=Dict[str, Any])
+@router.get("/history/{version}", response_model=dict[str, Any])
 async def get_config_snapshot(
     version: str,
     manager: DynamicConfigManager = Depends(get_config_manager_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get specific configuration snapshot."""
     try:
         snapshot = await manager.get_config_snapshot(version)
@@ -238,11 +241,11 @@ async def get_config_snapshot(
         raise HTTPException(status_code=500, detail="Failed to get configuration snapshot")
 
 
-@router.post("/rollback/{version}", response_model=Dict[str, Any])
+@router.post("/rollback/{version}", response_model=dict[str, Any])
 async def rollback_config(
     version: str,
     manager: DynamicConfigManager = Depends(get_config_manager_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Rollback configuration to specific version."""
     try:
         success = await manager.rollback_config(version)
@@ -300,10 +303,10 @@ async def validate_config(
 
 
 # Feature flags endpoints
-@router.get("/features", response_model=List[FeatureFlagResponse])
+@router.get("/features", response_model=list[FeatureFlagResponse])
 async def get_feature_flags(
     toggles: FeatureToggles = Depends(get_feature_toggles_dep)
-) -> List[FeatureFlagResponse]:
+) -> list[FeatureFlagResponse]:
     """Get all feature flags."""
     try:
         flags = await toggles.registry.get_all_flags()
@@ -355,12 +358,12 @@ async def get_feature_flag(
         raise HTTPException(status_code=500, detail="Failed to get feature flag")
 
 
-@router.put("/features/{flag_name}", response_model=Dict[str, Any])
+@router.put("/features/{flag_name}", response_model=dict[str, Any])
 async def update_feature_flag(
     flag_name: str,
     request: FeatureFlagRequest,
     toggles: FeatureToggles = Depends(get_feature_toggles_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update feature flag."""
     try:
         updates = {}
@@ -401,10 +404,10 @@ async def update_feature_flag(
 @router.get("/features/{flag_name}/enabled")
 async def is_feature_enabled(
     flag_name: str,
-    user_id: Optional[str] = Query(None, description="User ID for evaluation context"),
-    session_id: Optional[str] = Query(None, description="Session ID for evaluation context"),
+    user_id: str | None = Query(None, description="User ID for evaluation context"),
+    session_id: str | None = Query(None, description="Session ID for evaluation context"),
     toggles: FeatureToggles = Depends(get_feature_toggles_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check if feature flag is enabled."""
     try:
         context = FeatureEvaluationContext(
@@ -429,10 +432,10 @@ async def is_feature_enabled(
 
 
 # Environment profiles endpoints
-@router.get("/profiles", response_model=List[ProfileResponse])
+@router.get("/profiles", response_model=list[ProfileResponse])
 async def get_environment_profiles(
     env_loader: EnvironmentLoader = Depends(get_env_loader_dep)
-) -> List[ProfileResponse]:
+) -> list[ProfileResponse]:
     """Get available environment profiles."""
     try:
         profiles = env_loader.list_profiles()
@@ -480,12 +483,12 @@ async def get_environment_profile(
         raise HTTPException(status_code=500, detail="Failed to get environment profile")
 
 
-@router.post("/profiles/{profile_name}/apply", response_model=Dict[str, Any])
+@router.post("/profiles/{profile_name}/apply", response_model=dict[str, Any])
 async def apply_environment_profile(
     profile_name: str,
     manager: DynamicConfigManager = Depends(get_config_manager_dep),
     env_loader: EnvironmentLoader = Depends(get_env_loader_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Apply environment profile to current configuration."""
     try:
         current_config = await manager.get_current_config()
@@ -522,11 +525,11 @@ async def apply_environment_profile(
 
 
 # Statistics endpoint
-@router.get("/stats", response_model=Dict[str, Any])
+@router.get("/stats", response_model=dict[str, Any])
 async def get_config_statistics(
     manager: DynamicConfigManager = Depends(get_config_manager_dep),
     toggles: FeatureToggles = Depends(get_feature_toggles_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get configuration management statistics."""
     try:
         config_stats = await manager.get_statistics()
@@ -543,7 +546,7 @@ async def get_config_statistics(
 
 
 # Utility functions
-def _filter_sensitive_fields(config_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _filter_sensitive_fields(config_dict: dict[str, Any]) -> dict[str, Any]:
     """Filter sensitive configuration fields."""
     sensitive_fields = {
         "tls_cert_path",
@@ -566,11 +569,11 @@ def _filter_sensitive_fields(config_dict: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # Health check endpoint
-@router.get("/health", response_model=Dict[str, Any])
+@router.get("/health", response_model=dict[str, Any])
 async def config_health_check(
     manager: DynamicConfigManager = Depends(get_config_manager_dep),
     toggles: FeatureToggles = Depends(get_feature_toggles_dep)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Health check for configuration management."""
     try:
         config_stats = await manager.get_statistics()

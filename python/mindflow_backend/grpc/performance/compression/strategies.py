@@ -5,13 +5,15 @@
 from __future__ import annotations
 
 import time
-import heapq
-from typing import Dict, Any, Optional, List
-from collections import defaultdict, OrderedDict
-from abc import ABC, abstractmethod
 
-from .compressor import CompressionStrategy, CompressionResult, CompressionConfig, CompressionAlgorithm
 from mindflow_backend.infra.logging import get_logger
+
+from .compressor import (
+    CompressionAlgorithm,
+    CompressionConfig,
+    CompressionResult,
+    CompressionStrategy,
+)
 
 _logger = get_logger(__name__)
 
@@ -21,13 +23,12 @@ class AdaptiveCompressionStrategy(CompressionStrategy):
     
     def __init__(self, config: CompressionConfig):
         super().__init__(config)
-        self._performance_history: Dict[str, float] = {}
+        self._performance_history: dict[str, float] = {}
         self._adaptive_enabled = True
         self._min_samples = 5
     
     def compress(self, data: bytes) -> CompressionResult:
         """Compress with adaptive algorithm selection."""
-        import time
         start_time = time.time()
         
         # Select best algorithm based on historical performance
@@ -119,7 +120,6 @@ class FastCompressionStrategy(CompressionStrategy):
     
     def compress(self, data: bytes) -> CompressionResult:
         """Compress with maximum speed."""
-        import time
         start_time = time.time()
         
         try:
@@ -166,7 +166,6 @@ class HighCompressionStrategy(CompressionStrategy):
     
     def compress(self, data: bytes) -> CompressionResult:
         """Compress with maximum ratio."""
-        import time
         start_time = time.time()
         
         try:
@@ -227,7 +226,6 @@ class LZ4CompressionStrategy(CompressionStrategy):
     
     def compress(self, data: bytes) -> CompressionResult:
         """Compress using LZ4 if available, otherwise gzip."""
-        import time
         start_time = time.time()
         
         try:
@@ -294,7 +292,6 @@ class ContentAwareCompressionStrategy(CompressionStrategy):
     
     def compress(self, data: bytes) -> CompressionResult:
         """Compress based on content analysis."""
-        import time
         start_time = time.time()
         
         try:

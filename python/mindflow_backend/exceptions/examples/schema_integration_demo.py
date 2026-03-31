@@ -7,11 +7,11 @@ with existing Pydantic schemas.
 from __future__ import annotations
 
 from mindflow_backend.exceptions.base.core_new import (
+    AuthenticationError,
     MindFlowError,
     NetworkError,
-    ValidationError,
-    AuthenticationError,
     ResourceError,
+    ValidationError,
 )
 from mindflow_backend.exceptions.base.patterns_new import (
     ExceptionTemplates,
@@ -37,7 +37,7 @@ def demo_schema_conversion():
     schema = validation_error.to_schema()
     
     if schema:
-        print(f"✅ Converted exception to schema:")
+        print("✅ Converted exception to schema:")
         print(f"   Schema type: {type(schema).__name__}")
         print(f"   Error ID: {schema.error_id}")
         print(f"   Error type: {schema.error_type}")
@@ -107,7 +107,7 @@ def demo_exception_templates_with_schema():
         value=None
     ).build()
     
-    print(f"✅ Missing field template:")
+    print("✅ Missing field template:")
     print(f"   Field: {missing_field_error.field}")
     print(f"   User message: {missing_field_error.user_message}")
     print(f"   Suggestion: {missing_field_error.suggestion}")
@@ -124,7 +124,7 @@ def demo_exception_templates_with_schema():
         "phone_number"
     ).build()
     
-    print(f"\n✅ Invalid format template:")
+    print("\n✅ Invalid format template:")
     print(f"   Field: {invalid_format_error.field}")
     print(f"   Expected: {invalid_format_error.expected_format}")
     
@@ -134,7 +134,7 @@ def demo_exception_templates_with_schema():
         user_identifier="john.doe"
     ).build()
     
-    print(f"\n✅ Authentication failed template:")
+    print("\n✅ Authentication failed template:")
     print(f"   Error code: {auth_failed_error.error_code}")
     print(f"   User message: {auth_failed_error.user_message}")
     print(f"   Suggestion: {auth_failed_error.suggestion}")
@@ -160,7 +160,7 @@ def demo_error_context_enrichment():
         .caused_by(ValueError("Invalid input data"))
     )
     
-    print(f"✅ Context-enriched error:")
+    print("✅ Context-enriched error:")
     print(f"   Original: {context_enriched_error}")
     print(f"   Context: {context_enriched_error.context}")
     print(f"   Component: {context_enriched_error.component}")

@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -66,14 +66,14 @@ class ErrorContext(BaseModel):
     """Context information for errors."""
     
     component: str = Field(description="Component where error occurred")
-    operation: Optional[str] = Field(default=None, description="Operation being performed")
-    session_id: Optional[str] = Field(default=None, description="User session ID")
-    user_id: Optional[str] = Field(default=None, description="User ID")
-    request_id: Optional[str] = Field(default=None, description="Request tracking ID")
-    trace_id: Optional[str] = Field(default=None, description="Distributed trace ID")
+    operation: str | None = Field(default=None, description="Operation being performed")
+    session_id: str | None = Field(default=None, description="User session ID")
+    user_id: str | None = Field(default=None, description="User ID")
+    request_id: str | None = Field(default=None, description="Request tracking ID")
+    trace_id: str | None = Field(default=None, description="Distributed trace ID")
     
     # Additional context
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context data")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional context data")
     
     class Config:
         extra = "allow"
@@ -93,7 +93,7 @@ class ErrorSchema(BaseModel):
     
     # Messages
     message: str = Field(description="Technical error message")
-    user_message: Optional[str] = Field(default=None, description="User-friendly error message")
+    user_message: str | None = Field(default=None, description="User-friendly error message")
     
     # Timing and tracking
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="When error occurred")
@@ -108,11 +108,11 @@ class ErrorSchema(BaseModel):
     max_retries: int = Field(default=3, description="Maximum retry attempts allowed")
     
     # Technical details
-    stack_trace: Optional[str] = Field(default=None, description="Full stack trace")
-    cause: Optional[str] = Field(default=None, description="Root cause error")
+    stack_trace: str | None = Field(default=None, description="Full stack trace")
+    cause: str | None = Field(default=None, description="Root cause error")
     
     # Additional metadata
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional error metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional error metadata")
     
     class Config:
         extra = "allow"
@@ -129,8 +129,8 @@ class ErrorSchema(BaseModel):
         severity: ErrorSeverity,
         error_code: str,
         component: str,
-        context: Optional[ErrorContext] = None,
-        user_message: Optional[str] = None,
+        context: ErrorContext | None = None,
+        user_message: str | None = None,
         recoverable: bool = True,
         **metadata: Any,
     ) -> ErrorSchema:
@@ -142,9 +142,9 @@ class ErrorSchema(BaseModel):
         if hasattr(exception, 'context'):
             exception_context = getattr(exception, 'context', {})
         if hasattr(exception, 'session_id'):
-            exception_context['session_id'] = getattr(exception, 'session_id')
+            exception_context['session_id'] = exception.session_id
         if hasattr(exception, 'user_id'):
-            exception_context['user_id'] = getattr(exception, 'user_id')
+            exception_context['user_id'] = exception.user_id
         
         # Merge with provided context
         if context:
@@ -179,11 +179,11 @@ class ErrorResponse(BaseModel):
     error: ErrorSchema = Field(description="Error details")
     
     # Request information
-    request_id: Optional[str] = Field(default=None, description="Request ID for tracking")
+    request_id: str | None = Field(default=None, description="Request ID for tracking")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Response timestamp")
     
     # Additional response data
-    data: Optional[Dict[str, Any]] = Field(default=None, description="Additional response data")
+    data: dict[str, Any] | None = Field(default=None, description="Additional response data")
     
     class Config:
         extra = "allow"
@@ -196,15 +196,15 @@ class ErrorListResponse(BaseModel):
     """Response format for multiple errors (e.g., validation errors)."""
     
     success: bool = Field(default=False, description="Always false for error responses")
-    errors: List[ErrorSchema] = Field(description="List of errors")
+    errors: list[ErrorSchema] = Field(description="List of errors")
     
     # Request information
-    request_id: Optional[str] = Field(default=None, description="Request ID for tracking")
+    request_id: str | None = Field(default=None, description="Request ID for tracking")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Response timestamp")
     
     # Summary information
     total_errors: int = Field(description="Total number of errors")
-    error_summary: Dict[str, int] = Field(default_factory=dict, description="Error count by category")
+    error_summary: dict[str, int] = Field(default_factory=dict, description="Error count by category")
     
     class Config:
         extra = "allow"

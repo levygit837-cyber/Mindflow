@@ -6,9 +6,9 @@ Provides decorators and functions for retrying network operations.
 import asyncio
 import functools
 import time
-from typing import Any, Callable, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 
-from mindflow_backend.exceptions import MindFlowError
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)

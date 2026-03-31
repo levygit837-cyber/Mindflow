@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass
@@ -30,9 +30,9 @@ class CacheEntry:
     created_at: float
     last_accessed: float
     access_count: int = 0
-    ttl_seconds: Optional[float] = None
+    ttl_seconds: float | None = None
     size_bytes: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.size_bytes == 0:

@@ -6,14 +6,12 @@ different access patterns, content types, and performance requirements.
 
 from __future__ import annotations
 
-import time
-import heapq
-from typing import Dict, Any, Optional, List
-from collections import defaultdict, OrderedDict
-from abc import ABC, abstractmethod
+from collections import defaultdict
+from typing import Any
 
-from .cache import CacheStrategy, CacheConfig, CacheEntry
 from mindflow_backend.infra.logging import get_logger
+
+from .cache import CacheConfig, CacheEntry, CacheStrategy
 
 _logger = get_logger(__name__)
 
@@ -23,9 +21,9 @@ class LFUCacheStrategy(CacheStrategy):
     
     def __init__(self, config: CacheConfig):
         super().__init__(config)
-        self._cache: Dict[str, CacheEntry] = {}
-        self._frequencies: Dict[str, int] = defaultdict(int)
-        self._frequency_groups: Dict[int, List[str]] = defaultdict(list)
+        self._cache: dict[str, CacheEntry] = {}
+        self._frequencies: dict[str, int] = defaultdict(int)
+        self._frequency_groups: dict[int, list[str]] = defaultdict(list)
         self._min_frequency = 0
         self._stats = {
             'hits': 0,
@@ -34,7 +32,7 @@ class LFUCacheStrategy(CacheStrategy):
             'expired_removals': 0,
         }
     
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry and update frequency."""
         with self._lock:
             if key not in self._cache:
@@ -122,7 +120,7 @@ class LFUCacheStrategy(CacheStrategy):
             
             return len(expired_keys)
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         with self._lock:
             total_requests = self._stats['hits'] + self._stats['misses']
@@ -192,7 +190,7 @@ class AdaptiveCacheStrategy(CacheStrategy):
             'current_strategy': 'lru',
         }
     
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry using current strategy."""
         self._request_count += 1
         
@@ -232,7 +230,7 @@ class AdaptiveCacheStrategy(CacheStrategy):
         """Remove expired entries."""
         return self._current_strategy.cleanup_expired()
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         stats = self._current_strategy.get_stats()
         stats.update(self._stats)
@@ -305,7 +303,7 @@ class HierarchicalCacheStrategy(CacheStrategy):
             'demotions': 0,
         }
     
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry from hierarchical cache."""
         # Try L1 first
         entry = self._l1_cache.get(key)
@@ -382,7 +380,7 @@ class HierarchicalCacheStrategy(CacheStrategy):
         total_removed += self._l3_cache.cleanup_expired()
         return total_removed
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get hierarchical cache statistics."""
         l1_stats = self._l1_cache.get_stats()
         l2_stats = self._l2_cache.get_stats()
@@ -435,7 +433,7 @@ class ShardedCacheStrategy(CacheStrategy):
         self._stats['shard_distribution'][shard_index] += 1
         return self._shards[shard_index]
     
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry from appropriate shard."""
         shard = self._get_shard(key)
         entry = shard.get(key)
@@ -470,7 +468,7 @@ class ShardedCacheStrategy(CacheStrategy):
         """Remove expired entries from all shards."""
         return sum(shard.cleanup_expired() for shard in self._shards)
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get sharded cache statistics."""
         total_requests = self._stats['hits'] + self._stats['misses']
         hit_rate = (self._stats['hits'] / total_requests * 100) if total_requests > 0 else 0

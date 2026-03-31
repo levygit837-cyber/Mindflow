@@ -3,9 +3,8 @@
 Generic HTTP client and network-related helpers.
 """
 
-import asyncio
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 try:
@@ -31,8 +30,8 @@ class HTTPClient:
     
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        default_headers: Optional[Dict[str, str]] = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
         timeout: float = 30.0,
     ):
         self.base_url = base_url
@@ -48,10 +47,10 @@ class HTTPClient:
     async def get_async(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make async GET request."""
         if not AIOHTTP_AVAILABLE:
             raise ImportError("aiohttp is required for async HTTP requests")
@@ -59,24 +58,23 @@ class HTTPClient:
         url = self._build_url(endpoint)
         request_headers = {**self.default_headers, **(headers or {})}
         
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url,
-                params=params,
-                headers=request_headers,
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
-                **kwargs
-            ) as response:
-                return await self._handle_response(response)
+        async with aiohttp.ClientSession() as session, session.get(
+            url,
+            params=params,
+            headers=request_headers,
+            timeout=aiohttp.ClientTimeout(total=self.timeout),
+            **kwargs
+        ) as response:
+            return await self._handle_response(response)
     
     async def post_async(
         self,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        data: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make async POST request."""
         if not AIOHTTP_AVAILABLE:
             raise ImportError("aiohttp is required for async HTTP requests")
@@ -84,24 +82,23 @@ class HTTPClient:
         url = self._build_url(endpoint)
         request_headers = {**self.default_headers, **(headers or {})}
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url,
-                data=data,
-                json=json_data,
-                headers=request_headers,
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
-                **kwargs
-            ) as response:
-                return await self._handle_response(response)
+        async with aiohttp.ClientSession() as session, session.post(
+            url,
+            data=data,
+            json=json_data,
+            headers=request_headers,
+            timeout=aiohttp.ClientTimeout(total=self.timeout),
+            **kwargs
+        ) as response:
+            return await self._handle_response(response)
     
     def get(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make synchronous GET request."""
         if not REQUESTS_AVAILABLE:
             raise ImportError("requests is required for sync HTTP requests")
@@ -121,11 +118,11 @@ class HTTPClient:
     def post(
         self,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        data: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make synchronous POST request."""
         if not REQUESTS_AVAILABLE:
             raise ImportError("requests is required for sync HTTP requests")
@@ -143,7 +140,7 @@ class HTTPClient:
         )
         return self._handle_sync_response(response)
     
-    async def _handle_response(self, response: "aiohttp.ClientResponse") -> Dict[str, Any]:
+    async def _handle_response(self, response: "aiohttp.ClientResponse") -> dict[str, Any]:
         """Handle async HTTP response."""
         try:
             content = await response.text()
@@ -170,7 +167,7 @@ class HTTPClient:
             _logger.error("http_response_error", error=str(exc))
             raise
     
-    def _handle_sync_response(self, response: requests.Response) -> Dict[str, Any]:
+    def _handle_sync_response(self, response: requests.Response) -> dict[str, Any]:
         """Handle synchronous HTTP response."""
         try:
             content_type = response.headers.get('content-type', '').lower()
@@ -197,7 +194,7 @@ class HTTPClient:
             raise
 
 
-def parse_response_headers(headers: Dict[str, str]) -> Dict[str, Any]:
+def parse_response_headers(headers: dict[str, str]) -> dict[str, Any]:
     """Parse HTTP response headers into structured data."""
     parsed = {}
     
@@ -275,7 +272,7 @@ def validate_url(url: str) -> bool:
         return False
 
 
-def extract_domain(url: str) -> Optional[str]:
+def extract_domain(url: str) -> str | None:
     """Extract domain from URL."""
     try:
         parsed = urlparse(url)
@@ -284,7 +281,7 @@ def extract_domain(url: str) -> Optional[str]:
         return None
 
 
-def extract_path(url: str) -> Optional[str]:
+def extract_path(url: str) -> str | None:
     """Extract path from URL."""
     try:
         parsed = urlparse(url)
@@ -293,7 +290,7 @@ def extract_path(url: str) -> Optional[str]:
         return None
 
 
-def build_query_string(params: Dict[str, Any]) -> str:
+def build_query_string(params: dict[str, Any]) -> str:
     """Build query string from parameters."""
     from urllib.parse import urlencode
     
@@ -306,35 +303,34 @@ def build_query_string(params: Dict[str, Any]) -> str:
     return urlencode(string_params)
 
 
-async def download_file_async(url: str, output_path: str) -> Dict[str, Any]:
+async def download_file_async(url: str, output_path: str) -> dict[str, Any]:
     """Download file asynchronously."""
     if not AIOHTTP_AVAILABLE:
         raise ImportError("aiohttp is required for async file download")
     
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    raise Exception(f"HTTP {response.status}: {response.reason}")
-                
-                # Get file size
-                content_length = response.headers.get('content-length')
-                total_size = int(content_length) if content_length else None
-                
-                # Download file
-                downloaded_size = 0
-                with open(output_path, 'wb') as file:
-                    async for chunk in response.content.iter_chunked(8192):
-                        file.write(chunk)
-                        downloaded_size += len(chunk)
-                
-                return {
-                    'success': True,
-                    'output_path': output_path,
-                    'downloaded_size': downloaded_size,
-                    'total_size': total_size,
-                    'url': url,
-                }
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            if response.status != 200:
+                raise Exception(f"HTTP {response.status}: {response.reason}")
+            
+            # Get file size
+            content_length = response.headers.get('content-length')
+            total_size = int(content_length) if content_length else None
+            
+            # Download file
+            downloaded_size = 0
+            with open(output_path, 'wb') as file:
+                async for chunk in response.content.iter_chunked(8192):
+                    file.write(chunk)
+                    downloaded_size += len(chunk)
+            
+            return {
+                'success': True,
+                'output_path': output_path,
+                'downloaded_size': downloaded_size,
+                'total_size': total_size,
+                'url': url,
+            }
     
     except Exception as exc:
         _logger.error("file_download_error", url=url, error=str(exc))

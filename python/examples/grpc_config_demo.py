@@ -7,14 +7,13 @@ without requiring all the complex dependencies.
 """
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mindflow_backend.grpc.config import GrpcConfig
-from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
 from mindflow_backend.grpc.config.profiles import get_environment_loader
 from mindflow_backend.infra.logging import get_logger
 

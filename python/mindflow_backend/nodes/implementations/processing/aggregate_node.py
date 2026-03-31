@@ -6,9 +6,10 @@ including sum, count, average, min, max, and custom aggregations.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -28,11 +29,11 @@ class AggregateNode(StatefulNode, BaseNode):
         self,
         node_id: str = "aggregate",
         aggregation_type: str = "sum",  # sum, count, avg, min, max, group, custom
-        aggregation_function: Optional[Callable[[List[Any]], Any]] = None,
-        group_by: Optional[Union[str, List[str]]] = None,
-        field_path: Optional[str] = None,
-        filter_condition: Optional[Callable[[Any], bool]] = None,
-        initial_value: Optional[Any] = None,
+        aggregation_function: Callable[[list[Any]], Any] | None = None,
+        group_by: str | list[str] | None = None,
+        field_path: str | None = None,
+        filter_condition: Callable[[Any], bool] | None = None,
+        initial_value: Any | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -65,7 +66,7 @@ class AggregateNode(StatefulNode, BaseNode):
         if self.aggregation_type in ["sum", "count", "avg", "min", "max"]:
             self._compile_aggregation_function()
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the aggregation based on configured type."""
         data = state.get("data", {})
         
@@ -127,7 +128,7 @@ class AggregateNode(StatefulNode, BaseNode):
                 "metadata": {"aggregation_type": self.aggregation_type, "status": "error"}
             }
     
-    async def _apply_sum_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_sum_aggregation(self, data_list: list[Any]) -> Any:
         """Apply sum aggregation to data list."""
         if self.aggregation_function:
             return await self.aggregation_function(data_list)
@@ -141,14 +142,14 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return sum(numeric_values) if numeric_values else 0
     
-    async def _apply_count_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_count_aggregation(self, data_list: list[Any]) -> Any:
         """Apply count aggregation to data list."""
         if self.aggregation_function:
             return await self.aggregation_function(data_list)
         
         return len(data_list)
     
-    async def _apply_average_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_average_aggregation(self, data_list: list[Any]) -> Any:
         """Apply average aggregation to data list."""
         if self.aggregation_function:
             return await self.aggregation_function(data_list)
@@ -162,7 +163,7 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return sum(numeric_values) / len(numeric_values) if numeric_values else 0
     
-    async def _apply_min_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_min_aggregation(self, data_list: list[Any]) -> Any:
         """Apply min aggregation to data list."""
         if self.aggregation_function:
             return await self.aggregation_function(data_list)
@@ -176,7 +177,7 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return min(numeric_values) if numeric_values else None
     
-    async def _apply_max_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_max_aggregation(self, data_list: list[Any]) -> Any:
         """Apply max aggregation to data list."""
         if self.aggregation_function:
             return await self.aggregation_function(data_list)
@@ -190,7 +191,7 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return max(numeric_values) if numeric_values else None
     
-    async def _apply_group_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_group_aggregation(self, data_list: list[Any]) -> Any:
         """Apply group aggregation to data list."""
         if self.aggregation_function:
             return await self.aggregation_function(data_list)
@@ -215,14 +216,14 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return groups
     
-    async def _apply_custom_aggregation(self, data_list: List[Any]) -> Any:
+    async def _apply_custom_aggregation(self, data_list: list[Any]) -> Any:
         """Apply custom aggregation function to data list."""
         if not self.aggregation_function:
             raise ValueError("Custom aggregation function is required")
         
         return await self.aggregation_function(data_list)
     
-    def _extract_numeric_value(self, item: Any) -> Optional[float]:
+    def _extract_numeric_value(self, item: Any) -> float | None:
         """Extract numeric value from an item."""
         if isinstance(item, (int, float)):
             return float(item)
@@ -240,7 +241,7 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return None
     
-    def _get_group_key(self, item: Any, fields: List[str]) -> str:
+    def _get_group_key(self, item: Any, fields: list[str]) -> str:
         """Create group key from item fields."""
         if isinstance(item, dict):
             key_parts = []
@@ -252,7 +253,7 @@ class AggregateNode(StatefulNode, BaseNode):
         
         return str(item)
     
-    def _convert_to_list(self, data: Any) -> List[Any]:
+    def _convert_to_list(self, data: Any) -> list[Any]:
         """Convert data to list format for aggregation."""
         if isinstance(data, list):
             return data
@@ -290,12 +291,12 @@ class AggregateNode(StatefulNode, BaseNode):
             self.aggregation_type = aggregation_type.lower()
             self._compile_aggregation_function()
     
-    def set_aggregation_function(self, aggregation_function: Callable[[List[Any]], Any]) -> None:
+    def set_aggregation_function(self, aggregation_function: Callable[[list[Any]], Any]) -> None:
         """Set custom aggregation function."""
         self.aggregation_type = "custom"
         self.aggregation_function = aggregation_function
     
-    def set_group_by(self, group_by: Union[str, List[str]]) -> None:
+    def set_group_by(self, group_by: str | list[str]) -> None:
         """Set grouping fields."""
         self.group_by = group_by
     
@@ -303,7 +304,7 @@ class AggregateNode(StatefulNode, BaseNode):
         """Set filter condition for aggregation."""
         self.filter_condition = filter_condition
     
-    def get_aggregation_info(self) -> Dict[str, Any]:
+    def get_aggregation_info(self) -> dict[str, Any]:
         """Get information about current aggregation configuration."""
         return {
             "aggregation_type": self.aggregation_type,
@@ -329,7 +330,7 @@ class StatisticalAggregateNode(AggregateNode):
     def __init__(
         self,
         node_id: str = "statistical_aggregate",
-        statistics: List[str] = None,  # mean, median, mode, std_dev, variance
+        statistics: list[str] = None,  # mean, median, mode, std_dev, variance
         description: str = "Statistical aggregation operations"
     ) -> None:
         super().__init__(
@@ -343,7 +344,7 @@ class StatisticalAggregateNode(AggregateNode):
         # Create statistical aggregation function
         self.aggregation_function = self._create_statistical_function(self.statistics)
     
-    def _create_statistical_function(self, statistics: List[str]) -> Callable[[List[Any]], Dict[str, Any]]:
+    def _create_statistical_function(self, statistics: list[str]) -> Callable[[list[Any]], dict[str, Any]]:
         """Create a function that calculates multiple statistics."""
         import statistics as stats_module
         
@@ -398,8 +399,8 @@ class GroupByAggregateNode(AggregateNode):
     def __init__(
         self,
         node_id: str = "group_by_aggregate",
-        group_fields: List[str] = None,
-        aggregations: Dict[str, str] = None,  # field_name -> aggregation_type
+        group_fields: list[str] = None,
+        aggregations: dict[str, str] = None,  # field_name -> aggregation_type
         description: str = "Group-by aggregation operations"
     ) -> None:
         super().__init__(
@@ -415,7 +416,7 @@ class GroupByAggregateNode(AggregateNode):
         # Override aggregation function
         self.aggregation_function = self._create_group_by_function(self.aggregations)
     
-    def _create_group_by_function(self, aggregations: Dict[str, str]) -> Callable[[List[Any]], Dict[str, Any]]:
+    def _create_group_by_function(self, aggregations: dict[str, str]) -> Callable[[list[Any]], dict[str, Any]]:
         """Create a function that performs group-by aggregations."""
         async def group_by_function(data_list):
             if not data_list:
@@ -461,7 +462,7 @@ class GroupByAggregateNode(AggregateNode):
         
         return group_by_function
     
-    async def _apply_aggregation_by_type(self, values: List[Any], agg_type: str) -> Any:
+    async def _apply_aggregation_by_type(self, values: list[Any], agg_type: str) -> Any:
         """Apply aggregation by type to values."""
         temp_aggregator = AggregateNode(
             node_id=f"temp_{agg_type}",

@@ -8,21 +8,16 @@ and comprehensive management APIs.
 """
 
 import asyncio
-import sys
 import os
-import time
 import random
-import json
-from typing import Dict, Any
+import sys
+import time
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mindflow_backend.grpc.server import EnhancedGrpcAgentServer
 from mindflow_backend.grpc.config import GrpcConfig
-from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import AdaptiveThresholdType
-from mindflow_backend.grpc.resilience.advanced_retry import AdaptiveBackoffType
-from mindflow_backend.grpc.performance.compression.compressor import CompressionAlgorithm
+from mindflow_backend.grpc.server import EnhancedGrpcAgentServer
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -77,18 +72,18 @@ class Phase4IntegrationDemo:
             
             # Create enhanced server
             self.server = EnhancedGrpcAgentServer(self.config)
-            print(f"   ✅ Enhanced server created with comprehensive configuration")
+            print("   ✅ Enhanced server created with comprehensive configuration")
             
             # Get enhanced status
             status = self.server.get_enhanced_status()
-            print(f"   📊 Enhanced Status Overview:")
+            print("   📊 Enhanced Status Overview:")
             print(f"      Resilience components: {len(status.get('resilience', {}))}")
             print(f"      Performance components: {len(status.get('performance', {}))}")
             print(f"      Alerting components: {len(status.get('alerting', {}))}")
             
             # Show detailed component status
             if 'resilience' in status:
-                print(f"   🛡️  Resilience Components:")
+                print("   🛡️  Resilience Components:")
                 for component, metrics in status['resilience'].items():
                     if component == 'circuit_breaker':
                         print(f"      - Circuit Breaker: {metrics.get('state', 'unknown')} (threshold: {metrics.get('current_threshold', 'N/A')})")
@@ -100,7 +95,7 @@ class Phase4IntegrationDemo:
                         print(f"      - Fallback Manager: {metrics.get('fallback_usage_rate', 0):.1f}% usage rate")
             
             if 'performance' in status:
-                print(f"   ⚡ Performance Components:")
+                print("   ⚡ Performance Components:")
                 for component, metrics in status['performance'].items():
                     if component == 'message_compressor':
                         print(f"      - Message Compressor: {metrics.get('compression_ratio', 0):.2f}x ratio")
@@ -110,7 +105,7 @@ class Phase4IntegrationDemo:
                         print(f"      - Profiler: {metrics.get('total_profiles', 0)} profiles collected")
             
             if 'alerting' in status:
-                print(f"   🚨 Alerting Components:")
+                print("   🚨 Alerting Components:")
                 alerting = status['alerting']
                 if 'alert_manager' in alerting:
                     alert_metrics = alerting['alert_manager']
@@ -148,9 +143,9 @@ class Phase4IntegrationDemo:
             if self.server.is_running():
                 uptime = self.server.get_uptime_seconds()
                 print(f"   ⏱️  Server uptime: {uptime:.1f} seconds")
-                print(f"   🟢 Server status: RUNNING")
+                print("   🟢 Server status: RUNNING")
             else:
-                print(f"   🔴 Server status: NOT RUNNING")
+                print("   🔴 Server status: NOT RUNNING")
             
         except Exception as e:
             print(f"   ❌ Server startup demo failed: {e}")
@@ -203,7 +198,7 @@ class Phase4IntegrationDemo:
             successful = sum(1 for r in results if not isinstance(r, Exception))
             failed = sum(1 for r in results if isinstance(r, Exception))
             
-            print(f"   📊 Enhanced Protection Results:")
+            print("   📊 Enhanced Protection Results:")
             print(f"      Total operations: {len(tasks)}")
             print(f"      Successful: {successful}")
             print(f"      Failed: {failed}")
@@ -215,7 +210,7 @@ class Phase4IntegrationDemo:
             # Show protection effectiveness
             if 'resilience' in updated_status:
                 resilience = updated_status['resilience']
-                print(f"   🛡️  Protection Effectiveness:")
+                print("   🛡️  Protection Effectiveness:")
                 
                 if 'circuit_breaker' in resilience:
                     cb = resilience['circuit_breaker']
@@ -284,7 +279,7 @@ class Phase4IntegrationDemo:
             status = self.server.get_enhanced_status()
             if 'performance' in status:
                 perf = status['performance']
-                print(f"   📊 Performance Metrics:")
+                print("   📊 Performance Metrics:")
                 
                 if 'message_compressor' in perf:
                     mc = perf['message_compressor']
@@ -331,8 +326,8 @@ class Phase4IntegrationDemo:
                     # In a real implementation, this would record actual metrics
                     print(f"      Request {i+1}: {duration:.3f}s")
                 
-                print(f"      Total requests recorded: 10")
-                print(f"      Average response time: 0.010s")
+                print("      Total requests recorded: 10")
+                print("      Average response time: 0.010s")
             
             # Test alerting
             if self.server.alert_manager:
@@ -355,7 +350,7 @@ class Phase4IntegrationDemo:
             if self.server.health_checker:
                 print("   🔍 Health Checking:")
                 print(f"      Health checker enabled: {self.server.health_checker is not None}")
-                print(f"      Background monitoring: Active")
+                print("      Background monitoring: Active")
             
             # Test Prometheus exporter
             if self.server.prometheus_exporter:
@@ -379,7 +374,7 @@ class Phase4IntegrationDemo:
             print("   🎯 Testing unified configuration...")
             
             # Show current configuration
-            print(f"   📋 Current Configuration:")
+            print("   📋 Current Configuration:")
             print(f"      Server: {self.config.host}:{self.config.port}")
             print(f"      Metrics: {self.config.enable_metrics}")
             print(f"      Health Check: {self.config.enable_health_check}")
@@ -389,7 +384,7 @@ class Phase4IntegrationDemo:
             print(f"      Enhanced Protection: {self.config.enable_enhanced_protection}")
             
             # Show feature flags
-            print(f"   🚩 Feature Flags:")
+            print("   🚩 Feature Flags:")
             print(f"      Adaptive Circuit Breaker: {self.config.enable_adaptive_circuit_breaker}")
             print(f"      Adaptive Retry: {self.config.enable_adaptive_retry}")
             print(f"      Performance-based Retry: {self.config.retry_performance_based}")
@@ -400,7 +395,7 @@ class Phase4IntegrationDemo:
             print(f"      Auto-tuning: {self.config.enable_auto_tuning}")
             
             # Show performance settings
-            print(f"   ⚡ Performance Settings:")
+            print("   ⚡ Performance Settings:")
             print(f"      Compression Level: {self.config.compression_level}")
             print(f"      Compression Threshold: {self.config.compression_threshold} bytes")
             print(f"      Cache Max Size: {self.config.cache_max_size}")
@@ -409,7 +404,7 @@ class Phase4IntegrationDemo:
             print(f"      Profiling Sampling Rate: {self.config.profiling_sampling_rate}")
             
             # Show resilience settings
-            print(f"   🛡️  Resilience Settings:")
+            print("   🛡️  Resilience Settings:")
             print(f"      Circuit Breaker Threshold: {self.config.circuit_breaker_failure_threshold}")
             print(f"      Circuit Breaker Recovery: {self.config.circuit_breaker_recovery_timeout}s")
             print(f"      Bulkhead Max Concurrent: {self.config.bulkhead_max_concurrent}")
@@ -477,7 +472,7 @@ class Phase4IntegrationDemo:
                 ]
             }
             
-            print(f"   📊 Available API Endpoints:")
+            print("   📊 Available API Endpoints:")
             for category, endpoints in api_endpoints.items():
                 print(f"      {category.upper()} ({len(endpoints)} endpoints):")
                 for endpoint in endpoints[:3]:  # Show first 3
@@ -486,19 +481,19 @@ class Phase4IntegrationDemo:
                     print(f"         - ... and {len(endpoints) - 3} more")
             
             # Simulate API responses
-            print(f"   📋 Sample API Responses:")
+            print("   📋 Sample API Responses:")
             
             # Performance status
-            print(f"      GET /v1/performance/status:")
-            print(f"         {{'compression': {{'enabled': true, 'ratio': 2.1}}, 'cache': {{'hit_rate': 85.2}}}}")
+            print("      GET /v1/performance/status:")
+            print("         {'compression': {'enabled': true, 'ratio': 2.1}, 'cache': {'hit_rate': 85.2}}")
             
             # Resilience status
-            print(f"      GET /v1/resilience/status:")
-            print(f"         {{'circuit_breaker': {{'state': 'closed', 'success_rate': 95.3}}, 'bulkhead': {{'utilization': 45.2}}}}")
+            print("      GET /v1/resilience/status:")
+            print("         {'circuit_breaker': {'state': 'closed', 'success_rate': 95.3}, 'bulkhead': {'utilization': 45.2}}")
             
             # Monitoring alerts
-            print(f"      GET /v1/monitoring/alerts:")
-            print(f"         {{'active_alerts': 2, 'total_alerts': 15, 'alerts': [{{'severity': 'warning', 'message': 'High latency'}}]}}")
+            print("      GET /v1/monitoring/alerts:")
+            print("         {'active_alerts': 2, 'total_alerts': 15, 'alerts': [{'severity': 'warning', 'message': 'High latency'}]}")
             
         except Exception as e:
             print(f"   ❌ Management API demo failed: {e}")

@@ -7,10 +7,10 @@ Maintains backward compatibility with the original ANALYST_SYSTEM_PROMPT.
 from __future__ import annotations
 
 from mindflow_backend.agents.prompts.core.analyst import compose_analyst_prompt
-from mindflow_backend.agents.prompts.specialized.security_analysis import SECURITY_ANALYSIS
-from mindflow_backend.agents.prompts.specialized.code_review import CODE_REVIEW
 from mindflow_backend.agents.prompts.specialized.brainstorming import BRAINSTORMING
+from mindflow_backend.agents.prompts.specialized.code_review import CODE_REVIEW
 from mindflow_backend.agents.prompts.specialized.deep_analysis import DEEP_ANALYSIS
+from mindflow_backend.agents.prompts.specialized.security_analysis import SECURITY_ANALYSIS
 
 
 def build_full_analyst_prompt(*segments: str) -> str:

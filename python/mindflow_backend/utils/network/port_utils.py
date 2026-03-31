@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import socket
 from contextlib import asynccontextmanager
-from typing import Set
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -26,7 +25,7 @@ class PortManager:
             port_range: Tuple of (start_port, end_port) for allocation
         """
         self.port_range = port_range
-        self._allocated_ports: Set[int] = set()
+        self._allocated_ports: set[int] = set()
         self._port_locks: dict[int, asyncio.Lock] = {}
         self._master_lock = asyncio.Lock()
         
@@ -70,17 +69,17 @@ class PortManager:
                     await self.is_available(preferred_port)):
                     self._allocated_ports.add(preferred_port)
                     self._port_locks[preferred_port] = asyncio.Lock()
-                    _logger.info(f"allocated_preferred_port", port=preferred_port)
+                    _logger.info("allocated_preferred_port", port=preferred_port)
                     return preferred_port
                 else:
-                    _logger.warning(f"preferred_port_unavailable", port=preferred_port)
+                    _logger.warning("preferred_port_unavailable", port=preferred_port)
             
             # Find first available port in range
             for port in range(self.port_range[0], self.port_range[1] + 1):
                 if await self.is_available(port):
                     self._allocated_ports.add(port)
                     self._port_locks[port] = asyncio.Lock()
-                    _logger.info(f"allocated_port", port=port)
+                    _logger.info("allocated_port", port=port)
                     return port
             
             raise RuntimeError(f"No available ports in range {self.port_range}")
@@ -95,7 +94,7 @@ class PortManager:
             if port in self._allocated_ports:
                 self._allocated_ports.remove(port)
                 self._port_locks.pop(port, None)
-                _logger.info(f"released_port", port=port)
+                _logger.info("released_port", port=port)
     
     @asynccontextmanager
     async def managed_port(self, preferred_port: Optional[int] = None):

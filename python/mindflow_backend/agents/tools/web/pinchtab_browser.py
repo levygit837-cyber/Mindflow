@@ -6,9 +6,9 @@ from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.schemas.tools.pinchtab_schemas import (
+    PINCHTAB_BROWSER_SCHEMA,
     BrowserCommandAction,
     BrowserCommandRequest,
-    PINCHTAB_BROWSER_SCHEMA,
 )
 from mindflow_backend.services.core import get_pinchtab_fleet_service
 

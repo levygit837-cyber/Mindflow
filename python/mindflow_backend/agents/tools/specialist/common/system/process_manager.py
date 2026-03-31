@@ -4,13 +4,14 @@ including monitoring, termination, and resource tracking with proper security co
 """
 
 from __future__ import annotations
+
 import os
 import signal
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.system_schemas import PROCESS_MANAGER_SCHEMA
 
 _logger = get_logger(__name__)
@@ -36,7 +37,7 @@ class ProcessManagerTool(AsyncToolInterface):
 
         self._schema = PROCESS_MANAGER_SCHEMA
 
-    def execute(self, **kwargs) -> Dict[str, Any]:
+    def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute process management operation.
         Args:
@@ -82,7 +83,7 @@ class ProcessManagerTool(AsyncToolInterface):
                 error=f"Process management error: {str(e)}"
             )
 
-    def _list_processes(self, **kwargs) -> Dict[str, Any]:
+    def _list_processes(self, **kwargs) -> dict[str, Any]:
         """
         List system processes with optional filtering.
         Args:
@@ -135,7 +136,7 @@ class ProcessManagerTool(AsyncToolInterface):
                 error="psutil library not available. Install with: pip install psutil"
             )
 
-    def _kill_process(self, **kwargs) -> Dict[str, Any]:
+    def _kill_process(self, **kwargs) -> dict[str, Any]:
         """
         Kill a process by PID.
         Args:
@@ -217,7 +218,7 @@ class ProcessManagerTool(AsyncToolInterface):
                 error="psutil library not available. Install with: pip install psutil"
             )
 
-    def _monitor_process(self, **kwargs) -> Dict[str, Any]:
+    def _monitor_process(self, **kwargs) -> dict[str, Any]:
         """
         Monitor a process for resource usage.
         Args:
@@ -280,7 +281,7 @@ class ProcessManagerTool(AsyncToolInterface):
                 error="psutil library not available. Install with: pip install psutil"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

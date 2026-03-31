@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -22,7 +22,7 @@ class MemoryWorker(BaseWorker):
         super().__init__(queue_config, worker_name="memory_worker")
         self._memory_consumer = MemoryTaskConsumer()
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process memory management tasks.
         
         Supported task types:
@@ -82,7 +82,7 @@ class MemoryWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
 
-    async def _handle_message_recorded(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_message_recorded(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle queued memory persistence for recorded chat messages."""
         result = await self._memory_consumer.consume_message_recorded(message_data)
         return WorkerResult(
@@ -91,7 +91,7 @@ class MemoryWorker(BaseWorker):
             data=result,
         )
     
-    async def _handle_memory_cleanup(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_memory_cleanup(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle cleanup of old or unused memory data."""
         cleanup_scope = message_data.get("cleanup_scope", "all")
         retention_days = message_data.get("retention_days", 30)
@@ -129,7 +129,7 @@ class MemoryWorker(BaseWorker):
             },
         )
     
-    async def _handle_storage_optimization(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_storage_optimization(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle storage usage optimization."""
         optimization_type = message_data.get("optimization_type", "compact")
         target_storage = message_data.get("target_storage", "all")
@@ -174,7 +174,7 @@ class MemoryWorker(BaseWorker):
             },
         )
     
-    async def _handle_cache_management(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_cache_management(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle cache data management and policy enforcement."""
         cache_type = message_data.get("cache_type", "all")
         management_action = message_data.get("management_action", "cleanup")
@@ -214,7 +214,7 @@ class MemoryWorker(BaseWorker):
             },
         )
     
-    async def _handle_data_archival(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_data_archival(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle archival of old data to long-term storage."""
         archival_criteria = message_data.get("archival_criteria", "older_than_90d")
         target_data = message_data.get("target_data", "sessions")
@@ -250,7 +250,7 @@ class MemoryWorker(BaseWorker):
             },
         )
     
-    async def _handle_garbage_collection(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_garbage_collection(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle garbage collection operations."""
         gc_type = message_data.get("gc_type", "full")
         target_components = message_data.get("target_components", ["memory", "storage"])
@@ -292,7 +292,7 @@ class MemoryWorker(BaseWorker):
             },
         )
     
-    async def _handle_memory_monitoring(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_memory_monitoring(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle memory usage monitoring and analysis."""
         monitoring_scope = message_data.get("monitoring_scope", "all")
         analysis_depth = message_data.get("analysis_depth", "standard")

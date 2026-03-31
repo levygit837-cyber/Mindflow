@@ -7,8 +7,6 @@ for multiple languages to support semantic search between sub-tasks.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List, Optional
-from uuid import UUID
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -26,7 +24,7 @@ class MultilingualEmbeddingService:
     that work across multiple languages for semantic search.
     """
     
-    def __init__(self, model_name: Optional[str] = None):
+    def __init__(self, model_name: str | None = None):
         """Initialize the multilingual embedding service.
         
         Args:
@@ -34,7 +32,7 @@ class MultilingualEmbeddingService:
                        Defaults to multilingual MiniLM model.
         """
         self.model_name = model_name or "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        self.model: Optional[SentenceTransformer] = None
+        self.model: SentenceTransformer | None = None
         self.embedding_dimension = 384  # Default for MiniLM model
         self._lock = asyncio.Lock()
         self._initialized = False
@@ -75,7 +73,7 @@ class MultilingualEmbeddingService:
         self, 
         text: str, 
         language: str = "auto"
-    ) -> List[float]:
+    ) -> list[float]:
         """Generate embedding for the given text.
         
         Args:
@@ -118,9 +116,9 @@ class MultilingualEmbeddingService:
     
     async def generate_batch_embeddings(
         self,
-        texts: List[str],
+        texts: list[str],
         language: str = "auto"
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """Generate embeddings for multiple texts efficiently.
         
         Args:
@@ -218,8 +216,8 @@ class MultilingualEmbeddingService:
     
     async def calculate_similarity(
         self,
-        embedding1: List[float],
-        embedding2: List[float]
+        embedding1: list[float],
+        embedding2: list[float]
     ) -> float:
         """Calculate cosine similarity between two embeddings.
         
@@ -258,7 +256,7 @@ class MultilingualEmbeddingService:
 
 
 # Global instance for singleton pattern
-_embedding_service: Optional[MultilingualEmbeddingService] = None
+_embedding_service: MultilingualEmbeddingService | None = None
 
 
 async def get_multilingual_embedding_service() -> MultilingualEmbeddingService:

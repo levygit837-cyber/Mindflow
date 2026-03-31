@@ -10,7 +10,7 @@ We keep these types minimal and dependency-free.
 
 from __future__ import annotations
 
-from typing import Any, Dict, TypedDict
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -34,8 +34,8 @@ class ChainConfig(BaseModel):
 class ExecutionContext(TypedDict, total=False):
     """Loose execution context passed through chain steps."""
 
-    input: Dict[str, Any]
-    output: Dict[str, Any]
+    input: dict[str, Any]
+    output: dict[str, Any]
     error: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 

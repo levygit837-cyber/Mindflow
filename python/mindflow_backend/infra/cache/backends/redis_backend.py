@@ -6,10 +6,10 @@ Provides Redis-based caching with automatic serialization/deserialization.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.cache.redis_client import get_redis_client
+from mindflow_backend.infra.logging import get_logger
 
 from ..models import CacheEntry
 from .base import CacheBackend
@@ -54,7 +54,7 @@ class RedisCacheBackend(CacheBackend):
         """
         return f"{self.key_prefix}{key}"
 
-    def _serialize_entry(self, entry: CacheEntry) -> Dict[str, Any]:
+    def _serialize_entry(self, entry: CacheEntry) -> dict[str, Any]:
         """Serialize cache entry for Redis.
 
         Args:
@@ -73,7 +73,7 @@ class RedisCacheBackend(CacheBackend):
             "tags": entry.tags,
         }
 
-    def _deserialize_entry(self, data: Dict[str, Any]) -> CacheEntry:
+    def _deserialize_entry(self, data: dict[str, Any]) -> CacheEntry:
         """Deserialize cache entry from Redis.
 
         Args:
@@ -92,7 +92,7 @@ class RedisCacheBackend(CacheBackend):
             tags=data.get("tags", {}),
         )
 
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get cache entry from Redis.
 
         Args:
@@ -196,7 +196,7 @@ class RedisCacheBackend(CacheBackend):
             _logger.error("redis_cache_clear_failed", error=str(e))
             return False
 
-    async def keys(self, pattern: str = "*") -> List[str]:
+    async def keys(self, pattern: str = "*") -> list[str]:
         """Get keys matching pattern.
 
         Args:
@@ -234,7 +234,7 @@ class RedisCacheBackend(CacheBackend):
             _logger.error("redis_cache_size_failed", error=str(e))
             return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:

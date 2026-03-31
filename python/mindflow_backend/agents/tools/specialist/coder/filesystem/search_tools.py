@@ -4,17 +4,18 @@ with pattern matching, content search, and filtering capabilities.
 """
 
 from __future__ import annotations
-import os
-import re
-import fnmatch
-import asyncio
-from typing import Any, Dict, List, Optional, Union
-from pathlib import Path
 
-from mindflow_backend.infra.logging import get_logger
+import re
+from pathlib import Path
+from typing import Any
+
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.schemas.tools.filesystem_schemas import GREP_SEARCH_SCHEMA, GLOB_SEARCH_SCHEMA, FILE_FINDER_SCHEMA
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.tools.filesystem_schemas import (
+    FILE_FINDER_SCHEMA,
+    GLOB_SEARCH_SCHEMA,
+    GREP_SEARCH_SCHEMA,
+)
 
 _logger = get_logger(__name__)
 
@@ -31,7 +32,7 @@ class GrepSearchTool(AsyncToolInterface):
 
         self._schema = GREP_SEARCH_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute file content search.
         Args:
@@ -85,7 +86,7 @@ class GrepSearchTool(AsyncToolInterface):
                     
                     # Search in file
                     try:
-                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        with open(file_path, encoding='utf-8', errors='ignore') as f:
                             for line_num, line in enumerate(f, 1):
                                 if regex.search(line):
                                     matches.append({
@@ -120,7 +121,7 @@ class GrepSearchTool(AsyncToolInterface):
                 error=f"Search error: {str(e)}"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """
@@ -136,7 +137,7 @@ class GlobSearchTool(AsyncToolInterface):
         self.description = "Find files matching a glob pattern"
         self._schema = GLOB_SEARCH_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         try:
             pattern = kwargs["pattern"]
             directory = kwargs.get("directory", ".")
@@ -151,7 +152,7 @@ class GlobSearchTool(AsyncToolInterface):
         except Exception as e:
             return self._format_result(success=False, error=f"Glob search error: {e}")
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -167,7 +168,7 @@ class FileFinderTool(AsyncToolInterface):
 
         self._schema = FILE_FINDER_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute file search.
         Args:
@@ -260,7 +261,7 @@ class FileFinderTool(AsyncToolInterface):
                 error=f"File finder error: {str(e)}"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

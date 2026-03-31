@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import typer
 
+from mindflow_cli.commands.chains import register_chains_commands
 from mindflow_cli.commands.chat import register_chat_commands
 from mindflow_cli.commands.health import register_health_commands
-from mindflow_cli.commands.workflow import register_workflow_commands
-from mindflow_cli.commands.start import register_start_commands
-from mindflow_cli.commands.test_orchestrator import register_test_orchestrator_commands
-from mindflow_cli.commands.chains import register_chains_commands
-from mindflow_cli.commands.tasks import register_tasks_commands
-from mindflow_cli.commands.settings import register_settings_commands
 from mindflow_cli.commands.models import register_models_commands
+from mindflow_cli.commands.settings import register_settings_commands
+from mindflow_cli.commands.start import register_start_commands
+from mindflow_cli.commands.tasks import register_tasks_commands
+from mindflow_cli.commands.test_orchestrator import register_test_orchestrator_commands
+from mindflow_cli.commands.workflow import register_workflow_commands
 
 app = typer.Typer(help="MindFlow terminal-first CLI", invoke_without_command=True)
 

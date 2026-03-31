@@ -6,8 +6,8 @@ and data structures, integrating with global schema system.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -50,8 +50,8 @@ class StorageOperation(BaseModel):
     
     # Timing
     started_at: str = Field(description="Start timestamp")
-    completed_at: Optional[str] = Field(default=None, description="Completion timestamp")
-    duration_ms: Optional[float] = Field(default=None, description="Duration in milliseconds")
+    completed_at: str | None = Field(default=None, description="Completion timestamp")
+    duration_ms: float | None = Field(default=None, description="Duration in milliseconds")
     
     # Status
     status: str = Field(description="Operation status")
@@ -62,8 +62,8 @@ class StorageOperation(BaseModel):
     items_affected: int = Field(default=0, description="Items affected")
     
     # Error info
-    error_code: Optional[str] = Field(default=None, description="Error code")
-    error_message: Optional[str] = Field(default=None, description="Error message")
+    error_code: str | None = Field(default=None, description="Error code")
+    error_message: str | None = Field(default=None, description="Error message")
     
 
 class StorageStats(BaseModel):
@@ -87,11 +87,11 @@ class StorageStats(BaseModel):
     
     # Health status
     is_healthy: bool = Field(default=True, description="Storage health")
-    last_health_check: Optional[str] = Field(default=None, description="Last health check")
+    last_health_check: str | None = Field(default=None, description="Last health check")
     
     # Timestamps
     last_updated: str = Field(description="Last update timestamp")
-    uptime_seconds: Optional[float] = Field(default=None, description="Uptime in seconds")
+    uptime_seconds: float | None = Field(default=None, description="Uptime in seconds")
 
 
 class StorageHealthCheck(BaseModel):
@@ -110,8 +110,8 @@ class StorageHealthCheck(BaseModel):
     throughput_ops_per_sec: float = Field(description="Throughput")
     
     # Issues found
-    issues: List[str] = Field(default_factory=list, description="Issues found")
-    warnings: List[str] = Field(default_factory=list, description="Warnings found")
+    issues: list[str] = Field(default_factory=list, description="Issues found")
+    warnings: list[str] = Field(default_factory=list, description="Warnings found")
     
     # Timestamp
     checked_at: str = Field(description="Health check timestamp")
@@ -131,15 +131,15 @@ class StorageMigration(BaseModel):
     
     # Timing
     started_at: str = Field(description="Start timestamp")
-    estimated_completion: Optional[str] = Field(default=None, description="Estimated completion")
-    actual_completion: Optional[str] = Field(default=None, description="Actual completion")
+    estimated_completion: str | None = Field(default=None, description="Estimated completion")
+    actual_completion: str | None = Field(default=None, description="Actual completion")
     
     # Status
     status: str = Field(description="Migration status")
     progress_percentage: float = Field(default=0.0, description="Progress percentage")
     
     # Error info
-    errors: List[Dict[str, Any]] = Field(default_factory=list, description="Migration errors")
+    errors: list[dict[str, Any]] = Field(default_factory=list, description="Migration errors")
 
 
 class StorageBackup(BaseModel):
@@ -155,19 +155,19 @@ class StorageBackup(BaseModel):
     
     # Storage info
     backup_size_mb: float = Field(description="Backup size in MB")
-    compression_ratio: Optional[float] = Field(default=None, description="Compression ratio")
+    compression_ratio: float | None = Field(default=None, description="Compression ratio")
     
     # Timing
     started_at: str = Field(description="Start timestamp")
-    completed_at: Optional[str] = Field(default=None, description="Completion timestamp")
-    duration_seconds: Optional[float] = Field(default=None, description="Duration in seconds")
+    completed_at: str | None = Field(default=None, description="Completion timestamp")
+    duration_seconds: float | None = Field(default=None, description="Duration in seconds")
     
     # Status
     status: str = Field(description="Backup status")
     location: str = Field(description="Backup location")
     
     # Verification
-    checksum: Optional[str] = Field(default=None, description="Backup checksum")
+    checksum: str | None = Field(default=None, description="Backup checksum")
     verified: bool = Field(default=False, description="Backup verified")
 
 
@@ -176,11 +176,11 @@ class StorageRequest(BaseModel):
     
     request_id: str = Field(description="Request ID")
     operation: str = Field(description="Operation type")
-    storage_backend: Optional[str] = Field(default=None, description="Target storage backend")
+    storage_backend: str | None = Field(default=None, description="Target storage backend")
     
     # Request data
-    payload: Dict[str, Any] = Field(description="Request payload")
-    filters: Optional[Dict[str, Any]] = Field(default=None, description="Request filters")
+    payload: dict[str, Any] = Field(description="Request payload")
+    filters: dict[str, Any] | None = Field(default=None, description="Request filters")
     
     # Options
     timeout_seconds: int = Field(default=30, description="Request timeout")
@@ -200,20 +200,20 @@ class StorageResponse(BaseModel):
     
     # Response data
     success: bool = Field(description="Operation success")
-    data: Optional[Dict[str, Any]] = Field(default=None, description="Response data")
-    items: List[Any] = Field(default_factory=list, description="Response items")
+    data: dict[str, Any] | None = Field(default=None, description="Response data")
+    items: list[Any] = Field(default_factory=list, description="Response items")
     
     # Performance info
     processing_time_ms: float = Field(description="Processing time in milliseconds")
     items_processed: int = Field(default=0, description="Items processed")
     
     # Status info
-    status_code: Optional[str] = Field(default=None, description="Status code")
+    status_code: str | None = Field(default=None, description="Status code")
     message: str = Field(description="Response message")
     
     # Error info
-    error_code: Optional[str] = Field(default=None, description="Error code")
-    error_details: Optional[Dict[str, Any]] = Field(default=None, description="Error details")
+    error_code: str | None = Field(default=None, description="Error code")
+    error_details: dict[str, Any] | None = Field(default=None, description="Error details")
     
     # Timestamp
     responded_at: str = Field(description="Response timestamp")

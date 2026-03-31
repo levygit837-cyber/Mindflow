@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,12 +39,12 @@ class NodeCategory(StrEnum):
 class NodeConfig(BaseModel):
     """Configuration for node execution."""
     
-    timeout: Optional[float] = Field(default=30.0, gt=0.0)
+    timeout: float | None = Field(default=30.0, gt=0.0)
     retry_attempts: int = Field(default=3, ge=0)
     enable_streaming: bool = False
-    required_inputs: Set[str] = Field(default_factory=set)
-    outputs: Set[str] = Field(default_factory=set)
-    custom_parameters: Dict[str, Any] = Field(default_factory=dict)
+    required_inputs: set[str] = Field(default_factory=set)
+    outputs: set[str] = Field(default_factory=set)
+    custom_parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class NodeMetrics(BaseModel):
@@ -52,10 +52,10 @@ class NodeMetrics(BaseModel):
     
     execution_time: float
     tokens_used: int = 0
-    memory_usage: Optional[Dict[str, Any]] = None
+    memory_usage: dict[str, Any] | None = None
     error_count: int = 0
     success_count: int = 0
-    last_execution_time: Optional[float] = None
+    last_execution_time: float | None = None
 
 
 class BaseNode(ABC):
@@ -66,7 +66,7 @@ class BaseNode(ABC):
         node_id: str,
         node_type: NodeType,
         category: NodeCategory = NodeCategory.UNKNOWN,
-        config: Optional[NodeConfig] = None,
+        config: NodeConfig | None = None,
         description: str = ""
     ) -> None:
         self.node_id = node_id
@@ -83,12 +83,12 @@ class BaseNode(ABC):
         self._is_initialized = False
     
     @abstractmethod
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the node logic with the given state."""
         ...
     
     @abstractmethod
-    def validate_inputs(self, state: Dict[str, Any]) -> List[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate that required inputs are present in state."""
         ...
     
@@ -104,7 +104,7 @@ class BaseNode(ABC):
         """Override this method for custom initialization logic."""
         pass
     
-    async def execute_with_metrics(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_with_metrics(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the node and collect metrics."""
         import time
         
@@ -141,7 +141,7 @@ class BaseNode(ABC):
             execution_time = time.time() - start_time
             self.metrics.execution_time += execution_time
     
-    def get_node_info(self) -> Dict[str, Any]:
+    def get_node_info(self) -> dict[str, Any]:
         """Get information about the node."""
         return {
             "node_id": self.node_id,
@@ -166,11 +166,11 @@ class BaseNode(ABC):
         """Check if this node supports streaming."""
         return self.config.enable_streaming
     
-    def get_required_inputs(self) -> Set[str]:
+    def get_required_inputs(self) -> set[str]:
         """Get the set of required input keys."""
         return self.config.required_inputs
     
-    def get_outputs(self) -> Set[str]:
+    def get_outputs(self) -> set[str]:
         """Get the set of output keys this node provides."""
         return self.config.outputs
     
@@ -190,13 +190,13 @@ class FunctionNode(BaseNode):
         function: callable,
         node_type: NodeType = NodeType.CUSTOM,
         category: NodeCategory = NodeCategory.UNKNOWN,
-        config: Optional[NodeConfig] = None,
+        config: NodeConfig | None = None,
         description: str = ""
     ) -> None:
         super().__init__(node_id, node_type, category, config, description)
         self.function = function
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the wrapped function."""
         if callable(self.function):
             result = self.function(state)
@@ -211,7 +211,7 @@ class FunctionNode(BaseNode):
         
         raise ValueError(f"Node {self.node_id} has invalid function")
     
-    def validate_inputs(self, state: Dict[str, Any]) -> List[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Basic validation for function nodes."""
         errors = []
         

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict
+from typing import Any
 
 import aio_pika
 
@@ -24,7 +24,7 @@ class QueueManager:
         self.settings = get_worker_settings()
         self._connection: Any | None = None
         self._channel: Any | None = None
-        self._queue_configs: Dict[str, QueueConfig] = {}
+        self._queue_configs: dict[str, QueueConfig] = {}
         self._initialized = False
         self._published_idempotency_keys: set[str] = set()
 
@@ -113,7 +113,7 @@ class QueueManager:
     async def publish_message(
         self,
         queue_name: str,
-        message_data: Dict[str, Any],
+        message_data: dict[str, Any],
         priority: int | None = None,
         delay: int | None = None,
     ) -> bool:
@@ -187,7 +187,7 @@ class QueueManager:
             _logger.error(f"Failed to publish message to {queue_full_name}: {e}")
             return False
 
-    async def get_queue_info(self, queue_name: str) -> Dict[str, Any] | None:
+    async def get_queue_info(self, queue_name: str) -> dict[str, Any] | None:
         """Get information about a queue."""
         if not self._initialized:
             await self.initialize()
@@ -270,7 +270,7 @@ class QueueManager:
             _logger.error(f"Failed to delete queue {queue_full_name}: {e}")
             return False
     
-    def get_all_queue_configs(self) -> Dict[str, QueueConfig]:
+    def get_all_queue_configs(self) -> dict[str, QueueConfig]:
         """Get all queue configurations."""
         return self._queue_configs.copy()
     
@@ -278,7 +278,7 @@ class QueueManager:
         """Get configuration for a specific queue."""
         return self._queue_configs.get(queue_name)
     
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform health check on the queue system."""
         if not self._initialized:
             await self.initialize()

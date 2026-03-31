@@ -163,7 +163,7 @@ class SessionReviewService:
 
     async def execute_requested_review(
         self,
-        payload: "SessionReviewRequestedPayload",
+        payload: SessionReviewRequestedPayload,
     ) -> SessionReviewResult:
         """Execute a queued review request without persisting it twice."""
         tracker = self.get_active_tracker(payload.session_id)

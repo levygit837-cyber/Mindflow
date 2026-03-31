@@ -8,8 +8,8 @@ under `mindflow_backend.runtime.streaming.stream_event_queue`.
 from __future__ import annotations
 
 from mindflow_backend.runtime.streaming.stream_event_queue import (  # noqa: F401
-    StreamEventQueue,
     QueuedEvent,
+    StreamEventQueue,
 )
 
 __all__ = ["StreamEventQueue", "QueuedEvent"]

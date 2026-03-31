@@ -6,11 +6,12 @@ broadcast channels, event management, and real-time communication.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, AsyncGenerator
-from datetime import datetime, UTC
 import asyncio
 import uuid
 from collections import defaultdict, deque
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
@@ -29,13 +30,13 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
         super().__init__()
         
         # Stream management
-        self._streams: Dict[str, Dict[str, Any]] = {}
-        self._subscribers: Dict[str, Dict[str, Any]] = {}
-        self._broadcast_channels: Dict[str, Dict[str, Any]] = {}
+        self._streams: dict[str, dict[str, Any]] = {}
+        self._subscribers: dict[str, dict[str, Any]] = {}
+        self._broadcast_channels: dict[str, dict[str, Any]] = {}
         
         # Event queues
-        self._event_queues: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self._subscriber_queues: Dict[str, asyncio.Queue] = {}
+        self._event_queues: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self._subscriber_queues: dict[str, asyncio.Queue] = {}
         
         # Configuration
         self._max_subscribers_per_stream = 100
@@ -58,8 +59,8 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
     async def create_stream(
         self,
         stream_id: str,
-        stream_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        stream_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Create a new event stream.
         
         Args:
@@ -118,8 +119,8 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
     async def send_event(
         self,
         stream_id: str,
-        event: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        event: dict[str, Any]
+    ) -> dict[str, Any]:
         """Send an event to a stream.
         
         Args:
@@ -175,7 +176,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
         self,
         stream_id: str,
         subscriber_id: str
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Subscribe to an event stream.
         
         Args:
@@ -242,7 +243,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
                         
                         yield event
                         
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Check if subscriber is still active
                         if subscriber_id not in self._subscribers.get(stream_id, {}):
                             break
@@ -265,7 +266,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
             self._logger.error(f"Error subscribing to stream {stream_id}: {str(exc)}")
             raise
     
-    async def close_stream(self, stream_id: str) -> Dict[str, Any]:
+    async def close_stream(self, stream_id: str) -> dict[str, Any]:
         """Close an event stream.
         
         Args:
@@ -322,7 +323,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
             self._logger.error(f"Error closing stream {stream_id}: {str(exc)}")
             raise
     
-    async def get_stream_status(self, stream_id: str) -> Dict[str, Any]:
+    async def get_stream_status(self, stream_id: str) -> dict[str, Any]:
         """Get status of a specific stream.
         
         Args:
@@ -372,7 +373,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
             self._logger.error(f"Error getting stream status for {stream_id}: {str(exc)}")
             raise
     
-    async def list_active_streams(self) -> List[Dict[str, Any]]:
+    async def list_active_streams(self) -> list[dict[str, Any]]:
         """List all active streams.
         
         Returns:
@@ -413,8 +414,8 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
     async def create_broadcast_channel(
         self,
         channel_name: str,
-        channel_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        channel_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Create a broadcast channel for multiple subscribers.
         
         Args:
@@ -465,8 +466,8 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
     async def broadcast_event(
         self,
         channel_name: str,
-        event: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        event: dict[str, Any]
+    ) -> dict[str, Any]:
         """Broadcast event to all channel subscribers.
         
         Args:
@@ -521,7 +522,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
             self._logger.error(f"Error broadcasting event to {channel_name}: {str(exc)}")
             raise
     
-    async def get_stream_metrics(self, stream_id: str) -> Dict[str, Any]:
+    async def get_stream_metrics(self, stream_id: str) -> dict[str, Any]:
         """Get performance metrics for a stream.
         
         Args:
@@ -576,8 +577,8 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
     async def configure_stream_security(
         self,
         stream_id: str,
-        security_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        security_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Configure security settings for a stream.
         
         Args:
@@ -622,7 +623,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
     
     # Helper methods
     
-    async def _notify_subscribers(self, stream_id: str, event: Dict[str, Any]) -> None:
+    async def _notify_subscribers(self, stream_id: str, event: dict[str, Any]) -> None:
         """Notify all subscribers of a stream about an event."""
         subscribers = self._subscribers.get(stream_id, {})
         
@@ -660,7 +661,7 @@ class StreamingService(BaseAbstractService, StreamingServiceInterface):
         # Update metrics
         self._streaming_metrics["total_subscribers"] -= 1
     
-    def _calculate_stream_uptime(self, stream: Dict[str, Any]) -> int:
+    def _calculate_stream_uptime(self, stream: dict[str, Any]) -> int:
         """Calculate stream uptime in seconds."""
         if not stream or stream["status"] != "active":
             return 0

@@ -7,9 +7,12 @@ and their associated parameters.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
-from mindflow_backend.schemas.orchestration.specialists import SpecialistType, TaskComplexity, SpecializationRequirement
+from mindflow_backend.schemas.orchestration.specialists import (
+    SpecialistType,
+    SpecializationRequirement,
+    TaskComplexity,
+)
 
 
 @dataclass
@@ -23,10 +26,10 @@ class RuleConfig:
     description: str
     
     # Conditions
-    condition_task_types: List[str]
-    condition_keywords: List[str]
-    condition_complexity: List[TaskComplexity]
-    required_specialization: Optional[SpecializationRequirement]
+    condition_task_types: list[str]
+    condition_keywords: list[str]
+    condition_complexity: list[TaskComplexity]
+    required_specialization: SpecializationRequirement | None
     
     # Performance
     estimated_tokens_saved: int = 100
@@ -54,7 +57,7 @@ class SpecialistRuleConfig:
     max_switches_per_session: int = 5
     switch_cooldown_minutes: int = 2
     
-    def get_all_rules(self) -> List[RuleConfig]:
+    def get_all_rules(self) -> list[RuleConfig]:
         """Get all configured rules."""
         return [
             self.security_audit,
@@ -64,7 +67,7 @@ class SpecialistRuleConfig:
             self.deep_analysis,
         ]
     
-    def get_rules_by_priority(self) -> List[RuleConfig]:
+    def get_rules_by_priority(self) -> list[RuleConfig]:
         """Get rules sorted by priority."""
         return sorted(self.get_all_rules(), key=lambda r: r.priority)
 
@@ -145,7 +148,7 @@ def create_default_rules() -> SpecialistRuleConfig:
 
 
 # Global configuration instance
-_rule_config: Optional[SpecialistRuleConfig] = None
+_rule_config: SpecialistRuleConfig | None = None
 
 
 def get_specialist_rules() -> SpecialistRuleConfig:

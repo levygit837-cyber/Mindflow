@@ -1,26 +1,26 @@
 """Session management and context schemas."""
 
+from .chunk import ChunkEdgeType, ChunkType
 from .contracts import (
-    SessionMode,
     RelationshipType,
     RetrievalMode,
+    SessionMode,
     SessionReview,
 )
-from .chunk import ChunkType, ChunkEdgeType
 from .governance import ContextScope
 from .review import (
-    ReviewPriority,
-    ReviewTaskType,
-    ReviewTriggerType,
-    WindowSize,
-    SessionReviewConfig,
-    TokenWindowTracker,
-    WindowProgressInfo,
-    ReviewTask,
     ReviewExecutionContext,
-    SessionReviewResult,
+    ReviewPriority,
     ReviewResult,
     ReviewSession,
+    ReviewTask,
+    ReviewTaskType,
+    ReviewTriggerType,
+    SessionReviewConfig,
+    SessionReviewResult,
+    TokenWindowTracker,
+    WindowProgressInfo,
+    WindowSize,
 )
 
 __all__ = [

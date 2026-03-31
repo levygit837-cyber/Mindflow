@@ -5,10 +5,9 @@ Base interfaces and implementations for handling MCP protocol messages.
 Provides the foundation for processing requests, responses, and notifications.
 """
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 from mindflow_backend.schemas.mcp.base import MCPMessage, MCPRequest, MCPResponse
 
@@ -26,7 +25,7 @@ class BaseMessageHandler(ABC):
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
     
     @abstractmethod
-    async def handle_message(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_message(self, message: MCPMessage) -> MCPResponse | None:
         """
         Handle an incoming MCP message.
         
@@ -62,9 +61,9 @@ class MCPMessageHandler:
     def __init__(self):
         """Initialize the message handler."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        self._handlers: List[BaseMessageHandler] = []
-        self._middleware: List[Callable[[MCPMessage], Awaitable[bool]]] = []
-        self._error_handler: Optional[Callable[[Exception, MCPMessage], Awaitable[None]]] = None
+        self._handlers: list[BaseMessageHandler] = []
+        self._middleware: list[Callable[[MCPMessage], Awaitable[bool]]] = []
+        self._error_handler: Callable[[Exception, MCPMessage], Awaitable[None]] | None = None
     
     def add_handler(self, handler: BaseMessageHandler) -> None:
         """
@@ -106,7 +105,7 @@ class MCPMessageHandler:
         """
         self._error_handler = handler
     
-    async def handle_message(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_message(self, message: MCPMessage) -> MCPResponse | None:
         """
         Handle an incoming message by routing to appropriate handlers.
         
@@ -163,7 +162,7 @@ class RequestHandler(BaseMessageHandler):
     and can be extended for specific request types.
     """
     
-    def __init__(self, supported_methods: Optional[List[str]] = None):
+    def __init__(self, supported_methods: list[str] | None = None):
         """
         Initialize request handler.
         
@@ -183,7 +182,7 @@ class RequestHandler(BaseMessageHandler):
         
         return True
     
-    async def handle_message(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_message(self, message: MCPMessage) -> MCPResponse | None:
         """Handle the request message."""
         if not self.can_handle(message):
             return None
@@ -191,7 +190,7 @@ class RequestHandler(BaseMessageHandler):
         return await self.handle_request(message)
     
     @abstractmethod
-    async def handle_request(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_request(self, message: MCPMessage) -> MCPResponse | None:
         """
         Handle the specific request.
         
@@ -216,7 +215,7 @@ class NotificationHandler(BaseMessageHandler):
         """Check if this is a notification message."""
         return message.method is not None and message.id is None
     
-    async def handle_message(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_message(self, message: MCPMessage) -> MCPResponse | None:
         """Handle the notification message."""
         if not self.can_handle(message):
             return None
@@ -247,7 +246,7 @@ class ResponseHandler(BaseMessageHandler):
         """Check if this is a response message."""
         return (message.result is not None or message.error is not None) and message.id is not None
     
-    async def handle_message(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_message(self, message: MCPMessage) -> MCPResponse | None:
         """Handle the response message."""
         if not self.can_handle(message):
             return None
@@ -274,7 +273,7 @@ class LoggingMiddleware:
     and monitoring purposes.
     """
     
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """
         Initialize logging middleware.
         

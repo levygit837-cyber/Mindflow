@@ -7,22 +7,22 @@ Retrieval usa pgvector diretamente via SemanticRetriever.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, UTC
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.interfaces.services.memory import (
+    AgentMemoryServiceInterface as MemoryServiceInterface,
+)
 from mindflow_backend.memory.storage.models import (
-    AgentMemoryEmbedding,
     AgentMemoryEvent,
     AgentMemoryWindow,
     SessionEmbedding,
 )
-from mindflow_backend.interfaces.services.memory import AgentMemoryServiceInterface as MemoryServiceInterface
 from mindflow_backend.schemas.memory.contracts import MemoryRetrievalResult
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.utils.core import estimate_token_count
@@ -41,7 +41,7 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
     def __init__(
         self,
         *,
-        retrieval_top_k: Optional[int] = None,
+        retrieval_top_k: int | None = None,
     ) -> None:
         super().__init__()
         settings = get_settings()
@@ -62,10 +62,10 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         agent_id: str,
         role: str,
         content: str,
-        source_message_id: Optional[int] = None,
-        idempotency_key: Optional[str] = None,
-        token_start: Optional[int] = None,
-        token_end: Optional[int] = None,
+        source_message_id: int | None = None,
+        idempotency_key: str | None = None,
+        token_start: int | None = None,
+        token_end: int | None = None,
     ) -> str:
         """Armazenar evento de sessão e gerar embedding em tempo real."""
         self.log_operation(
@@ -189,8 +189,8 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         agent_id: str,
         session_id: str,
-        token_limit: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        token_limit: int | None = None,
+    ) -> dict[str, Any]:
         """Get memory events for an agent in a session."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -237,8 +237,8 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         role: str,
         content: str,
         token_count: int,
-        source_message_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        source_message_id: int | None = None,
+    ) -> dict[str, Any]:
         """Add a memory event for an agent in a session."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -261,7 +261,7 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         session_id: str,
         top_k: int = 5,
         min_score: float = 0.3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for semantically similar context in session memory."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -294,7 +294,7 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         query: str,
         session_id: str,
         agent_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Retrieve context from session memory for a given query."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -318,8 +318,8 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         agent_id: str,
         session_id: str,
-        window_range: Tuple[int, int],
-    ) -> Dict[str, Any]:
+        window_range: tuple[int, int],
+    ) -> dict[str, Any]:
         """Create an extractive summary of a memory window."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -376,7 +376,7 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         agent_id: str,
         session_id: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get memory windows for an agent in a session."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -406,14 +406,14 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
             return []
 
     async def initialize_session_memory(
-        self, session_id: str, agent_types: List[str]
-    ) -> Dict[str, Any]:
+        self, session_id: str, agent_types: list[str]
+    ) -> dict[str, Any]:
         return {"session_id": session_id, "initialized": True, "agent_types": agent_types}
 
     async def cleanup_session_memory(self, session_id: str) -> bool:
         return True
 
-    async def get_session_memory_summary(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_memory_summary(self, session_id: str) -> dict[str, Any]:
         """Get real summary of session memory statistics."""
         try:
             from mindflow_backend.infra.database.connection import get_db_session
@@ -443,8 +443,8 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         agent_id: str,
         role: str,
         content: str,
-        source_message_id: Optional[int] = None,
-        idempotency_key: Optional[str] = None,
+        source_message_id: int | None = None,
+        idempotency_key: str | None = None,
     ) -> str:
         """Record a message - backward compatibility wrapper for store_session_event."""
         return await self.store_session_event(
@@ -466,9 +466,9 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         db: Session,
         *,
         session_id: str,
-        source_message_id: Optional[int] = None,
-        idempotency_key: Optional[str] = None,
-    ) -> Optional[str]:
+        source_message_id: int | None = None,
+        idempotency_key: str | None = None,
+    ) -> str | None:
         """Find an existing embedding for the same source message or idempotency key."""
         if source_message_id is None and not idempotency_key:
             return None
@@ -503,7 +503,7 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         *,
         session_id: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Gerar embedding e persistir em session_embeddings (pgvector)."""
         from mindflow_backend.memory.shared.embeddings.factory import get_embedding_provider

@@ -1,17 +1,16 @@
 """Executor interfaces for Skills system."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union, AsyncGenerator
+from abc import abstractmethod
+from collections.abc import AsyncGenerator
 from datetime import datetime
+from typing import Any
 
 from mindflow_backend.interfaces.core import BaseComponentInterface
-from mindflow_backend.schemas.skills.base import SkillInput, SkillOutput
 from mindflow_backend.schemas.skills.execution import (
     ExecutionContext,
-    ExecutionResult,
     ExecutionRequest,
-    BatchExecutionRequest,
-    ExecutionStatus
+    ExecutionResult,
+    ExecutionStatus,
 )
 
 
@@ -49,7 +48,7 @@ class SkillExecutorInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    def get_supported_skills(self) -> List[str]:
+    def get_supported_skills(self) -> list[str]:
         """Get list of supported skills.
         
         Returns:
@@ -77,7 +76,7 @@ class AsyncSkillExecutorInterface(SkillExecutorInterface):
     async def execute_stream(
         self, 
         context: ExecutionContext
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Execute skill with streaming output.
         
         Args:
@@ -132,8 +131,8 @@ class BatchSkillExecutorInterface(SkillExecutorInterface):
     @abstractmethod
     async def execute_batch(
         self, 
-        requests: List[ExecutionRequest]
-    ) -> List[ExecutionResult]:
+        requests: list[ExecutionRequest]
+    ) -> list[ExecutionResult]:
         """Execute multiple skills in batch.
         
         Args:
@@ -147,9 +146,9 @@ class BatchSkillExecutorInterface(SkillExecutorInterface):
     @abstractmethod
     async def execute_parallel(
         self, 
-        requests: List[ExecutionRequest],
-        max_concurrent: Optional[int] = None
-    ) -> List[ExecutionResult]:
+        requests: list[ExecutionRequest],
+        max_concurrent: int | None = None
+    ) -> list[ExecutionResult]:
         """Execute multiple skills in parallel.
         
         Args:
@@ -164,9 +163,9 @@ class BatchSkillExecutorInterface(SkillExecutorInterface):
     @abstractmethod
     async def execute_sequential(
         self, 
-        requests: List[ExecutionRequest],
+        requests: list[ExecutionRequest],
         fail_fast: bool = False
-    ) -> List[ExecutionResult]:
+    ) -> list[ExecutionResult]:
         """Execute multiple skills sequentially.
         
         Args:
@@ -216,7 +215,7 @@ class SkillExecutionManagerInterface(BaseComponentInterface):
     async def get_execution_result(
         self, 
         execution_id: str
-    ) -> Optional[ExecutionResult]:
+    ) -> ExecutionResult | None:
         """Get result of an execution.
         
         Args:
@@ -230,11 +229,11 @@ class SkillExecutionManagerInterface(BaseComponentInterface):
     @abstractmethod
     async def list_executions(
         self,
-        skill_name: Optional[str] = None,
-        status: Optional[ExecutionStatus] = None,
+        skill_name: str | None = None,
+        status: ExecutionStatus | None = None,
         limit: int = 50,
         offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List executions with optional filtering.
         
         Args:
@@ -283,7 +282,7 @@ class SkillExecutionMonitorInterface(BaseComponentInterface):
         self, 
         execution_id: str,
         progress: float,
-        message: Optional[str] = None
+        message: str | None = None
     ) -> None:
         """Update execution progress.
         
@@ -311,9 +310,9 @@ class SkillExecutionMonitorInterface(BaseComponentInterface):
     @abstractmethod
     async def get_execution_metrics(
         self,
-        skill_name: Optional[str] = None,
-        time_range: Optional[Dict[str, datetime]] = None
-    ) -> Dict[str, Any]:
+        skill_name: str | None = None,
+        time_range: dict[str, datetime] | None = None
+    ) -> dict[str, Any]:
         """Get execution metrics.
         
         Args:

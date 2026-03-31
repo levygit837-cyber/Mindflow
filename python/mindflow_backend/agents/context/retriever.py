@@ -8,14 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from mindflow_backend.interfaces.agents import ContextRetriever, VectorStore, Cache
-from mindflow_backend.exceptions import ContextRetrievalError, AgentVectorStoreError
+from mindflow_backend.agents.context.cache import get_context_cache
+from mindflow_backend.agents.context.vector_store import get_embedding_provider, get_vector_store
+from mindflow_backend.config.agents import get_agent_config
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.interfaces.agents import Cache, VectorStore
 from mindflow_backend.schemas.session.contracts import RetrievedContext
 from mindflow_backend.services.session_retriever import SessionRetrieverService
-from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.agents.context.cache import get_context_cache
-from mindflow_backend.agents.context.vector_store import get_vector_store, get_embedding_provider
-from mindflow_backend.config.agents import get_agent_config
 
 _logger = get_logger(__name__)
 
@@ -410,7 +409,7 @@ class AgentContextRetriever:
     
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
         return datetime.now(UTC).isoformat()
 
 

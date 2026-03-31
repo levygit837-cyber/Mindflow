@@ -7,16 +7,16 @@ and configuration updates.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.dependencies.security import require_admin
 from mindflow_backend.grpc.config import GrpcConfig
-from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
-from mindflow_backend.grpc.config.profiles import get_environment_loader
 from mindflow_backend.grpc.config.features import get_feature_toggles
+from mindflow_backend.grpc.config.profiles import get_environment_loader
 from mindflow_backend.infra.logging import get_logger
 
 router = APIRouter(
@@ -29,13 +29,13 @@ _logger = get_logger(__name__)
 
 class ConfigurationUpdateRequest(BaseModel):
     """Request model for configuration updates."""
-    updates: Dict[str, Any] = Field(description="Configuration updates to apply")
+    updates: dict[str, Any] = Field(description="Configuration updates to apply")
     description: str = Field(default="", description="Description of the change")
 
 
 class ConfigurationResponse(BaseModel):
     """Response model for configuration data."""
-    config: Dict[str, Any] = Field(description="Current configuration")
+    config: dict[str, Any] = Field(description="Current configuration")
     version: str = Field(description="Configuration version")
     timestamp: float = Field(description="Last update timestamp")
     profile: str = Field(description="Active profile")
@@ -91,7 +91,7 @@ async def update_configuration(
     request: ConfigurationUpdateRequest,
     config_manager=Depends(get_config_manager_dependency()),
     _role: str = Depends(require_admin),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update gRPC configuration dynamically."""
     try:
         # Validate updates
@@ -138,7 +138,7 @@ async def update_configuration(
 async def get_configuration_history(
     limit: int = Query(default=50, ge=1, le=1000),
     config_manager=Depends(get_config_manager_dependency())
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get configuration change history."""
     try:
         history = await config_manager.get_config_history(limit=limit)
@@ -166,7 +166,7 @@ async def get_configuration_history(
 async def reload_configuration(
     config_manager=Depends(get_config_manager_dependency()),
     _role: str = Depends(require_admin),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Trigger configuration reload from storage."""
     try:
         success = await config_manager.reload_from_storage()
@@ -187,7 +187,7 @@ async def rollback_configuration(
     version: str,
     config_manager=Depends(get_config_manager_dependency()),
     _role: str = Depends(require_admin),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Rollback configuration to a specific version."""
     try:
         success = await config_manager.rollback_to_version(version)
@@ -215,7 +215,7 @@ async def rollback_configuration(
 @router.get("/features", tags=["Feature Flags"])
 async def get_feature_flags(
     config_manager=Depends(get_config_manager_dependency())
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get all feature flags and their states."""
     try:
         feature_toggles = await get_feature_toggles()
@@ -243,7 +243,7 @@ async def update_feature_flag(
     request: FeatureFlagRequest,
     config_manager=Depends(get_config_manager_dependency()),
     _role: str = Depends(require_admin),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update a specific feature flag."""
     try:
         feature_toggles = await get_feature_toggles()
@@ -275,7 +275,7 @@ async def update_feature_flag(
 async def check_feature_flag(
     flag_name: str,
     config_manager=Depends(get_config_manager_dependency())
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check if a feature flag is enabled for the current context."""
     try:
         feature_toggles = await get_feature_toggles()
@@ -307,7 +307,7 @@ async def check_feature_flag(
 # Environment Profiles Endpoints
 
 @router.get("/profiles", tags=["Profiles"])
-async def get_environment_profiles() -> Dict[str, Any]:
+async def get_environment_profiles() -> dict[str, Any]:
     """Get available environment profiles."""
     try:
         env_loader = get_environment_loader()
@@ -329,7 +329,7 @@ async def apply_environment_profile(
     request: ProfileApplyRequest,
     config_manager=Depends(get_config_manager_dependency()),
     _role: str = Depends(require_admin),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Apply an environment profile."""
     try:
         env_loader = get_environment_loader()
@@ -380,7 +380,7 @@ async def apply_environment_profile(
 @router.get("/stats")
 async def get_configuration_statistics(
     config_manager=Depends(get_config_manager_dependency())
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get configuration system statistics."""
     try:
         stats = await config_manager.get_statistics()

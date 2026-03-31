@@ -7,9 +7,9 @@ Algoritmos genéricos de recuperação de contexto para suporte a:
 - Otimizações de performance e caching
 """
 
-from .semantic import SemanticRetriever
 from .context import ContextRetriever
 from .ranking import ResultRanker
+from .semantic import SemanticRetriever
 
 __all__ = [
     "SemanticRetriever",

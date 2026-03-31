@@ -6,15 +6,13 @@ integrations with enhanced capabilities.
 
 from __future__ import annotations
 
-import asyncio
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+from typing import Any
 
 try:
     import git
-    from git import Repo, InvalidGitRepositoryError
+    from git import InvalidGitRepositoryError, Repo
     GIT_AVAILABLE = True
 except ImportError:
     GIT_AVAILABLE = False
@@ -35,10 +33,9 @@ except ImportError:
     Container = None
     Image = None
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.schemas.tools.integration_schemas import GIT_SCHEMA, DOCKER_SCHEMA
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.tools.integration_schemas import DOCKER_SCHEMA, GIT_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -46,7 +43,7 @@ _logger = get_logger(__name__)
 class GitTool(AsyncToolInterface):
     """Git operations tool."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the Git tool.
         
         Args:
@@ -59,7 +56,7 @@ class GitTool(AsyncToolInterface):
         
         self._schema = GIT_SCHEMA
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute Git operation.
         
         Args:
@@ -135,7 +132,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git operation failed: {str(e)}"
             )
     
-    async def _git_status(self, repository_path: str) -> Dict[str, Any]:
+    async def _git_status(self, repository_path: str) -> dict[str, Any]:
         """Get Git repository status."""
         try:
             if not GIT_AVAILABLE:
@@ -193,7 +190,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git status failed: {str(e)}"
             )
     
-    async def _git_status_fallback(self, repository_path: str) -> Dict[str, Any]:
+    async def _git_status_fallback(self, repository_path: str) -> dict[str, Any]:
         """Fallback Git status using command line."""
         try:
             result = subprocess.run(
@@ -253,7 +250,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git status fallback failed: {str(e)}"
             )
     
-    async def _git_add(self, repository_path: str, files: List[str]) -> Dict[str, Any]:
+    async def _git_add(self, repository_path: str, files: list[str]) -> dict[str, Any]:
         """Add files to Git staging area."""
         try:
             if GIT_AVAILABLE:
@@ -302,7 +299,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git add failed: {str(e)}"
             )
     
-    async def _git_commit(self, repository_path: str, message: str, options: Dict) -> Dict[str, Any]:
+    async def _git_commit(self, repository_path: str, message: str, options: dict) -> dict[str, Any]:
         """Create a Git commit."""
         try:
             if GIT_AVAILABLE:
@@ -349,7 +346,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git commit failed: {str(e)}"
             )
     
-    async def _git_push(self, repository_path: str, remote: str, branch: Optional[str], options: Dict) -> Dict[str, Any]:
+    async def _git_push(self, repository_path: str, remote: str, branch: str | None, options: dict) -> dict[str, Any]:
         """Push changes to remote repository."""
         try:
             if GIT_AVAILABLE:
@@ -407,7 +404,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git push failed: {str(e)}"
             )
     
-    async def _git_clone(self, repository_url: str, options: Dict) -> Dict[str, Any]:
+    async def _git_clone(self, repository_url: str, options: dict) -> dict[str, Any]:
         """Clone a Git repository."""
         try:
             target_dir = options.get("target_dir", ".")
@@ -469,7 +466,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git clone failed: {str(e)}"
             )
     
-    async def _git_log(self, repository_path: str, options: Dict) -> Dict[str, Any]:
+    async def _git_log(self, repository_path: str, options: dict) -> dict[str, Any]:
         """Get Git commit log."""
         try:
             limit = options.get("limit", 10)
@@ -499,7 +496,7 @@ class GitTool(AsyncToolInterface):
                 )
             else:
                 # Fallback to command line
-                cmd = ["git", "log", f"--oneline", f"-n{limit}", "--pretty=format:%H|%an|%ad|%s", "--date=iso"]
+                cmd = ["git", "log", "--oneline", f"-n{limit}", "--pretty=format:%H|%an|%ad|%s", "--date=iso"]
                 result = subprocess.run(
                     cmd,
                     cwd=repository_path,
@@ -542,7 +539,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git log failed: {str(e)}"
             )
     
-    async def _git_branch(self, repository_path: str, branch_name: Optional[str], options: Dict) -> Dict[str, Any]:
+    async def _git_branch(self, repository_path: str, branch_name: str | None, options: dict) -> dict[str, Any]:
         """Manage Git branches."""
         try:
             action_type = options.get("type", "list")
@@ -589,7 +586,7 @@ class GitTool(AsyncToolInterface):
             
             return self._format_result(
                 success=False,
-                error=f"Branch operation not supported or invalid parameters"
+                error="Branch operation not supported or invalid parameters"
             )
             
         except Exception as e:
@@ -598,7 +595,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git branch failed: {str(e)}"
             )
     
-    async def _git_merge(self, repository_path: str, branch_name: str, options: Dict) -> Dict[str, Any]:
+    async def _git_merge(self, repository_path: str, branch_name: str, options: dict) -> dict[str, Any]:
         """Merge a branch."""
         try:
             if GIT_AVAILABLE:
@@ -645,7 +642,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git merge failed: {str(e)}"
             )
     
-    async def _git_diff(self, repository_path: str, options: Dict) -> Dict[str, Any]:
+    async def _git_diff(self, repository_path: str, options: dict) -> dict[str, Any]:
         """Get Git diff."""
         try:
             file_path = options.get("file_path")
@@ -708,7 +705,7 @@ class GitTool(AsyncToolInterface):
                 error=f"Git diff failed: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()
 
@@ -716,7 +713,7 @@ class GitTool(AsyncToolInterface):
 class DockerTool(AsyncToolInterface):
     """Docker operations tool."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the Docker tool.
         
         Args:
@@ -731,7 +728,7 @@ class DockerTool(AsyncToolInterface):
         
         self._schema = DOCKER_SCHEMA
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute Docker operation.
         
         Args:
@@ -829,7 +826,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Docker operation failed: {str(e)}"
             )
     
-    async def _list_containers(self) -> Dict[str, Any]:
+    async def _list_containers(self) -> dict[str, Any]:
         """List all containers."""
         try:
             containers = self._client.containers.list(all=True)
@@ -861,7 +858,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to list containers: {str(e)}"
             )
     
-    async def _list_images(self) -> Dict[str, Any]:
+    async def _list_images(self) -> dict[str, Any]:
         """List all images."""
         try:
             images = self._client.images.list()
@@ -892,7 +889,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to list images: {str(e)}"
             )
     
-    async def _run_container(self, image_name: str, container_name: Optional[str], command: Optional[str], ports: List, volumes: List, environment: Dict, detach: bool) -> Dict[str, Any]:
+    async def _run_container(self, image_name: str, container_name: str | None, command: str | None, ports: list, volumes: list, environment: dict, detach: bool) -> dict[str, Any]:
         """Run a Docker container."""
         try:
             # Prepare port mappings
@@ -937,7 +934,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to run container: {str(e)}"
             )
     
-    async def _stop_container(self, container_name: str) -> Dict[str, Any]:
+    async def _stop_container(self, container_name: str) -> dict[str, Any]:
         """Stop a container."""
         try:
             container = self._client.containers.get(container_name)
@@ -958,7 +955,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to stop container: {str(e)}"
             )
     
-    async def _remove_container(self, container_name: str) -> Dict[str, Any]:
+    async def _remove_container(self, container_name: str) -> dict[str, Any]:
         """Remove a container."""
         try:
             container = self._client.containers.get(container_name)
@@ -979,7 +976,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to remove container: {str(e)}"
             )
     
-    async def _build_image(self, dockerfile_path: str, tag: Optional[str]) -> Dict[str, Any]:
+    async def _build_image(self, dockerfile_path: str, tag: str | None) -> dict[str, Any]:
         """Build a Docker image."""
         try:
             dockerfile_dir = Path(dockerfile_path).parent
@@ -1008,7 +1005,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to build image: {str(e)}"
             )
     
-    async def _get_container_logs(self, container_name: str) -> Dict[str, Any]:
+    async def _get_container_logs(self, container_name: str) -> dict[str, Any]:
         """Get container logs."""
         try:
             container = self._client.containers.get(container_name)
@@ -1029,7 +1026,7 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to get logs: {str(e)}"
             )
     
-    async def _exec_command(self, container_name: str, command: str) -> Dict[str, Any]:
+    async def _exec_command(self, container_name: str, command: str) -> dict[str, Any]:
         """Execute command in container."""
         try:
             container = self._client.containers.get(container_name)
@@ -1053,6 +1050,6 @@ class DockerTool(AsyncToolInterface):
                 error=f"Failed to execute command: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()

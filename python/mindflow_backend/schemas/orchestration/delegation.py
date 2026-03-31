@@ -19,7 +19,6 @@ from pydantic import BaseModel, Field
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType, Priority, ToolScope
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------

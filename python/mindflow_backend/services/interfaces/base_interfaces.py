@@ -8,11 +8,11 @@ Use: from mindflow_backend.interfaces.services import BaseServiceInterface, Serv
 
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.services.base import (
+    BaseAbstractService,
     BaseServiceInterface,
-    ServiceLifecycleInterface,
     CacheableServiceInterface,
     ConfigurableServiceInterface,
-    BaseAbstractService,
+    ServiceLifecycleInterface,
 )
 
 # Maintain backward compatibility

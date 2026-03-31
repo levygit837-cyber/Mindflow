@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pickle
-import hashlib
 import time
-from typing import Any, Dict, Optional, Union, Callable
-from collections.abc import AsyncGenerator
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -21,7 +21,7 @@ _logger = get_logger(__name__)
 class CacheBackend:
     """Abstract cache backend interface."""
     
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache."""
         raise NotImplementedError
     
@@ -47,10 +47,10 @@ class MemoryCacheBackend(CacheBackend):
     
     def __init__(self, max_size: int = 1000):
         self.max_size = max_size
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._access_times: Dict[str, float] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
+        self._access_times: dict[str, float] = {}
     
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from memory cache."""
         if key not in self._cache:
             return None
@@ -127,7 +127,7 @@ class RedisCacheBackend(CacheBackend):
         """Add prefix to cache key."""
         return f"{self.key_prefix}{key}"
     
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from Redis cache."""
         client = await self._get_client()
         if not client:
@@ -199,9 +199,9 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        cache_backend: Optional[CacheBackend] = None,
+        cache_backend: CacheBackend | None = None,
         default_ttl: int = 300,  # 5 minutes
-        strategies: Optional[Dict[str, Dict[str, Any]]] = None
+        strategies: dict[str, dict[str, Any]] | None = None
     ):
         super().__init__(app)
         self.cache_backend = cache_backend or MemoryCacheBackend()
@@ -259,7 +259,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
         # Process request
         try:
             response = await call_next(request)
-        except Exception as e:
+        except Exception:
             self._stats["errors"] += 1
             raise
         
@@ -269,7 +269,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
         
         return response
     
-    def _get_strategy(self, request: Request) -> Dict[str, Any]:
+    def _get_strategy(self, request: Request) -> dict[str, Any]:
         """Get caching strategy for request."""
         path = request.url.path
         
@@ -304,7 +304,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
         
         return False
     
-    async def _generate_cache_key(self, request: Request, strategy: Dict[str, Any]) -> str:
+    async def _generate_cache_key(self, request: Request, strategy: dict[str, Any]) -> str:
         """Generate cache key based on request and strategy."""
         key_parts = [
             request.method,
@@ -336,7 +336,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
         key_string = "|".join(key_parts)
         return hashlib.sha256(key_string.encode()).hexdigest()
     
-    async def _get_cached_response(self, cache_key: str) -> Optional[Response]:
+    async def _get_cached_response(self, cache_key: str) -> Response | None:
         """Get response from cache."""
         try:
             cached_data = await self.cache_backend.get(cache_key)
@@ -357,7 +357,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
             _logger.error(f"Cache get error: {str(e)}")
             return None
     
-    async def _should_cache_response(self, request: Request, response: Response, strategy: Dict[str, Any]) -> bool:
+    async def _should_cache_response(self, request: Request, response: Response, strategy: dict[str, Any]) -> bool:
         """Determine if response should be cached."""
         # Only cache successful responses
         if response.status_code != 200:
@@ -378,7 +378,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
         
         return True
     
-    async def _cache_response(self, cache_key: str, response: Response, strategy: Dict[str, Any]) -> None:
+    async def _cache_response(self, cache_key: str, response: Response, strategy: dict[str, Any]) -> None:
         """Cache response."""
         try:
             # Extract response data - body may not be available on streaming responses
@@ -418,7 +418,7 @@ class AdvancedCacheMiddleware(BaseHTTPMiddleware):
             _logger.error(f"Cache invalidation error: {str(e)}")
             return 0
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         total_requests = self._stats["hits"] + self._stats["misses"]
         hit_rate = (self._stats["hits"] / total_requests * 100) if total_requests > 0 else 0

@@ -1,10 +1,9 @@
 """Context retrieval operations for memory."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.storage.database import MemoryDatabase
-from mindflow_backend.memory.storage.models import AgentMemoryEvent, AgentMemoryWindow
 
 _logger = get_logger(__name__)
 
@@ -21,7 +20,7 @@ class ContextRetriever:
         session_id: str,
         agent_id: str,
         token_limit: int = 2000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get recent context within token limit."""
         try:
             with self.memory_db.get_db_session() as db:
@@ -73,7 +72,7 @@ class ContextRetriever:
         session_id: str,
         agent_id: str,
         window_count: int = 3
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get context from memory windows."""
         try:
             with self.memory_db.get_db_session() as db:
@@ -118,7 +117,7 @@ class ContextRetriever:
         query: str,
         recent_token_limit: int = 1000,
         window_count: int = 2
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get hybrid context combining recent events and windows."""
         try:
             # Get recent context
@@ -159,7 +158,7 @@ class ContextRetriever:
     def format_context_for_query(
         self,
         query: str,
-        context_items: List[Dict[str, Any]]
+        context_items: list[dict[str, Any]]
     ) -> str:
         """Format context items for query response."""
         context_parts = [f"Context for query: {query}"]

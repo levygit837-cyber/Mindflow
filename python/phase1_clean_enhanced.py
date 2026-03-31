@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Remove enhanced references from agents/tools system."""
 
-import os
 import re
 from pathlib import Path
+
 
 def clean_enhanced_references(file_path: Path) -> bool:
     """Remove enhanced references from a file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
         
         original_content = content
@@ -50,11 +50,11 @@ def main():
     for file_path in cleaned_files:
         print(f"  - {file_path}")
     
-    print(f"\n📊 Enhanced References Summary:")
+    print("\n📊 Enhanced References Summary:")
     print(f"  - Files processed: {len(py_files)}")
     print(f"  - Files cleaned: {len(cleaned_files)}")
-    print(f"  - Enhanced references: Removed")
-    print(f"  - Status: Clean naming achieved")
+    print("  - Enhanced references: Removed")
+    print("  - Status: Clean naming achieved")
 
 if __name__ == "__main__":
     main()

@@ -1,39 +1,27 @@
 """Interfaces for MindFlow Skills system."""
 
 from .base import (
+    SkillConfigurableInterface,
     SkillInterface,
     SkillLifecycleInterface,
-    SkillConfigurableInterface,
-    SkillValidatableInterface
+    SkillValidatableInterface,
 )
-
 from .executor import (
-    SkillExecutorInterface,
     AsyncSkillExecutorInterface,
-    BatchSkillExecutorInterface
+    BatchSkillExecutorInterface,
+    SkillExecutorInterface,
 )
-
-from .registry import (
-    SkillRegistryInterface,
-    SkillDiscoveryInterface,
-    SkillRecommendationInterface
-)
-
+from .lifecycle import SkillManagerInterface, SkillMonitoringInterface, SkillOrchestratorInterface
+from .registry import SkillDiscoveryInterface, SkillRecommendationInterface, SkillRegistryInterface
 from .specialized import (
-    CoreSkillInterface,
     AnalysisSkillInterface,
+    ArchitectureSkillInterface,
     CodingSkillInterface,
+    CoreSkillInterface,
+    DocumentationSkillInterface,
     ResearchSkillInterface,
     SecuritySkillInterface,
-    ArchitectureSkillInterface,
     TestingSkillInterface,
-    DocumentationSkillInterface
-)
-
-from .lifecycle import (
-    SkillManagerInterface,
-    SkillOrchestratorInterface,
-    SkillMonitoringInterface
 )
 
 __all__ = [

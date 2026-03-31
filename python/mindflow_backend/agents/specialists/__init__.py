@@ -13,42 +13,43 @@ Key concepts:
 
 from __future__ import annotations
 
-# Core specialist system
-from mindflow_backend.agents.specialists.selector import get_specialist_selector
 from mindflow_backend.agents.specialists.configuration import (
-    get_specialist_config_builder,
     get_delegation_task_builder,
-)
-from mindflow_backend.agents.specialists.rule_engine import get_specialist_rule_engine
-
-# Specialists (formerly separate agents)
-from mindflow_backend.agents.specialists.specialists import (
-    SecuritySpecialist,
-    ReviewSpecialist,
-    ArchitectureSpecialist,
-    BrainstormSpecialist,
-    DeepAnalysisSpecialist,
-)
-
-# Agent factories (migrated from personalities)
-from mindflow_backend.agents.specialists.factories import (
-    create_analyst_agent,
-    create_coder_agent,
-    create_researcher_agent,
-    create_orchestrator_agent,
-    create_security_agent,
-    create_review_agent,
-    create_architecture_agent,
-    create_brainstorm_agent,
-    create_deep_analysis_agent,
-    ANALYST_SUB_PERSONALITIES,
-    CODER_SUB_PERSONALITIES,
+    get_specialist_config_builder,
 )
 
 # Dynamic prompt system
 from mindflow_backend.agents.specialists.dynamic_prompts import (
     DynamicPromptBuilder,
     get_dynamic_prompt_builder,
+)
+
+# Agent factories (migrated from personalities)
+from mindflow_backend.agents.specialists.factories import (
+    ANALYST_SUB_PERSONALITIES,
+    CODER_SUB_PERSONALITIES,
+    create_analyst_agent,
+    create_architecture_agent,
+    create_brainstorm_agent,
+    create_coder_agent,
+    create_deep_analysis_agent,
+    create_orchestrator_agent,
+    create_researcher_agent,
+    create_review_agent,
+    create_security_agent,
+)
+from mindflow_backend.agents.specialists.rule_engine import get_specialist_rule_engine
+
+# Core specialist system
+from mindflow_backend.agents.specialists.selector import get_specialist_selector
+
+# Specialists (formerly separate agents)
+from mindflow_backend.agents.specialists.specialists import (
+    ArchitectureSpecialist,
+    BrainstormSpecialist,
+    DeepAnalysisSpecialist,
+    ReviewSpecialist,
+    SecuritySpecialist,
 )
 
 __all__ = [

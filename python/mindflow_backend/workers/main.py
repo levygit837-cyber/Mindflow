@@ -5,11 +5,10 @@ from __future__ import annotations
 import asyncio
 import signal
 import sys
-from typing import List
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.workers.infrastructure.worker_factory import WorkerFactory
 from mindflow_backend.workers.infrastructure.monitoring import WorkerMonitor
+from mindflow_backend.workers.infrastructure.worker_factory import WorkerFactory
 
 _logger = get_logger(__name__)
 
@@ -20,7 +19,7 @@ def _handle_shutdown(signum: int, frame) -> None:
     sys.exit(0)
 
 
-async def run_workers(worker_types: List[str] | None = None) -> None:
+async def run_workers(worker_types: list[str] | None = None) -> None:
     """Run the specified worker types or all available workers."""
     # Setup signal handlers
     signal.signal(signal.SIGINT, _handle_shutdown)

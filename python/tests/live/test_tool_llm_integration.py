@@ -19,11 +19,7 @@ Environment variables:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import os
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -47,8 +43,8 @@ pytestmark = pytest.mark.skipif(
 
 def _get_llm(provider: str | None = None, model: str | None = None):
     """Return a LangChain chat model using the project's configured defaults."""
-    from mindflow_backend.runtime.providers import get_model_for_provider
     from mindflow_backend.infra.config import get_settings
+    from mindflow_backend.runtime.providers import get_model_for_provider
 
     settings = get_settings()
     return get_model_for_provider(
@@ -60,9 +56,9 @@ def _get_llm(provider: str | None = None, model: str | None = None):
 def _make_filesystem_tools(root_dir: str | None = None):
     """Instantiate filesystem tool set, optionally with root_dir."""
     from mindflow_backend.agents.tools.filesystem import (
+        DirectoryListTool,
         FileReadTool,
         FileWriteTool,
-        DirectoryListTool,
     )
     tools = [FileReadTool(), FileWriteTool(), DirectoryListTool()]
     if root_dir:
@@ -139,7 +135,7 @@ class TestToolDirectExecution:
 
     @pytest.mark.asyncio
     async def test_file_write_then_read(self, tmp_path):
-        from mindflow_backend.agents.tools.filesystem import FileWriteTool, FileReadTool
+        from mindflow_backend.agents.tools.filesystem import FileReadTool, FileWriteTool
 
         write = FileWriteTool()
         write.root_dir = str(tmp_path)
@@ -215,7 +211,7 @@ class TestLLMToolBinding:
             },
             {
                 "role": "user",
-                "content": f"Read the file test_data.txt and tell me what it says.",
+                "content": "Read the file test_data.txt and tell me what it says.",
             },
         ]
 
@@ -462,7 +458,7 @@ class TestRootDirFeature:
     @pytest.mark.asyncio
     async def test_absolute_path_ignores_root_dir(self, tmp_path):
         """Absolute paths must NOT be prefixed with root_dir."""
-        from mindflow_backend.agents.tools.filesystem import FileWriteTool, FileReadTool
+        from mindflow_backend.agents.tools.filesystem import FileWriteTool
 
         target = tmp_path / "absolute_test.txt"
 

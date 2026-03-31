@@ -7,9 +7,10 @@ semantic context retrieval operations.
 from __future__ import annotations
 
 import asyncio
-import numpy as np
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
+
+import numpy as np
 
 from mindflow_backend.agents.core.interfaces import VectorStore
 from mindflow_backend.exceptions import AgentVectorStoreError
@@ -23,16 +24,16 @@ class InMemoryVectorStore(VectorStore):
     
     def __init__(self, vector_size: int = 256):
         self.vector_size = vector_size
-        self.collections: Dict[str, Dict[str, Any]] = {}
+        self.collections: dict[str, dict[str, Any]] = {}
         self._lock = asyncio.Lock()
     
     async def search_session_context(
         self,
         session_id: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int,
         score_threshold: float,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors in session context."""
         try:
             async with self._lock:
@@ -98,7 +99,7 @@ class InMemoryVectorStore(VectorStore):
     async def store_vectors(
         self,
         session_id: str,
-        vectors: List[Dict[str, Any]],
+        vectors: list[dict[str, Any]],
     ) -> None:
         """Store vectors with metadata."""
         try:
@@ -144,11 +145,11 @@ class InMemoryVectorStore(VectorStore):
         self,
         session_id: str,
         task_id: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.7,
         include_dependencies: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for context relevant to specific sub-task."""
         try:
             async with self._lock:
@@ -213,9 +214,9 @@ class InMemoryVectorStore(VectorStore):
         task_id: str,
         agent_type: str,
         content: str,
-        embedding: List[float],
-        metadata: Dict[str, Any] | None = None,
-        dependencies: List[str] | None = None,
+        embedding: list[float],
+        metadata: dict[str, Any] | None = None,
+        dependencies: list[str] | None = None,
     ) -> str:
         """Store context for a specific sub-task with dependencies."""
         try:
@@ -268,8 +269,8 @@ class InMemoryVectorStore(VectorStore):
         self,
         session_id: str,
         task_id: str,
-        dependency_task_ids: List[str],
-    ) -> List[Dict[str, Any]]:
+        dependency_task_ids: list[str],
+    ) -> list[dict[str, Any]]:
         """Get context from specific dependency tasks."""
         try:
             async with self._lock:
@@ -312,7 +313,7 @@ class InMemoryVectorStore(VectorStore):
         session_id: str,
         task_id: str,
         status: str,
-        completion_data: Dict[str, Any] | None = None,
+        completion_data: dict[str, Any] | None = None,
     ) -> None:
         """Update the status of a task in the vector store."""
         try:
@@ -354,10 +355,10 @@ class InMemoryVectorStore(VectorStore):
         self,
         session_id: str,
         task_id: str,
-        required_task_ids: List[str],
+        required_task_ids: list[str],
         timeout_seconds: int = 30,
         poll_interval: float = 0.5,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Wait for required task contexts to become available."""
         import time
         
@@ -396,7 +397,7 @@ class InMemoryVectorStore(VectorStore):
             "wait_time": timeout_seconds,
         }
     
-    async def get_collection_stats(self, session_id: str) -> Dict[str, Any]:
+    async def get_collection_stats(self, session_id: str) -> dict[str, Any]:
         """Get statistics for a session collection."""
         try:
             async with self._lock:
@@ -445,7 +446,7 @@ class EmbeddingProvider:
     def __init__(self, vector_size: int = 256):
         self.vector_size = vector_size
     
-    async def generate_embedding(self, text: str) -> List[float]:
+    async def generate_embedding(self, text: str) -> list[float]:
         """Generate embedding for text.
         
         This is a placeholder implementation that generates
@@ -457,7 +458,7 @@ class EmbeddingProvider:
         random.seed(hash(text) % (2**32))  # Reproducible for same text
         return [random.uniform(-1, 1) for _ in range(self.vector_size)]
     
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
         return [await self.generate_embedding(text) for text in texts]
 

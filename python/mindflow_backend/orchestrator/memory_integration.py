@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Tuple
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory import get_memory_service
 from mindflow_backend.schemas.memory.contracts import (
     AgentMemorySnapshot as _CanonicalAgentMemorySnapshot,
+)
+from mindflow_backend.schemas.memory.contracts import (
     MemoryPersistResult as _CanonicalMemoryPersistResult,
+)
+from mindflow_backend.schemas.memory.contracts import (
     MemoryRecallRequest as _CanonicalMemoryRecallRequest,
+)
+from mindflow_backend.schemas.memory.contracts import (
     MemoryRecallResponse as _CanonicalMemoryRecallResponse,
+)
+from mindflow_backend.schemas.memory.contracts import (
     MemoryRecallScope,
     MemorySourceType,
 )
@@ -373,7 +381,7 @@ def get_memory_integration() -> MemoryIntegration:
 async def get_context_for_agent(
     session_id: str,
     query: str,
-    token_range: Tuple[int, int] | None = None,
+    token_range: tuple[int, int] | None = None,
     limit: int = 4,
 ) -> str:
     del token_range

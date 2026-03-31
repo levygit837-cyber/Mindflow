@@ -6,7 +6,7 @@ integrating with the global error system.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class StorageError(Exception):
@@ -15,15 +15,15 @@ class StorageError(Exception):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None
     ) -> None:
         super().__init__(message)
         self.message = message
         self.error_code = error_code
         self.details = details or {}
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary format."""
         return {
             "error": "StorageError",
@@ -39,16 +39,16 @@ class DatabaseError(StorageError):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        query: Optional[str] = None,
-        params: Optional[Dict[str, Any]] = None
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        query: str | None = None,
+        params: dict[str, Any] | None = None
     ) -> None:
         super().__init__(message, error_code, details)
         self.query = query
         self.params = params
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary format."""
         base_dict = super().to_dict()
         base_dict["error"] = "DatabaseError"
@@ -65,16 +65,16 @@ class VectorError(StorageError):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        collection: Optional[str] = None,
-        vector_id: Optional[str] = None
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        collection: str | None = None,
+        vector_id: str | None = None
     ) -> None:
         super().__init__(message, error_code, details)
         self.collection = collection
         self.vector_id = vector_id
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary format."""
         base_dict = super().to_dict()
         base_dict["error"] = "VectorError"
@@ -91,14 +91,14 @@ class CacheError(StorageError):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        key: Optional[str] = None
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        key: str | None = None
     ) -> None:
         super().__init__(message, error_code, details)
         self.key = key
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary format."""
         base_dict = super().to_dict()
         base_dict["error"] = "CacheError"
@@ -113,16 +113,16 @@ class ConnectionError(StorageError):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        pool_name: Optional[str] = None,
-        connection_id: Optional[str] = None
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        pool_name: str | None = None,
+        connection_id: str | None = None
     ) -> None:
         super().__init__(message, error_code, details)
         self.pool_name = pool_name
         self.connection_id = connection_id
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary format."""
         base_dict = super().to_dict()
         base_dict["error"] = "ConnectionError"
@@ -139,16 +139,16 @@ class MigrationError(StorageError):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        from_version: Optional[str] = None,
-        to_version: Optional[str] = None
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        from_version: str | None = None,
+        to_version: str | None = None
     ) -> None:
         super().__init__(message, error_code, details)
         self.from_version = from_version
         self.to_version = to_version
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary format."""
         base_dict = super().to_dict()
         base_dict["error"] = "MigrationError"

@@ -5,7 +5,7 @@ Dedicated contracts for the Researcher browser fleet and per-browser handles.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from mindflow_backend.schemas.tools.pinchtab_schemas import (
     BrowserCommandRequest,

@@ -1,6 +1,6 @@
 """Rolling window operations for memory."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.storage.database import MemoryDatabase
@@ -30,7 +30,7 @@ class RollingWindow:
         session_id: str,
         agent_id: str,
         cursor: AgentMemoryCursor
-    ) -> List[AgentMemoryEvent]:
+    ) -> list[AgentMemoryEvent]:
         """Get events for the current window."""
         try:
             with self.memory_db.get_db_session() as db:
@@ -52,8 +52,8 @@ class RollingWindow:
     
     def calculate_window_stats(
         self,
-        events: List[AgentMemoryEvent]
-    ) -> Dict[str, Any]:
+        events: list[AgentMemoryEvent]
+    ) -> dict[str, Any]:
         """Calculate statistics for the window."""
         if not events:
             return {

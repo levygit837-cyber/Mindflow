@@ -1,7 +1,6 @@
 """Memory database operations."""
 
 from contextlib import contextmanager
-from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,8 +28,8 @@ class MemoryDatabase:
         db: Session,
         session_id: str,
         agent_id: str,
-        limit: Optional[int] = None,
-    ) -> List[AgentMemoryEvent]:
+        limit: int | None = None,
+    ) -> list[AgentMemoryEvent]:
         query = (
             select(AgentMemoryEvent)
             .where(
@@ -48,7 +47,7 @@ class MemoryDatabase:
         db: Session,
         session_id: str,
         agent_id: str,
-    ) -> List[AgentMemoryWindow]:
+    ) -> list[AgentMemoryWindow]:
         query = (
             select(AgentMemoryWindow)
             .where(

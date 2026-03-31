@@ -1,8 +1,10 @@
 """Specialized skill schemas."""
 
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from .base import SkillConfiguration
 
 
@@ -19,12 +21,12 @@ class SpecializedSkillType(str, Enum):
 
 class SecuritySkillConfig(SkillConfiguration):
     """Configuration for security skills."""
-    scan_types: List[str] = Field(
+    scan_types: list[str] = Field(
         default_factory=lambda: ["vulnerability", "dependency_check", "code_analysis"],
         description="Types of security scans to perform"
     )
     severity_threshold: str = Field(default="medium", description="Minimum severity level: low, medium, high, critical")
-    compliance_standards: List[str] = Field(default_factory=list, description="Compliance standards to check")
+    compliance_standards: list[str] = Field(default_factory=list, description="Compliance standards to check")
     include_sast: bool = Field(default=True, description="Include static application security testing")
     include_dast: bool = Field(default=False, description="Include dynamic application security testing")
     
@@ -47,7 +49,7 @@ class SecuritySkillConfig(SkillConfiguration):
 class ArchitectureSkillConfig(SkillConfiguration):
     """Configuration for architecture skills."""
     analysis_scope: str = Field(default="full_system", description="Analysis scope: component, module, full_system")
-    design_patterns: List[str] = Field(default_factory=list, description="Design patterns to evaluate")
+    design_patterns: list[str] = Field(default_factory=list, description="Design patterns to evaluate")
     generate_diagrams: bool = Field(default=True, description="Generate architecture diagrams")
     include_scalability: bool = Field(default=True, description="Include scalability analysis")
     include_performance: bool = Field(default=True, description="Include performance considerations")
@@ -70,7 +72,7 @@ class ArchitectureSkillConfig(SkillConfiguration):
 
 class TestingSkillConfig(SkillConfiguration):
     """Configuration for testing skills."""
-    test_types: List[str] = Field(
+    test_types: list[str] = Field(
         default_factory=lambda: ["unit", "integration"],
         description="Types of tests to generate"
     )
@@ -97,7 +99,7 @@ class TestingSkillConfig(SkillConfiguration):
 
 class DocumentationSkillConfig(SkillConfiguration):
     """Configuration for documentation skills."""
-    doc_types: List[str] = Field(
+    doc_types: list[str] = Field(
         default_factory=lambda: ["api", "readme", "inline"],
         description="Types of documentation to generate"
     )
@@ -128,11 +130,11 @@ class SpecializedSkillDefinition(BaseModel):
     name: str = Field(..., description="Skill name")
     description: str = Field(..., description="Skill description")
     domain: str = Field(..., description="Domain specialization")
-    capabilities: List[str] = Field(..., description="Skill capabilities")
+    capabilities: list[str] = Field(..., description="Skill capabilities")
     expertise_level: str = Field(default="intermediate", description="Expertise level: beginner, intermediate, advanced, expert")
-    dependencies: List[str] = Field(default_factory=list, description="Other skills this depends on")
-    integrations: List[str] = Field(default_factory=list, description="External tool integrations")
-    configuration: Optional[Dict[str, Any]] = Field(None, description="Default configuration")
+    dependencies: list[str] = Field(default_factory=list, description="Other skills this depends on")
+    integrations: list[str] = Field(default_factory=list, description="External tool integrations")
+    configuration: dict[str, Any] | None = Field(None, description="Default configuration")
     
     class Config:
         json_schema_extra = {

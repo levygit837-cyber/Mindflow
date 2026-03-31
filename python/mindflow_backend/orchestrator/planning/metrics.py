@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
@@ -171,8 +170,8 @@ class PlanningMetricsCollector:
     
     async def _get_summary_from_db(self, time_window: timedelta | None) -> dict:
         """Get summary from database."""
+
         from mindflow_backend.orchestrator.planning.models import PlanningTriggerMetric
-        from sqlalchemy import func
         
         now = datetime.now(UTC)
         cutoff = now - time_window if time_window else datetime.min.replace(tzinfo=UTC)

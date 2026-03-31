@@ -4,9 +4,9 @@ Provides structured logging with correlation IDs, sampling,
 and enhanced observability capabilities.
 """
 
-from .structured import configure_logging, get_logger, reset_logging
 from .correlation import CorrelationManager, get_correlation_manager
 from .sampling import LogSampler, get_log_sampler
+from .structured import configure_logging, get_logger, reset_logging
 
 __all__ = [
     "configure_logging",

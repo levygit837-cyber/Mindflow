@@ -6,10 +6,11 @@ user input, file input, API input, and stream input.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union, AsyncIterator
 import asyncio
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -29,13 +30,13 @@ class InputNode(StatefulNode, BaseNode):
         self,
         node_id: str = "input",
         input_type: str = "static",  # static, file, api, stream, user, form
-        input_data: Optional[Any] = None,
-        file_path: Optional[str] = None,
-        api_config: Optional[Dict[str, Any]] = None,
-        stream_source: Optional[AsyncIterator] = None,
-        input_schema: Optional[Dict[str, Any]] = None,
-        validation_function: Optional[Callable[[Any], bool]] = None,
-        timeout: Optional[float] = None,
+        input_data: Any | None = None,
+        file_path: str | None = None,
+        api_config: dict[str, Any] | None = None,
+        stream_source: AsyncIterator | None = None,
+        input_schema: dict[str, Any] | None = None,
+        validation_function: Callable[[Any], bool] | None = None,
+        timeout: float | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -92,7 +93,7 @@ class InputNode(StatefulNode, BaseNode):
                 "source": "static"
             })
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the input operation based on configured type."""
         try:
             if self.input_type == "static":
@@ -137,7 +138,7 @@ class InputNode(StatefulNode, BaseNode):
                 "metadata": {"input_type": self.input_type, "status": "error"}
             }
     
-    async def _execute_static_input(self, state: Dict[str, Any]) -> Any:
+    async def _execute_static_input(self, state: dict[str, Any]) -> Any:
         """Execute static input operation."""
         if not self.input_data:
             raise ValueError("Static input data is required")
@@ -148,7 +149,7 @@ class InputNode(StatefulNode, BaseNode):
         
         return self.input_data
     
-    async def _execute_file_input(self, state: Dict[str, Any]) -> Any:
+    async def _execute_file_input(self, state: dict[str, Any]) -> Any:
         """Execute file input operation."""
         file_path = state.get("file_path", self.file_path)
         
@@ -157,7 +158,7 @@ class InputNode(StatefulNode, BaseNode):
         
         # Read file content
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, encoding='utf-8') as file:
                 content = file.read()
             
             # Validate content if validation function provided
@@ -177,10 +178,10 @@ class InputNode(StatefulNode, BaseNode):
             
         except FileNotFoundError:
             raise FileNotFoundError(f"Input file not found: {file_path}")
-        except IOError as e:
-            raise IOError(f"Error reading input file {file_path}: {str(e)}")
+        except OSError as e:
+            raise OSError(f"Error reading input file {file_path}: {str(e)}")
     
-    async def _execute_api_input(self, state: Dict[str, Any]) -> Any:
+    async def _execute_api_input(self, state: dict[str, Any]) -> Any:
         """Execute API input operation."""
         endpoint = state.get("endpoint", self.api_config.get("endpoint"))
         method = state.get("method", self.api_config.get("method", "GET"))
@@ -221,7 +222,7 @@ class InputNode(StatefulNode, BaseNode):
             return response_data
             
         except Exception as e:
-            raise IOError(f"Error calling API {endpoint}: {str(e)}")
+            raise OSError(f"Error calling API {endpoint}: {str(e)}")
     
     async def _process_api_response(self, response) -> Any:
         """Process API response and extract data."""
@@ -233,9 +234,9 @@ class InputNode(StatefulNode, BaseNode):
             else:
                 return await response.text()
         else:
-            raise IOError(f"API request failed with status {response.status}")
+            raise OSError(f"API request failed with status {response.status}")
     
-    async def _execute_stream_input(self, state: Dict[str, Any]) -> Any:
+    async def _execute_stream_input(self, state: dict[str, Any]) -> Any:
         """Execute stream input operation."""
         stream_source = state.get("stream_source", self.stream_source)
         
@@ -264,9 +265,9 @@ class InputNode(StatefulNode, BaseNode):
             return collected_data
             
         except Exception as e:
-            raise IOError(f"Error reading from stream: {str(e)}")
+            raise OSError(f"Error reading from stream: {str(e)}")
     
-    async def _execute_user_input(self, state: Dict[str, Any]) -> Any:
+    async def _execute_user_input(self, state: dict[str, Any]) -> Any:
         """Execute user input operation."""
         prompt = state.get("prompt", "Please provide input:")
         default_value = state.get("default_value")
@@ -289,7 +290,7 @@ class InputNode(StatefulNode, BaseNode):
         
         return user_input
     
-    async def _execute_form_input(self, state: Dict[str, Any]) -> Any:
+    async def _execute_form_input(self, state: dict[str, Any]) -> Any:
         """Execute form input operation."""
         form_data = state.get("form_data", {})
         
@@ -316,7 +317,7 @@ class InputNode(StatefulNode, BaseNode):
         
         return validated_data
     
-    def _validate_form_data(self, form_data: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_form_data(self, form_data: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
         """Validate form data against schema."""
         validated_data = {}
         
@@ -349,7 +350,7 @@ class InputNode(StatefulNode, BaseNode):
         
         return True
     
-    def get_input_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_input_history(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get the input history."""
         return self._input_history[-limit:] if len(self._input_history) > limit else self._input_history
     
@@ -363,7 +364,7 @@ class InputNode(StatefulNode, BaseNode):
         self.input_data = input_data
         self._setup_required_inputs()
     
-    def get_input_info(self) -> Dict[str, Any]:
+    def get_input_info(self) -> dict[str, Any]:
         """Get information about the current input configuration."""
         return {
             "input_type": self.input_type,
@@ -390,7 +391,7 @@ class StreamInputNode(InputNode):
         self,
         node_id: str = "stream_input",
         buffer_size: int = 1000,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         description: str = "Streaming data input"
     ) -> None:
         super().__init__(
@@ -402,7 +403,7 @@ class StreamInputNode(InputNode):
         self.buffer_size = buffer_size
         self.timeout = timeout
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute streaming input with buffering."""
         stream_source = state.get("stream_source", self.stream_source)
         
@@ -451,7 +452,7 @@ class StreamInputNode(InputNode):
             }
             
         except Exception as e:
-            raise IOError(f"Error in stream input: {str(e)}")
+            raise OSError(f"Error in stream input: {str(e)}")
 
 
 class FileInputNode(InputNode):
@@ -473,7 +474,7 @@ class FileInputNode(InputNode):
         
         self.encoding = encoding
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute file input with encoding support."""
         file_path = state.get("file_path", self.file_path)
         
@@ -481,7 +482,7 @@ class FileInputNode(InputNode):
             raise ValueError("File path is required for file input")
         
         try:
-            with open(file_path, 'r', encoding=self.encoding) as file:
+            with open(file_path, encoding=self.encoding) as file:
                 content = file.read()
             
             # Get file metadata
@@ -511,4 +512,4 @@ class FileInputNode(InputNode):
         except FileNotFoundError:
             raise FileNotFoundError(f"Input file not found: {file_path}")
         except UnicodeDecodeError as e:
-            raise IOError(f"Encoding error reading file {file_path}: {str(e)}")
+            raise OSError(f"Encoding error reading file {file_path}: {str(e)}")

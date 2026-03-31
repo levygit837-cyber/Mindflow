@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import sqlite3
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from mindflow_backend.grpc.config import GrpcConfig
 from mindflow_backend.infra.logging import get_logger
@@ -35,7 +34,7 @@ class ConfigStorage(ABC):
         pass
     
     @abstractmethod
-    async def load_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def load_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Load configuration history."""
         pass
     
@@ -49,8 +48,8 @@ class MemoryConfigStorage(ConfigStorage):
     """In-memory configuration storage."""
     
     def __init__(self):
-        self._config: Optional[GrpcConfig] = None
-        self._history: List[Dict[str, Any]] = []
+        self._config: GrpcConfig | None = None
+        self._history: list[dict[str, Any]] = []
         self._lock = asyncio.Lock()
     
     async def load_config(self) -> GrpcConfig:
@@ -80,7 +79,7 @@ class MemoryConfigStorage(ConfigStorage):
             
             return version
     
-    async def load_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def load_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Load configuration history from memory."""
         async with self._lock:
             return self._history[-limit:] if limit > 0 else self._history
@@ -109,7 +108,7 @@ class FileConfigStorage(ConfigStorage):
         async with self._lock:
             try:
                 if self.config_file.exists():
-                    with open(self.config_file, 'r', encoding='utf-8') as f:
+                    with open(self.config_file, encoding='utf-8') as f:
                         config_data = json.load(f)
                     return GrpcConfig(**config_data)
                 else:
@@ -147,7 +146,7 @@ class FileConfigStorage(ConfigStorage):
                 _logger.error("file_config_save_failed", file=str(self.config_file), error=str(exc))
                 raise
     
-    async def load_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def load_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Load configuration history from files."""
         async with self._lock:
             try:
@@ -162,7 +161,7 @@ class FileConfigStorage(ConfigStorage):
                 
                 for history_file in history_files[:limit]:
                     try:
-                        with open(history_file, 'r', encoding='utf-8') as f:
+                        with open(history_file, encoding='utf-8') as f:
                             history_entry = json.load(f)
                         history.append(history_entry)
                     except Exception as exc:
@@ -278,7 +277,7 @@ class DatabaseConfigStorage(ConfigStorage):
                 _logger.error("database_config_save_failed", error=str(exc))
                 raise
     
-    async def load_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def load_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Load configuration history from database."""
         async with self._lock:
             try:
@@ -323,7 +322,7 @@ class DatabaseConfigStorage(ConfigStorage):
                 _logger.error("database_config_delete_failed", version=version, error=str(exc))
                 return False
     
-    async def get_current_version(self) -> Optional[str]:
+    async def get_current_version(self) -> str | None:
         """Get current configuration version."""
         async with self._lock:
             try:
@@ -442,7 +441,7 @@ class PostgresConfigStorage(ConfigStorage):
                 _logger.error("postgres_config_save_failed", error=str(exc))
                 raise
     
-    async def load_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def load_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Load configuration history from PostgreSQL."""
         async with self._lock:
             try:

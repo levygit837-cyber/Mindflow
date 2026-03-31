@@ -57,7 +57,10 @@ class _FakeLLM:
 @pytest.mark.asyncio
 async def test_delegate_task_creates_child_execution_and_final_result(monkeypatch) -> None:
     from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
-    from mindflow_backend.schemas.orchestration.delegation import DelegationTask, OrchestratorSession
+    from mindflow_backend.schemas.orchestration.delegation import (
+        DelegationTask,
+        OrchestratorSession,
+    )
     from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
     fake_execution_memory = _FakeExecutionMemoryService()

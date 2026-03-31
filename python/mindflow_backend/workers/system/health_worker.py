@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -20,7 +20,7 @@ class HealthWorker(BaseWorker):
         """Initialize the Health worker."""
         super().__init__(queue_config, worker_name="health_worker")
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process health monitoring and diagnostic tasks.
         
         Supported task types:
@@ -76,7 +76,7 @@ class HealthWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
     
-    async def _handle_system_health_check(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_system_health_check(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle comprehensive system health check."""
         check_scope = message_data.get("check_scope", "full")
         check_depth = message_data.get("check_depth", "standard")
@@ -150,7 +150,7 @@ class HealthWorker(BaseWorker):
             },
         )
     
-    async def _handle_component_monitoring(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_component_monitoring(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle monitoring of specific components."""
         target_components = message_data.get("target_components", [])
         monitoring_duration = message_data.get("monitoring_duration", 300)  # seconds
@@ -197,7 +197,7 @@ class HealthWorker(BaseWorker):
             },
         )
     
-    async def _handle_performance_metrics(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_performance_metrics(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle collection of performance metrics."""
         metrics_type = message_data.get("metrics_type", "comprehensive")
         time_range = message_data.get("time_range", "1h")
@@ -247,7 +247,7 @@ class HealthWorker(BaseWorker):
             },
         )
     
-    async def _handle_alert_evaluation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_alert_evaluation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle alert evaluation and triggering."""
         alert_rules = message_data.get("alert_rules", [])
         evaluation_context = message_data.get("evaluation_context", {})
@@ -304,7 +304,7 @@ class HealthWorker(BaseWorker):
             },
         )
     
-    async def _handle_diagnostic_analysis(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_diagnostic_analysis(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle system diagnostic analysis."""
         analysis_scope = message_data.get("analysis_scope", "full")
         diagnostic_type = message_data.get("diagnostic_type", "performance")
@@ -366,7 +366,7 @@ class HealthWorker(BaseWorker):
             },
         )
     
-    async def _handle_health_reporting(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_health_reporting(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle health report generation."""
         report_type = message_data.get("report_type", "summary")
         report_period = message_data.get("report_period", "daily")

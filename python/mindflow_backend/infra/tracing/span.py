@@ -6,11 +6,10 @@ events, status, and relationships.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.tracing.tracer import TraceContext
 
@@ -36,9 +35,9 @@ class SpanEvent:
     """Span event with timestamp and attributes."""
     name: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -52,9 +51,9 @@ class SpanLink:
     """Link to another span."""
     trace_id: str
     span_id: str
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "trace_id": self.trace_id,
@@ -69,7 +68,7 @@ class SpanStatus:
     code: StatusCode = StatusCode.UNSET
     message: str = ""
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "code": self.code.value,
@@ -94,14 +93,14 @@ class Span:
         span_id: str,
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
-        parent_span_id: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        attributes: Optional[Dict[str, Any]] = None,
-        events: Optional[List[SpanEvent]] = None,
-        links: Optional[List[SpanLink]] = None,
-        status: Optional[SpanStatus] = None,
-        context: Optional[TraceContext] = None,
+        parent_span_id: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        attributes: dict[str, Any] | None = None,
+        events: list[SpanEvent] | None = None,
+        links: list[SpanLink] | None = None,
+        status: SpanStatus | None = None,
+        context: TraceContext | None = None,
     ):
         """Initialize span.
         
@@ -131,7 +130,7 @@ class Span:
         self.links = links or []
         self.status = status or SpanStatus()
         self.context = context
-        self.duration_ms: Optional[float] = None
+        self.duration_ms: float | None = None
         
         # Calculate duration if end time is provided
         if self.end_time:
@@ -151,7 +150,7 @@ class Span:
         else:
             self.attributes[key] = str(value)
             
-    def add_attributes(self, attributes: Dict[str, Any]) -> None:
+    def add_attributes(self, attributes: dict[str, Any]) -> None:
         """Add multiple attributes.
         
         Args:
@@ -160,7 +159,7 @@ class Span:
         for key, value in attributes.items():
             self.set_attribute(key, value)
             
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Add event to span.
         
         Args:
@@ -170,7 +169,7 @@ class Span:
         event = SpanEvent(name=name, attributes=attributes or {})
         self.events.append(event)
         
-    def add_link(self, trace_id: str, span_id: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_link(self, trace_id: str, span_id: str, attributes: dict[str, Any] | None = None) -> None:
         """Add link to another span.
         
         Args:
@@ -181,7 +180,7 @@ class Span:
         link = SpanLink(trace_id=trace_id, span_id=span_id, attributes=attributes or {})
         self.links.append(link)
         
-    def set_status(self, code: Union[str, StatusCode], message: str = "") -> None:
+    def set_status(self, code: str | StatusCode, message: str = "") -> None:
         """Set span status.
         
         Args:
@@ -232,7 +231,7 @@ class Span:
         """
         return self.end_time is not None
         
-    def get_duration_ms(self) -> Optional[float]:
+    def get_duration_ms(self) -> float | None:
         """Get span duration in milliseconds.
         
         Returns:
@@ -247,7 +246,7 @@ class Span:
             
         return None
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert span to dictionary.
         
         Returns:
@@ -283,7 +282,7 @@ class Span:
         return json.dumps(self.to_dict(), default=str)
         
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Span:
+    def from_dict(cls, data: dict[str, Any]) -> Span:
         """Create span from dictionary.
         
         Args:
@@ -347,8 +346,8 @@ class SpanContext:
         self,
         trace_id: str,
         span_id: str,
-        baggage: Optional[Dict[str, str]] = None,
-        sampling_decision: Optional[str] = None,
+        baggage: dict[str, str] | None = None,
+        sampling_decision: str | None = None,
         trace_flags: int = 0,
         trace_state: str = "",
     ):
@@ -369,7 +368,7 @@ class SpanContext:
         self.trace_flags = trace_flags
         self.trace_state = trace_state
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
         
         Returns:

@@ -1,14 +1,13 @@
 """Test cases for validation utilities."""
 
-import pytest
 from mindflow_backend.utils.validation import (
-    validate_email,
-    validate_url,
-    validate_phone,
-    validate_uuid,
-    sanitize_string,
     sanitize_html,
+    sanitize_string,
+    validate_email,
     validate_json_structure,
+    validate_phone,
+    validate_url,
+    validate_uuid,
 )
 
 
@@ -79,7 +78,7 @@ class TestValidationUtilities:
         """Test sanitization of special characters."""
         text = "Hello\x00\x01\x02World"
         result = sanitize_string(text)
-        assert "HelloWorld" == result
+        assert result == "HelloWorld"
 
     def test_validate_json_structure_nested(self):
         """Test nested JSON structure validation."""

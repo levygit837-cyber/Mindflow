@@ -6,8 +6,8 @@ creation, status tracking, dependency management, and optimization.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from mindflow_backend.infra.logging import get_logger
@@ -27,9 +27,9 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         super().__init__()
         
         # Task storage
-        self._tasks: Dict[str, Dict[str, Any]] = {}
-        self._task_dependencies: Dict[str, List[str]] = {}
-        self._task_executions: Dict[str, List[Dict[str, Any]]] = {}
+        self._tasks: dict[str, dict[str, Any]] = {}
+        self._task_dependencies: dict[str, list[str]] = {}
+        self._task_executions: dict[str, list[dict[str, Any]]] = {}
         
         # Task configuration
         self._task_types = {
@@ -69,9 +69,9 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         self,
         task_description: str,
         task_type: str,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         priority: str = "medium"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new task.
         
         Args:
@@ -140,7 +140,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
             self._logger.error(f"Error creating task: {str(exc)}")
             raise
     
-    async def get_task(self, task_id: str) -> Dict[str, Any]:
+    async def get_task(self, task_id: str) -> dict[str, Any]:
         """Get task details by ID.
         
         Args:
@@ -184,8 +184,8 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         self,
         task_id: str,
         status: str,
-        result: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        result: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Update task status and optionally add result.
         
         Args:
@@ -245,10 +245,10 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
     
     async def list_tasks(
         self,
-        session_id: Optional[str] = None,
-        status: Optional[str] = None,
+        session_id: str | None = None,
+        status: str | None = None,
         limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List tasks with optional filtering.
         
         Args:
@@ -305,7 +305,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
             self._logger.error(f"Error listing tasks: {str(exc)}")
             raise
     
-    async def get_task_dependencies(self, task_id: str) -> List[Dict[str, Any]]:
+    async def get_task_dependencies(self, task_id: str) -> list[dict[str, Any]]:
         """Get dependencies for a specific task.
         
         Args:
@@ -346,7 +346,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         self,
         task_id: str,
         depends_on_task_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Add a dependency relationship between tasks.
         
         Args:
@@ -372,7 +372,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
             
             # Check for circular dependency
             if await self._would_create_circular_dependency(task_id, depends_on_task_id):
-                raise ValueError(f"Adding this dependency would create a circular dependency")
+                raise ValueError("Adding this dependency would create a circular dependency")
             
             # Add dependency
             if task_id not in self._task_dependencies:
@@ -397,7 +397,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
             self._logger.error(f"Error adding task dependency: {str(exc)}")
             raise
     
-    async def calculate_task_complexity(self, task_description: str) -> Dict[str, Any]:
+    async def calculate_task_complexity(self, task_description: str) -> dict[str, Any]:
         """Calculate complexity score for a task.
         
         Args:
@@ -438,7 +438,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
             self._logger.error(f"Error calculating task complexity: {str(exc)}")
             raise
     
-    async def optimize_task_order(self, tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def optimize_task_order(self, tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Optimize task execution order based on dependencies and priority.
         
         Args:
@@ -534,7 +534,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         
         return min(complexity_score, 10)  # Cap at 10
     
-    def _get_agent_requirements(self, task_type: str) -> List[str]:
+    def _get_agent_requirements(self, task_type: str) -> list[str]:
         """Get agent requirements for task type."""
         requirements = {
             "analysis": ["analyst"],
@@ -549,7 +549,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         
         return requirements.get(task_type, ["analyst"])
     
-    def _estimate_resource_needs(self, task_type: str) -> Dict[str, Any]:
+    def _estimate_resource_needs(self, task_type: str) -> dict[str, Any]:
         """Estimate resource requirements for task type."""
         resource_needs = {
             "analysis": {"cpu": "low", "memory": "low", "time": "5m"},
@@ -564,7 +564,7 @@ class TaskService(BaseAbstractService, TaskServiceInterface):
         
         return resource_needs.get(task_type, {"cpu": "medium", "memory": "medium", "time": "15m"})
     
-    def _analyze_complexity_factors(self, task_description: str) -> List[str]:
+    def _analyze_complexity_factors(self, task_description: str) -> list[str]:
         """Analyze factors contributing to task complexity."""
         factors = []
         description_lower = task_description.lower()

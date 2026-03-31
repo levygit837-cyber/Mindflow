@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import inspect
 
-
 # ---------------------------------------------------------------------------
 # Schema contract tests
 # ---------------------------------------------------------------------------
@@ -261,8 +260,8 @@ def test_retrieved_context_still_importable():
 
 def test_retrieved_context_is_compat_alias():
     """RetrievedContext must now be a type alias pointing to MemoryRecallResponse."""
-    from mindflow_backend.schemas.session import contracts as sc
     from mindflow_backend.schemas.memory.contracts import MemoryRecallResponse
+    from mindflow_backend.schemas.session import contracts as sc
 
     assert sc.RetrievedContext is MemoryRecallResponse
 
@@ -294,8 +293,8 @@ def test_worker_memory_recorder_returns_persist_result():
     """MemoryRecorder.record_message return annotation must be MemoryPersistResult."""
     import typing
 
-    from mindflow_backend.workers.system.interfaces.memory import MemoryRecorder
     from mindflow_backend.schemas.memory.contracts import MemoryPersistResult
+    from mindflow_backend.workers.system.interfaces.memory import MemoryRecorder
 
     hints = typing.get_type_hints(MemoryRecorder.record_message)
     assert hints.get("return") is MemoryPersistResult

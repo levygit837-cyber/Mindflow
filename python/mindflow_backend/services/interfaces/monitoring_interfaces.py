@@ -8,9 +8,9 @@ Use: from mindflow_backend.interfaces.services import MonitoringServiceInterface
 
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.services.monitoring import (
-    MonitoringServiceInterface,
     HealthServiceInterface,
     MetricsServiceInterface,
+    MonitoringServiceInterface,
     ReviewServiceInterface,
 )
 

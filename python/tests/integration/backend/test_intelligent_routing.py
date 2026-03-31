@@ -2,7 +2,6 @@
 """Test script for intelligent routing without external dependencies."""
 
 import sys
-import os
 
 # Add project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')

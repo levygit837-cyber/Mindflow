@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import json
 from contextlib import suppress
-from typing import Any
 
+from mindflow_backend.agents.specialists.runtime_policy import (
+    get_agent_runtime_policy,
+)
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
@@ -24,11 +26,8 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
     ThinkingLevel,
     ToolScope,
 )
-from mindflow_backend.schemas.orchestration.workflow import WorkflowRouteDecision
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
-from mindflow_backend.agents.specialists.runtime_policy import (
-    get_agent_runtime_policy,
-)
+from mindflow_backend.schemas.orchestration.workflow import WorkflowRouteDecision
 
 from .intent_analysis import (
     IntentAnalysis,

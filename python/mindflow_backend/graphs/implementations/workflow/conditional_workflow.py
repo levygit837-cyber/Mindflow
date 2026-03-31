@@ -6,12 +6,10 @@ by dynamic conditions with support for complex decision trees and rule-based rou
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
-import asyncio
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.graphs.base.graph import BaseGraph, GraphType, GraphState
-from mindflow_backend.nodes.base.node import BaseNode
-from mindflow_backend.nodes.base.stateful import StatefulNode
+from mindflow_backend.graphs.base.graph import BaseGraph, GraphType
 
 
 class ConditionalWorkflowGraph(BaseGraph):
@@ -28,10 +26,10 @@ class ConditionalWorkflowGraph(BaseGraph):
     def __init__(
         self,
         graph_id: str = "conditional_workflow",
-        rules: List[Dict[str, Any]] = None,
-        default_path: Optional[str] = None,
+        rules: list[dict[str, Any]] = None,
+        default_path: str | None = None,
         decision_mode: str = "priority",  # priority, weighted, first_match, custom
-        condition_evaluator: Optional[Callable[[Dict[str, Any]], bool]] = None,
+        condition_evaluator: Callable[[dict[str, Any]], bool] | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -53,7 +51,7 @@ class ConditionalWorkflowGraph(BaseGraph):
     def add_rule(
         self,
         rule_id: str,
-        condition: Dict[str, Any],
+        condition: dict[str, Any],
         target_path: str,
         priority: int = 0,
         weight: float = 1.0,
@@ -94,7 +92,7 @@ class ConditionalWorkflowGraph(BaseGraph):
     def add_custom_rule(
         self,
         rule_id: str,
-        condition_evaluator: Callable[[Dict[str, Any]], bool],
+        condition_evaluator: Callable[[dict[str, Any]], bool],
         target_path: str,
         priority: int = 0,
         description: str = ""
@@ -111,7 +109,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         
         self.rules.append(rule)
     
-    async def execute(self, initial_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute(self, initial_state: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute the conditional workflow."""
         workflow_state = initial_state or {}
         workflow_state.update(self._workflow_state)
@@ -159,7 +157,7 @@ class ConditionalWorkflowGraph(BaseGraph):
                 "execution_path": self.default_path
             }
     
-    async def _evaluate_rules(self, workflow_state: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _evaluate_rules(self, workflow_state: dict[str, Any]) -> list[dict[str, Any]]:
         """Evaluate all rules against the current state."""
         matched_rules = []
         
@@ -169,7 +167,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         
         return matched_rules
     
-    async def _evaluate_rule_condition(self, rule: Dict[str, Any], workflow_state: Dict[str, Any]) -> bool:
+    async def _evaluate_rule_condition(self, rule: dict[str, Any], workflow_state: dict[str, Any]) -> bool:
         """Evaluate a single rule condition."""
         condition = rule.get("condition", {})
         
@@ -180,7 +178,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         else:
             return self._evaluate_simple_condition(condition, workflow_state)
     
-    async def _evaluate_pattern_condition(self, pattern: str, workflow_state: Dict[str, Any]) -> bool:
+    async def _evaluate_pattern_condition(self, pattern: str, workflow_state: dict[str, Any]) -> bool:
         """Evaluate a pattern-based condition."""
         import re
         
@@ -197,7 +195,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         except re.error:
             return False
     
-    def _evaluate_simple_condition(self, condition: Dict[str, Any], workflow_state: Dict[str, Any]) -> bool:
+    def _evaluate_simple_condition(self, condition: dict[str, Any], workflow_state: dict[str, Any]) -> bool:
         """Evaluate a simple condition."""
         for field, expected_value in condition.items():
             if field.startswith("state."):
@@ -213,7 +211,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         
         return True
     
-    def _select_rule(self, matched_rules: List[Dict[str, Any]], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    def _select_rule(self, matched_rules: list[dict[str, Any]], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Select the best rule based on decision mode."""
         if not matched_rules:
             return {}
@@ -230,7 +228,7 @@ class ConditionalWorkflowGraph(BaseGraph):
             # Default to priority
             return self._select_by_priority(matched_rules)
     
-    def _select_by_priority(self, rules: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _select_by_priority(self, rules: list[dict[str, Any]]) -> dict[str, Any]:
         """Select rule with highest priority (lowest number)."""
         if not rules:
             return {}
@@ -239,7 +237,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         sorted_rules = sorted(rules, key=lambda x: x.get("priority", 999))
         return sorted_rules[0]
     
-    def _select_by_weight(self, rules: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _select_by_weight(self, rules: list[dict[str, Any]]) -> dict[str, Any]:
         """Select rule with highest weight."""
         if not rules:
             return {}
@@ -248,7 +246,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         sorted_rules = sorted(rules, key=lambda x: x.get("weight", 0.0))
         return sorted_rules[-1]
     
-    def _select_by_custom_evaluator(self, rules: List[Dict[str, Any]], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    def _select_by_custom_evaluator(self, rules: list[dict[str, Any]], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Select rule using custom evaluator function."""
         if not self.condition_evaluator:
             return self._select_by_priority(rules)
@@ -269,7 +267,7 @@ class ConditionalWorkflowGraph(BaseGraph):
         
         return best_rule or {}
     
-    async def _execute_default_path(self, workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_default_path(self, workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute the default path when no rules match."""
         if not self.default_path:
             return {
@@ -323,7 +321,7 @@ class ConditionalWorkflowGraph(BaseGraph):
                 "error": f"Invalid default path format: {self.default_path}"
             }
     
-    async def _execute_rule_path(self, rule: Dict[str, Any], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_rule_path(self, rule: dict[str, Any], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute the target path specified by a rule."""
         target_path = rule.get("target_path")
         
@@ -413,13 +411,13 @@ class ConditionalWorkflowGraph(BaseGraph):
                 "error": f"Invalid target path format: {target_path}"
             }
     
-    def _get_custom_function(self, function_name: str) -> Optional[Callable]:
+    def _get_custom_function(self, function_name: str) -> Callable | None:
         """Get a custom function by name (would be from a registry)."""
         # This would integrate with a function registry
         # For now, return None
         return None
     
-    def get_workflow_info(self) -> Dict[str, Any]:
+    def get_workflow_info(self) -> dict[str, Any]:
         """Get information about the workflow configuration."""
         return {
             "graph_id": self.graph_id,

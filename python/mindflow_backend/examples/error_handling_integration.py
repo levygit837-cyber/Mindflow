@@ -10,17 +10,17 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Use OmniMind's error handling utilities
-from mindflow_backend.utils.error_setup import (
-    setup_fastapi_error_handling,
-    setup_grpc_error_handling,
-    setup_comprehensive_error_handling,
-)
 from mindflow_backend.utils.error_handling import (
+    CircuitBreaker,
+    ErrorContext,
     handle_errors,
     retry_on_error,
-    ErrorContext,
-    CircuitBreaker,
+)
+
+# Use OmniMind's error handling utilities
+from mindflow_backend.utils.error_setup import (
+    setup_comprehensive_error_handling,
+    setup_fastapi_error_handling,
 )
 
 

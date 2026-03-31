@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -19,7 +19,7 @@ class OrchestratorWorker(BaseWorker):
         """Initialize the Orchestrator worker."""
         super().__init__(queue_config, worker_name="orchestrator_worker")
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process orchestration and workflow tasks.
         
         Supported task types:
@@ -73,7 +73,7 @@ class OrchestratorWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
     
-    async def _handle_task_decomposition(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_task_decomposition(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle complex task decomposition."""
         complex_task = message_data.get("complex_task")
         complexity_level = message_data.get("complexity_level", "medium")
@@ -122,7 +122,7 @@ class OrchestratorWorker(BaseWorker):
             },
         )
     
-    async def _handle_workflow_execution(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_workflow_execution(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle multi-agent workflow execution."""
         workflow_id = message_data.get("workflow_id")
         workflow_definition = message_data.get("workflow_definition")
@@ -157,7 +157,7 @@ class OrchestratorWorker(BaseWorker):
             },
         )
     
-    async def _handle_resource_allocation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_resource_allocation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle resource allocation to tasks."""
         tasks = message_data.get("tasks", [])
         available_resources = message_data.get("available_resources", {})
@@ -194,7 +194,7 @@ class OrchestratorWorker(BaseWorker):
             },
         )
     
-    async def _handle_agent_coordination(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_agent_coordination(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle coordination between agents."""
         coordination_type = message_data.get("coordination_type", "collaboration")
         participating_agents = message_data.get("participating_agents", [])
@@ -232,7 +232,7 @@ class OrchestratorWorker(BaseWorker):
             },
         )
     
-    async def _handle_progress_monitoring(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_progress_monitoring(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle task and workflow progress monitoring."""
         monitoring_target = message_data.get("monitoring_target")
         monitoring_scope = message_data.get("monitoring_scope", "workflow")

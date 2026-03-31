@@ -5,19 +5,19 @@ Service layer for MCP (Model Context Protocol) operations.
 Provides high-level services for managing MCP connections, tools, and resources.
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Union
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
 
-from mindflow_backend.config.mcp import get_mcp_settings, MCPSettings
+from mindflow_backend.config.mcp import get_mcp_settings
 from mindflow_backend.interfaces.mcp.client import MCPClient, MCPClientConfig
+from mindflow_backend.interfaces.mcp.handlers.resources import CompositeResourceAccessor
+from mindflow_backend.interfaces.mcp.handlers.tools import SimpleToolExecutor
 from mindflow_backend.interfaces.mcp.server import MCPServer, MCPServerConfig
 from mindflow_backend.schemas.mcp.base import MCPCapability
-from mindflow_backend.schemas.mcp.tools import MCPToolDefinition, MCPToolResult
 from mindflow_backend.schemas.mcp.resources import MCPResourceDefinition, MCPResourceResult
-from mindflow_backend.interfaces.mcp.handlers.tools import SimpleToolExecutor
-from mindflow_backend.interfaces.mcp.handlers.resources import CompositeResourceAccessor
+from mindflow_backend.schemas.mcp.tools import MCPToolDefinition, MCPToolResult
 
 
 class MCPServiceError(Exception):
@@ -36,16 +36,16 @@ class MCPConnectionManager:
     def __init__(self):
         """Initialize connection manager."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        self._clients: Dict[str, MCPClient] = {}
-        self._client_configs: Dict[str, MCPClientConfig] = {}
-        self._connection_stats: Dict[str, Dict[str, Any]] = {}
+        self._clients: dict[str, MCPClient] = {}
+        self._client_configs: dict[str, MCPClientConfig] = {}
+        self._connection_stats: dict[str, dict[str, Any]] = {}
     
     async def create_client(
         self,
         name: str,
         transport_config,
-        client_info: Optional[Dict[str, Any]] = None,
-        capabilities: Optional[List[MCPCapability]] = None
+        client_info: dict[str, Any] | None = None,
+        capabilities: list[MCPCapability] | None = None
     ) -> MCPClient:
         """
         Create and configure an MCP client.
@@ -142,7 +142,7 @@ class MCPConnectionManager:
         except Exception as e:
             self.logger.error(f"Error disconnecting client '{name}': {e}")
     
-    def get_client(self, name: str) -> Optional[MCPClient]:
+    def get_client(self, name: str) -> MCPClient | None:
         """
         Get an MCP client by name.
         
@@ -154,7 +154,7 @@ class MCPConnectionManager:
         """
         return self._clients.get(name)
     
-    def list_clients(self) -> List[str]:
+    def list_clients(self) -> list[str]:
         """
         Get list of client names.
         
@@ -163,7 +163,7 @@ class MCPConnectionManager:
         """
         return list(self._clients.keys())
     
-    def get_connection_stats(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_connection_stats(self, name: str) -> dict[str, Any] | None:
         """
         Get connection statistics for a client.
         
@@ -214,16 +214,16 @@ class MCPServerManager:
     def __init__(self):
         """Initialize server manager."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        self._servers: Dict[str, MCPServer] = {}
-        self._server_configs: Dict[str, MCPServerConfig] = {}
-        self._server_stats: Dict[str, Dict[str, Any]] = {}
+        self._servers: dict[str, MCPServer] = {}
+        self._server_configs: dict[str, MCPServerConfig] = {}
+        self._server_stats: dict[str, dict[str, Any]] = {}
     
     async def create_server(
         self,
         name: str,
-        transport_configs: List,
-        server_info: Optional[Dict[str, Any]] = None,
-        capabilities: Optional[List[MCPCapability]] = None
+        transport_configs: list,
+        server_info: dict[str, Any] | None = None,
+        capabilities: list[MCPCapability] | None = None
     ) -> MCPServer:
         """
         Create and configure an MCP server.
@@ -319,7 +319,7 @@ class MCPServerManager:
         except Exception as e:
             self.logger.error(f"Error stopping server '{name}': {e}")
     
-    def get_server(self, name: str) -> Optional[MCPServer]:
+    def get_server(self, name: str) -> MCPServer | None:
         """
         Get an MCP server by name.
         
@@ -331,7 +331,7 @@ class MCPServerManager:
         """
         return self._servers.get(name)
     
-    def list_servers(self) -> List[str]:
+    def list_servers(self) -> list[str]:
         """
         Get list of server names.
         
@@ -340,7 +340,7 @@ class MCPServerManager:
         """
         return list(self._servers.keys())
     
-    def get_server_stats(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_server_stats(self, name: str) -> dict[str, Any] | None:
         """
         Get statistics for a server.
         
@@ -391,8 +391,8 @@ class MCPToolService:
     def __init__(self):
         """Initialize tool service."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        self._tool_executors: Dict[str, SimpleToolExecutor] = {}
-        self._registered_tools: Dict[str, MCPToolDefinition] = {}
+        self._tool_executors: dict[str, SimpleToolExecutor] = {}
+        self._registered_tools: dict[str, MCPToolDefinition] = {}
     
     def register_tool_executor(self, name: str, executor: SimpleToolExecutor) -> None:
         """
@@ -426,8 +426,8 @@ class MCPToolService:
     async def execute_tool(
         self,
         tool_name: str,
-        arguments: Dict[str, Any],
-        executor_name: Optional[str] = None
+        arguments: dict[str, Any],
+        executor_name: str | None = None
     ) -> MCPToolResult:
         """
         Execute a tool.
@@ -455,7 +455,7 @@ class MCPToolService:
             error_code="TOOL_NOT_FOUND"
         )
     
-    def list_tools(self) -> List[MCPToolDefinition]:
+    def list_tools(self) -> list[MCPToolDefinition]:
         """
         Get list of all registered tools.
         
@@ -464,7 +464,7 @@ class MCPToolService:
         """
         return list(self._registered_tools.values())
     
-    def get_tool_definition(self, tool_name: str) -> Optional[MCPToolDefinition]:
+    def get_tool_definition(self, tool_name: str) -> MCPToolDefinition | None:
         """
         Get tool definition by name.
         
@@ -489,7 +489,7 @@ class MCPResourceService:
         """Initialize resource service."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
         self._resource_accessor = CompositeResourceAccessor()
-        self._registered_resources: Dict[str, MCPResourceDefinition] = {}
+        self._registered_resources: dict[str, MCPResourceDefinition] = {}
     
     def register_resource_accessor(self, scheme: str, accessor) -> None:
         """
@@ -512,7 +512,7 @@ class MCPResourceService:
         self._registered_resources[resource_def.uri] = resource_def
         self.logger.info(f"Registered resource: {resource_def.uri}")
     
-    async def read_resource(self, resource_uri: str, options: Optional[Dict[str, Any]] = None) -> MCPResourceResult:
+    async def read_resource(self, resource_uri: str, options: dict[str, Any] | None = None) -> MCPResourceResult:
         """
         Read a resource.
         
@@ -525,7 +525,7 @@ class MCPResourceService:
         """
         return await self._resource_accessor.read_resource(resource_uri, options or {})
     
-    def list_resources(self) -> List[MCPResourceDefinition]:
+    def list_resources(self) -> list[MCPResourceDefinition]:
         """
         Get list of all registered resources.
         
@@ -534,7 +534,7 @@ class MCPResourceService:
         """
         return list(self._registered_resources.values())
     
-    def get_resource_definition(self, resource_uri: str) -> Optional[MCPResourceDefinition]:
+    def get_resource_definition(self, resource_uri: str) -> MCPResourceDefinition | None:
         """
         Get resource definition by URI.
         
@@ -590,7 +590,10 @@ class MCPService:
             self.tool_service.register_tool_executor("default", default_executor)
             
             # Initialize default resource accessor
-            from mindflow_backend.interfaces.mcp.handlers.resources import FileSystemResourceAccessor, MemoryResourceAccessor
+            from mindflow_backend.interfaces.mcp.handlers.resources import (
+                FileSystemResourceAccessor,
+                MemoryResourceAccessor,
+            )
             fs_accessor = FileSystemResourceAccessor()
             mem_accessor = MemoryResourceAccessor()
             self.resource_service.register_resource_accessor("file", fs_accessor)
@@ -620,7 +623,7 @@ class MCPService:
         self._initialized = False
         self.logger.info("MCP service shutdown complete")
     
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get service status.
         
@@ -644,7 +647,7 @@ class MCPService:
 
 
 # Global service instance
-_service: Optional[MCPService] = None
+_service: MCPService | None = None
 
 
 def get_mcp_service() -> MCPService:

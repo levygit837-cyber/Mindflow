@@ -5,14 +5,12 @@ This script tests if agents can now perform longer investigation sessions
 with the increased iteration limits.
 """
 
-import asyncio
 import sys
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 
 
@@ -55,8 +53,8 @@ def test_deep_work_module():
 
     try:
         from mindflow_backend.orchestrator.deep_work import (
-            should_continue_investigation,
             build_continuation_context,
+            should_continue_investigation,
         )
 
         # Test continuation detection
@@ -85,10 +83,10 @@ def test_deep_work_module():
         )
 
         if "CONTINUATION TURN 3" in context and "Previous Investigation" in context:
-            print(f"✅ Context building works")
+            print("✅ Context building works")
             passed += 1
         else:
-            print(f"❌ Context building failed")
+            print("❌ Context building failed")
 
         print(f"\n📊 Results: {passed}/{len(test_cases) + 1} passed")
         return passed == len(test_cases) + 1

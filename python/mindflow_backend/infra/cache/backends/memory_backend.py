@@ -8,7 +8,7 @@ from __future__ import annotations
 import fnmatch
 import threading
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..models import CacheEntry, CachePolicy
 from .base import CacheBackend
@@ -44,7 +44,7 @@ class MemoryCacheBackend(CacheBackend):
             "evictions": 0,
         }
 
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get cache entry from memory.
 
         Args:
@@ -124,7 +124,7 @@ class MemoryCacheBackend(CacheBackend):
             self._cache.clear()
             return True
 
-    async def keys(self, pattern: str = "*") -> List[str]:
+    async def keys(self, pattern: str = "*") -> list[str]:
         """Get keys matching pattern.
 
         Args:
@@ -168,7 +168,7 @@ class MemoryCacheBackend(CacheBackend):
 
         self._stats["evictions"] += 1
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:

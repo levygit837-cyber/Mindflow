@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import grpc
-from grpc import ServicerContext, HandlerCallDetails
-
+from grpc import HandlerCallDetails, ServicerContext
 from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
 from mindflow_backend.infra.logging import get_logger
 

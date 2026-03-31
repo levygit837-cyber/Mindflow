@@ -6,9 +6,9 @@ Uses MUC (Multi-User Chat) for team communication.
 """
 
 import uuid
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -19,11 +19,11 @@ class TeamMessage:
     sender_jid: str = ""
     content: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
-    reference_message_id: Optional[str] = None
+    reference_message_id: str | None = None
     message_type: str = "chat"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "message_id": self.message_id,
@@ -37,7 +37,7 @@ class TeamMessage:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TeamMessage':
+    def from_dict(cls, data: dict[str, Any]) -> 'TeamMessage':
         """Create instance from dictionary."""
         return cls(
             message_id=data.get("message_id", str(uuid.uuid4())),
@@ -63,16 +63,16 @@ class TeamChat:
     def __init__(self, team_id: str, room_jid: str):
         self.team_id = team_id
         self.room_jid = room_jid
-        self.message_history: List[TeamMessage] = []
+        self.message_history: list[TeamMessage] = []
         self.max_history_size: int = 1000
     
     def create_message(
         self,
         sender_jid: str,
         content: str,
-        reference_message_id: Optional[str] = None,
+        reference_message_id: str | None = None,
         message_type: str = "chat",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ) -> TeamMessage:
         """
         Create a message for the team.
@@ -104,29 +104,29 @@ class TeamChat:
         
         return message
     
-    def get_recent_messages(self, limit: int = 50) -> List[TeamMessage]:
+    def get_recent_messages(self, limit: int = 50) -> list[TeamMessage]:
         """Get recent messages."""
         return self.message_history[-limit:]
     
-    def get_message(self, message_id: str) -> Optional[TeamMessage]:
+    def get_message(self, message_id: str) -> TeamMessage | None:
         """Get message by ID."""
         for msg in self.message_history:
             if msg.message_id == message_id:
                 return msg
         return None
     
-    def get_messages_by_sender(self, sender_jid: str) -> List[TeamMessage]:
+    def get_messages_by_sender(self, sender_jid: str) -> list[TeamMessage]:
         """Get messages by sender."""
         return [m for m in self.message_history if m.sender_jid == sender_jid]
     
-    def get_messages_referencing(self, message_id: str) -> List[TeamMessage]:
+    def get_messages_referencing(self, message_id: str) -> list[TeamMessage]:
         """Get messages that reference a specific message."""
         return [
             m for m in self.message_history
             if m.reference_message_id == message_id
         ]
     
-    def search_messages(self, query: str) -> List[TeamMessage]:
+    def search_messages(self, query: str) -> list[TeamMessage]:
         """Search messages by content."""
         query_lower = query.lower()
         return [
@@ -140,7 +140,7 @@ class TeamChat:
         self.message_history = []
         return count
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get chat statistics."""
         senders = set(m.sender_jid for m in self.message_history)
         referenced_messages = set(

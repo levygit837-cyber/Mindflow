@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Simple test for CLI structure without backend dependencies."""
 
-import sys
 import os
+import sys
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
@@ -24,7 +24,7 @@ def test_cli_files_exist():
             print(f"✅ {file_path}")
             
             # Check file content for key functions/classes
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 content = f.read()
                 
             if "start.py" in file_path:
@@ -62,7 +62,7 @@ def test_cli_app_integration():
     
     try:
         # Read app.py content
-        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/app.py", 'r') as f:
+        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/app.py") as f:
             app_content = f.read()
         
         # Check imports
@@ -105,7 +105,7 @@ def test_command_structure():
     
     # Test start command
     try:
-        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/commands/start.py", 'r') as f:
+        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/commands/start.py") as f:
             start_content = f.read()
         
         if "def start_app(" in start_content and "mode: str = typer.Option" in start_content:
@@ -120,7 +120,7 @@ def test_command_structure():
     
     # Test orchestrator command
     try:
-        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/commands/test_orchestrator.py", 'r') as f:
+        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/commands/test_orchestrator.py") as f:
             test_content = f.read()
         
         if "def test_orchestrator_flow(" in test_content and "message: str = typer.Option" in test_content:
@@ -142,7 +142,7 @@ def test_renderer_structure():
     print("\n=== Testing Renderer Structure ===\n")
     
     try:
-        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/render/orchestrator_stream.py", 'r') as f:
+        with open("/home/levybonito/Projetos/MindFlow/python/mindflow_cli/render/orchestrator_stream.py") as f:
             renderer_content = f.read()
         
         required_methods = [

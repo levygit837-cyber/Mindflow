@@ -7,18 +7,16 @@ and schema updates in a controlled and reversible manner.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
-from datetime import datetime, UTC
-from enum import Enum
 import hashlib
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text, MetaData, Table, Column
-from sqlalchemy.types import String, DateTime, Integer
+from sqlalchemy import text
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.database.connection import get_db_session
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -39,9 +37,9 @@ class Migration:
     name: str
     description: str
     up_sql: str
-    down_sql: Optional[str] = None
-    dependencies: Optional[List[str]] = None
-    checksum: Optional[str] = None
+    down_sql: str | None = None
+    dependencies: list[str] | None = None
+    checksum: str | None = None
     
     def __post_init__(self) -> None:
         if self.checksum is None:
@@ -62,7 +60,7 @@ class MigrationRecord:
     executed_at: datetime
     execution_time_ms: float
     checksum: str
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class MigrationManager:
@@ -79,7 +77,7 @@ class MigrationManager:
     
     def __init__(self) -> None:
         """Initialize migration manager."""
-        self._migrations: Dict[str, Migration] = {}
+        self._migrations: dict[str, Migration] = {}
         self._migration_lock = asyncio.Lock()
         
     def register_migration(self, migration: Migration) -> None:
@@ -124,7 +122,7 @@ class MigrationManager:
             await session.commit()
             _logger.info("migration_table_ensured")
             
-    async def get_applied_migrations(self) -> List[MigrationRecord]:
+    async def get_applied_migrations(self) -> list[MigrationRecord]:
         """Get list of applied migrations from database.
         
         Returns:
@@ -155,7 +153,7 @@ class MigrationManager:
                 
             return records
             
-    async def get_pending_migrations(self) -> List[Migration]:
+    async def get_pending_migrations(self) -> list[Migration]:
         """Get list of pending migrations to apply.
         
         Returns:
@@ -172,7 +170,7 @@ class MigrationManager:
         # Sort by dependencies
         return self._sort_by_dependencies(pending)
         
-    def _sort_by_dependencies(self, migrations: List[Migration]) -> List[Migration]:
+    def _sort_by_dependencies(self, migrations: list[Migration]) -> list[Migration]:
         """Sort migrations by dependency order.
         
         Args:
@@ -394,7 +392,7 @@ class MigrationManager:
                 )
                 raise
                 
-    async def migrate_up(self, target_version: Optional[str] = None) -> List[MigrationRecord]:
+    async def migrate_up(self, target_version: str | None = None) -> list[MigrationRecord]:
         """Apply pending migrations up to target version.
         
         Args:
@@ -421,7 +419,7 @@ class MigrationManager:
         
         return applied
         
-    async def get_migration_status(self) -> Dict[str, Any]:
+    async def get_migration_status(self) -> dict[str, Any]:
         """Get comprehensive migration status.
         
         Returns:
@@ -460,7 +458,7 @@ class MigrationManager:
 
 
 # Global migration manager instance
-_migration_manager: Optional[MigrationManager] = None
+_migration_manager: MigrationManager | None = None
 
 
 def get_migration_manager() -> MigrationManager:

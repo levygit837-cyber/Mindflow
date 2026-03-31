@@ -10,19 +10,18 @@ This chain shows how to build complex workflows with:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
-from mindflow_backend.chains.base.chain import BaseChain, ChainConfig, ChainType, ChainStatus
+from mindflow_backend.chains.base.chain import BaseChain, ChainConfig, ChainStatus, ChainType
 from mindflow_backend.chains.base.step import ChainStep, StepResult, StepStatus, StepType
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
-    Priority,
     SandboxMode,
 )
 
@@ -160,7 +159,7 @@ class ConditionalWorkflowChain(BaseChain):
             timeout=30.0,
         ))
 
-    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, context: dict[str, Any]) -> dict[str, Any]:
         """Execute the conditional workflow."""
         import time
         
@@ -237,7 +236,7 @@ class ConditionalWorkflowChain(BaseChain):
                 "execution_path": execution_path,
             }
 
-    def _should_execute_step(self, step: ChainStep, context: Dict[str, Any]) -> bool:
+    def _should_execute_step(self, step: ChainStep, context: dict[str, Any]) -> bool:
         """Check if a step should execute based on conditions and dependencies."""
         
         # Check dependencies
@@ -255,7 +254,7 @@ class ConditionalWorkflowChain(BaseChain):
         
         return True
 
-    def _evaluate_condition(self, condition: str, context: Dict[str, Any]) -> bool:
+    def _evaluate_condition(self, condition: str, context: dict[str, Any]) -> bool:
         """Evaluate a condition string against the context."""
         
         # Simple condition evaluation - can be enhanced with proper expression parser
@@ -280,7 +279,7 @@ class ConditionalWorkflowChain(BaseChain):
             # If evaluation fails, default to executing the step
             return True
 
-    async def _execute_condition_check(self, step: ChainStep, context: Dict[str, Any]) -> StepResult:
+    async def _execute_condition_check(self, step: ChainStep, context: dict[str, Any]) -> StepResult:
         """Execute a condition check step."""
         import time
         
@@ -324,10 +323,10 @@ class ConditionalWorkflowChain(BaseChain):
                 completed_at=time.time(),
             )
 
-    async def _execute_parallel_step(self, step: ChainStep, context: Dict[str, Any]) -> StepResult:
+    async def _execute_parallel_step(self, step: ChainStep, context: dict[str, Any]) -> StepResult:
         """Execute a parallel step (simplified implementation)."""
-        import time
         import asyncio
+        import time
         
         start_time = time.time()
         
@@ -364,7 +363,7 @@ class ConditionalWorkflowChain(BaseChain):
                 completed_at=time.time(),
             )
 
-    async def _execute_agent_step(self, step: ChainStep, context: Dict[str, Any]) -> StepResult:
+    async def _execute_agent_step(self, step: ChainStep, context: dict[str, Any]) -> StepResult:
         """Execute an agent step."""
         import time
         
@@ -423,7 +422,7 @@ class ConditionalWorkflowChain(BaseChain):
                 completed_at=time.time(),
             )
 
-    def _build_task_context(self, step: ChainStep, context: Dict[str, Any]) -> str:
+    def _build_task_context(self, step: ChainStep, context: dict[str, Any]) -> str:
         """Build context for the step execution."""
         
         context_parts = []
@@ -440,7 +439,7 @@ class ConditionalWorkflowChain(BaseChain):
         
         return "\n".join(context_parts)
 
-    def _compile_final_result(self, context: Dict[str, Any], execution_path: List[str]) -> str:
+    def _compile_final_result(self, context: dict[str, Any], execution_path: list[str]) -> str:
         """Compile the final result from the execution context."""
         
         result_parts = ["# Conditional Workflow Result\n"]
@@ -454,7 +453,7 @@ class ConditionalWorkflowChain(BaseChain):
         
         return "\n".join(result_parts)
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate the conditional workflow structure."""
         issues = self.validate_structure()
         

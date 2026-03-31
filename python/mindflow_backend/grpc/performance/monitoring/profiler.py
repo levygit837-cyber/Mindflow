@@ -6,15 +6,16 @@ latency analysis, resource usage, and performance bottlenecks.
 
 from __future__ import annotations
 
-import time
+import statistics
 import threading
-import psutil
+import time
 import traceback
-from typing import Dict, Any, Optional, List, Callable
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import defaultdict, deque
-import statistics
+from typing import Any
+
+import psutil
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -92,20 +93,20 @@ class PerformanceProfile:
     
     # Status and error information
     success: bool
-    error_type: Optional[str] = None
-    error_message: Optional[str] = None
-    stack_trace: Optional[str] = None
+    error_type: str | None = None
+    error_message: str | None = None
+    stack_trace: str | None = None
     
     # Request/Response information
     request_size_bytes: int = 0
     response_size_bytes: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     # Resource usage
-    cpu_percent: Optional[float] = None
-    memory_mb: Optional[float] = None
-    io_read_mb: Optional[float] = None
-    io_write_mb: Optional[float] = None
+    cpu_percent: float | None = None
+    memory_mb: float | None = None
+    io_read_mb: float | None = None
+    io_write_mb: float | None = None
     
     # Performance analysis
     is_slow: bool = False
@@ -133,13 +134,13 @@ class SystemMetrics:
     cpu_percent: float
     memory_mb: float
     memory_percent: float
-    disk_io_read_mb: Optional[float] = None
-    disk_io_write_mb: Optional[float] = None
-    network_io_recv_mb: Optional[float] = None
-    network_io_sent_mb: Optional[float] = None
-    active_connections: Optional[int] = None
+    disk_io_read_mb: float | None = None
+    disk_io_write_mb: float | None = None
+    network_io_recv_mb: float | None = None
+    network_io_sent_mb: float | None = None
+    active_connections: int | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             'timestamp': self.timestamp,
@@ -157,11 +158,11 @@ class SystemMetrics:
 class GrpcProfiler:
     """Main gRPC performance profiler."""
     
-    def __init__(self, config: Optional[ProfileConfig] = None):
+    def __init__(self, config: ProfileConfig | None = None):
         self.config = config or ProfileConfig()
         self._profiles: deque[PerformanceProfile] = deque(maxlen=self.config.max_profiles)
         self._system_metrics: deque[SystemMetrics] = deque(maxlen=self.config.max_system_metrics_samples)
-        self._active_profiles: Dict[str, PerformanceProfile] = {}
+        self._active_profiles: dict[str, PerformanceProfile] = {}
         
         # Statistics tracking
         self._stats = {
@@ -178,7 +179,7 @@ class GrpcProfiler:
         self._lock = threading.RLock()
         
         # Performance analysis cache
-        self._performance_analysis: Dict[str, Any] = {}
+        self._performance_analysis: dict[str, Any] = {}
         self._last_analysis_time = 0.0
         
         _logger.info(
@@ -189,7 +190,7 @@ class GrpcProfiler:
         )
     
     def start_profile(self, operation_id: str, operation_type: str, method: str,
-                     request_size_bytes: int = 0, metadata: Optional[Dict[str, Any]] = None) -> Optional[str]:
+                     request_size_bytes: int = 0, metadata: dict[str, Any] | None = None) -> str | None:
         """Start profiling an operation."""
         if not self.config.should_profile():
             return None
@@ -228,8 +229,8 @@ class GrpcProfiler:
             return None
     
     def end_profile(self, operation_id: str, success: bool = True,
-                   response_size_bytes: int = 0, error_type: Optional[str] = None,
-                   error_message: Optional[str] = None) -> Optional[PerformanceProfile]:
+                   response_size_bytes: int = 0, error_type: str | None = None,
+                   error_message: str | None = None) -> PerformanceProfile | None:
         """End profiling an operation."""
         profile_end_time = time.time()
         
@@ -283,7 +284,7 @@ class GrpcProfiler:
             _logger.error("profile_end_failed", error=str(e))
             return None
     
-    def get_profile(self, operation_id: str) -> Optional[PerformanceProfile]:
+    def get_profile(self, operation_id: str) -> PerformanceProfile | None:
         """Get specific profile by ID."""
         with self._lock:
             # Check active profiles first
@@ -298,8 +299,8 @@ class GrpcProfiler:
         return None
     
     def get_recent_profiles(self, limit: int = 100, 
-                           operation_type: Optional[str] = None,
-                           success_only: bool = False) -> List[PerformanceProfile]:
+                           operation_type: str | None = None,
+                           success_only: bool = False) -> list[PerformanceProfile]:
         """Get recent profiles with optional filtering."""
         with self._lock:
             profiles = list(self._profiles)
@@ -315,7 +316,7 @@ class GrpcProfiler:
         profiles.sort(key=lambda p: p.timestamp, reverse=True)
         return profiles[:limit]
     
-    def get_performance_summary(self, time_window_seconds: float = 300.0) -> Dict[str, Any]:
+    def get_performance_summary(self, time_window_seconds: float = 300.0) -> dict[str, Any]:
         """Get performance summary for time window."""
         current_time = time.time()
         cutoff_time = current_time - time_window_seconds
@@ -369,12 +370,12 @@ class GrpcProfiler:
         
         return summary
     
-    def get_system_metrics(self, limit: int = 1000) -> List[SystemMetrics]:
+    def get_system_metrics(self, limit: int = 1000) -> list[SystemMetrics]:
         """Get recent system metrics."""
         with self._lock:
             return list(self._system_metrics)[-limit:]
     
-    def get_profiling_stats(self) -> Dict[str, Any]:
+    def get_profiling_stats(self) -> dict[str, Any]:
         """Get profiling statistics."""
         with self._lock:
             total_requests = self._stats['total_profiles']
@@ -449,7 +450,7 @@ class GrpcProfiler:
         
         return removed
     
-    def identify_performance_issues(self) -> List[Dict[str, Any]]:
+    def identify_performance_issues(self) -> list[dict[str, Any]]:
         """Identify performance issues and bottlenecks."""
         issues = []
         
@@ -579,13 +580,13 @@ class GrpcProfiler:
         except Exception as e:
             _logger.error("system_metrics_collection_failed", error=str(e))
     
-    def _percentile(self, data: List[float], percentile: float) -> float:
+    def _percentile(self, data: list[float], percentile: float) -> float:
         """Calculate percentile of data."""
         if not data:
             return 0.0
         return statistics.quantiles(data, n=100)[int(percentile) - 1] if percentile <= 100 else max(data)
     
-    def _get_common_errors(self, error_profiles: List[PerformanceProfile]) -> List[Dict[str, Any]]:
+    def _get_common_errors(self, error_profiles: list[PerformanceProfile]) -> list[dict[str, Any]]:
         """Get common error types and messages."""
         error_counts = defaultdict(int)
         message_counts = defaultdict(int)

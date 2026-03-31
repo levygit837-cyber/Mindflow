@@ -15,25 +15,24 @@ async def test_basic_imports():
     
     try:
         # Test enhanced filesystem imports
-        from mindflow_backend.tools.filesystem.enhanced_operations import (
-            EnhancedFileReadTool,
-            EnhancedFileWriteTool,
-            EnhancedFileEditTool,
-        )
-        from mindflow_backend.tools.filesystem.enhanced_search import (
-            EnhancedGrepTool,
-            EnhancedGlobTool,
-            EnhancedFindTool,
-        )
-        
-        # Test enhanced system imports
-        from mindflow_backend.tools.system.enhanced_shell import (
-            EnhancedShellExecutor,
-            EnhancedProcessManager,
-        )
-        
         # Test core imports
         from mindflow_backend.tools.core.registry import EnhancedToolRegistry
+        from mindflow_backend.tools.filesystem.enhanced_operations import (
+            EnhancedFileEditTool,
+            EnhancedFileReadTool,
+            EnhancedFileWriteTool,
+        )
+        from mindflow_backend.tools.filesystem.enhanced_search import (
+            EnhancedFindTool,
+            EnhancedGlobTool,
+            EnhancedGrepTool,
+        )
+
+        # Test enhanced system imports
+        from mindflow_backend.tools.system.enhanced_shell import (
+            EnhancedProcessManager,
+            EnhancedShellExecutor,
+        )
         
         print("✅ All imports successful")
         return True
@@ -92,10 +91,10 @@ async def test_registry_integration():
     print("📋 Testing Registry Integration...")
     
     try:
+        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
         from mindflow_backend.tools.core.registry import EnhancedToolRegistry
         from mindflow_backend.tools.filesystem.enhanced_operations import EnhancedFileReadTool
         from mindflow_backend.tools.system.enhanced_shell import EnhancedShellExecutor
-        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
         
         # Create registry
         registry = EnhancedToolRegistry()
@@ -135,8 +134,8 @@ async def test_backward_compatibility():
     try:
         # Test that both original and enhanced tools can be imported
         from mindflow_backend.tools.filesystem import (
-            FileReadTool,
             EnhancedFileReadTool,
+            FileReadTool,
         )
         
         # Test that both have the same interface

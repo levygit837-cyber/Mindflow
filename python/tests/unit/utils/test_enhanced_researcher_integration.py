@@ -7,20 +7,18 @@ query planning, source trust evaluation, and result synthesis.
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from mindflow_backend.agents.research.utils.port_manager import get_port_manager
-from mindflow_backend.agents.research.utils.health_checker import get_health_checker
 from mindflow_backend.agents.research.enhanced_query_planner import get_enhanced_query_planner
-from mindflow_backend.agents.research.source_trust_engine import get_source_trust_engine
 from mindflow_backend.agents.research.result_synthesizer import get_result_synthesizer
+from mindflow_backend.agents.research.source_trust_engine import get_source_trust_engine
+from mindflow_backend.agents.research.utils.health_checker import get_health_checker
+from mindflow_backend.agents.research.utils.port_manager import get_port_manager
 from mindflow_backend.schemas.research import (
-    QueryIntent,
-    QuestionType,
-    SourceType,
     ConfidenceLevel,
+    QuestionType,
     ResearchFinding,
     SourceClassification,
+    SourceType,
 )
 
 

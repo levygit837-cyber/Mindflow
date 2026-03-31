@@ -6,8 +6,9 @@ and repository patterns.
 
 from __future__ import annotations
 
+import builtins
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, AsyncGenerator, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -20,62 +21,62 @@ class DatabaseRepositoryInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_by_id(self, entity_id: Union[str, UUID, int]) -> Optional[Any]:
+    async def get_by_id(self, entity_id: str | UUID | int) -> Any | None:
         """Get entity by ID."""
         pass
     
     @abstractmethod
-    async def get_by_field(self, field_name: str, value: Any) -> List[Any]:
+    async def get_by_field(self, field_name: str, value: Any) -> builtins.list[Any]:
         """Get entities by field value."""
         pass
     
     @abstractmethod
-    async def update(self, entity_id: Union[str, UUID, int], **kwargs) -> Optional[Any]:
+    async def update(self, entity_id: str | UUID | int, **kwargs) -> Any | None:
         """Update entity."""
         pass
     
     @abstractmethod
-    async def delete(self, entity_id: Union[str, UUID, int]) -> bool:
+    async def delete(self, entity_id: str | UUID | int) -> bool:
         """Delete entity."""
         pass
     
     @abstractmethod
     async def list(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        order_by: Optional[str] = None,
-        order_direction: Optional[str] = None
-    ) -> List[Any]:
+        filters: dict[str, Any] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        order_by: str | None = None,
+        order_direction: str | None = None
+    ) -> builtins.list[Any]:
         """List entities with filtering and pagination."""
         pass
     
     @abstractmethod
     async def count(
         self,
-        filters: Optional[Dict[str, Any]] = None
+        filters: dict[str, Any] | None = None
     ) -> int:
         """Count entities with filters."""
         pass
     
     @abstractmethod
-    async def exists(self, entity_id: Union[str, UUID, int]) -> bool:
+    async def exists(self, entity_id: str | UUID | int) -> bool:
         """Check if entity exists."""
         pass
     
     @abstractmethod
-    async def bulk_create(self, entities: List[Dict[str, Any]]) -> List[Any]:
+    async def bulk_create(self, entities: builtins.list[dict[str, Any]]) -> builtins.list[Any]:
         """Bulk create entities."""
         pass
     
     @abstractmethod
-    async def bulk_update(self, updates: List[Dict[str, Any]]) -> List[Any]:
+    async def bulk_update(self, updates: builtins.list[dict[str, Any]]) -> builtins.list[Any]:
         """Bulk update entities."""
         pass
     
     @abstractmethod
-    async def bulk_delete(self, entity_ids: List[Union[str, UUID, int]]) -> int:
+    async def bulk_delete(self, entity_ids: builtins.list[str | UUID | int]) -> int:
         """Bulk delete entities."""
         pass
 
@@ -84,7 +85,7 @@ class TransactionManagerInterface(ABC):
     """Interface for transaction management."""
     
     @abstractmethod
-    async def begin_transaction(self, isolation_level: Optional[str] = None) -> Any:
+    async def begin_transaction(self, isolation_level: str | None = None) -> Any:
         """Begin transaction."""
         pass
     
@@ -113,32 +114,32 @@ class QueryBuilderInterface(ABC):
     """Interface for query builders."""
     
     @abstractmethod
-    def select(self, table: str, columns: Optional[List[str]] = None) -> Any:
+    def select(self, table: str, columns: list[str] | None = None) -> Any:
         """Build SELECT query."""
         pass
     
     @abstractmethod
-    def insert(self, table: str, data: Dict[str, Any]) -> Any:
+    def insert(self, table: str, data: dict[str, Any]) -> Any:
         """Build INSERT query."""
         pass
     
     @abstractmethod
-    def update(self, table: str, data: Dict[str, Any], where: Optional[Dict[str, Any]] = None) -> Any:
+    def update(self, table: str, data: dict[str, Any], where: dict[str, Any] | None = None) -> Any:
         """Build UPDATE query."""
         pass
     
     @abstractmethod
-    def delete(self, table: str, where: Optional[Dict[str, Any]] = None) -> Any:
+    def delete(self, table: str, where: dict[str, Any] | None = None) -> Any:
         """Build DELETE query."""
         pass
     
     @abstractmethod
-    def where(self, conditions: Dict[str, Any]) -> Any:
+    def where(self, conditions: dict[str, Any]) -> Any:
         """Add WHERE conditions."""
         pass
     
     @abstractmethod
-    def join(self, table: str, on: str, join_type: Optional[str] = None) -> Any:
+    def join(self, table: str, on: str, join_type: str | None = None) -> Any:
         """Add JOIN clause."""
         pass
     
@@ -158,7 +159,7 @@ class QueryBuilderInterface(ABC):
         pass
     
     @abstractmethod
-    def build(self) -> tuple[str, Dict[str, Any]]:
+    def build(self) -> tuple[str, dict[str, Any]]:
         """Build final query and parameters."""
         pass
 
@@ -172,7 +173,7 @@ class DatabaseMigrationInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_applied_migrations(self) -> List[str]:
+    async def get_applied_migrations(self) -> list[str]:
         """Get list of applied migrations."""
         pass
     
@@ -182,12 +183,12 @@ class DatabaseMigrationInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_pending_migrations(self, migrations_dir: str) -> List[Dict[str, Any]]:
+    async def get_pending_migrations(self, migrations_dir: str) -> list[dict[str, Any]]:
         """Get pending migrations."""
         pass
     
     @abstractmethod
-    async def apply_migration(self, migration: Dict[str, Any]) -> None:
+    async def apply_migration(self, migration: dict[str, Any]) -> None:
         """Apply single migration."""
         pass
     
@@ -201,26 +202,26 @@ class DatabaseHealthInterface(ABC):
     """Interface for database health checks."""
     
     @abstractmethod
-    async def check_connection(self) -> Dict[str, Any]:
+    async def check_connection(self) -> dict[str, Any]:
         """Check database connection."""
         pass
     
     @abstractmethod
-    async def check_performance(self) -> Dict[str, Any]:
+    async def check_performance(self) -> dict[str, Any]:
         """Check database performance."""
         pass
     
     @abstractmethod
-    async def check_integrity(self) -> Dict[str, Any]:
+    async def check_integrity(self) -> dict[str, Any]:
         """Check database integrity."""
         pass
     
     @abstractmethod
-    async def check_space(self) -> Dict[str, Any]:
+    async def check_space(self) -> dict[str, Any]:
         """Check database space usage."""
         pass
     
     @abstractmethod
-    async def get_metrics(self) -> Dict[str, Any]:
+    async def get_metrics(self) -> dict[str, Any]:
         """Get database metrics."""
         pass

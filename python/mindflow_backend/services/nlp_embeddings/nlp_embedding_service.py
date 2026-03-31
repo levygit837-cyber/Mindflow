@@ -6,11 +6,10 @@ local models, or cloud models based on configuration.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
-from enum import Enum
 import asyncio
-from datetime import datetime
+from abc import ABC, abstractmethod
+from enum import Enum
+from typing import Any
 
 try:
     import numpy as np
@@ -47,7 +46,7 @@ class EmbeddingConfig:
     def __init__(
         self,
         method: EmbeddingMethod = EmbeddingMethod.TFIDF,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         max_features: int = 10000,
         min_df: int = 1,
         max_df: float = 0.95,
@@ -81,12 +80,12 @@ class BaseEmbeddingGenerator(ABC):
     """Base class for embedding generators."""
     
     @abstractmethod
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit the embedding model on texts."""
         ...
     
     @abstractmethod
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for texts."""
         ...
     
@@ -96,7 +95,7 @@ class BaseEmbeddingGenerator(ABC):
         ...
     
     @abstractmethod
-    async def similarity(self, query: List[float], candidates: List[List[float]]) -> List[float]:
+    async def similarity(self, query: list[float], candidates: list[list[float]]) -> list[float]:
         """Calculate similarity scores."""
         ...
 
@@ -114,10 +113,10 @@ class TfidfEmbeddingGenerator(BaseEmbeddingGenerator):
             raise ImportError("scikit-learn is required for TF-IDF embeddings")
         
         self.config = config
-        self.vectorizer: Optional[TfidfVectorizer] = None
+        self.vectorizer: TfidfVectorizer | None = None
         self.is_fitted = False
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit TF-IDF vectorizer on texts.
         
         Args:
@@ -142,7 +141,7 @@ class TfidfEmbeddingGenerator(BaseEmbeddingGenerator):
         self.is_fitted = True
         _logger.info(f"TF-IDF fitted on {len(texts)} texts with {len(self.vectorizer.vocabulary_)} features")
     
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate TF-IDF embeddings.
         
         Args:
@@ -177,7 +176,7 @@ class TfidfEmbeddingGenerator(BaseEmbeddingGenerator):
             raise RuntimeError("Model not fitted")
         return len(self.vectorizer.vocabulary_)
     
-    async def similarity(self, query: List[float], candidates: List[List[float]]) -> List[float]:
+    async def similarity(self, query: list[float], candidates: list[list[float]]) -> list[float]:
         """Calculate cosine similarity.
         
         Args:
@@ -215,10 +214,10 @@ class SentenceTransformerEmbeddingGenerator(BaseEmbeddingGenerator):
             raise ImportError("sentence-transformers is required for transformer embeddings")
         
         self.config = config
-        self.model: Optional[SentenceTransformer] = None
+        self.model: SentenceTransformer | None = None
         self.model_name = config.model_name or "all-MiniLM-L6-v2"
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Load sentence transformer model.
         
         Args:
@@ -234,7 +233,7 @@ class SentenceTransformerEmbeddingGenerator(BaseEmbeddingGenerator):
         
         _logger.info(f"Sentence transformer loaded: {self.model_name}")
     
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate transformer embeddings.
         
         Args:
@@ -267,7 +266,7 @@ class SentenceTransformerEmbeddingGenerator(BaseEmbeddingGenerator):
         test_embedding = self.model.encode("test", convert_to_numpy=True)
         return len(test_embedding)
     
-    async def similarity(self, query: List[float], candidates: List[List[float]]) -> List[float]:
+    async def similarity(self, query: list[float], candidates: list[list[float]]) -> list[float]:
         """Calculate cosine similarity.
         
         Args:
@@ -302,7 +301,7 @@ class HybridEmbeddingGenerator(BaseEmbeddingGenerator):
             config: Embedding configuration.
         """
         self.config = config
-        self.generators: List[BaseEmbeddingGenerator] = []
+        self.generators: list[BaseEmbeddingGenerator] = []
         self.weights = config.kwargs.get('weights', [0.5, 0.5])
         
         # Initialize generators based on configuration
@@ -314,7 +313,7 @@ class HybridEmbeddingGenerator(BaseEmbeddingGenerator):
             elif method == EmbeddingMethod.SENTENCE_TRANSFORMER:
                 self.generators.append(SentenceTransformerEmbeddingGenerator(config))
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit all generators.
         
         Args:
@@ -323,7 +322,7 @@ class HybridEmbeddingGenerator(BaseEmbeddingGenerator):
         for generator in self.generators:
             await generator.fit(texts)
     
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate hybrid embeddings.
         
         Args:
@@ -358,7 +357,7 @@ class HybridEmbeddingGenerator(BaseEmbeddingGenerator):
         total_dim = sum(gen.get_dimension() for gen in self.generators)
         return total_dim
     
-    async def similarity(self, query: List[float], candidates: List[List[float]]) -> List[float]:
+    async def similarity(self, query: list[float], candidates: list[list[float]]) -> list[float]:
         """Calculate cosine similarity for hybrid embeddings.
         
         Args:
@@ -414,7 +413,7 @@ class NLPEmbeddingService:
         else:
             raise ValueError(f"Unsupported embedding method: {config.method}")
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit the embedding model.
         
         Args:
@@ -424,7 +423,7 @@ class NLPEmbeddingService:
         self.is_fitted = True
         _logger.info(f"Embedding service fitted with method: {self.config.method}")
     
-    async def generate_embeddings(self, texts: Union[str, List[str]]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: str | list[str]) -> list[list[float]]:
         """Generate embeddings for texts.
         
         Args:
@@ -454,9 +453,9 @@ class NLPEmbeddingService:
     async def similarity_search(
         self,
         query: str,
-        candidates: List[str],
+        candidates: list[str],
         top_k: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for most similar texts.
         
         Args:
@@ -490,7 +489,7 @@ class NLPEmbeddingService:
         
         return results[:top_k]
     
-    async def get_service_info(self) -> Dict[str, Any]:
+    async def get_service_info(self) -> dict[str, Any]:
         """Get service information.
         
         Returns:
@@ -511,7 +510,7 @@ class NLPEmbeddingService:
 
 def create_embedding_service(
     method: EmbeddingMethod = EmbeddingMethod.TFIDF,
-    model_name: Optional[str] = None,
+    model_name: str | None = None,
     **kwargs: Any,
 ) -> NLPEmbeddingService:
     """Create embedding service with configuration.

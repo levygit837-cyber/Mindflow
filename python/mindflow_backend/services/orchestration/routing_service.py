@@ -6,10 +6,9 @@ agent selection, message analysis, and performance optimization.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC
-import asyncio
 from collections import defaultdict
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
@@ -28,12 +27,12 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
         super().__init__()
         
         # Routing configuration
-        self._routing_rules: Dict[str, Dict[str, Any]] = {}
-        self._agent_capabilities: Dict[str, Dict[str, Any]] = {}
-        self._performance_metrics: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        self._routing_rules: dict[str, dict[str, Any]] = {}
+        self._agent_capabilities: dict[str, dict[str, Any]] = {}
+        self._performance_metrics: dict[str, dict[str, Any]] = defaultdict(dict)
         
         # Routing history for learning
-        self._routing_history: List[Dict[str, Any]] = []
+        self._routing_history: list[dict[str, Any]] = []
         self._max_history_size = 10000
         
         # Agent selection weights
@@ -69,8 +68,8 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
     async def route_message(
         self,
         message: str,
-        session_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        session_context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Route message to appropriate agent.
         
         Args:
@@ -143,8 +142,8 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
         self,
         task_description: str,
         task_complexity: str,
-        available_agents: List[str]
-    ) -> Dict[str, Any]:
+        available_agents: list[str]
+    ) -> dict[str, Any]:
         """Select optimal agent for a specific task.
         
         Args:
@@ -247,7 +246,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
             self._logger.error(f"Error selecting agent for task: {str(exc)}")
             raise
     
-    async def get_routing_rules(self) -> List[Dict[str, Any]]:
+    async def get_routing_rules(self) -> list[dict[str, Any]]:
         """Get current routing rules.
         
         Returns:
@@ -283,8 +282,8 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
     async def update_routing_rule(
         self,
         rule_id: str,
-        rule_definition: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        rule_definition: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update a routing rule.
         
         Args:
@@ -321,7 +320,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
             self._logger.error(f"Error updating routing rule {rule_id}: {str(exc)}")
             raise
     
-    async def analyze_message_intent(self, message: str) -> Dict[str, Any]:
+    async def analyze_message_intent(self, message: str) -> dict[str, Any]:
         """Analyze message intent for routing decisions.
         
         Args:
@@ -413,7 +412,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
             self._logger.error(f"Error analyzing message intent: {str(exc)}")
             raise
     
-    async def get_routing_performance_metrics(self) -> Dict[str, Any]:
+    async def get_routing_performance_metrics(self) -> dict[str, Any]:
         """Get routing performance metrics and statistics.
         
         Returns:
@@ -474,7 +473,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
             self._logger.error(f"Error getting routing performance metrics: {str(exc)}")
             raise
     
-    async def optimize_routing_strategy(self) -> Dict[str, Any]:
+    async def optimize_routing_strategy(self) -> dict[str, Any]:
         """Optimize routing strategy based on performance data.
         
         Returns:
@@ -558,7 +557,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
         self,
         task_description: str,
         task_complexity: str,
-        capabilities: Dict[str, Any]
+        capabilities: dict[str, Any]
     ) -> float:
         """Calculate capability match score between task and agent."""
         try:
@@ -589,9 +588,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
                             break
             
             # Complexity matching
-            if task_complexity == "simple" and "simple" in agent_specialization:
-                match_score += 0.1
-            elif task_complexity == "complex" and "complex" in agent_specialization:
+            if task_complexity == "simple" and "simple" in agent_specialization or task_complexity == "complex" and "complex" in agent_specialization:
                 match_score += 0.1
             
             return min(match_score, 1.0)
@@ -637,10 +634,10 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
     async def _apply_routing_rules(
         self,
         message: str,
-        intent_analysis: Dict[str, Any],
-        selection_result: Dict[str, Any],
-        session_context: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        intent_analysis: dict[str, Any],
+        selection_result: dict[str, Any],
+        session_context: dict[str, Any] | None
+    ) -> dict[str, Any]:
         """Apply routing rules to modify selection."""
         rules_applied = []
         modified_selection = selection_result.copy()
@@ -681,10 +678,10 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
     
     async def _evaluate_rule_conditions(
         self,
-        conditions: Dict[str, Any],
+        conditions: dict[str, Any],
         message: str,
-        intent_analysis: Dict[str, Any],
-        session_context: Optional[Dict[str, Any]]
+        intent_analysis: dict[str, Any],
+        session_context: dict[str, Any] | None
     ) -> bool:
         """Evaluate if routing rule conditions match."""
         try:
@@ -726,7 +723,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
         except Exception:
             return False
     
-    def _generate_selection_reasoning(self, agent_score: Dict[str, Any], task_description: str) -> str:
+    def _generate_selection_reasoning(self, agent_score: dict[str, Any], task_description: str) -> str:
         """Generate reasoning for agent selection."""
         agent_type = agent_score.get("agent_type", "unknown")
         capability_score = agent_score.get("capability_score", 0)
@@ -745,7 +742,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
         
         return " | ".join(reasoning_parts)
     
-    def _extract_keywords(self, message: str, intent_keywords: List[str]) -> List[str]:
+    def _extract_keywords(self, message: str, intent_keywords: list[str]) -> list[str]:
         """Extract keywords found in message."""
         found_keywords = []
         message_lower = message.lower()
@@ -756,7 +753,7 @@ class RoutingService(BaseAbstractService, RoutingServiceInterface):
         
         return found_keywords
     
-    async def _update_routing_metrics(self, routing_decision: Dict[str, Any]) -> None:
+    async def _update_routing_metrics(self, routing_decision: dict[str, Any]) -> None:
         """Update routing performance metrics."""
         agent_type = routing_decision.get("selected_agent")
         confidence = routing_decision.get("confidence", 0.5)

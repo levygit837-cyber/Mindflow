@@ -6,10 +6,11 @@ allowing for complex decision trees and adaptive execution paths.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Callable, Union
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.chains.base.chain import BaseChain, ChainType, ChainStatus
-from mindflow_backend.chains.base.step import ChainStep, StepType, StepStatus
+from mindflow_backend.chains.base.chain import BaseChain, ChainStatus, ChainType
+from mindflow_backend.chains.base.step import ChainStep, StepStatus, StepType
 from mindflow_backend.chains.base.types import ChainConfig, ExecutionContext
 
 
@@ -19,8 +20,8 @@ class ConditionalBranch:
     def __init__(
         self,
         branch_id: str,
-        condition: Callable[[Dict[str, Any]], bool],
-        steps: List[ChainStep],
+        condition: Callable[[dict[str, Any]], bool],
+        steps: list[ChainStep],
         description: str = ""
     ) -> None:
         self.branch_id = branch_id
@@ -41,10 +42,10 @@ class ConditionalChainBuilder:
     
     def __init__(self, chain_id: str = "conditional_chain") -> None:
         self.chain_id = chain_id
-        self.branches: List[ConditionalBranch] = []
-        self.default_branch: Optional[ConditionalBranch] = None
+        self.branches: list[ConditionalBranch] = []
+        self.default_branch: ConditionalBranch | None = None
         self.config = ChainConfig(chain_type=ChainType.CONDITIONAL)
-        self.error_handlers: Dict[str, Callable] = {}
+        self.error_handlers: dict[str, Callable] = {}
         self.step_timeout: float = 30.0
         self.continue_on_error: bool = False
         self.max_execution_depth: int = 10
@@ -52,7 +53,7 @@ class ConditionalChainBuilder:
     def add_branch(
         self,
         branch_id: str,
-        condition: Callable[[Dict[str, Any]], bool],
+        condition: Callable[[dict[str, Any]], bool],
         description: str = ""
     ) -> ConditionalBranchBuilder:
         """Add a conditional branch to the chain.
@@ -121,7 +122,7 @@ class ConditionalChainBuilder:
     def with_error_handling(
         self,
         continue_on_error: bool = True,
-        error_handlers: Optional[Dict[str, Callable]] = None
+        error_handlers: dict[str, Callable] | None = None
     ) -> ConditionalChainBuilder:
         """Configure error handling for the chain.
         
@@ -187,7 +188,7 @@ class ConditionalBranchBuilder:
         step_function: Callable,
         step_type: StepType = StepType.PROCESSING,
         description: str = "",
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         retry_count: int = 3
     ) -> ConditionalBranchBuilder:
         """Add a step to this branch.
@@ -230,10 +231,10 @@ class ConditionalChain(BaseChain):
     def __init__(
         self,
         chain_id: str,
-        branches: List[ConditionalBranch],
-        default_branch: Optional[ConditionalBranch],
+        branches: list[ConditionalBranch],
+        default_branch: ConditionalBranch | None,
         config: ChainConfig,
-        error_handlers: Optional[Dict[str, Callable]] = None,
+        error_handlers: dict[str, Callable] | None = None,
         continue_on_error: bool = False,
         max_execution_depth: int = 10
     ) -> None:
@@ -243,9 +244,9 @@ class ConditionalChain(BaseChain):
         self.error_handlers = error_handlers or {}
         self.continue_on_error = continue_on_error
         self.max_execution_depth = max_execution_depth
-        self.execution_path: List[str] = []
+        self.execution_path: list[str] = []
     
-    async def execute(self, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute(self, initial_context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute the conditional chain.
         
         Args:
@@ -358,7 +359,7 @@ class ConditionalChain(BaseChain):
                 if "output" in result:
                     context.input = result["output"]
                 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 error_msg = f"Step {step.step_id} in branch {branch.branch_id} timed out"
                 self._handle_step_error(step, branch, context, error_msg)
                 
@@ -404,7 +405,7 @@ class ConditionalChain(BaseChain):
             "output": None
         }
     
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate the conditional chain configuration."""
         issues = []
         
@@ -434,7 +435,7 @@ class ConditionalChain(BaseChain):
         
         return issues
     
-    def get_execution_summary(self) -> Dict[str, Any]:
+    def get_execution_summary(self) -> dict[str, Any]:
         """Get a summary of the execution path and results."""
         return {
             "chain_id": self.chain_id,

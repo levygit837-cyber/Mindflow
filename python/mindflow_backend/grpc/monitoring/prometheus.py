@@ -6,10 +6,8 @@ Exports gRPC metrics in Prometheus format for monitoring and alerting.
 from __future__ import annotations
 
 import time
-from typing import Dict, List
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
-from urllib.parse import urlparse
 
 from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
 from mindflow_backend.infra.logging import get_logger
@@ -185,7 +183,7 @@ class GrafanaDashboardConfig:
     """Generate Grafana dashboard configuration for gRPC metrics."""
     
     @staticmethod
-    def generate_dashboard_config(datasource_name: str = 'Prometheus') -> Dict:
+    def generate_dashboard_config(datasource_name: str = 'Prometheus') -> dict:
         """Generate Grafana dashboard JSON configuration."""
         dashboard = {
             "dashboard": {
@@ -328,7 +326,7 @@ class GrafanaDashboardConfig:
         return dashboard
     
     @staticmethod
-    def save_dashboard_config(dashboard_config: Dict, filename: str = 'grpc-dashboard.json'):
+    def save_dashboard_config(dashboard_config: dict, filename: str = 'grpc-dashboard.json'):
         """Save dashboard configuration to file."""
         import json
         
@@ -338,7 +336,7 @@ class GrafanaDashboardConfig:
         _logger.info("grafana_dashboard_saved", filename=filename)
     
     @staticmethod
-    def get_alert_rules() -> List[Dict]:
+    def get_alert_rules() -> list[dict]:
         """Get Prometheus alert rules for gRPC metrics."""
         rules = [
             {

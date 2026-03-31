@@ -8,7 +8,7 @@ def test_chains_api_integration():
     print("=" * 50)
     
     # Ler o router.py diretamente para evitar dependências
-    with open('/home/levybonito/Projetos/MindFlow/python/mindflow_backend/api/router.py', 'r') as f:
+    with open('/home/levybonito/Projetos/MindFlow/python/mindflow_backend/api/router.py') as f:
         router_content = f.read()
     
     # Verificar se chains_router foi importado
@@ -25,7 +25,7 @@ def test_chains_api_integration():
     print(f"✅ Arquivo api/v1/chains.py existe: {chains_api_exists}")
     
     if chains_api_exists:
-        with open('/home/levybonito/Projetos/MindFlow/python/mindflow_backend/api/v1/chains.py', 'r') as f:
+        with open('/home/levybonito/Projetos/MindFlow/python/mindflow_backend/api/v1/chains.py') as f:
             chains_content = f.read()
         
         # Contar endpoints de chains

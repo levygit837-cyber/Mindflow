@@ -7,9 +7,10 @@ various transformation patterns and data manipulation operations.
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -27,12 +28,12 @@ class TransformNode(StatefulNode, BaseNode):
         self,
         node_id: str = "transform",
         transform_type: str = "function",  # function, mapping, filter, aggregate
-        transform_function: Optional[Callable[[Any], Any]] = None,
-        mapping_rules: Optional[Dict[str, Any]] = None,
-        filter_condition: Optional[Union[str, Callable[[Any], bool]]] = None,
-        aggregate_operation: Optional[str] = None,  # sum, count, avg, min, max, custom
-        aggregate_function: Optional[Callable[[List[Any]], Any]] = None,
-        field_path: Optional[str] = None,
+        transform_function: Callable[[Any], Any] | None = None,
+        mapping_rules: dict[str, Any] | None = None,
+        filter_condition: str | Callable[[Any], bool] | None = None,
+        aggregate_operation: str | None = None,  # sum, count, avg, min, max, custom
+        aggregate_function: Callable[[list[Any]], Any] | None = None,
+        field_path: str | None = None,
         preserve_structure: bool = True,
         description: str = ""
     ) -> None:
@@ -68,7 +69,7 @@ class TransformNode(StatefulNode, BaseNode):
         if isinstance(self.filter_condition, str):
             self._compile_filter_condition(self.filter_condition)
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the transformation based on configured type."""
         data = state.get("data", {})
         
@@ -116,7 +117,7 @@ class TransformNode(StatefulNode, BaseNode):
                 "metadata": {"transform_type": self.transform_type, "status": "error"}
             }
     
-    async def _apply_function_transform(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _apply_function_transform(self, data: Any, state: dict[str, Any]) -> Any:
         """Apply custom function transformation."""
         if not self.transform_function:
             raise ValueError("Transform function is required for function transform")
@@ -129,7 +130,7 @@ class TransformNode(StatefulNode, BaseNode):
         else:
             return await self.transform_function(data)
     
-    async def _apply_mapping_transform(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _apply_mapping_transform(self, data: Any, state: dict[str, Any]) -> Any:
         """Apply mapping transformation to data."""
         if not self.mapping_rules:
             return data
@@ -142,7 +143,7 @@ class TransformNode(StatefulNode, BaseNode):
         else:
             return self._map_item(data, self.mapping_rules)
     
-    def _map_item(self, item: Any, mapping_rules: Dict[str, Any]) -> Any:
+    def _map_item(self, item: Any, mapping_rules: dict[str, Any]) -> Any:
         """Map a single item using the mapping rules."""
         if isinstance(item, dict):
             mapped_item = {}
@@ -172,7 +173,7 @@ class TransformNode(StatefulNode, BaseNode):
             # Simple value replacement
             return rule
     
-    def _evaluate_mapping_condition(self, value: Any, condition: Dict[str, Any]) -> bool:
+    def _evaluate_mapping_condition(self, value: Any, condition: dict[str, Any]) -> bool:
         """Evaluate a mapping condition."""
         field = condition.get("field")
         operator = condition.get("operator", "==")
@@ -198,7 +199,7 @@ class TransformNode(StatefulNode, BaseNode):
         
         return False
     
-    async def _apply_filter_transform(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _apply_filter_transform(self, data: Any, state: dict[str, Any]) -> Any:
         """Apply filter transformation to data."""
         if not self.filter_condition:
             return data
@@ -236,7 +237,7 @@ class TransformNode(StatefulNode, BaseNode):
         
         return bool(self.filter_condition)
     
-    async def _apply_aggregate_transform(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _apply_aggregate_transform(self, data: Any, state: dict[str, Any]) -> Any:
         """Apply aggregate transformation to data."""
         if not data:
             return None
@@ -300,23 +301,23 @@ class TransformNode(StatefulNode, BaseNode):
         self.transform_type = "function"
         self.transform_function = transform_function
     
-    def set_mapping_rules(self, mapping_rules: Dict[str, Any]) -> None:
+    def set_mapping_rules(self, mapping_rules: dict[str, Any]) -> None:
         """Set mapping rules dynamically."""
         self.transform_type = "mapping"
         self.mapping_rules = mapping_rules
     
-    def set_filter_condition(self, filter_condition: Union[str, Callable]) -> None:
+    def set_filter_condition(self, filter_condition: str | Callable) -> None:
         """Set filter condition dynamically."""
         self.transform_type = "filter"
         self.filter_condition = filter_condition
     
-    def set_aggregate_operation(self, operation: str, function: Optional[Callable] = None) -> None:
+    def set_aggregate_operation(self, operation: str, function: Callable | None = None) -> None:
         """Set aggregate operation dynamically."""
         self.transform_type = "aggregate"
         self.aggregate_operation = operation
         self.aggregate_function = function
     
-    def get_transform_info(self) -> Dict[str, Any]:
+    def get_transform_info(self) -> dict[str, Any]:
         """Get information about the current transform configuration."""
         return {
             "transform_type": self.transform_type,
@@ -343,8 +344,8 @@ class DataMappingNode(TransformNode):
     def __init__(
         self,
         node_id: str = "data_mapping",
-        mapping_rules: Dict[str, Any] = None,
-        field_mappings: Optional[Dict[str, str]] = None,
+        mapping_rules: dict[str, Any] = None,
+        field_mappings: dict[str, str] | None = None,
         description: str = "Data mapping transformation"
     ) -> None:
         super().__init__(
@@ -356,7 +357,7 @@ class DataMappingNode(TransformNode):
         
         self.field_mappings = field_mappings or {}
     
-    def apply_field_mappings(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def apply_field_mappings(self, data: dict[str, Any]) -> dict[str, Any]:
         """Apply field name mappings to data."""
         if not self.field_mappings:
             return data
@@ -377,7 +378,7 @@ class DataValidationNode(TransformNode):
     def __init__(
         self,
         node_id: str = "data_validation",
-        validation_rules: List[Dict[str, Any]] = None,
+        validation_rules: list[dict[str, Any]] = None,
         strict_mode: bool = False,
         description: str = "Data validation transformation"
     ) -> None:

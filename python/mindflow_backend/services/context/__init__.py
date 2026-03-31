@@ -6,6 +6,7 @@ embedding generation, and vector database management.
 
 from __future__ import annotations
 
+
 # Factory functions for context services
 def get_retrieval_service():
     """Factory function for RetrievalService."""

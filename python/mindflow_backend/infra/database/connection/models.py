@@ -6,9 +6,9 @@ Provides connection status enums, pool states, and metrics tracking.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, Optional
+from datetime import Optional, datetime
 from enum import Enum
-from typing import Dict, Any, List
+from typing import Any
 
 
 class ConnectionStatus(Enum):
@@ -40,7 +40,7 @@ class ConnectionMetrics:
     avg_connection_time_ms: float = 0.0
     max_connection_time_ms: float = 0.0
     min_connection_time_ms: float = float('inf')
-    connection_time_samples: List[float] = field(default_factory=list)
+    connection_time_samples: list[float] = field(default_factory=list)
     pool_hit_rate: float = 0.0
     pool_miss_rate: float = 0.0
     recycle_count: int = 0
@@ -60,7 +60,7 @@ class ConnectionMetrics:
         self.max_connection_time_ms = max(self.max_connection_time_ms, connection_time_ms)
         self.min_connection_time_ms = min(self.min_connection_time_ms, connection_time_ms)
 
-    def get_utilization_stats(self) -> Dict[str, Any]:
+    def get_utilization_stats(self) -> dict[str, Any]:
         """Get detailed utilization statistics."""
         return {
             "total_connections": self.total_connections,

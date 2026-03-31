@@ -6,9 +6,9 @@ system characteristics and workload patterns.
 
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -46,12 +46,12 @@ class TuningRecommendation:
 class GrpcTuner:
     """gRPC performance tuner with automated recommendations."""
     
-    def __init__(self, config: Optional[TuningConfig] = None):
+    def __init__(self, config: TuningConfig | None = None):
         self.config = config or TuningConfig()
         _logger.info("grpc_tuner_initialized", enabled=self.config.enabled)
     
-    def generate_recommendations(self, current_config: Dict[str, Any],
-                               performance_data: List[Dict[str, Any]]) -> List[TuningRecommendation]:
+    def generate_recommendations(self, current_config: dict[str, Any],
+                               performance_data: list[dict[str, Any]]) -> list[TuningRecommendation]:
         """Generate tuning recommendations based on analysis."""
         if not self.config.enabled:
             return []
@@ -67,8 +67,8 @@ class GrpcTuner:
         
         return recommendations
     
-    def _analyze_performance_tuning(self, config: Dict[str, Any],
-                                   data: List[Dict[str, Any]]) -> List[TuningRecommendation]:
+    def _analyze_performance_tuning(self, config: dict[str, Any],
+                                   data: list[dict[str, Any]]) -> list[TuningRecommendation]:
         """Analyze performance-related tuning opportunities."""
         recommendations = []
         
@@ -89,8 +89,8 @@ class GrpcTuner:
         
         return recommendations
     
-    def _analyze_reliability_tuning(self, config: Dict[str, Any],
-                                    data: List[Dict[str, Any]]) -> List[TuningRecommendation]:
+    def _analyze_reliability_tuning(self, config: dict[str, Any],
+                                    data: list[dict[str, Any]]) -> list[TuningRecommendation]:
         """Analyze reliability-related tuning opportunities."""
         recommendations = []
         

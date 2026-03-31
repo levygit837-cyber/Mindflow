@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -9,7 +8,12 @@ import pytest
 
 from mindflow_backend.schemas.session.review import ReviewPriority, SessionReviewResult
 from mindflow_backend.services.session_review_service import SessionReviewService
-from mindflow_backend.workers.config.queues import QueueConfig, QueueDefinitions, QueuePriority, WorkerDomain
+from mindflow_backend.workers.config.queues import (
+    QueueConfig,
+    QueueDefinitions,
+    QueuePriority,
+    WorkerDomain,
+)
 from mindflow_backend.workers.system.consumers.session_review_consumer import (
     SessionReviewTaskConsumer,
 )
@@ -136,7 +140,7 @@ class _FakeMessage:
 @pytest.mark.asyncio
 async def test_session_review_timeout_retries_then_rejects_to_dlq() -> None:
     consumer = SessionReviewTaskConsumer(
-        review_executor=AsyncMock(side_effect=asyncio.TimeoutError("timeout")),
+        review_executor=AsyncMock(side_effect=TimeoutError("timeout")),
         result_persister=AsyncMock(),
         timeout_seconds=0.01,
     )

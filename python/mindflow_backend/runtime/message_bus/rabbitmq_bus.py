@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import aio_pika
-from aio_pika import DeliveryMode, ExchangeType, Message as AioPikaMessage
+from aio_pika import DeliveryMode, ExchangeType
+from aio_pika import Message as AioPikaMessage
 
 from mindflow_backend.communication.circuit_breaker.breaker import CircuitBreaker
 
-from .protocol import MindFlowMessage, MessageType
+from .protocol import MessageType, MindFlowMessage
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +26,14 @@ class RabbitMQMessageBus:
         connection_url: str = "amqp://guest:guest@localhost:5672/",
         exchange_name: str = "mindflow.tasks",
         queue_prefix: str = "mindflow.queue.",
-        circuit_breaker: Optional[CircuitBreaker] = None,
+        circuit_breaker: CircuitBreaker | None = None,
     ):
         self._connection_url = connection_url
         self._exchange_name = exchange_name
         self._queue_prefix = queue_prefix
-        self._connection: Optional[aio_pika.Connection] = None
-        self._channel: Optional[aio_pika.Channel] = None
-        self._exchange: Optional[aio_pika.Exchange] = None
+        self._connection: aio_pika.Connection | None = None
+        self._channel: aio_pika.Channel | None = None
+        self._exchange: aio_pika.Exchange | None = None
         self._queues: dict[str, aio_pika.Queue] = {}
         self._consumers: dict[str, Callable] = {}
         self._running = False

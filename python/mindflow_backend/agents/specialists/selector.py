@@ -10,31 +10,30 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from mindflow_backend.interfaces.agents import SpecialistSelector as SpecialistSelectorInterface
-from mindflow_backend.exceptions import SpecialistSelectionError
-from mindflow_backend.agents.specialists.rule_engine import (
-    get_specialist_rule_engine,
-    SpecialistRuleEngine,
-    SpecialistCandidate,
-)
-from mindflow_backend.agents.specialists.cache import get_specialist_cache, SpecialistCache
+from mindflow_backend.agents.specialists.cache import SpecialistCache, get_specialist_cache
 from mindflow_backend.agents.specialists.configuration import (
-    get_specialist_config_builder,
-    get_delegation_task_builder,
-    SpecialistConfigurationBuilder,
     DelegationTaskBuilder,
+    SpecialistConfigurationBuilder,
+    get_delegation_task_builder,
+    get_specialist_config_builder,
 )
+from mindflow_backend.agents.specialists.rule_engine import (
+    SpecialistCandidate,
+    SpecialistRuleEngine,
+    get_specialist_rule_engine,
+)
+from mindflow_backend.exceptions import SpecialistSelectionError
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.interfaces.agents import SpecialistSelector as SpecialistSelectorInterface
 from mindflow_backend.schemas.orchestration.specialists import (
+    SpecialistDecisionResult,
     SpecialistSelection,
     SpecialistSwitchContext,
-    SpecialistConfiguration,
-    SpecialistDecisionResult,
-    SpecialistType,
-    TaskComplexity,
-    SpecializationRequirement,
     SpecialistSwitchTrigger,
+    SpecialistType,
+    SpecializationRequirement,
+    TaskComplexity,
 )
-from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -324,7 +323,7 @@ class SpecialistSelector(SpecialistSelectorInterface):
     
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
         return datetime.now(UTC).isoformat()
 
 

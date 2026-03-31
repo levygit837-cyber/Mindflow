@@ -6,16 +6,10 @@ different retrieval modes, caching, and intelligent context optimization.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, UTC
-from uuid import UUID
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.session.contracts import (
-    RetrievalMode,
-    RetrievedContext,
-    SessionRetriever,
-)
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.context_interfaces import RetrievalServiceInterface
 
@@ -37,7 +31,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         self._embedding_service = None
         
         # Cache for retrieval results
-        self._retrieval_cache: Dict[str, Dict[str, Any]] = {}
+        self._retrieval_cache: dict[str, dict[str, Any]] = {}
         self._cache_ttl = 300  # 5 minutes
         
         # Retrieval configuration
@@ -75,7 +69,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         session_id: str,
         retrieval_mode: str = "semantic",
         limit: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Retrieve context for query using specified mode.
         
         Args:
@@ -124,8 +118,8 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
     async def search_by_range(
         self,
         session_id: str,
-        token_range: Tuple[int, int]
-    ) -> Dict[str, Any]:
+        token_range: tuple[int, int]
+    ) -> dict[str, Any]:
         """Search context by token range.
         
         Args:
@@ -163,8 +157,8 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         self,
         query: str,
         session_id: str,
-        topic_filters: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        topic_filters: list[str] | None = None
+    ) -> dict[str, Any]:
         """Search context by topic filtering.
         
         Args:
@@ -232,7 +226,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         session_id: str,
         similarity_threshold: float = 0.7,
         max_results: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Search context semantically using vector similarity.
         
         Args:
@@ -291,8 +285,8 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
     async def get_context_summary(
         self,
         session_id: str,
-        context_window: Tuple[int, int]
-    ) -> Dict[str, Any]:
+        context_window: tuple[int, int]
+    ) -> dict[str, Any]:
         """Get context summary for a token window.
         
         Args:
@@ -340,7 +334,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         self,
         session_id: str,
         new_content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update context search index with new content.
         
         Args:
@@ -403,7 +397,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         semantic_weight: float = 0.7,
         keyword_weight: float = 0.3,
         limit: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Perform hybrid search combining semantic and keyword matching.
         
         Args:
@@ -485,7 +479,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
             self._logger.error(f"Error in hybrid search: {str(exc)}")
             raise
     
-    async def get_retrieval_statistics(self, session_id: str) -> Dict[str, Any]:
+    async def get_retrieval_statistics(self, session_id: str) -> dict[str, Any]:
         """Get retrieval statistics for a session.
         
         Args:
@@ -528,7 +522,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
     
     # Helper methods
     
-    async def _retrieve_by_range(self, query: str, session_id: str, limit: int) -> Dict[str, Any]:
+    async def _retrieve_by_range(self, query: str, session_id: str, limit: int) -> dict[str, Any]:
         """Retrieve context by range (placeholder implementation)."""
         # For range-based retrieval, we need token positions from the query
         # This is a simplified implementation
@@ -537,11 +531,11 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         
         return await self.search_by_range(session_id, (start_token, end_token))
     
-    async def _retrieve_by_topic(self, query: str, session_id: str, limit: int) -> Dict[str, Any]:
+    async def _retrieve_by_topic(self, query: str, session_id: str, limit: int) -> dict[str, Any]:
         """Retrieve context by topic."""
         return await self.search_by_topic(query, session_id)
     
-    async def _retrieve_by_semantic(self, query: str, session_id: str, limit: int) -> Dict[str, Any]:
+    async def _retrieve_by_semantic(self, query: str, session_id: str, limit: int) -> dict[str, Any]:
         """Retrieve context semantically."""
         return await self.search_semantic(query, session_id, max_results=limit)
     
@@ -551,7 +545,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         key_parts = [query[:100], session_id, mode, str(limit)]
         return hashlib.md5("|".join(key_parts).encode()).hexdigest()
     
-    def _get_cached_result(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def _get_cached_result(self, cache_key: str) -> dict[str, Any] | None:
         """Get cached result if still valid."""
         if cache_key in self._retrieval_cache:
             cached = self._retrieval_cache[cache_key]
@@ -565,7 +559,7 @@ class RetrievalService(BaseAbstractService, RetrievalServiceInterface):
         
         return None
     
-    def _cache_result(self, cache_key: str, result: Dict[str, Any]) -> None:
+    def _cache_result(self, cache_key: str, result: dict[str, Any]) -> None:
         """Cache retrieval result."""
         result["cached_at"] = datetime.now(UTC).isoformat()
         self._retrieval_cache[cache_key] = result

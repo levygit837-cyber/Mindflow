@@ -6,11 +6,7 @@ database operations, CSV processing, and data analysis.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-
 from mindflow_backend.schemas.tools.tool_config import ToolParameter, ToolSchema
-
 
 # Predefined schemas for Data tools
 DATABASE_SCHEMA = ToolSchema(

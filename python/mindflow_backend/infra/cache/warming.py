@@ -7,16 +7,17 @@ data sources, and performance optimization.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable, Set
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-import json
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.cache.cache_manager import get_cache_manager
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -45,15 +46,15 @@ class WarmingTask:
     key: str
     data_loader: Callable[[], Any]
     priority: WarmingPriority = WarmingPriority.MEDIUM
-    ttl: Optional[int] = None
-    tags: Dict[str, str] = field(default_factory=dict)
-    dependencies: List[str] = field(default_factory=list)
+    ttl: int | None = None
+    tags: dict[str, str] = field(default_factory=dict)
+    dependencies: list[str] = field(default_factory=list)
     retry_count: int = 0
     max_retries: int = 3
-    last_warmed: Optional[datetime] = None
+    last_warmed: datetime | None = None
     warm_count: int = 0
     error_count: int = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
     estimated_size_bytes: int = 0
     
     @property
@@ -73,16 +74,16 @@ class WarmingSchedule:
     """Cache warming schedule definition."""
     name: str
     cron_expression: str
-    tasks: List[str] = field(default_factory=list)
+    tasks: list[str] = field(default_factory=list)
     enabled: bool = True
-    last_run: Optional[datetime] = None
-    next_run: Optional[datetime] = None
+    last_run: datetime | None = None
+    next_run: datetime | None = None
     run_count: int = 0
     
     def calculate_next_run(self) -> datetime:
         """Calculate next run time based on cron expression."""
         # Simplified cron calculation - in production, use a proper cron library
-        from datetime import datetime, timedelta
+        from datetime import datetime
         
         # For now, run every hour
         now = datetime.now(UTC)
@@ -99,7 +100,7 @@ class DataSource(ABC):
         pass
         
     @abstractmethod
-    async def get_available_keys(self) -> List[str]:
+    async def get_available_keys(self) -> list[str]:
         """Get list of available keys."""
         pass
         
@@ -135,7 +136,7 @@ class DatabaseDataSource(DataSource):
             _logger.error("database_data_source_load_failed", key=key, error=str(e))
             raise
             
-    async def get_available_keys(self) -> List[str]:
+    async def get_available_keys(self) -> list[str]:
         """Get available keys from database."""
         # This would be implemented based on specific database schema
         return []
@@ -169,7 +170,7 @@ class APIDataSource(DataSource):
             _logger.error("api_data_source_load_failed", key=key, error=str(e))
             raise
             
-    async def get_available_keys(self) -> List[str]:
+    async def get_available_keys(self) -> list[str]:
         """Get available keys from API."""
         # This would be implemented based on specific API
         return []
@@ -197,15 +198,15 @@ class CacheWarmer:
     
     def __init__(self):
         """Initialize cache warmer."""
-        self._tasks: Dict[str, WarmingTask] = {}
-        self._schedules: Dict[str, WarmingSchedule] = {}
-        self._data_sources: Dict[str, DataSource] = {}
+        self._tasks: dict[str, WarmingTask] = {}
+        self._schedules: dict[str, WarmingSchedule] = {}
+        self._data_sources: dict[str, DataSource] = {}
         self._warming_queue: asyncio.Queue = asyncio.Queue()
-        self._worker_tasks: List[asyncio.Task] = []
+        self._worker_tasks: list[asyncio.Task] = []
         self._is_running = False
         self._max_workers = 5
         self._warming_interval = 300  # 5 minutes
-        self._scheduler_task: Optional[asyncio.Task] = None
+        self._scheduler_task: asyncio.Task | None = None
         
         # Statistics
         self._stats = {
@@ -283,7 +284,7 @@ class CacheWarmer:
         self._data_sources[name] = data_source
         _logger.debug("data_source_registered", name=name)
         
-    async def warm_cache(self, task_names: Optional[List[str]] = None) -> Dict[str, Any]:
+    async def warm_cache(self, task_names: list[str] | None = None) -> dict[str, Any]:
         """Warm cache for specified tasks.
         
         Args:
@@ -350,7 +351,7 @@ class CacheWarmer:
         
         return results
         
-    async def _warm_task(self, task: WarmingTask) -> Dict[str, Any]:
+    async def _warm_task(self, task: WarmingTask) -> dict[str, Any]:
         """Warm a single task.
         
         Args:
@@ -555,7 +556,7 @@ class CacheWarmer:
                 # Get next task from queue (with timeout)
                 try:
                     task = await asyncio.wait_for(self._warming_queue.get(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                     
                 await self._warm_task(task)
@@ -569,7 +570,7 @@ class CacheWarmer:
                 
         _logger.debug("warming_worker_stopped", worker=worker_name)
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get warming statistics.
         
         Returns:
@@ -611,7 +612,7 @@ class CacheWarmer:
 
 
 # Global cache warmer instance
-_cache_warmer: Optional[CacheWarmer] = None
+_cache_warmer: CacheWarmer | None = None
 
 
 def get_cache_warmer() -> CacheWarmer:

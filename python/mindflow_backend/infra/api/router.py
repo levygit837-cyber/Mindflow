@@ -9,18 +9,16 @@ from __future__ import annotations
 import asyncio
 import re
 import time
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable, Union, Tuple
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from enum import Enum
-import json
-import uuid
-import weakref
+from typing import Any
 
+from mindflow_backend.infra.api.gateway import RequestInfo, ServiceConfig
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.tracing.tracer import get_tracer, SpanKind
-from mindflow_backend.infra.api.gateway import RequestInfo, ResponseInfo, ServiceConfig
+from mindflow_backend.infra.tracing.tracer import get_tracer
 
 _logger = get_logger(__name__)
 
@@ -88,16 +86,14 @@ class RouteMatch:
             # Simple glob matching
             pattern_regex = pattern.replace('*', '.*').replace('?', '.')
             match = bool(re.search(f'^{pattern_regex}$', value_str))
-        elif self.type == RouteMatchType.HEADER:
-            match = value_str == pattern
-        elif self.type == RouteMatchType.QUERY:
+        elif self.type == RouteMatchType.HEADER or self.type == RouteMatchType.QUERY:
             match = value_str == pattern
         elif self.type == RouteMatchType.METHOD:
             match = value_str == pattern.upper()
             
         return match != self.invert
         
-    def _get_value(self, request_info: RequestInfo) -> Optional[str]:
+    def _get_value(self, request_info: RequestInfo) -> str | None:
         """Get value to match against.
         
         Args:
@@ -106,13 +102,7 @@ class RouteMatch:
         Returns:
             Value to match
         """
-        if self.type == RouteMatchType.EXACT:
-            return request_info.path
-        elif self.type == RouteMatchType.PREFIX:
-            return request_info.path
-        elif self.type == RouteMatchType.REGEX:
-            return request_info.path
-        elif self.type == RouteMatchType.GLOB:
+        if self.type == RouteMatchType.EXACT or self.type == RouteMatchType.PREFIX or self.type == RouteMatchType.REGEX or self.type == RouteMatchType.GLOB:
             return request_info.path
         elif self.type == RouteMatchType.HEADER:
             # Extract from headers
@@ -130,16 +120,16 @@ class RouteMatch:
 class RouteRule:
     """Routing rule definition."""
     name: str
-    matches: List[RouteMatch]
+    matches: list[RouteMatch]
     target_service: str
-    target_endpoint: Optional[str] = None
+    target_endpoint: str | None = None
     strategy: RoutingStrategy = RoutingStrategy.ROUND_ROBIN
     weight: float = 1.0
     priority: int = 1
     enabled: bool = True
     timeout_ms: int = 30000
     retry_attempts: int = 3
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     match_count: int = 0
     success_count: int = 0
@@ -189,7 +179,7 @@ class RouteRule:
             return 0.0
         return self.success_count / self.match_count
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -225,7 +215,7 @@ class RoutingStrategy(ABC):
     """Abstract routing strategy."""
     
     @abstractmethod
-    async def select_endpoint(self, endpoints: List[str], rule: RouteRule, request_info: RequestInfo) -> str:
+    async def select_endpoint(self, endpoints: list[str], rule: RouteRule, request_info: RequestInfo) -> str:
         """Select endpoint for request.
         
         Args:
@@ -257,7 +247,7 @@ class RoundRobinStrategy(RoutingStrategy):
         """Initialize round-robin strategy."""
         self._current_index = 0
         
-    async def select_endpoint(self, endpoints: List[str], rule: RouteRule, request_info: RequestInfo) -> str:
+    async def select_endpoint(self, endpoints: list[str], rule: RouteRule, request_info: RequestInfo) -> str:
         """Select next endpoint in round-robin fashion."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -277,8 +267,8 @@ class WeightedRoundRobinStrategy(RoutingStrategy):
     
     def __init__(self):
         """Initialize weighted round-robin strategy."""
-        self._weights: Dict[str, float] = {}
-        self._current_weights: Dict[str, float] = {}
+        self._weights: dict[str, float] = {}
+        self._current_weights: dict[str, float] = {}
         
     def set_weight(self, endpoint: str, weight: float) -> None:
         """Set endpoint weight.
@@ -290,7 +280,7 @@ class WeightedRoundRobinStrategy(RoutingStrategy):
         self._weights[endpoint] = weight
         self._current_weights[endpoint] = weight
         
-    async def select_endpoint(self, endpoints: List[str], rule: RouteRule, request_info: RequestInfo) -> str:
+    async def select_endpoint(self, endpoints: list[str], rule: RouteRule, request_info: RequestInfo) -> str:
         """Select endpoint based on weights."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -331,9 +321,9 @@ class LeastConnectionsStrategy(RoutingStrategy):
     
     def __init__(self):
         """Initialize least connections strategy."""
-        self._connections: Dict[str, int] = {}
+        self._connections: dict[str, int] = {}
         
-    async def select_endpoint(self, endpoints: List[str], rule: RouteRule, request_info: RequestInfo) -> str:
+    async def select_endpoint(self, endpoints: list[str], rule: RouteRule, request_info: RequestInfo) -> str:
         """Select endpoint with least connections."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -362,10 +352,10 @@ class LeastResponseTimeStrategy(RoutingStrategy):
     
     def __init__(self):
         """Initialize least response time strategy."""
-        self._response_times: Dict[str, List[float]] = {}
+        self._response_times: dict[str, list[float]] = {}
         self._max_samples = 100
         
-    async def select_endpoint(self, endpoints: List[str], rule: RouteRule, request_info: RequestInfo) -> str:
+    async def select_endpoint(self, endpoints: list[str], rule: RouteRule, request_info: RequestInfo) -> str:
         """Select endpoint with least average response time."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -407,7 +397,7 @@ class HashBasedStrategy(RoutingStrategy):
     def __init__(self):
         """Initialize hash-based strategy."""
         
-    async def select_endpoint(self, endpoints: List[str], rule: RouteRule, request_info: RequestInfo) -> str:
+    async def select_endpoint(self, endpoints: list[str], rule: RouteRule, request_info: RequestInfo) -> str:
         """Select endpoint based on hash of request attributes."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -438,10 +428,10 @@ class RequestRouter:
     
     def __init__(self):
         """Initialize request router."""
-        self._rules: List[RouteRule] = []
-        self._strategies: Dict[RoutingStrategy, RoutingStrategy] = {}
-        self._services: Dict[str, ServiceConfig] = {}
-        self._endpoint_health: Dict[str, bool] = {}
+        self._rules: list[RouteRule] = []
+        self._strategies: dict[RoutingStrategy, RoutingStrategy] = {}
+        self._services: dict[str, ServiceConfig] = {}
+        self._endpoint_health: dict[str, bool] = {}
         self._tracer = get_tracer()
         self._is_initialized = False
         
@@ -452,7 +442,7 @@ class RequestRouter:
         self._rule_cache_ttl = 300  # 5 minutes
         
         # Background tasks
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
         self._is_health_checking = False
         
         # Statistics
@@ -589,7 +579,7 @@ class RequestRouter:
             
         _logger.debug("service_added", name=service.name, endpoints=len(service.endpoints))
         
-    async def route_request(self, request_info: RequestInfo) -> Tuple[str, Optional[RouteRule]]:
+    async def route_request(self, request_info: RequestInfo) -> tuple[str, RouteRule | None]:
         """Route request to appropriate service.
         
         Args:
@@ -702,7 +692,7 @@ class RequestRouter:
         else:
             self._stats["failed_requests"] += 1
             
-    def get_rule_by_name(self, name: str) -> Optional[RouteRule]:
+    def get_rule_by_name(self, name: str) -> RouteRule | None:
         """Get rule by name.
         
         Args:
@@ -716,7 +706,7 @@ class RequestRouter:
                 return rule
         return None
         
-    def get_rules_for_service(self, service_name: str) -> List[RouteRule]:
+    def get_rules_for_service(self, service_name: str) -> list[RouteRule]:
         """Get all rules for a service.
         
         Args:
@@ -727,7 +717,7 @@ class RequestRouter:
         """
         return [rule for rule in self._rules if rule.target_service == service_name]
         
-    def get_endpoint_health(self) -> Dict[str, bool]:
+    def get_endpoint_health(self) -> dict[str, bool]:
         """Get endpoint health status.
         
         Returns:
@@ -735,7 +725,7 @@ class RequestRouter:
         """
         return self._endpoint_health.copy()
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get router statistics.
         
         Returns:
@@ -772,7 +762,7 @@ class RequestRouter:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform router health check.
         
         Returns:
@@ -826,7 +816,7 @@ class RequestRouter:
 
 
 # Global request router instance
-_request_router: Optional[RequestRouter] = None
+_request_router: RequestRouter | None = None
 
 
 def get_request_router() -> RequestRouter:

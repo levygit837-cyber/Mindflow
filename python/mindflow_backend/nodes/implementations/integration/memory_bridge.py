@@ -6,9 +6,9 @@ isolating dependencies and maintaining separation of concerns.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -63,8 +63,8 @@ class MemoryBridge(StatefulNode, BaseNode):
         await super().initialize()
         
         # Import memory dependencies only when needed
-        from mindflow_backend.memory import get_memory_service
         from mindflow_backend.infra.logging import get_logger
+        from mindflow_backend.memory import get_memory_service
         
         self._logger = get_logger(__name__)
         
@@ -81,7 +81,7 @@ class MemoryBridge(StatefulNode, BaseNode):
             self._logger.error("memory_bridge_initialization_failed", error=str(e))
             raise
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute memory logic through the bridge interface."""
         if not self._memory_service:
             raise RuntimeError("Memory bridge not properly initialized")
@@ -120,7 +120,7 @@ class MemoryBridge(StatefulNode, BaseNode):
                 "error": str(e)
             }
     
-    async def _retrieve_memory(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _retrieve_memory(self, state: dict[str, Any]) -> dict[str, Any]:
         """Retrieve memory content for a session."""
         import time
         
@@ -151,7 +151,7 @@ class MemoryBridge(StatefulNode, BaseNode):
             "success": True
         }
     
-    async def _store_memory(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _store_memory(self, state: dict[str, Any]) -> dict[str, Any]:
         """Store content in memory."""
         import time
         
@@ -181,7 +181,7 @@ class MemoryBridge(StatefulNode, BaseNode):
             "success": True
         }
     
-    async def _search_memory(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _search_memory(self, state: dict[str, Any]) -> dict[str, Any]:
         """Search memory with filters."""
         import time
         
@@ -211,7 +211,7 @@ class MemoryBridge(StatefulNode, BaseNode):
             "success": True
         }
     
-    async def _delete_memory(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _delete_memory(self, state: dict[str, Any]) -> dict[str, Any]:
         """Delete memory entry."""
         import time
         
@@ -238,7 +238,7 @@ class MemoryBridge(StatefulNode, BaseNode):
             "success": success
         }
     
-    async def get_memory_stats(self, session_id: str) -> Dict[str, Any]:
+    async def get_memory_stats(self, session_id: str) -> dict[str, Any]:
         """Get memory statistics for a session."""
         if not self._memory_service:
             raise RuntimeError("Memory bridge not properly initialized")
@@ -260,7 +260,7 @@ class MemoryBridge(StatefulNode, BaseNode):
                 "total_memories": 0
             }
     
-    async def clear_session_memory(self, session_id: str) -> Dict[str, Any]:
+    async def clear_session_memory(self, session_id: str) -> dict[str, Any]:
         """Clear all memory for a session."""
         if not self._memory_service:
             raise RuntimeError("Memory bridge not properly initialized")

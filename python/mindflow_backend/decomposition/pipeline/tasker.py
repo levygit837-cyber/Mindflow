@@ -17,10 +17,9 @@ from mindflow_backend.agents.prompts.specialized.tasker import (
     TASKER_VALIDATION_RULES,
 )
 from mindflow_backend.decomposition.engine import TaskDecomposer
-from mindflow_backend.utils.formatting import extract_json_from_response
-from mindflow_backend.utils.validation import validate_task_dependencies
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+
 # lazy import inside _ensure_initialized
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
@@ -29,6 +28,8 @@ from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 impor
     SubTaskContract,
     SynthesisStrategy,
 )
+from mindflow_backend.utils.formatting import extract_json_from_response
+from mindflow_backend.utils.validation import validate_task_dependencies
 
 _logger = get_logger(__name__)
 
@@ -43,7 +44,9 @@ class EnhancedTasker(TaskDecomposer):
     async def _ensure_initialized(self) -> None:
         if self._initialized:
             return
-        from mindflow_backend.orchestrator.semantic_context_manager import get_semantic_context_manager  # noqa: PLC0415
+        from mindflow_backend.orchestrator.semantic_context_manager import (
+            get_semantic_context_manager,  # noqa: PLC0415
+        )
         self.context_manager = await get_semantic_context_manager()
         self._initialized = True
 

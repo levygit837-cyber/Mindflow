@@ -4,18 +4,18 @@ Validates the integration of multilingual embeddings, semantic search,
 and context-aware orchestration components.
 """
 
-import pytest
 import asyncio
 from uuid import uuid4
 
-from mindflow_backend.services.multilingual_embeddings import MultilingualEmbeddingService
-from mindflow_backend.orchestrator.semantic_context_manager import (
-    SemanticContextManager,
-    ContextMatch,
-)
+import pytest
+
 from mindflow_backend.orchestrator.decomposition.context_aware_resolver import (
     ContextAwareResolver,
 )
+from mindflow_backend.orchestrator.semantic_context_manager import (
+    SemanticContextManager,
+)
+from mindflow_backend.services.multilingual_embeddings import MultilingualEmbeddingService
 
 
 class TestMultilingualEmbeddings:
@@ -198,11 +198,12 @@ class TestContextAwareResolver:
     @pytest.mark.asyncio
     async def test_context_resolution(self, resolver):
         """Test resolution with context awareness."""
-        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
-            SubTaskContract,
-            ComponentOwner,
-        )
         from uuid import UUID
+
+        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+            ComponentOwner,
+            SubTaskContract,
+        )
         
         session_id = str(uuid4())
         

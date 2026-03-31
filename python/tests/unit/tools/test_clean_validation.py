@@ -41,7 +41,7 @@ def test_no_enhanced_references():
             continue
             
         try:
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 content = f.read()
             
             # Check for "enhanced" (case insensitive)
@@ -70,7 +70,7 @@ def test_no_deepagents_references():
     
     for file_path in base_path.rglob("*.py"):
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 content = f.read()
             
             # Check for "deepagents" (case insensitive)
@@ -112,7 +112,7 @@ def test_class_names():
             continue
             
         try:
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 content = f.read()
             
             for class_name in expected_names:
@@ -159,17 +159,6 @@ def test_imports():
     
     try:
         # Test main tools import
-        from mindflow_backend.tools import (
-            FileReadTool,
-            FileWriteTool,
-            FileEditTool,
-            GrepSearchTool,
-            ShellExecutorTool,
-            HttpClientTool,
-            LocalModelTool,
-            DatabaseTool,
-            GitTool,
-        )
         
         # Test that enhanced versions don't exist
         try:

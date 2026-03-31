@@ -6,9 +6,9 @@ Provides cache levels, policies, and entry dataclasses.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class CacheLevel(Enum):
@@ -42,9 +42,9 @@ class CacheEntry:
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_accessed: datetime = field(default_factory=lambda: datetime.now(UTC))
     access_count: int = 0
-    ttl: Optional[int] = None
+    ttl: int | None = None
     size_bytes: int = 0
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
 
     @property
     def is_expired(self) -> bool:

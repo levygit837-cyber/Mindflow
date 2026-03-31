@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import typer
 import httpx
+import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
-from mindflow_cli.client import MindFlowCliClient
 from mindflow_cli.commands.chat import build_client
 from mindflow_cli.render.theme import MINDFLOW_THEME
 
@@ -132,27 +131,27 @@ def register_chains_commands(app: typer.Typer) -> None:
                 # Capabilities
                 capabilities = chain.get("capabilities", [])
                 if capabilities:
-                    console.print(f"[bold]Capabilities:[/]")
+                    console.print("[bold]Capabilities:[/]")
                     for cap in capabilities:
                         console.print(f"  • {cap}")
                 
                 # Required agents
                 agents = chain.get("required_agents", [])
                 if agents:
-                    console.print(f"[bold]Required Agents:[/]")
+                    console.print("[bold]Required Agents:[/]")
                     for agent in agents:
                         console.print(f"  • {agent}")
                 
                 # Configuration
                 config = chain.get("default_config", {})
                 if config:
-                    console.print(f"[bold]Default Configuration:[/]")
+                    console.print("[bold]Default Configuration:[/]")
                     for key, value in config.items():
                         console.print(f"  {key}: {value}")
                 
                 # Statistics
                 if stats:
-                    console.print(f"[bold]Execution Statistics:[/]")
+                    console.print("[bold]Execution Statistics:[/]")
                     console.print(f"  Total Executions: {stats.get('total_executions', 0)}")
                     console.print(f"  Successful: {stats.get('successful_executions', 0)}")
                     console.print(f"  Failed: {stats.get('failed_executions', 0)}")
@@ -187,7 +186,7 @@ def register_chains_commands(app: typer.Typer) -> None:
             execution_context = {}
             if context_file:
                 import json
-                with open(context_file, 'r') as f:
+                with open(context_file) as f:
                     execution_context = json.load(f)
             
             # Prepare request payload
@@ -206,31 +205,30 @@ def register_chains_commands(app: typer.Typer) -> None:
             console.print(f"[bold]Message:[/] {message}")
             
             # Execute chain via streaming
-            with httpx.Client(timeout=None) as http_client:
-                with httpx.stream(
-                    "POST",
-                    f"{client.base_url}/v1/chains/{chain_id}/execute",
-                    json=payload,
-                    headers={"Accept": "text/event-stream"}
-                ) as response:
-                    response.raise_for_status()
-                    
-                    for line in response.iter_lines():
-                        if line:
-                            try:
-                                import json
-                                event = json.loads(line)
+            with httpx.Client(timeout=None) as http_client, httpx.stream(
+                "POST",
+                f"{client.base_url}/v1/chains/{chain_id}/execute",
+                json=payload,
+                headers={"Accept": "text/event-stream"}
+            ) as response:
+                response.raise_for_status()
+                
+                for line in response.iter_lines():
+                    if line:
+                        try:
+                            import json
+                            event = json.loads(line)
+                            
+                            if event.get("type") == "response":
+                                console.print(event.get("data", ""), end="")
+                            elif event.get("type") == "error":
+                                console.print(f"\n[red]Error: {event.get('data')}[/]")
+                            elif event.get("type") == "done":
+                                console.print("\n[bold green]✅ Chain execution completed[/]")
+                                break
                                 
-                                if event.get("type") == "response":
-                                    console.print(event.get("data", ""), end="")
-                                elif event.get("type") == "error":
-                                    console.print(f"\n[red]Error: {event.get('data')}[/]")
-                                elif event.get("type") == "done":
-                                    console.print(f"\n[bold green]✅ Chain execution completed[/]")
-                                    break
-                                    
-                            except json.JSONDecodeError:
-                                continue
+                        except json.JSONDecodeError:
+                            continue
                                 
         except Exception as e:
             console.print(f"[red]Failed to execute chain: {e}[/]")

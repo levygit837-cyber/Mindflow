@@ -14,7 +14,6 @@ from mindflow_backend.schemas.session.contracts import (
     ContextWindowInfo,
     RetrievedContext,
     SessionReview,
-    SessionRetriever,
     SubSessionReview,
     SummarizationReview,
 )

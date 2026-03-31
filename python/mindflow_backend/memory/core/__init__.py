@@ -1,8 +1,8 @@
 """Core memory services and interfaces."""
 
+from .interfaces import MemoryServiceInterface
 from .service import MemoryService
 from .types import MemoryRetrievalResult
-from .interfaces import MemoryServiceInterface
 
 __all__ = [
     "MemoryService",

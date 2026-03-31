@@ -7,27 +7,40 @@ protocol handling, and connection lifecycle management.
 
 import asyncio
 import logging
-from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Union
 import uuid
+from collections.abc import Awaitable, Callable
+from enum import Enum
 
+from mindflow_backend.interfaces.mcp.transport import (
+    HTTPTransport,
+    MCPTransport,
+    StdioTransport,
+    WebSocketTransport,
+)
 from mindflow_backend.schemas.mcp.base import (
-    MCPMessage, MCPRequest, MCPResponse, MCPError, MCPErrorCode,
-    MCPInitializeParams, MCPInitializeResult, MCPClientInfo, MCPCapability,
-    MCPVersion
-)
-from mindflow_backend.schemas.mcp.transport import (
-    MCPTransportConfig, StdioConfig, HTTPConfig, WebSocketConfig, TransportType
-)
-from mindflow_backend.schemas.mcp.tools import (
-    MCPToolDefinition, MCPToolCall, MCPToolResult, MCPToolExecutionRequest
+    MCPCapability,
+    MCPClientInfo,
+    MCPInitializeParams,
+    MCPInitializeResult,
+    MCPMessage,
+    MCPRequest,
+    MCPResponse,
+    MCPVersion,
 )
 from mindflow_backend.schemas.mcp.resources import (
-    MCPResourceDefinition, MCPResourceRequest, MCPResourceResult
+    MCPResourceDefinition,
+    MCPResourceResult,
 )
-from mindflow_backend.interfaces.mcp.transport import (
-    MCPTransport, StdioTransport, HTTPTransport, WebSocketTransport,
-    TransportError, ConnectionError
+from mindflow_backend.schemas.mcp.tools import (
+    MCPToolCall,
+    MCPToolDefinition,
+    MCPToolResult,
+)
+from mindflow_backend.schemas.mcp.transport import (
+    HTTPConfig,
+    MCPTransportConfig,
+    StdioConfig,
+    WebSocketConfig,
 )
 
 
@@ -52,8 +65,8 @@ class MCPClientConfig:
     def __init__(
         self,
         transport_config: MCPTransportConfig,
-        client_info: Optional[MCPClientInfo] = None,
-        capabilities: Optional[List[MCPCapability]] = None,
+        client_info: MCPClientInfo | None = None,
+        capabilities: list[MCPCapability] | None = None,
         auto_reconnect: bool = True,
         reconnect_delay: float = 1.0,
         max_reconnect_attempts: int = 5,
@@ -103,23 +116,23 @@ class MCPClient:
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
         
         # Transport management
-        self.transport: Optional[MCPTransport] = None
-        self._reconnect_task: Optional[asyncio.Task] = None
+        self.transport: MCPTransport | None = None
+        self._reconnect_task: asyncio.Task | None = None
         
         # Protocol state
-        self._initialize_result: Optional[MCPInitializeResult] = None
-        self._server_capabilities: List[MCPCapability] = []
-        self._available_tools: List[MCPToolDefinition] = []
-        self._available_resources: List[MCPResourceDefinition] = []
+        self._initialize_result: MCPInitializeResult | None = None
+        self._server_capabilities: list[MCPCapability] = []
+        self._available_tools: list[MCPToolDefinition] = []
+        self._available_resources: list[MCPResourceDefinition] = []
         
         # Request handling
-        self._pending_requests: Dict[str, asyncio.Future] = {}
+        self._pending_requests: dict[str, asyncio.Future] = {}
         self._request_counter = 0
         
         # Event handlers
-        self._on_connected: Optional[Callable[[], Awaitable[None]]] = None
-        self._on_disconnected: Optional[Callable[[], Awaitable[None]]] = None
-        self._on_error: Optional[Callable[[Exception], Awaitable[None]]] = None
+        self._on_connected: Callable[[], Awaitable[None]] | None = None
+        self._on_disconnected: Callable[[], Awaitable[None]] | None = None
+        self._on_error: Callable[[Exception], Awaitable[None]] | None = None
     
     @property
     def is_connected(self) -> bool:
@@ -132,25 +145,25 @@ class MCPClient:
         return self.state == MCPClientState.INITIALIZED
     
     @property
-    def server_info(self) -> Optional[MCPInitializeResult]:
+    def server_info(self) -> MCPInitializeResult | None:
         """Get server information from initialization."""
         return self._initialize_result
     
     @property
-    def available_tools(self) -> List[MCPToolDefinition]:
+    def available_tools(self) -> list[MCPToolDefinition]:
         """Get list of available tools from server."""
         return self._available_tools.copy()
     
     @property
-    def available_resources(self) -> List[MCPResourceDefinition]:
+    def available_resources(self) -> list[MCPResourceDefinition]:
         """Get list of available resources from server."""
         return self._available_resources.copy()
     
     def set_event_handlers(
         self,
-        on_connected: Optional[Callable[[], Awaitable[None]]] = None,
-        on_disconnected: Optional[Callable[[], Awaitable[None]]] = None,
-        on_error: Optional[Callable[[Exception], Awaitable[None]]] = None,
+        on_connected: Callable[[], Awaitable[None]] | None = None,
+        on_disconnected: Callable[[], Awaitable[None]] | None = None,
+        on_error: Callable[[Exception], Awaitable[None]] | None = None,
     ) -> None:
         """
         Set event handlers for client events.
@@ -226,7 +239,7 @@ class MCPClient:
         if self._on_disconnected:
             await self._on_disconnected()
     
-    async def list_tools(self) -> List[MCPToolDefinition]:
+    async def list_tools(self) -> list[MCPToolDefinition]:
         """
         Get list of available tools from server.
         
@@ -292,7 +305,7 @@ class MCPClient:
         result_data = response.result
         return MCPToolResult.success_result(result_data.get("result"))
     
-    async def list_resources(self) -> List[MCPResourceDefinition]:
+    async def list_resources(self) -> list[MCPResourceDefinition]:
         """
         Get list of available resources from server.
         
@@ -394,7 +407,7 @@ class MCPClient:
         self.state = MCPClientState.INITIALIZED
         self.logger.info("MCP protocol initialized")
     
-    async def _send_request(self, request: MCPRequest, timeout: Optional[float] = None) -> MCPResponse:
+    async def _send_request(self, request: MCPRequest, timeout: float | None = None) -> MCPResponse:
         """
         Send a request and wait for response.
         

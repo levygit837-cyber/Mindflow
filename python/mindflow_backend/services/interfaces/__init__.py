@@ -10,36 +10,31 @@ from __future__ import annotations
 from mindflow_backend.services.interfaces.base_interfaces import (
     BaseServiceInterface,
 )
-
-from mindflow_backend.services.interfaces.core_interfaces import (
-    AgentServiceInterface,
-    SessionServiceInterface,
-    MemoryServiceInterface,
-    ProviderServiceInterface,
+from mindflow_backend.services.interfaces.communication_interfaces import (
+    GrpcServiceInterface,
+    StreamingServiceInterface,
 )
-
-from mindflow_backend.services.interfaces.orchestration_interfaces import (
-    OrchestrationServiceInterface,
-    TaskServiceInterface,
-    RoutingServiceInterface,
-    TodoPlanningServiceInterface,
-)
-
 from mindflow_backend.services.interfaces.context_interfaces import (
-    RetrievalServiceInterface,
     EmbeddingServiceInterface,
+    RetrievalServiceInterface,
     VectorStoreInterface,
 )
-
+from mindflow_backend.services.interfaces.core_interfaces import (
+    AgentServiceInterface,
+    MemoryServiceInterface,
+    ProviderServiceInterface,
+    SessionServiceInterface,
+)
 from mindflow_backend.services.interfaces.monitoring_interfaces import (
     HealthServiceInterface,
     MetricsServiceInterface,
     ReviewServiceInterface,
 )
-
-from mindflow_backend.services.interfaces.communication_interfaces import (
-    GrpcServiceInterface,
-    StreamingServiceInterface,
+from mindflow_backend.services.interfaces.orchestration_interfaces import (
+    OrchestrationServiceInterface,
+    RoutingServiceInterface,
+    TaskServiceInterface,
+    TodoPlanningServiceInterface,
 )
 
 # Public exports

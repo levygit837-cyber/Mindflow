@@ -6,20 +6,17 @@ and performance tuning for database operations.
 
 from __future__ import annotations
 
-import asyncio
-import time
-import re
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union, Tuple
-from datetime import datetime, UTC, timedelta
-from enum import Enum
-import json
 import hashlib
+import re
+import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.cache.redis_client import get_redis_client
 from mindflow_backend.infra.database.connection import get_db_manager
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -51,16 +48,16 @@ class QueryPlan:
     """Query execution plan."""
     query: str
     plan_type: str
-    cost: Optional[float] = None
-    rows: Optional[int] = None
-    width: Optional[int] = None
-    execution_time_ms: Optional[float] = None
-    operations: List[Dict[str, Any]] = field(default_factory=list)
-    indexes_used: List[str] = field(default_factory=list)
-    tables_scanned: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
+    cost: float | None = None
+    rows: int | None = None
+    width: int | None = None
+    execution_time_ms: float | None = None
+    operations: list[dict[str, Any]] = field(default_factory=list)
+    indexes_used: list[str] = field(default_factory=list)
+    tables_scanned: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "query": self.query,
@@ -90,7 +87,7 @@ class QueryMetrics:
     rows_examined: int = 0
     index_usage: float = 0.0
     cache_hit_rate: float = 0.0
-    last_executed: Optional[datetime] = None
+    last_executed: datetime | None = None
     optimization_applied: bool = False
     
     def update_metrics(self, execution_time_ms: float, rows_returned: int = 0, rows_examined: int = 0) -> None:
@@ -114,7 +111,7 @@ class QueryMetrics:
         if rows_examined > 0:
             self.index_usage = max(0.0, 1.0 - (rows_examined / max(rows_returned, 1)))
             
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "query_hash": self.query_hash,
@@ -156,7 +153,7 @@ class OptimizationRule:
         """
         return bool(re.search(self.pattern, query, re.IGNORECASE | re.MULTILINE))
         
-    def apply(self, query: str) -> Tuple[str, List[str]]:
+    def apply(self, query: str) -> tuple[str, list[str]]:
         """Apply optimization rule to query.
         
         Args:
@@ -190,7 +187,7 @@ class OptimizationRule:
             
         return optimized_query, changes
         
-    def _optimize_select(self, query: str, changes: List[str]) -> Tuple[str, List[str]]:
+    def _optimize_select(self, query: str, changes: list[str]) -> tuple[str, list[str]]:
         """Optimize SELECT clause.
         
         Args:
@@ -208,7 +205,7 @@ class OptimizationRule:
             
         return query, changes
         
-    def _optimize_joins(self, query: str, changes: List[str]) -> Tuple[str, List[str]]:
+    def _optimize_joins(self, query: str, changes: list[str]) -> tuple[str, list[str]]:
         """Optimize JOIN clauses.
         
         Args:
@@ -226,7 +223,7 @@ class OptimizationRule:
             
         return query, changes
         
-    def _optimize_where(self, query: str, changes: List[str]) -> Tuple[str, List[str]]:
+    def _optimize_where(self, query: str, changes: list[str]) -> tuple[str, list[str]]:
         """Optimize WHERE clause.
         
         Args:
@@ -245,7 +242,7 @@ class OptimizationRule:
             
         return query, changes
         
-    def _optimize_order_by(self, query: str, changes: List[str]) -> Tuple[str, List[str]]:
+    def _optimize_order_by(self, query: str, changes: list[str]) -> tuple[str, list[str]]:
         """Optimize ORDER BY clause.
         
         Args:
@@ -269,8 +266,8 @@ class QueryAnalyzer:
     
     def __init__(self):
         """Initialize query analyzer."""
-        self._rules: List[OptimizationRule] = []
-        self._query_metrics: Dict[str, QueryMetrics] = {}
+        self._rules: list[OptimizationRule] = []
+        self._query_metrics: dict[str, QueryMetrics] = {}
         self._redis_client = None
         self._db_manager = None
         self._is_initialized = False
@@ -394,7 +391,7 @@ class QueryAnalyzer:
         else:
             return QueryType.SELECT  # Default
             
-    async def analyze_query(self, query: str) -> Dict[str, Any]:
+    async def analyze_query(self, query: str) -> dict[str, Any]:
         """Analyze query and provide recommendations.
         
         Args:
@@ -480,7 +477,7 @@ class QueryAnalyzer:
             _logger.error("query_analysis_failed", error=str(e))
             raise
             
-    async def _analyze_query_plan(self, query: str) -> Optional[QueryPlan]:
+    async def _analyze_query_plan(self, query: str) -> QueryPlan | None:
         """Analyze query execution plan.
         
         Args:
@@ -521,9 +518,9 @@ class QueryAnalyzer:
         self,
         query: str,
         metrics: QueryMetrics,
-        plan: Optional[QueryPlan],
-        optimizations: List[Dict[str, Any]]
-    ) -> List[str]:
+        plan: QueryPlan | None,
+        optimizations: list[dict[str, Any]]
+    ) -> list[str]:
         """Generate optimization recommendations.
         
         Args:
@@ -565,7 +562,7 @@ class QueryAnalyzer:
                 
         return recommendations
         
-    async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute_query(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute query with monitoring and optimization.
         
         Args:
@@ -664,7 +661,7 @@ class QueryAnalyzer:
                 return True
         return False
         
-    def get_slow_queries(self, threshold_ms: float = 1000.0, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_slow_queries(self, threshold_ms: float = 1000.0, limit: int = 10) -> list[dict[str, Any]]:
         """Get slow queries above threshold.
         
         Args:
@@ -692,7 +689,7 @@ class QueryAnalyzer:
         
         return slow_queries[:limit]
         
-    def get_query_metrics(self, query_hash: str) -> Optional[QueryMetrics]:
+    def get_query_metrics(self, query_hash: str) -> QueryMetrics | None:
         """Get metrics for specific query.
         
         Args:
@@ -703,7 +700,7 @@ class QueryAnalyzer:
         """
         return self._query_metrics.get(query_hash)
         
-    def get_all_metrics(self) -> Dict[str, QueryMetrics]:
+    def get_all_metrics(self) -> dict[str, QueryMetrics]:
         """Get all query metrics.
         
         Returns:
@@ -711,7 +708,7 @@ class QueryAnalyzer:
         """
         return self._query_metrics.copy()
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get analyzer statistics.
         
         Returns:
@@ -733,7 +730,7 @@ class QueryAnalyzer:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform analyzer health check.
         
         Returns:
@@ -781,7 +778,7 @@ class QueryAnalyzer:
 
 
 # Global query optimizer instance
-_query_optimizer: Optional[QueryAnalyzer] = None
+_query_optimizer: QueryAnalyzer | None = None
 
 
 def get_query_optimizer() -> QueryAnalyzer:

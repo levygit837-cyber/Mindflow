@@ -6,7 +6,7 @@ and data sanitization failures.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.business import ValidationError
+from mindflow_backend.exceptions.base.business_new import ValidationError
 
 
 class SanitizationError(ValidationError):

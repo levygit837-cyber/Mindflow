@@ -8,8 +8,8 @@ from __future__ import annotations
 
 # AI tools
 from .model_tools import (
-    LocalModelTool,
     EmbeddingTool,
+    LocalModelTool,
 )
 
 __all__ = [

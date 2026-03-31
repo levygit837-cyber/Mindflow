@@ -8,35 +8,36 @@ implemented to address the gaps identified in the error handling system.
 from __future__ import annotations
 
 import asyncio
-import sys
-from typing import Any
 
 # Add the project root to the path
 import pathlib
+import sys
+from typing import Any
+
 project_root = str(pathlib.Path(__file__).parent.parent.parent)
 sys.path.insert(0, project_root)
 
 from fastapi import FastAPI
-import grpc
 
-from mindflow_backend.utils.error_setup import (
-    setup_fastapi_error_handling,
-    setup_grpc_error_handling,
-    setup_comprehensive_error_handling,
-    create_error_handling_config,
+import grpc
+from mindflow_backend.exceptions import (
+    MindFlowError,
+    NetworkError,
+    ResourceError,
+    TimeoutError,
+    ValidationError,
 )
 from mindflow_backend.utils.error_handling import (
+    CircuitBreaker,
+    ErrorContext,
     handle_errors,
     retry_on_error,
-    ErrorContext,
-    CircuitBreaker,
 )
-from mindflow_backend.exceptions import (
-    ValidationError,
-    NetworkError,
-    TimeoutError,
-    ResourceError,
-    MindFlowError,
+from mindflow_backend.utils.error_setup import (
+    create_error_handling_config,
+    setup_comprehensive_error_handling,
+    setup_fastapi_error_handling,
+    setup_grpc_error_handling,
 )
 
 

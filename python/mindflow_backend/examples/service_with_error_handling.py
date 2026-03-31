@@ -10,20 +10,19 @@ import asyncio
 from typing import Any
 
 from mindflow_backend.exceptions import (
-    MindFlowError,
-    ValidationError,
     AuthenticationError,
     NetworkError,
-    TimeoutError,
     ResourceError,
-)
-from mindflow_backend.utils.error_handling import (
-    handle_errors,
-    retry_on_error,
-    ErrorContext,
-    CircuitBreaker,
+    TimeoutError,
+    ValidationError,
 )
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.utils.error_handling import (
+    CircuitBreaker,
+    ErrorContext,
+    handle_errors,
+    retry_on_error,
+)
 
 _logger = get_logger(__name__)
 
@@ -85,8 +84,9 @@ class ExampleService:
     )
     def fetch_external_api_data(self, endpoint: str, timeout: float = 10.0) -> dict[str, Any]:
         """Fetch data from external API with retry logic and error handling."""
-        import requests
         import random
+
+        import requests
         
         # Simulate network failures for demonstration
         if random.random() < 0.3:  # 30% failure rate
@@ -237,7 +237,7 @@ class ExampleService:
         
         try:
             return await slow_operation()
-        except TimeoutError as e:
+        except TimeoutError:
             _logger.error(
                 "async_operation_timeout",
                 operation="slow_operation",
@@ -280,6 +280,7 @@ class ExampleService:
 def create_fastapi_app_with_service() -> Any:
     """Create FastAPI app with integrated service and error handling."""
     from fastapi import FastAPI
+
     from mindflow_backend.utils.error_setup import setup_fastapi_error_handling
     
     app = FastAPI(title="MindFlow Example API")
@@ -324,7 +325,6 @@ def create_fastapi_app_with_service() -> Any:
 def create_grpc_server_with_service() -> Any:
     """Create gRPC server with integrated service and error handling."""
     import grpc
-    
     from mindflow_backend.utils.error_setup import setup_grpc_error_handling
     
     server = grpc.server(None)

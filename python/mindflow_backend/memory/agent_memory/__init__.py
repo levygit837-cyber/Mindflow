@@ -14,8 +14,8 @@ Core Services:
 - FactExtractor: Extração de fatos do contexto
 """
 
-from .service import AgentMemoryService
 from .checkpointer import langgraph_checkpointer
+from .service import AgentMemoryService
 from .windows import RollingWindow
 
 __all__ = [

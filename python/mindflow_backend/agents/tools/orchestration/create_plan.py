@@ -13,7 +13,6 @@ from __future__ import annotations
 from typing import Any, ClassVar
 
 from langchain_core.tools import BaseTool
-from pydantic import Field
 
 from mindflow_backend.infra.logging import get_logger
 

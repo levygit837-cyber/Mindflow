@@ -5,7 +5,6 @@ from __future__ import annotations
 import inspect
 import math
 from dataclasses import dataclass, field
-from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,7 +15,11 @@ from mindflow_backend.memory.shared.embeddings.factory import (
     IEmbeddingProvider,
     get_embedding_provider,
 )
-from mindflow_backend.memory.storage.models import AgentMemoryEmbedding, SessionBlock, SessionEmbedding
+from mindflow_backend.memory.storage.models import (
+    AgentMemoryEmbedding,
+    SessionBlock,
+    SessionEmbedding,
+)
 
 _logger = get_logger(__name__)
 

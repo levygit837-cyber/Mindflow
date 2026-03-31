@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _COMPLEX_PATTERNS = [
     r"\b(analise|analisa|compare|comparar|arquitetura|refactor|refatorar|implement|implemente)\b",
     r"\b(microservice|microservi[çc]o|sistema|plataforma|infraestrutura)\b",

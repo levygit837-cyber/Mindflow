@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Dict, List, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .pool import GrpcConnectionPool, PoolStatistics
 from mindflow_backend.infra.logging import get_logger
+
+from .pool import GrpcConnectionPool, PoolStatistics
 
 _logger = get_logger(__name__)
 
@@ -32,9 +32,9 @@ class HealthCheckResult:
     pool_id: str
     status: HealthStatus
     timestamp: float
-    issues: List[str] = field(default_factory=list)
-    metrics: Dict[str, float] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
+    issues: list[str] = field(default_factory=list)
+    metrics: dict[str, float] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -81,11 +81,11 @@ class PoolHealthChecker:
     
     def __init__(self, check_interval: float = 60.0):
         self.check_interval = check_interval
-        self._pools: Dict[str, GrpcConnectionPool] = {}
-        self._health_history: Dict[str, List[HealthCheckResult]] = {}
+        self._pools: dict[str, GrpcConnectionPool] = {}
+        self._health_history: dict[str, list[HealthCheckResult]] = {}
         self._lock = asyncio.Lock()
         self._running = False
-        self._check_task: Optional[asyncio.Task] = None
+        self._check_task: asyncio.Task | None = None
         
         # Health thresholds
         self.thresholds = {
@@ -156,7 +156,7 @@ class PoolHealthChecker:
         
         _logger.debug("pool_unregistered_from_health_check", pool_id=pool_id)
     
-    async def check_pool_health(self, pool_id: str) -> Optional[HealthCheckResult]:
+    async def check_pool_health(self, pool_id: str) -> HealthCheckResult | None:
         """Check health of a specific pool."""
         pool = self._pools.get(pool_id)
         if not pool:
@@ -210,7 +210,7 @@ class PoolHealthChecker:
                 issues=[f"Health check failed: {str(exc)}"]
             )
     
-    async def check_all_pools(self) -> Dict[str, HealthCheckResult]:
+    async def check_all_pools(self) -> dict[str, HealthCheckResult]:
         """Check health of all registered pools."""
         results = {}
         
@@ -235,13 +235,13 @@ class PoolHealthChecker:
         
         return results
     
-    async def get_pool_health_history(self, pool_id: str, limit: int = 10) -> List[HealthCheckResult]:
+    async def get_pool_health_history(self, pool_id: str, limit: int = 10) -> list[HealthCheckResult]:
         """Get health history for a pool."""
         async with self._lock:
             history = self._health_history.get(pool_id, [])
             return history[-limit:] if limit > 0 else history
     
-    async def get_health_summary(self) -> Dict[str, Any]:
+    async def get_health_summary(self) -> dict[str, Any]:
         """Get overall health summary."""
         results = await self.check_all_pools()
         
@@ -294,7 +294,7 @@ class PoolHealthChecker:
             last_health_check=stats.last_health_check
         )
     
-    def _evaluate_health(self, metrics: PoolHealthMetrics) -> tuple[HealthStatus, List[str], List[str]]:
+    def _evaluate_health(self, metrics: PoolHealthMetrics) -> tuple[HealthStatus, list[str], list[str]]:
         """Evaluate health based on metrics."""
         issues = []
         recommendations = []
@@ -362,6 +362,6 @@ class PoolHealthChecker:
             else:
                 _logger.warning("unknown_health_threshold", threshold=key)
     
-    def get_thresholds(self) -> Dict[str, float]:
+    def get_thresholds(self) -> dict[str, float]:
         """Get current health check thresholds."""
         return self.thresholds.copy()

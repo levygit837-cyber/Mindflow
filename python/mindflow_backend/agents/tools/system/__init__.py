@@ -6,28 +6,28 @@ process management, and environment access.
 
 from __future__ import annotations
 
+# Original system tools
+from ..sandbox import MindFlowSandbox  # Import from parent directory
+from .process_manager import ProcessManagerTool
+from .resource_monitor import (
+    ResourceMonitorTool,
+)
+
 # System tools (unified from backend)
 from .shell_executor import (
     ShellExecutorTool,
 )
-from .resource_monitor import (
-    ResourceMonitorTool,
+from .shell_tabs import (
+    ShellTabCloseTool,
+    ShellTabExecTool,
+    ShellTabListTool,
+    ShellTabOpenTool,
+    ShellTabReadTool,
+    ShellTabStatusTool,
 )
 from .system_info import (
     SystemInfoTool,
 )
-from .shell_tabs import (
-    ShellTabOpenTool,
-    ShellTabListTool,
-    ShellTabStatusTool,
-    ShellTabExecTool,
-    ShellTabReadTool,
-    ShellTabCloseTool,
-)
-
-# Original system tools
-from ..sandbox import MindFlowSandbox  # Import from parent directory
-from .process_manager import ProcessManagerTool
 
 __all__ = [
     # System tools (unified)

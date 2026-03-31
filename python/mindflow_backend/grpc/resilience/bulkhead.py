@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import time
-import threading
-from typing import Dict, Any, Optional, List, Callable, Union
+from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import deque
-import queue
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -112,7 +111,7 @@ class BulkheadTimeoutError(Exception):
 class GrpcBulkhead:
     """Bulkhead pattern implementation for gRPC services."""
     
-    def __init__(self, config: Optional[BulkheadConfig] = None):
+    def __init__(self, config: BulkheadConfig | None = None):
         self.config = config or BulkheadConfig()
         self.metrics = BulkheadMetrics()
         self.state = BulkheadState.ACTIVE
@@ -128,7 +127,7 @@ class GrpcBulkhead:
         self._queue_lock = asyncio.Lock()
         
         # Background tasks
-        self._background_tasks: List[asyncio.Task] = []
+        self._background_tasks: list[asyncio.Task] = []
         self._running = False
         
         _logger.info(
@@ -141,7 +140,7 @@ class GrpcBulkhead:
     async def execute(self, 
                    func: Callable,
                    *args,
-                   timeout: Optional[float] = None,
+                   timeout: float | None = None,
                    **kwargs) -> Any:
         """Execute function with bulkhead protection."""
         if self.state == BulkheadState.CLOSED:
@@ -200,7 +199,7 @@ class GrpcBulkhead:
             
             return result
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.metrics.timeout_requests += 1
             timeout_type = "queue" if self.config.timeout_policy == "reject" else "execution"
             raise BulkheadTimeoutError(timeout_type, execution_timeout)
@@ -252,7 +251,7 @@ class GrpcBulkhead:
                     self._current_concurrent -= 1
                     self.metrics.current_concurrent = self._current_concurrent
     
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """Get current bulkhead status."""
         async with self._concurrent_lock:
             current_concurrent = self._current_concurrent
@@ -270,7 +269,7 @@ class GrpcBulkhead:
             'queue_utilization_percent': (queue_size / self.config.max_queue_size) * 100
         }
     
-    async def get_metrics(self) -> Dict[str, Any]:
+    async def get_metrics(self) -> dict[str, Any]:
         """Get bulkhead metrics."""
         async with self._concurrent_lock:
             current_concurrent = self._current_concurrent
@@ -372,7 +371,7 @@ class GrpcBulkhead:
         self.metrics = BulkheadMetrics()
         _logger.info("grpc_bulkhead_metrics_reset")
     
-    def _percentile(self, data: List[float], percentile: float) -> float:
+    def _percentile(self, data: list[float], percentile: float) -> float:
         """Calculate percentile of data."""
         if not data:
             return 0.0

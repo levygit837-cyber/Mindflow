@@ -6,9 +6,9 @@ isolating dependencies and maintaining separation of concerns.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -23,7 +23,7 @@ class ToolBridge(StatefulNode, BaseNode):
     def __init__(
         self,
         node_id: str = "tool_bridge",
-        allowed_tools: Optional[List[str]] = None,
+        allowed_tools: list[str] | None = None,
         tool_timeout: float = 30.0
     ) -> None:
         super().__init__(
@@ -73,7 +73,7 @@ class ToolBridge(StatefulNode, BaseNode):
             self._logger.error("tool_bridge_initialization_failed", error=str(e))
             raise
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute tool logic through the bridge interface."""
         if not self._tools_registry:
             raise RuntimeError("Tool bridge not properly initialized")
@@ -109,7 +109,7 @@ class ToolBridge(StatefulNode, BaseNode):
                 "error": None
             }
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             error_msg = f"Tool execution timed out after {self.tool_timeout}s"
             self._logger.error("tool_bridge_timeout", tool=tool_name, timeout=self.tool_timeout)
             
@@ -130,7 +130,7 @@ class ToolBridge(StatefulNode, BaseNode):
                 "error": str(e)
             }
     
-    async def _execute_tool_safely(self, tool_instance: Any, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_tool_safely(self, tool_instance: Any, tool_args: dict[str, Any]) -> dict[str, Any]:
         """Execute tool with error handling and timing."""
         import time
         
@@ -167,7 +167,7 @@ class ToolBridge(StatefulNode, BaseNode):
                 "error": str(e)
             }
     
-    def get_available_tools(self) -> Dict[str, Dict[str, Any]]:
+    def get_available_tools(self) -> dict[str, dict[str, Any]]:
         """Get list of available tools with their metadata."""
         if not self._available_tools:
             return {}
@@ -194,7 +194,7 @@ class ToolBridge(StatefulNode, BaseNode):
         
         return tools_info
     
-    def validate_tool_args(self, tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_tool_args(self, tool_name: str, tool_args: dict[str, Any]) -> dict[str, Any]:
         """Validate tool arguments without executing."""
         if tool_name not in self._available_tools:
             return {
@@ -231,7 +231,7 @@ class ToolBridge(StatefulNode, BaseNode):
         
         await super().cleanup()
     
-    def update_allowed_tools(self, allowed_tools: List[str]) -> None:
+    def update_allowed_tools(self, allowed_tools: list[str]) -> None:
         """Dynamically update the list of allowed tools."""
         self.allowed_tools = allowed_tools
         

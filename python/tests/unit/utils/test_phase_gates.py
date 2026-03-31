@@ -15,9 +15,11 @@ class TestPhase0DocumentationConvergence:
     def test_schemas_importable(self) -> None:
         """All schema modules should import without error."""
         try:
-            from mindflow_backend.schemas import orchestrator  # noqa: F401
-            from mindflow_backend.schemas import decomposition  # noqa: F401
-            from mindflow_backend.schemas import agent  # noqa: F401
+            from mindflow_backend.schemas import (
+                agent,  # noqa: F401
+                decomposition,  # noqa: F401
+                orchestrator,  # noqa: F401
+            )
         except ImportError as exc:
             pytest.skip(f"Phase 0 schemas not yet available: {exc}")
 
@@ -85,4 +87,6 @@ class TestPhase4DTv2:
         settings = get_settings()
         if not settings.enable_dt_v2:
             pytest.skip("ENABLE_DT_V2 is False")
-        from mindflow_backend.orchestrator.decomposition.scoring import compute_component_score  # noqa: F401
+        from mindflow_backend.orchestrator.decomposition.scoring import (
+            compute_component_score,  # noqa: F401
+        )

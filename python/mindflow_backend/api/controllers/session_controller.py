@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from typing import Any
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, audit_log
-from mindflow_backend.api.schemas.requests import SessionCreateRequest, SessionUpdateRequest
-from mindflow_backend.api.schemas.responses import SessionResponse, SessionListResponse
-from mindflow_backend.api.schemas.common import PaginationParams
+from mindflow_backend.api.controllers.base_controller import BaseController, audit_log, require_auth
+from mindflow_backend.schemas.api.common import PaginationParams
+from mindflow_backend.schemas.api.requests import SessionCreateRequest, SessionUpdateRequest
+from mindflow_backend.schemas.api.responses import SessionListResponse, SessionResponse
 from mindflow_backend.services import get_session_service
 from mindflow_backend.storage import db_session
 

@@ -7,12 +7,13 @@ ensuring system continues to operate with reduced functionality.
 from __future__ import annotations
 
 import asyncio
-import time
 import threading
-from typing import Dict, Any, Optional, List, Callable, Union
-from dataclasses import dataclass, field
-from enum import Enum
+import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -56,9 +57,9 @@ class FallbackResult:
     
     success: bool
     fallback_used: bool
-    fallback_type: Optional[FallbackType]
+    fallback_type: FallbackType | None
     response: Any
-    error_message: Optional[str]
+    error_message: str | None
     execution_time_ms: float
     attempt_count: int
     
@@ -76,12 +77,12 @@ class FallbackResult:
 class FallbackContext:
     """Context for fallback execution."""
     
-    def __init__(self, operation_name: str, metadata: Optional[Dict[str, Any]] = None):
+    def __init__(self, operation_name: str, metadata: dict[str, Any] | None = None):
         self.operation_name = operation_name
         self.metadata = metadata or {}
         self.start_time = time.time()
         self.attempt_count = 0
-        self.fallback_chain: List[FallbackType] = []
+        self.fallback_chain: list[FallbackType] = []
 
 
 class FallbackStrategy(ABC):
@@ -130,7 +131,7 @@ class FallbackStrategy(ABC):
             else:
                 self.metrics['fallback_failure'] += 1
     
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get strategy metrics."""
         total = self.metrics['total_executions']
         if total == 0:
@@ -149,7 +150,7 @@ class FallbackStrategy(ABC):
 class LocalCacheFallback(FallbackStrategy):
     """Fallback using local cache."""
     
-    def __init__(self, config: FallbackConfig, cache: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: FallbackConfig, cache: dict[str, Any] | None = None):
         super().__init__(config)
         self._cache = cache or {}
         self._cache_timestamps = {}
@@ -158,7 +159,7 @@ class LocalCacheFallback(FallbackStrategy):
     async def execute_fallback(self, 
                            context: FallbackContext,
                            error: Exception,
-                           cache_key: Optional[str] = None,
+                           cache_key: str | None = None,
                            **kwargs) -> Any:
         """Execute fallback using local cache."""
         if not cache_key:
@@ -183,7 +184,7 @@ class LocalCacheFallback(FallbackStrategy):
     def get_fallback_type(self) -> FallbackType:
         return FallbackType.LOCAL_CACHE
     
-    def store_in_cache(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
+    def store_in_cache(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
         """Store value in cache."""
         with self._cache_lock:
             # Check size limit
@@ -204,7 +205,7 @@ class LocalCacheFallback(FallbackStrategy):
 class DefaultResponseFallback(FallbackStrategy):
     """Fallback using default responses."""
     
-    def __init__(self, config: FallbackConfig, default_responses: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: FallbackConfig, default_responses: dict[str, Any] | None = None):
         super().__init__(config)
         self._default_responses = default_responses or {}
     
@@ -235,7 +236,7 @@ class DefaultResponseFallback(FallbackStrategy):
 class AlternativeServiceFallback(FallbackStrategy):
     """Fallback using alternative service endpoint."""
     
-    def __init__(self, config: FallbackConfig, alternative_endpoints: Optional[Dict[str, str]] = None):
+    def __init__(self, config: FallbackConfig, alternative_endpoints: dict[str, str] | None = None):
         super().__init__(config)
         self._alternative_endpoints = alternative_endpoints or {}
     
@@ -268,7 +269,7 @@ class AlternativeServiceFallback(FallbackStrategy):
 class ReducedFunctionalityFallback(FallbackStrategy):
     """Fallback with reduced functionality."""
     
-    def __init__(self, config: FallbackConfig, reduced_handlers: Optional[Dict[str, Callable]] = None):
+    def __init__(self, config: FallbackConfig, reduced_handlers: dict[str, Callable] | None = None):
         super().__init__(config)
         self._reduced_handlers = reduced_handlers or {}
     
@@ -326,9 +327,9 @@ class CircuitBreakerFallback(FallbackStrategy):
 class FallbackManager:
     """Manages multiple fallback strategies and execution."""
     
-    def __init__(self, config: Optional[FallbackConfig] = None):
+    def __init__(self, config: FallbackConfig | None = None):
         self.config = config or FallbackConfig()
-        self._strategies: List[FallbackStrategy] = []
+        self._strategies: list[FallbackStrategy] = []
         self._metrics = {
             'total_operations': 0,
             'primary_success': 0,
@@ -355,8 +356,8 @@ class FallbackManager:
     async def execute_with_fallback(self,
                                 primary_func: Callable,
                                 operation_name: str,
-                                metadata: Optional[Dict[str, Any]] = None,
-                                fallback_types: Optional[List[FallbackType]] = None,
+                                metadata: dict[str, Any] | None = None,
+                                fallback_types: list[FallbackType] | None = None,
                                 **kwargs) -> FallbackResult:
         """Execute primary function with fallback support."""
         if not self.config.enabled:
@@ -472,7 +473,7 @@ class FallbackManager:
                 attempt_count=context.attempt_count
             )
     
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get fallback manager metrics."""
         with self._metrics_lock:
             total = self._metrics['total_operations']

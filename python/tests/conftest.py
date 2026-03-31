@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock
+
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient

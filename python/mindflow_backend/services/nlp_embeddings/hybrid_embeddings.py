@@ -6,15 +6,16 @@ for optimal performance and accuracy.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union, Tuple
 import asyncio
+from typing import Any
+
 import numpy as np
 
 from mindflow_backend.infra.logging import get_logger
+
 from .nlp_embedding_service import (
     EmbeddingConfig,
     EmbeddingMethod,
-    BaseEmbeddingGenerator,
     NLPEmbeddingService,
 )
 
@@ -27,9 +28,9 @@ class HybridEmbeddingService:
     def __init__(
         self,
         primary_method: EmbeddingMethod = EmbeddingMethod.TFIDF,
-        secondary_method: Optional[EmbeddingMethod] = None,
-        weights: Optional[List[float]] = None,
-        fallback_method: Optional[EmbeddingMethod] = None,
+        secondary_method: EmbeddingMethod | None = None,
+        weights: list[float] | None = None,
+        fallback_method: EmbeddingMethod | None = None,
         **config_kwargs: Any,
     ) -> None:
         """Initialize hybrid embedding service.
@@ -63,9 +64,9 @@ class HybridEmbeddingService:
         )
         
         # Initialize services
-        self.primary_service: Optional[NLPEmbeddingService] = None
-        self.secondary_service: Optional[NLPEmbeddingService] = None
-        self.fallback_service: Optional[NLPEmbeddingService] = None
+        self.primary_service: NLPEmbeddingService | None = None
+        self.secondary_service: NLPEmbeddingService | None = None
+        self.fallback_service: NLPEmbeddingService | None = None
         
         self.is_fitted = False
     
@@ -89,7 +90,7 @@ class HybridEmbeddingService:
             _logger.error(f"Failed to initialize services: {e}")
             raise
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit all embedding services.
         
         Args:
@@ -121,9 +122,9 @@ class HybridEmbeddingService:
     
     async def generate_embeddings(
         self,
-        texts: Union[str, List[str]],
+        texts: str | list[str],
         use_hybrid: bool = True,
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """Generate embeddings using hybrid approach.
         
         Args:
@@ -144,7 +145,7 @@ class HybridEmbeddingService:
         else:
             return await self._generate_primary_embeddings(texts)
     
-    async def _generate_primary_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def _generate_primary_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings using primary service.
         
         Args:
@@ -159,7 +160,7 @@ class HybridEmbeddingService:
             _logger.warning(f"Primary service failed: {e}, using fallback")
             return await self.fallback_service.generate_embeddings(texts)
     
-    async def _generate_hybrid_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def _generate_hybrid_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate hybrid embeddings combining multiple methods.
         
         Args:
@@ -187,9 +188,9 @@ class HybridEmbeddingService:
     
     def _combine_embeddings(
         self,
-        primary_embeddings: List[List[float]],
-        secondary_embeddings: List[List[float]],
-    ) -> List[List[float]]:
+        primary_embeddings: list[list[float]],
+        secondary_embeddings: list[list[float]],
+    ) -> list[list[float]]:
         """Combine embeddings from multiple methods.
         
         Args:
@@ -226,10 +227,10 @@ class HybridEmbeddingService:
     async def similarity_search(
         self,
         query: str,
-        candidates: List[str],
+        candidates: list[str],
         top_k: int = 5,
         use_hybrid: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for most similar texts using hybrid approach.
         
         Args:
@@ -269,9 +270,9 @@ class HybridEmbeddingService:
     
     async def _calculate_similarities(
         self,
-        query: List[float],
-        candidates: List[List[float]],
-    ) -> List[float]:
+        query: list[float],
+        candidates: list[list[float]],
+    ) -> list[float]:
         """Calculate cosine similarities.
         
         Args:
@@ -313,7 +314,7 @@ class HybridEmbeddingService:
         else:
             return self.primary_service.get_dimension()
     
-    async def get_service_info(self) -> Dict[str, Any]:
+    async def get_service_info(self) -> dict[str, Any]:
         """Get comprehensive service information.
         
         Returns:
@@ -342,9 +343,9 @@ class HybridEmbeddingService:
     
     async def benchmark_methods(
         self,
-        test_texts: List[str],
+        test_texts: list[str],
         query_text: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Benchmark different embedding methods.
         
         Args:
@@ -416,8 +417,8 @@ class HybridEmbeddingService:
 
 def create_hybrid_service(
     primary_method: EmbeddingMethod = EmbeddingMethod.TFIDF,
-    secondary_method: Optional[EmbeddingMethod] = EmbeddingMethod.SENTENCE_TRANSFORMER,
-    weights: Optional[List[float]] = None,
+    secondary_method: EmbeddingMethod | None = EmbeddingMethod.SENTENCE_TRANSFORMER,
+    weights: list[float] | None = None,
     **kwargs: Any,
 ) -> HybridEmbeddingService:
     """Create hybrid embedding service.

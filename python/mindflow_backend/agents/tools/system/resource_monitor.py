@@ -5,10 +5,10 @@ disk, and network usage with alerting capabilities.
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.system_schemas import RESOURCE_MONITOR_SCHEMA
 
 _logger = get_logger(__name__)
@@ -48,7 +48,7 @@ class ResourceMonitorTool(AsyncToolInterface):
         }
         self._alerts = []
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute resource monitoring operation.
         Args:
@@ -83,7 +83,7 @@ class ResourceMonitorTool(AsyncToolInterface):
                 error=f"Resource monitoring error: {str(e)}"
             )
 
-    async def _start_monitoring(self, **kwargs) -> Dict[str, Any]:
+    async def _start_monitoring(self, **kwargs) -> dict[str, Any]:
         """
         Start resource monitoring.
         Args:
@@ -125,7 +125,7 @@ class ResourceMonitorTool(AsyncToolInterface):
             }
         )
 
-    async def _stop_monitoring(self) -> Dict[str, Any]:
+    async def _stop_monitoring(self) -> dict[str, Any]:
         """
         Stop resource monitoring.
         Returns:
@@ -155,7 +155,7 @@ class ResourceMonitorTool(AsyncToolInterface):
             }
         )
 
-    async def _get_current_resources(self, **kwargs) -> Dict[str, Any]:
+    async def _get_current_resources(self, **kwargs) -> dict[str, Any]:
         """
         Get current resource usage.
         Args:
@@ -247,7 +247,7 @@ class ResourceMonitorTool(AsyncToolInterface):
                 error="psutil library not available. Install with: pip install psutil"
             )
 
-    async def _get_history(self, **kwargs) -> Dict[str, Any]:
+    async def _get_history(self, **kwargs) -> dict[str, Any]:
         """
         Get historical resource data.
         Args:
@@ -271,7 +271,7 @@ class ResourceMonitorTool(AsyncToolInterface):
             }
         )
 
-    async def _monitor_loop(self, resources: List[str], duration: int, interval: int):
+    async def _monitor_loop(self, resources: list[str], duration: int, interval: int):
         """
         Main monitoring loop.
         Args:
@@ -345,7 +345,7 @@ class ResourceMonitorTool(AsyncToolInterface):
         self._alerts.append(alert)
         _logger.warning(f"Resource alert: {alert['message']}")
 
-    def _calculate_summary(self, history_data: Dict[str, List]) -> Dict[str, Any]:
+    def _calculate_summary(self, history_data: dict[str, list]) -> dict[str, Any]:
         """
         Calculate summary statistics from history.
         Args:
@@ -370,7 +370,7 @@ class ResourceMonitorTool(AsyncToolInterface):
         
         return summary
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

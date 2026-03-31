@@ -4,10 +4,10 @@ import typer
 from rich.console import Console
 
 from mindflow_cli.client import MindFlowCliClient
+from mindflow_cli.commands.settings import get_settings
 from mindflow_cli.render.chat_stream import ChatStreamRenderer
 from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
 from mindflow_cli.render.theme import MINDFLOW_THEME
-from mindflow_cli.commands.settings import get_settings
 
 console = Console(theme=MINDFLOW_THEME)
 EXIT_COMMANDS = {"/exit", "/quit", "/q", "/sair"}

@@ -1,6 +1,5 @@
 """gRPC request schemas."""
 
-from typing import Literal
 from pydantic import BaseModel, Field
 
 from mindflow_backend.schemas.core.common import LLMProvider

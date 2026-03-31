@@ -6,8 +6,8 @@ real-time event streaming.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
 from collections.abc import AsyncGenerator
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable

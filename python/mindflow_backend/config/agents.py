@@ -7,9 +7,8 @@ thresholds, and system parameters.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from mindflow_backend.agents._base import ThinkingLevel, SandboxMode
+from mindflow_backend.agents._base import SandboxMode, ThinkingLevel
 
 
 @dataclass
@@ -56,7 +55,7 @@ class AgentConfig:
 
 
 # Global configuration instance
-_config: Optional[AgentConfig] = None
+_config: AgentConfig | None = None
 
 
 def get_agent_config() -> AgentConfig:

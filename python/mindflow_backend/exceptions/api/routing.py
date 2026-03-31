@@ -6,7 +6,7 @@ and request dispatching errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.business import BusinessLogicError
+from mindflow_backend.exceptions.base.business_new import BusinessLogicError
 
 
 class RoutingError(BusinessLogicError):

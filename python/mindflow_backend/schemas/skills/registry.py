@@ -1,9 +1,11 @@
 """Registry schemas for Skills system."""
 
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
 from datetime import datetime
-from .base import SkillType, SkillCategory, SkillStatus, SkillMetadata
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from .base import SkillCategory, SkillMetadata, SkillStatus, SkillType
 
 
 class SkillRegistration(BaseModel):
@@ -13,8 +15,8 @@ class SkillRegistration(BaseModel):
     category: SkillCategory = Field(..., description="Skill category")
     metadata: SkillMetadata = Field(..., description="Skill metadata")
     implementation_path: str = Field(..., description="Path to skill implementation")
-    configuration_schema: Optional[Dict[str, Any]] = Field(None, description="JSON schema for configuration")
-    dependencies: List[str] = Field(default_factory=list, description="Skill dependencies")
+    configuration_schema: dict[str, Any] | None = Field(None, description="JSON schema for configuration")
+    dependencies: list[str] = Field(default_factory=list, description="Skill dependencies")
     
     class Config:
         json_schema_extra = {
@@ -44,13 +46,13 @@ class SkillRegistration(BaseModel):
 
 class SkillDiscovery(BaseModel):
     """Skill discovery request/response."""
-    query: Optional[str] = Field(None, description="Search query for skill discovery")
-    skill_types: Optional[List[SkillType]] = Field(None, description="Filter by skill types")
-    categories: Optional[List[SkillCategory]] = Field(None, description="Filter by categories")
-    tags: Optional[List[str]] = Field(None, description="Filter by tags")
-    status: Optional[SkillStatus] = Field(default=SkillStatus.ACTIVE, description="Filter by status")
-    limit: Optional[int] = Field(default=50, description="Maximum results to return")
-    offset: Optional[int] = Field(default=0, description="Results offset for pagination")
+    query: str | None = Field(None, description="Search query for skill discovery")
+    skill_types: list[SkillType] | None = Field(None, description="Filter by skill types")
+    categories: list[SkillCategory] | None = Field(None, description="Filter by categories")
+    tags: list[str] | None = Field(None, description="Filter by tags")
+    status: SkillStatus | None = Field(default=SkillStatus.ACTIVE, description="Filter by status")
+    limit: int | None = Field(default=50, description="Maximum results to return")
+    offset: int | None = Field(default=0, description="Results offset for pagination")
     
     class Config:
         json_schema_extra = {
@@ -99,10 +101,10 @@ class SkillRegistryEntry(BaseModel):
 
 class SkillQuery(BaseModel):
     """Query for skill selection."""
-    requirements: Dict[str, Any] = Field(..., description="Skill requirements")
-    context: Optional[Dict[str, Any]] = Field(None, description="Execution context")
-    preferences: Optional[Dict[str, Any]] = Field(None, description="User preferences")
-    constraints: Optional[Dict[str, Any]] = Field(None, description="Execution constraints")
+    requirements: dict[str, Any] = Field(..., description="Skill requirements")
+    context: dict[str, Any] | None = Field(None, description="Execution context")
+    preferences: dict[str, Any] | None = Field(None, description="User preferences")
+    constraints: dict[str, Any] | None = Field(None, description="Execution constraints")
     
     class Config:
         json_schema_extra = {
@@ -130,13 +132,13 @@ class SkillQuery(BaseModel):
 
 class SkillFilter(BaseModel):
     """Filter for skill searches."""
-    skill_types: Optional[List[SkillType]] = Field(None, description="Filter by skill types")
-    categories: Optional[List[SkillCategory]] = Field(None, description="Filter by categories")
-    status: Optional[List[SkillStatus]] = Field(None, description="Filter by status")
-    tags: Optional[List[str]] = Field(None, description="Filter by tags")
-    authors: Optional[List[str]] = Field(None, description="Filter by authors")
-    date_range: Optional[Dict[str, datetime]] = Field(None, description="Filter by date range")
-    performance_threshold: Optional[float] = Field(None, description="Minimum success rate")
+    skill_types: list[SkillType] | None = Field(None, description="Filter by skill types")
+    categories: list[SkillCategory] | None = Field(None, description="Filter by categories")
+    status: list[SkillStatus] | None = Field(None, description="Filter by status")
+    tags: list[str] | None = Field(None, description="Filter by tags")
+    authors: list[str] | None = Field(None, description="Filter by authors")
+    date_range: dict[str, datetime] | None = Field(None, description="Filter by date range")
+    performance_threshold: float | None = Field(None, description="Minimum success rate")
     
     class Config:
         json_encoders = {
@@ -158,7 +160,7 @@ class SkillRecommendation(BaseModel):
     skill: SkillRegistryEntry = Field(..., description="Recommended skill")
     confidence: float = Field(..., description="Confidence score (0.0 to 1.0)")
     reasoning: str = Field(..., description="Reasoning for recommendation")
-    alternatives: List[SkillRegistryEntry] = Field(default_factory=list, description="Alternative skills")
+    alternatives: list[SkillRegistryEntry] = Field(default_factory=list, description="Alternative skills")
     
     class Config:
         json_schema_extra = {

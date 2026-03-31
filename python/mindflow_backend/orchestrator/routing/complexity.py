@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
-from mindflow_backend.runtime.providers import get_model_for_provider
-from mindflow_backend.runtime.chunk_extract import extract_chunk_parts
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.runtime.chunk_extract import extract_chunk_parts
+from mindflow_backend.runtime.providers import get_model_for_provider
 
 _logger = get_logger(__name__)
 

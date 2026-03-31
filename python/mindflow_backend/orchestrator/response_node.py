@@ -6,16 +6,16 @@ interactions in the memory service.
 
 from __future__ import annotations
 
-from typing import Any, Dict
-import asyncio
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
+
 from .memory_integration import store_orchestrator_interaction
 
 _logger = get_logger(__name__)
 
 
-async def response_node(state: Dict[str, Any]) -> Dict[str, Any]:
+async def response_node(state: dict[str, Any]) -> dict[str, Any]:
     """Format response and store interaction in memory.
     
     Args:

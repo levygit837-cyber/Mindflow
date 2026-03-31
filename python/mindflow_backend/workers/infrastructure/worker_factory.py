@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.agents.analyst_worker import AnalystWorker
@@ -25,7 +25,7 @@ class WorkerFactory:
     """Factory for creating and managing worker instances."""
     
     # Registry of available worker classes
-    _worker_registry: Dict[str, Type[BaseWorker]] = {
+    _worker_registry: dict[str, type[BaseWorker]] = {
         # Agent workers
         "coder": CoderWorker,
         "analyst": AnalystWorker,
@@ -45,8 +45,8 @@ class WorkerFactory:
     
     def __init__(self) -> None:
         """Initialize the worker factory."""
-        self._active_workers: Dict[str, BaseWorker] = {}
-        self._worker_configs: Dict[str, QueueConfig] = {}
+        self._active_workers: dict[str, BaseWorker] = {}
+        self._worker_configs: dict[str, QueueConfig] = {}
         
         # Load queue configurations
         self._load_queue_configs()
@@ -59,7 +59,7 @@ class WorkerFactory:
     def create_worker(
         self,
         worker_type: str,
-        queue_name: Optional[str] = None,
+        queue_name: str | None = None,
         **kwargs: Any,
     ) -> BaseWorker:
         """Create a worker instance.
@@ -116,7 +116,7 @@ class WorkerFactory:
         
         return default_mappings.get(worker_type, f"{worker_type}_high")
     
-    def get_worker(self, worker_type: str, queue_name: Optional[str] = None) -> Optional[BaseWorker]:
+    def get_worker(self, worker_type: str, queue_name: str | None = None) -> BaseWorker | None:
         """Get an existing worker instance.
         
         Args:
@@ -134,8 +134,8 @@ class WorkerFactory:
     
     def create_multiple_workers(
         self,
-        worker_configs: List[Dict[str, Any]],
-    ) -> List[BaseWorker]:
+        worker_configs: list[dict[str, Any]],
+    ) -> list[BaseWorker]:
         """Create multiple workers from configuration.
         
         Args:
@@ -155,11 +155,11 @@ class WorkerFactory:
         
         return workers
     
-    def get_active_workers(self) -> Dict[str, BaseWorker]:
+    def get_active_workers(self) -> dict[str, BaseWorker]:
         """Get all active worker instances."""
         return self._active_workers.copy()
     
-    def remove_worker(self, worker_type: str, queue_name: Optional[str] = None) -> bool:
+    def remove_worker(self, worker_type: str, queue_name: str | None = None) -> bool:
         """Remove a worker from active workers.
         
         Args:
@@ -181,22 +181,22 @@ class WorkerFactory:
         
         return False
     
-    def get_supported_worker_types(self) -> List[str]:
+    def get_supported_worker_types(self) -> list[str]:
         """Get list of supported worker types."""
         return list(self._worker_registry.keys())
     
-    def get_queue_config(self, queue_name: str) -> Optional[QueueConfig]:
+    def get_queue_config(self, queue_name: str) -> QueueConfig | None:
         """Get queue configuration by name."""
         return self._worker_configs.get(queue_name)
     
-    def get_all_queue_configs(self) -> Dict[str, QueueConfig]:
+    def get_all_queue_configs(self) -> dict[str, QueueConfig]:
         """Get all queue configurations."""
         return self._worker_configs.copy()
     
     def register_worker_class(
         self,
         worker_type: str,
-        worker_class: Type[BaseWorker],
+        worker_class: type[BaseWorker],
     ) -> None:
         """Register a new worker class.
         
@@ -211,8 +211,8 @@ class WorkerFactory:
         self,
         worker_type: str,
         pool_size: int,
-        queue_name: Optional[str] = None,
-    ) -> List[BaseWorker]:
+        queue_name: str | None = None,
+    ) -> list[BaseWorker]:
         """Create a pool of workers of the same type.
         
         Args:
@@ -257,7 +257,7 @@ class WorkerFactory:
             except Exception as e:
                 _logger.error(f"Failed to stop worker {worker_key}: {e}")
     
-    def get_worker_statistics(self) -> Dict[str, Any]:
+    def get_worker_statistics(self) -> dict[str, Any]:
         """Get statistics about active workers."""
         stats = {
             "total_workers": len(self._active_workers),
@@ -293,7 +293,7 @@ class WorkerFactory:
 
 
 # Global worker factory instance
-_worker_factory: Optional[WorkerFactory] = None
+_worker_factory: WorkerFactory | None = None
 
 
 def get_worker_factory() -> WorkerFactory:

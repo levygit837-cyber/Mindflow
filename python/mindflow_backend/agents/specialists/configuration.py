@@ -6,19 +6,18 @@ for different specialist types and complexities.
 
 from __future__ import annotations
 
-from typing import Dict, Any
+from typing import Any
 
-from mindflow_backend.schemas.orchestration.specialists import (
-    SpecialistType,
-    TaskComplexity,
-    SpecialistConfiguration,
-    SpecialistSelection,
-    SpecialistDecisionResult,
-)
-from mindflow_backend.agents._base import AgentType, ThinkingLevel, SandboxMode
+from mindflow_backend.agents._base import AgentType, SandboxMode, ThinkingLevel
 from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 from mindflow_backend.config.agents import get_agent_config
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.specialists import (
+    SpecialistConfiguration,
+    SpecialistSelection,
+    SpecialistType,
+    TaskComplexity,
+)
 
 _logger = get_logger(__name__)
 
@@ -172,7 +171,7 @@ class DelegationTaskBuilder:
         selection: SpecialistSelection,
         configuration: SpecialistConfiguration,
         task_description: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build delegation task configured for selected specialist."""
         return {
             "agent": configuration.agent_type,
@@ -203,7 +202,7 @@ class DelegationTaskBuilder:
         trigger: str,
         rationale: str,
         carry_over_context: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build specialist switch context."""
         return {
             "session_id": session_id,
@@ -241,7 +240,7 @@ class DelegationTaskBuilder:
     
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
         return datetime.now(UTC).isoformat()
 
 

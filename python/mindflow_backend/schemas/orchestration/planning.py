@@ -126,7 +126,7 @@ class PlanDocument(BaseModel):
         return "\n".join(lines)
 
     @classmethod
-    def from_markdown(cls, content: str, plan_id: str, session_id: str) -> "PlanDocument":
+    def from_markdown(cls, content: str, plan_id: str, session_id: str) -> PlanDocument:
         """Parse a markdown plan document. Basic parsing for recovery."""
         import re
         

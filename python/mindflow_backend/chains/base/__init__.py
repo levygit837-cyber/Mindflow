@@ -1,8 +1,8 @@
 """Base chain classes and interfaces for MindFlow."""
 
-from .chain import BaseChain, ChainType, ChainStatus
-from .step import ChainStep, StepType, StepResult
+from .chain import BaseChain, ChainStatus, ChainType
 from .executor import ChainExecutor, ExecutionContext
+from .step import ChainStep, StepResult, StepType
 from .types import ChainConfig
 
 __all__ = [

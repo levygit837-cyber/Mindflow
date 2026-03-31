@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -20,7 +20,7 @@ class VectorWorker(BaseWorker):
         """Initialize the Vector worker."""
         super().__init__(queue_config, worker_name="vector_worker")
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process vector and embedding tasks.
         
         Supported task types:
@@ -76,7 +76,7 @@ class VectorWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
     
-    async def _handle_batch_indexing(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_batch_indexing(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle batch indexing of multiple embeddings."""
         session_id = message_data.get("session_id")
         embeddings_batch = message_data.get("embeddings_batch", [])
@@ -113,7 +113,7 @@ class VectorWorker(BaseWorker):
             },
         )
     
-    async def _handle_incremental_indexing(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_incremental_indexing(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle incremental vector updates."""
         session_id = message_data.get("session_id")
         new_embeddings = message_data.get("new_embeddings", [])
@@ -142,7 +142,7 @@ class VectorWorker(BaseWorker):
             },
         )
     
-    async def _handle_reindexing(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_reindexing(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle full reindexing of vector store."""
         vector_store = message_data.get("vector_store", "default")
         reindex_reason = message_data.get("reindex_reason", "maintenance")
@@ -178,7 +178,7 @@ class VectorWorker(BaseWorker):
             },
         )
     
-    async def _handle_embedding_generation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_embedding_generation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle embedding generation for content."""
         content_items = message_data.get("content_items", [])
         embedding_model = message_data.get("embedding_model", "default")
@@ -218,7 +218,7 @@ class VectorWorker(BaseWorker):
             },
         )
     
-    async def _handle_vector_search(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_vector_search(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle vector similarity search operations."""
         query_vector = message_data.get("query_vector")
         search_params = message_data.get("search_params", {})
@@ -259,7 +259,7 @@ class VectorWorker(BaseWorker):
             },
         )
     
-    async def _handle_index_optimization(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_index_optimization(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle vector index optimization tasks."""
         vector_store = message_data.get("vector_store", "default")
         optimization_type = message_data.get("optimization_type", "compact")

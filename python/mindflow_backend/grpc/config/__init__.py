@@ -1,6 +1,6 @@
 """gRPC configuration package."""
 
-from .config import GrpcConfig, GrpcClientConfig
+from .config import GrpcClientConfig, GrpcConfig
 
 # Dynamic configuration imports
 try:

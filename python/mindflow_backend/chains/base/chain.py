@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mindflow_backend.chains.base.step import ChainStep, StepResult, StepStatus, StepMetrics
+from mindflow_backend.chains.base.step import ChainStep, StepMetrics, StepResult, StepStatus
 
 
 class ChainType(StrEnum):
@@ -37,7 +37,7 @@ class ChainConfig(BaseModel):
     """Configuration for chain execution."""
     
     chain_type: ChainType = ChainType.SEQUENTIAL
-    max_execution_time: Optional[float] = Field(default=300.0, gt=0.0)
+    max_execution_time: float | None = Field(default=300.0, gt=0.0)
     enable_streaming: bool = False
     enable_parallel_execution: bool = False
     retry_failed_steps: bool = True
@@ -45,8 +45,8 @@ class ChainConfig(BaseModel):
     continue_on_step_failure: bool = False
     
     # Resource limits
-    max_total_tokens: Optional[int] = Field(default=None, gt=0)
-    max_memory_usage: Optional[str] = None  # e.g., "1GB"
+    max_total_tokens: int | None = Field(default=None, gt=0)
+    max_memory_usage: str | None = None  # e.g., "1GB"
     
     # Monitoring and debugging
     enable_metrics: bool = True
@@ -54,7 +54,7 @@ class ChainConfig(BaseModel):
     save_intermediate_results: bool = False
     
     # Custom parameters
-    custom_parameters: Dict[str, Any] = Field(default_factory=dict)
+    custom_parameters: dict[str, Any] = Field(default_factory=dict)
     
     class Config:
         use_enum_values = True
@@ -78,12 +78,12 @@ class ChainMetrics(BaseModel):
     
     # Resource metrics
     total_tokens_used: int = 0
-    peak_memory_usage: Optional[float] = None
+    peak_memory_usage: float | None = None
     
     # Execution details
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
-    step_results: List[StepResult] = Field(default_factory=list)
+    started_at: float | None = None
+    completed_at: float | None = None
+    step_results: list[StepResult] = Field(default_factory=list)
     
     class Config:
         use_enum_values = True
@@ -95,14 +95,14 @@ class BaseChain(ABC):
     def __init__(
         self,
         chain_id: str,
-        config: Optional[ChainConfig] = None,
+        config: ChainConfig | None = None,
         description: str = ""
     ) -> None:
         self.chain_id = chain_id
         self.config = config or ChainConfig()
         self.description = description
-        self.steps: List[ChainStep] = []
-        self.step_metrics: Dict[str, StepMetrics] = {}
+        self.steps: list[ChainStep] = []
+        self.step_metrics: dict[str, StepMetrics] = {}
         self.status = ChainStatus.PENDING
         self._is_initialized = False
     
@@ -113,12 +113,12 @@ class BaseChain(ABC):
         ...
     
     @abstractmethod
-    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, context: dict[str, Any]) -> dict[str, Any]:
         """Execute the chain with the given context."""
         ...
     
     @abstractmethod
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate the chain structure and configuration."""
         ...
     
@@ -140,18 +140,18 @@ class BaseChain(ABC):
                 return True
         return False
     
-    def get_step(self, step_id: str) -> Optional[ChainStep]:
+    def get_step(self, step_id: str) -> ChainStep | None:
         """Get a step by ID."""
         for step in self.steps:
             if step.step_id == step_id:
                 return step
         return None
     
-    def get_steps(self) -> List[ChainStep]:
+    def get_steps(self) -> list[ChainStep]:
         """Get all steps in the chain."""
         return list(self.steps)
     
-    def get_step_order(self) -> List[str]:
+    def get_step_order(self) -> list[str]:
         """Get the execution order of steps."""
         # Default implementation returns steps in added order
         return [step.step_id for step in self.steps]
@@ -168,7 +168,7 @@ class BaseChain(ABC):
         """Override this method for custom initialization logic."""
         pass
     
-    def get_chain_info(self) -> Dict[str, Any]:
+    def get_chain_info(self) -> dict[str, Any]:
         """Get information about the chain."""
         return {
             "chain_id": self.chain_id,
@@ -204,7 +204,7 @@ class BaseChain(ABC):
         for step_id in self.step_metrics:
             self.step_metrics[step_id] = StepMetrics(step_id=step_id)
     
-    def validate_dependencies(self) -> List[str]:
+    def validate_dependencies(self) -> list[str]:
         """Validate step dependencies."""
         issues = []
         step_ids = {step.step_id for step in self.steps}
@@ -241,7 +241,7 @@ class BaseChain(ABC):
         
         return issues
     
-    def validate_structure(self) -> List[str]:
+    def validate_structure(self) -> list[str]:
         """Validate the basic structure of the chain."""
         issues = []
         
@@ -275,7 +275,7 @@ class SequentialChain(BaseChain):
     def chain_type(self) -> ChainType:
         return ChainType.SEQUENTIAL
     
-    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, context: dict[str, Any]) -> dict[str, Any]:
         """Execute steps sequentially."""
         import time
         
@@ -336,14 +336,14 @@ class SequentialChain(BaseChain):
         
         return context
     
-    def _check_dependencies(self, step: ChainStep, context: Dict[str, Any]) -> bool:
+    def _check_dependencies(self, step: ChainStep, context: dict[str, Any]) -> bool:
         """Check if step dependencies are satisfied."""
         for dependency in step.depends_on:
             if dependency not in context:
                 return False
         return True
     
-    async def _execute_step(self, step: ChainStep, context: Dict[str, Any]) -> StepResult:
+    async def _execute_step(self, step: ChainStep, context: dict[str, Any]) -> StepResult:
         """Execute a single step (placeholder implementation)."""
         import time
         
@@ -378,7 +378,7 @@ class SequentialChain(BaseChain):
                 completed_at=time.time(),
             )
     
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate sequential chain."""
         issues = self.validate_structure()
         

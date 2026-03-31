@@ -2,17 +2,19 @@
 """Integration test for backend corrections with Vertex AI thinking/text support."""
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 # Import response parser from proper module
-from mindflow_backend.runtime.utils.response_parser import extract_ai_message_content, normalize_response_for_json
-
 # Import providers from proper module
 from mindflow_backend.runtime.providers import providers
+from mindflow_backend.runtime.utils.response_parser import (
+    extract_ai_message_content,
+    normalize_response_for_json,
+)
 
 
 class MockAIMessage:
@@ -52,7 +54,7 @@ async def test_intelligent_router_simulation():
             return True
         except json.JSONDecodeError as e:
             print(f"⚠ JSON parsing failed: {e}")
-            print(f"   This might be expected if the model didn't return pure JSON")
+            print("   This might be expected if the model didn't return pure JSON")
             return False
             
     except Exception as e:
@@ -142,7 +144,7 @@ async def main():
     test2_result = await test_orchestrator_simulation()
     test3_result = await test_backward_compatibility()
     
-    print(f"\n=== Test Results ===")
+    print("\n=== Test Results ===")
     print(f"IntelligentRouter Integration: {'PASSED' if test1_result else 'FAILED'}")
     print(f"Orchestrator Integration: {'PASSED' if test2_result else 'FAILED'}")
     print(f"Backward Compatibility: {'PASSED' if test3_result else 'FAILED'}")

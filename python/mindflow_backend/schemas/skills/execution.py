@@ -1,9 +1,11 @@
 """Execution schemas for Skills system."""
 
-from enum import Enum
-from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, validator
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field, validator
+
 from .base import SkillInput, SkillOutput
 
 
@@ -21,12 +23,12 @@ class ExecutionContext(BaseModel):
     """Context for skill execution."""
     execution_id: str = Field(..., description="Unique execution identifier")
     skill_name: str = Field(..., description="Name of skill to execute")
-    agent_id: Optional[str] = Field(None, description="Agent requesting execution")
-    session_id: Optional[str] = Field(None, description="Session identifier")
+    agent_id: str | None = Field(None, description="Agent requesting execution")
+    session_id: str | None = Field(None, description="Session identifier")
     input_data: SkillInput = Field(..., description="Input data for execution")
-    environment: Dict[str, Any] = Field(default_factory=dict, description="Execution environment variables")
-    permissions: List[str] = Field(default_factory=list, description="Required permissions")
-    constraints: Dict[str, Any] = Field(default_factory=dict, description="Execution constraints")
+    environment: dict[str, Any] = Field(default_factory=dict, description="Execution environment variables")
+    permissions: list[str] = Field(default_factory=list, description="Required permissions")
+    constraints: dict[str, Any] = Field(default_factory=dict, description="Execution constraints")
     
     class Config:
         json_schema_extra = {
@@ -49,12 +51,12 @@ class ExecutionContext(BaseModel):
 class ExecutionMetrics(BaseModel):
     """Metrics for skill execution."""
     start_time: datetime = Field(..., description="Execution start time")
-    end_time: Optional[datetime] = Field(None, description="Execution end time")
-    duration_ms: Optional[int] = Field(None, description="Duration in milliseconds")
-    cpu_usage_percent: Optional[float] = Field(None, description="CPU usage percentage")
-    memory_usage_mb: Optional[float] = Field(None, description="Memory usage in MB")
-    disk_io_mb: Optional[float] = Field(None, description="Disk I/O in MB")
-    network_io_mb: Optional[float] = Field(None, description="Network I/O in MB")
+    end_time: datetime | None = Field(None, description="Execution end time")
+    duration_ms: int | None = Field(None, description="Duration in milliseconds")
+    cpu_usage_percent: float | None = Field(None, description="CPU usage percentage")
+    memory_usage_mb: float | None = Field(None, description="Memory usage in MB")
+    disk_io_mb: float | None = Field(None, description="Disk I/O in MB")
+    network_io_mb: float | None = Field(None, description="Network I/O in MB")
     
     @validator('duration_ms')
     def calculate_duration(cls, v, values):
@@ -89,11 +91,11 @@ class PerformanceMetrics(BaseModel):
     failed_executions: int = Field(default=0, description="Number of failed executions")
     success_rate: float = Field(default=0.0, description="Success rate (0.0 to 1.0)")
     average_duration_ms: float = Field(default=0.0, description="Average duration in milliseconds")
-    min_duration_ms: Optional[float] = Field(None, description="Minimum duration")
-    max_duration_ms: Optional[float] = Field(None, description="Maximum duration")
-    p50_duration_ms: Optional[float] = Field(None, description="50th percentile duration")
-    p95_duration_ms: Optional[float] = Field(None, description="95th percentile duration")
-    p99_duration_ms: Optional[float] = Field(None, description="99th percentile duration")
+    min_duration_ms: float | None = Field(None, description="Minimum duration")
+    max_duration_ms: float | None = Field(None, description="Maximum duration")
+    p50_duration_ms: float | None = Field(None, description="50th percentile duration")
+    p95_duration_ms: float | None = Field(None, description="95th percentile duration")
+    p99_duration_ms: float | None = Field(None, description="99th percentile duration")
     
     @validator('success_rate')
     def calculate_success_rate(cls, v, values):
@@ -125,11 +127,11 @@ class ExecutionResult(BaseModel):
     """Result of skill execution."""
     execution_id: str = Field(..., description="Execution identifier")
     status: ExecutionStatus = Field(..., description="Execution status")
-    output: Optional[SkillOutput] = Field(None, description="Execution output")
-    error: Optional[str] = Field(None, description="Error message if failed")
+    output: SkillOutput | None = Field(None, description="Execution output")
+    error: str | None = Field(None, description="Error message if failed")
     metrics: ExecutionMetrics = Field(..., description="Execution metrics")
-    logs: List[str] = Field(default_factory=list, description="Execution logs")
-    artifacts: Dict[str, Any] = Field(default_factory=dict, description="Generated artifacts")
+    logs: list[str] = Field(default_factory=list, description="Execution logs")
+    artifacts: dict[str, Any] = Field(default_factory=dict, description="Generated artifacts")
     
     class Config:
         json_encoders = {
@@ -170,11 +172,11 @@ class SkillExecution(BaseModel):
 class ExecutionRequest(BaseModel):
     """Request to execute a skill."""
     skill_name: str = Field(..., description="Name of skill to execute")
-    input_data: Dict[str, Any] = Field(..., description="Input data")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Execution parameters")
-    context: Optional[Dict[str, Any]] = Field(None, description="Execution context")
+    input_data: dict[str, Any] = Field(..., description="Input data")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Execution parameters")
+    context: dict[str, Any] | None = Field(None, description="Execution context")
     priority: str = Field(default="medium", description="Execution priority")
-    timeout_seconds: Optional[int] = Field(None, description="Override default timeout")
+    timeout_seconds: int | None = Field(None, description="Override default timeout")
     async_execution: bool = Field(default=False, description="Execute asynchronously")
     
     class Config:
@@ -193,7 +195,7 @@ class ExecutionRequest(BaseModel):
 
 class BatchExecutionRequest(BaseModel):
     """Request to execute multiple skills."""
-    executions: List[ExecutionRequest] = Field(..., description="List of execution requests")
+    executions: list[ExecutionRequest] = Field(..., description="List of execution requests")
     execution_mode: str = Field(default="parallel", description="Execution mode: parallel, sequential")
     fail_fast: bool = Field(default=False, description="Stop on first failure")
     max_concurrent: int = Field(default=5, description="Maximum concurrent executions")

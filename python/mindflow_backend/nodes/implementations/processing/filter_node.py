@@ -6,9 +6,10 @@ field values, conditions, and custom filter functions.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -27,9 +28,9 @@ class FilterNode(StatefulNode, BaseNode):
         self,
         node_id: str = "filter",
         filter_type: str = "field",  # field, condition, range, set, pattern
-        filter_config: Optional[Dict[str, Any]] = None,
-        filter_function: Optional[Callable[[Any], bool]] = None,
-        field_path: Optional[str] = None,
+        filter_config: dict[str, Any] | None = None,
+        filter_function: Callable[[Any], bool] | None = None,
+        field_path: str | None = None,
         include_empty: bool = False,
         case_sensitive: bool = True,
         description: str = ""
@@ -64,7 +65,7 @@ class FilterNode(StatefulNode, BaseNode):
         if self.filter_type in ["condition", "pattern"]:
             self._compile_filter_conditions()
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the filter based on configured type."""
         data = state.get("data", {})
         
@@ -130,7 +131,7 @@ class FilterNode(StatefulNode, BaseNode):
             # Single item
             return data if self._passes_field_filter(data) else None
     
-    async def _filter_list(self, data: List[Any]) -> List[Any]:
+    async def _filter_list(self, data: list[Any]) -> list[Any]:
         """Filter a list based on field criteria."""
         filtered = []
         
@@ -140,7 +141,7 @@ class FilterNode(StatefulNode, BaseNode):
         
         return filtered
     
-    async def _filter_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _filter_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Filter a dictionary based on field criteria."""
         filtered = {}
         
@@ -300,9 +301,7 @@ class FilterNode(StatefulNode, BaseNode):
     
     def _count_input_items(self, data: Any) -> int:
         """Count the number of items in input data."""
-        if isinstance(data, list):
-            return len(data)
-        elif isinstance(data, dict):
+        if isinstance(data, list) or isinstance(data, dict):
             return len(data)
         elif data is not None:
             return 1
@@ -314,7 +313,7 @@ class FilterNode(StatefulNode, BaseNode):
         # This would implement more sophisticated parsing and caching
         pass
     
-    def set_filter_config(self, filter_config: Dict[str, Any]) -> None:
+    def set_filter_config(self, filter_config: dict[str, Any]) -> None:
         """Update filter configuration."""
         self.filter_config = filter_config
         
@@ -327,7 +326,7 @@ class FilterNode(StatefulNode, BaseNode):
         self.filter_type = "custom"
         self.filter_function = filter_function
     
-    def get_filter_info(self) -> Dict[str, Any]:
+    def get_filter_info(self) -> dict[str, Any]:
         """Get information about current filter configuration."""
         return {
             "filter_type": self.filter_type,
@@ -357,7 +356,7 @@ class MultiFilterNode(FilterNode):
     def __init__(
         self,
         node_id: str = "multi_filter",
-        filters: List[Dict[str, Any]] = None,
+        filters: list[dict[str, Any]] = None,
         operator: str = "and",  # and, or, xor
         description: str = "Multiple filter application"
     ) -> None:
@@ -375,7 +374,7 @@ class MultiFilterNode(FilterNode):
     
     def _create_combined_filter(
         self,
-        filters: List[Dict[str, Any]],
+        filters: list[dict[str, Any]],
         operator: str
     ) -> Callable[[Any], bool]:
         """Create a combined filter function from multiple filters."""
@@ -411,7 +410,7 @@ class MultiFilterNode(FilterNode):
         
         return combined_filter
     
-    async def _apply_filter_by_type(self, item: Any, filter_type: str, config: Dict[str, Any]) -> bool:
+    async def _apply_filter_by_type(self, item: Any, filter_type: str, config: dict[str, Any]) -> bool:
         """Apply filter by type for combined filtering."""
         if filter_type == "field":
             temp_filter = FilterNode(filter_type="field", filter_config=config)
@@ -428,7 +427,7 @@ class MultiFilterNode(FilterNode):
         else:
             return True
     
-    def add_filter(self, filter_type: str, filter_config: Dict[str, Any]) -> None:
+    def add_filter(self, filter_type: str, filter_config: dict[str, Any]) -> None:
         """Add a new filter to the multi-filter."""
         self.filters.append({
             "type": filter_type,
@@ -449,7 +448,7 @@ class MultiFilterNode(FilterNode):
         
         return False
     
-    def get_filters_info(self) -> Dict[str, Any]:
+    def get_filters_info(self) -> dict[str, Any]:
         """Get information about all configured filters."""
         return {
             "filters": self.filters,

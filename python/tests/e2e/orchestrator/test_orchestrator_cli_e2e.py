@@ -6,14 +6,11 @@ Tests the complete flow from CLI command through orchestrator to agent execution
 
 import asyncio
 import sys
-import os
-from typing import Dict, Any
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 from mindflow_backend.orchestrator.graph import build_simple_orchestrator_flow
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 
 async def test_orchestrator_cli_integration():
@@ -92,9 +89,9 @@ async def test_simple_routing() -> bool:
             # Note: In real environment, this would make actual LLM calls
             # For testing, we're validating the structure and routing logic
             
-            print(f"    ✓ State prepared correctly")
-            print(f"    ✓ Flow created successfully")
-            print(f"    ✓ Expected routing: CODER agent")
+            print("    ✓ State prepared correctly")
+            print("    ✓ Flow created successfully")
+            print("    ✓ Expected routing: CODER agent")
             
         except Exception as e:
             print(f"    ❌ Failed: {e}")
@@ -126,9 +123,9 @@ async def test_complex_analysis() -> bool:
                 "session_id": f"complex_test_{i}",
             }
             
-            print(f"    ✓ Complex task state prepared")
-            print(f"    ✓ Expected routing: ANALYST agent")
-            print(f"    ✓ Expected higher complexity score")
+            print("    ✓ Complex task state prepared")
+            print("    ✓ Expected routing: ANALYST agent")
+            print("    ✓ Expected higher complexity score")
             
         except Exception as e:
             print(f"    ❌ Failed: {e}")
@@ -176,8 +173,8 @@ async def test_multi_agent_coordination() -> bool:
                 "session_id": f"multi_test_{i}",
             }
             
-            print(f"    ✓ Multi-agent state prepared")
-            print(f"    ✓ Expected multi-agent routing")
+            print("    ✓ Multi-agent state prepared")
+            print("    ✓ Expected multi-agent routing")
             
         except Exception as e:
             print(f"    ❌ Failed: {e}")
@@ -223,7 +220,7 @@ async def test_error_handling() -> bool:
                 "session_id": f"error_test_{i}",
             }
             
-            print(f"    ✓ Error scenario state prepared")
+            print("    ✓ Error scenario state prepared")
             print(f"    ✓ Expected: {expected}")
             
         except Exception as e:
@@ -240,8 +237,6 @@ async def test_cli_command_structure():
     
     try:
         # Test importing CLI commands
-        from mindflow_cli.commands.start import register_start_commands
-        from mindflow_cli.commands.test_orchestrator import register_test_orchestrator_commands
         from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
         
         print("✅ CLI command imports successful")
@@ -294,7 +289,6 @@ async def test_backend_integration():
         print("✅ Agent registry accessible")
         
         # Test intelligent router
-        from mindflow_backend.orchestrator.routing.intelligent_router import IntelligentRouter
         
         print("✅ Intelligent router accessible")
         

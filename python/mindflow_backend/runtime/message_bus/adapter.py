@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from mindflow_backend.communication.circuit_breaker.breaker import CircuitBreaker
 from mindflow_backend.communication.services.p2p_service import P2PService
 from mindflow_backend.communication.services.team_service import TeamService
 from mindflow_backend.communication.services.xmpp_service import XMPPService
 
-from .protocol import MindFlowMessage, MessageType
+from .protocol import MessageType, MindFlowMessage
 from .rabbitmq_bus import RabbitMQMessageBus
 from .redis_bus import RedisMessageBus
 
@@ -25,9 +25,9 @@ class MessageBusAdapter:
         self,
         redis_bus: RedisMessageBus,
         rabbitmq_bus: RabbitMQMessageBus,
-        xmpp_service: Optional[XMPPService] = None,
-        p2p_service: Optional[P2PService] = None,
-        team_service: Optional[TeamService] = None,
+        xmpp_service: XMPPService | None = None,
+        p2p_service: P2PService | None = None,
+        team_service: TeamService | None = None,
     ):
         self._redis_bus = redis_bus
         self._rabbitmq_bus = rabbitmq_bus

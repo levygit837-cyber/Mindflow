@@ -13,12 +13,11 @@ Key features:
 
 from __future__ import annotations
 
+import asyncio
+import time
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Type, Union
-import time
-import asyncio
-from functools import lru_cache
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
@@ -61,17 +60,17 @@ class ChainMetadata:
     version: str = "1.0.0"
     
     # Capabilities and characteristics
-    capabilities: List[ChainCapability] = field(default_factory=list)
+    capabilities: list[ChainCapability] = field(default_factory=list)
     complexity: ChainComplexity = ChainComplexity.MEDIUM
     
     # Resource requirements
     estimated_execution_time: float = 60.0  # seconds
     max_memory_usage: str = "512MB"
-    required_agents: List[AgentType] = field(default_factory=list)
+    required_agents: list[AgentType] = field(default_factory=list)
     
     # Configuration schema
-    config_schema: Dict[str, Any] = field(default_factory=dict)
-    default_config: Dict[str, Any] = field(default_factory=dict)
+    config_schema: dict[str, Any] = field(default_factory=dict)
+    default_config: dict[str, Any] = field(default_factory=dict)
     
     # Execution constraints
     max_parallel_instances: int = 5
@@ -79,8 +78,8 @@ class ChainMetadata:
     retry_attempts: int = 3
     
     # Dependencies
-    required_chains: List[str] = field(default_factory=list)
-    conflicts_with: List[str] = field(default_factory=list)
+    required_chains: list[str] = field(default_factory=list)
+    conflicts_with: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,11 +87,11 @@ class ChainRequest:
     """Request for chain creation."""
     
     chain_id: str
-    config: Optional[Dict[str, Any]] = None
-    execution_context: Optional[Dict[str, Any]] = None
+    config: dict[str, Any] | None = None
+    execution_context: dict[str, Any] | None = None
     priority: int = 0  # Higher = more priority
-    request_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    request_id: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -102,7 +101,7 @@ class ChainInstance:
     chain: Any
     metadata: ChainMetadata
     created_at: float
-    last_used: Optional[float] = None
+    last_used: float | None = None
     execution_count: int = 0
     total_execution_time: float = 0.0
     is_active: bool = False
@@ -118,10 +117,10 @@ class ChainRegistry:
     """Central registry for chain factories and metadata."""
     
     def __init__(self) -> None:
-        self._factories: Dict[str, Callable] = {}
-        self._metadata: Dict[str, ChainMetadata] = {}
-        self._instances: Dict[str, ChainInstance] = {}
-        self._execution_stats: Dict[str, Dict[str, Any]] = {}
+        self._factories: dict[str, Callable] = {}
+        self._metadata: dict[str, ChainMetadata] = {}
+        self._instances: dict[str, ChainInstance] = {}
+        self._execution_stats: dict[str, dict[str, Any]] = {}
         
     def register(
         self,
@@ -148,11 +147,11 @@ class ChainRegistry:
         
         _logger.info("chain_registered", chain_id=chain_id, complexity=metadata.complexity.value)
     
-    def get_metadata(self, chain_id: str) -> Optional[ChainMetadata]:
+    def get_metadata(self, chain_id: str) -> ChainMetadata | None:
         """Get metadata for a chain."""
         return self._metadata.get(chain_id)
     
-    def list_chains(self, capability: Optional[ChainCapability] = None) -> List[ChainMetadata]:
+    def list_chains(self, capability: ChainCapability | None = None) -> list[ChainMetadata]:
         """List all registered chains, optionally filtered by capability."""
         
         chains = list(self._metadata.values())
@@ -165,9 +164,9 @@ class ChainRegistry:
     def find_chains_for_task(
         self,
         task_type: str,
-        complexity: Optional[ChainComplexity] = None,
-        required_capabilities: Optional[List[ChainCapability]] = None,
-    ) -> List[ChainMetadata]:
+        complexity: ChainComplexity | None = None,
+        required_capabilities: list[ChainCapability] | None = None,
+    ) -> list[ChainMetadata]:
         """Find suitable chains for a specific task."""
         
         suitable_chains = []
@@ -216,9 +215,9 @@ class ChainFactory:
     
     def __init__(self) -> None:
         self.registry = ChainRegistry()
-        self._cache: Dict[str, ChainInstance] = {}
+        self._cache: dict[str, ChainInstance] = {}
         self._cache_size_limit = 50
-        self._active_executions: Dict[str, asyncio.Lock] = {}
+        self._active_executions: dict[str, asyncio.Lock] = {}
         
         # Auto-register built-in chains
         self._register_builtin_chains()
@@ -227,7 +226,10 @@ class ChainFactory:
         """Register built-in chains with their metadata."""
         
         # Analysis Chain
-        from mindflow_backend.chains.templates.analysis_chain import create_analysis_chain, AnalysisChainConfig
+        from mindflow_backend.chains.templates.analysis_chain import (
+            AnalysisChainConfig,
+            create_analysis_chain,
+        )
         
         analysis_metadata = ChainMetadata(
             chain_id="analysis_task",
@@ -247,7 +249,10 @@ class ChainFactory:
         )
         
         # Coding Task Chain
-        from mindflow_backend.chains.templates.coding_task_chain import CodingTaskChain, CodingTaskChainConfig
+        from mindflow_backend.chains.templates.coding_task_chain import (
+            CodingTaskChain,
+            CodingTaskChainConfig,
+        )
         
         coding_metadata = ChainMetadata(
             chain_id="coding_task",
@@ -268,7 +273,8 @@ class ChainFactory:
         
         # Conditional Workflow Chain
         from mindflow_backend.chains.templates.conditional_workflow_chain import (
-            create_conditional_workflow_chain, ConditionalWorkflowConfig
+            ConditionalWorkflowConfig,
+            create_conditional_workflow_chain,
         )
         
         conditional_metadata = ChainMetadata(
@@ -295,8 +301,8 @@ class ChainFactory:
 
         # File Analysis Chain (sequential: intent → discover → read → structure)
         from mindflow_backend.chains.templates.file_analysis_chain import (
-            create_file_analysis_chain,
             FileAnalysisChainConfig,
+            create_file_analysis_chain,
         )
 
         file_analysis_metadata = ChainMetadata(
@@ -324,8 +330,8 @@ class ChainFactory:
 
         # Conditional File Chain (iterative: reads more files when needed)
         from mindflow_backend.chains.templates.conditional_file_chain import (
-            create_conditional_file_chain,
             ConditionalFileChainConfig,
+            create_conditional_file_chain,
         )
 
         conditional_file_metadata = ChainMetadata(
@@ -357,8 +363,8 @@ class ChainFactory:
 
         # Parallel File Chain (concurrent reads across logical scopes)
         from mindflow_backend.chains.templates.parallel_file_chain import (
-            create_parallel_file_chain,
             ParallelFileChainConfig,
+            create_parallel_file_chain,
         )
 
         parallel_file_metadata = ChainMetadata(
@@ -436,8 +442,8 @@ class ChainFactory:
     async def execute_chain(
         self,
         request: ChainRequest,
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute a chain with full lifecycle management."""
         
         start_time = time.time()
@@ -571,7 +577,7 @@ class ChainFactory:
         
         _logger.info("chain_cache_cleanup", removed=len(to_remove))
     
-    def get_chain_stats(self, chain_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_chain_stats(self, chain_id: str | None = None) -> dict[str, Any]:
         """Get execution statistics for chains."""
         
         if chain_id:
@@ -579,7 +585,7 @@ class ChainFactory:
         
         return self.registry._execution_stats
     
-    def get_registry_info(self) -> Dict[str, Any]:
+    def get_registry_info(self) -> dict[str, Any]:
         """Get information about the chain registry."""
         
         return {
@@ -615,10 +621,10 @@ def get_chain_factory() -> ChainFactory:
 # Convenience functions for backward compatibility
 async def create_and_execute_chain(
     chain_id: str,
-    context: Dict[str, Any],
-    config: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any],
+    config: dict[str, Any] | None = None,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Convenience function to create and execute a chain."""
     
     request = ChainRequest(
@@ -631,7 +637,7 @@ async def create_and_execute_chain(
     return await factory.execute_chain(request, context)
 
 
-def get_available_chains(task_type: Optional[str] = None) -> List[ChainMetadata]:
+def get_available_chains(task_type: str | None = None) -> list[ChainMetadata]:
     """Get list of available chains, optionally filtered by task type."""
     
     factory = get_chain_factory()
@@ -642,7 +648,7 @@ def get_available_chains(task_type: Optional[str] = None) -> List[ChainMetadata]
     return factory.registry.list_chains()
 
 
-def get_chain_metadata(chain_id: str) -> Optional[ChainMetadata]:
+def get_chain_metadata(chain_id: str) -> ChainMetadata | None:
     """Get metadata for a specific chain."""
     
     factory = get_chain_factory()

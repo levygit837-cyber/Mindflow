@@ -4,11 +4,12 @@ Generic health check functionality that can be used across the system.
 """
 
 import asyncio
-import psutil
 import time
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
+import psutil
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -23,8 +24,8 @@ class HealthStatus:
         name: str,
         status: str = "unknown",
         message: str = "",
-        details: Optional[Dict[str, Any]] = None,
-        timestamp: Optional[datetime] = None,
+        details: dict[str, Any] | None = None,
+        timestamp: datetime | None = None,
     ):
         self.name = name
         self.status = status  # "healthy", "unhealthy", "degraded", "unknown"
@@ -34,7 +35,7 @@ class HealthStatus:
         self.response_time_ms = 0.0
         self.error_count = 0
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "name": self.name,
@@ -81,7 +82,7 @@ class HealthChecker(ABC):
             result = await asyncio.wait_for(self.check(), timeout=timeout)
             result.response_time_ms = (time.time() - start_time) * 1000
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return HealthStatus.unhealthy(
                 self.name,
                 f"Health check timed out after {timeout}s",
@@ -271,7 +272,7 @@ class SystemHealthChecker(HealthChecker):
 class ProcessHealthChecker(HealthChecker):
     """Health checker for process monitoring."""
     
-    def __init__(self, name: str, process_id: str, port: int, pid: Optional[int] = None):
+    def __init__(self, name: str, process_id: str, port: int, pid: int | None = None):
         super().__init__(name)
         self.process_id = process_id
         self.port = port
@@ -337,9 +338,9 @@ class HealthCheckManager:
     """Manager for multiple health checkers."""
     
     def __init__(self):
-        self.checkers: List[HealthChecker] = []
-        self.last_check: Optional[datetime] = None
-        self.last_results: List[HealthStatus] = []
+        self.checkers: list[HealthChecker] = []
+        self.last_check: datetime | None = None
+        self.last_results: list[HealthStatus] = []
     
     def add_checker(self, checker: HealthChecker) -> None:
         """Add a health checker."""
@@ -353,7 +354,7 @@ class HealthCheckManager:
                 return True
         return False
     
-    async def check_all(self, timeout: float = 5.0) -> List[HealthStatus]:
+    async def check_all(self, timeout: float = 5.0) -> list[HealthStatus]:
         """Run all health checks."""
         if not self.checkers:
             return []
@@ -382,7 +383,7 @@ class HealthCheckManager:
         
         return health_results
     
-    async def check_single(self, name: str, timeout: float = 5.0) -> Optional[HealthStatus]:
+    async def check_single(self, name: str, timeout: float = 5.0) -> HealthStatus | None:
         """Run a single health check."""
         for checker in self.checkers:
             if checker.name == name:
@@ -405,7 +406,7 @@ class HealthCheckManager:
         else:
             return "unknown"
     
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get health check summary."""
         if not self.last_results:
             return {
@@ -437,7 +438,7 @@ class HealthCheckManager:
 
 
 # Global health check manager instance
-_health_manager: Optional[HealthCheckManager] = None
+_health_manager: HealthCheckManager | None = None
 
 
 def get_health_manager() -> HealthCheckManager:

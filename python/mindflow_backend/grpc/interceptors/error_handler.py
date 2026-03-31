@@ -6,12 +6,11 @@ structured error responses and proper logging.
 
 from __future__ import annotations
 
-import traceback
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import grpc
 from grpc import ServicerContext
-
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.errors import (
     ErrorCategory,
@@ -108,9 +107,15 @@ class ErrorHandlerInterceptor(grpc.ServerInterceptor):
         
         # Import our exceptions for classification
         from mindflow_backend.exceptions import (
-            ValidationError, AuthenticationError, AuthorizationError,
-            NetworkError, TimeoutError, ResourceError,
-            ConfigurationError, DatabaseError, ProviderError
+            AuthenticationError,
+            AuthorizationError,
+            ConfigurationError,
+            DatabaseError,
+            NetworkError,
+            ProviderError,
+            ResourceError,
+            TimeoutError,
+            ValidationError,
         )
         
         # Business logic errors

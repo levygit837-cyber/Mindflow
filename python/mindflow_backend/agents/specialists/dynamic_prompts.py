@@ -7,11 +7,11 @@ prompt system with a more flexible, dynamic approach.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from typing import Any
 
-from mindflow_backend.schemas.orchestration.specialists import SpecialistType, TaskComplexity
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType, TaskComplexity
 
 _logger = get_logger(__name__)
 
@@ -23,10 +23,10 @@ class PromptContext:
     task_description: str
     task_complexity: TaskComplexity
     specialist: SpecialistType
-    sub_specialist: Optional[str] = None
-    conversation_history: List[Dict[str, Any]] = None
-    user_preferences: Dict[str, Any] = None
-    session_context: Dict[str, Any] = None
+    sub_specialist: str | None = None
+    conversation_history: list[dict[str, Any]] = None
+    user_preferences: dict[str, Any] = None
+    session_context: dict[str, Any] = None
     
     def __post_init__(self):
         if self.conversation_history is None:
@@ -179,7 +179,7 @@ class DynamicPromptBuilder:
 You are intelligent, helpful, and capable of deep analysis and creative problem-solving.
 You adapt your approach based on the task requirements and context provided."""
     
-    def _load_specialist_templates(self) -> Dict[SpecialistType, str]:
+    def _load_specialist_templates(self) -> dict[SpecialistType, str]:
         """Load specialist-specific prompt templates."""
         return {
             SpecialistType.CORE: """### Core Specialist
@@ -199,7 +199,7 @@ You are focused on information gathering, exploration, and discovery.
 You investigate topics thoroughly and provide comprehensive, evidence-based responses.""",
         }
     
-    def _load_context_enhancers(self) -> Dict[str, str]:
+    def _load_context_enhancers(self) -> dict[str, str]:
         """Load context enhancement patterns."""
         return {
             "security": "Pay special attention to security implications and best practices.",
@@ -244,7 +244,7 @@ Provide a clear, helpful response based on your {context.specialist.value} capab
     def enhance_prompt_with_context(
         self,
         base_prompt: str,
-        context_enhancers: List[str],
+        context_enhancers: list[str],
     ) -> str:
         """Enhance a base prompt with additional context."""
         enhanced_parts = [base_prompt]

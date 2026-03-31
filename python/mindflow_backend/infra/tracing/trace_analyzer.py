@@ -7,15 +7,13 @@ and querying capabilities for distributed tracing.
 from __future__ import annotations
 
 import asyncio
-import json
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Set
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-import weakref
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.cache.redis_client import get_redis_client
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.tracing.span import Span
 
 _logger = get_logger(__name__)
@@ -37,15 +35,15 @@ class TraceSummary:
     span_count: int
     duration_ms: float
     error_count: int
-    service_names: Set[str]
-    span_names: Set[str]
+    service_names: set[str]
+    span_names: set[str]
     start_time: datetime
     end_time: datetime
     root_span_name: str
     has_errors: bool
     sampling_decision: str
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "trace_id": self.trace_id,
@@ -76,7 +74,7 @@ class PerformanceMetrics:
     span_count_avg: float
     traces_per_minute: float
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "avg_duration_ms": self.avg_duration_ms,
@@ -97,15 +95,15 @@ class TraceAnalysis:
     """Comprehensive trace analysis results."""
     trace_id: str
     summary: TraceSummary
-    performance_metrics: Optional[PerformanceMetrics] = None
-    error_analysis: Optional[Dict[str, Any]] = None
-    security_analysis: Optional[Dict[str, Any]] = None
-    business_analysis: Optional[Dict[str, Any]] = None
-    recommendations: List[str] = field(default_factory=list)
+    performance_metrics: PerformanceMetrics | None = None
+    error_analysis: dict[str, Any] | None = None
+    security_analysis: dict[str, Any] | None = None
+    business_analysis: dict[str, Any] | None = None
+    recommendations: list[str] = field(default_factory=list)
     analysis_level: TraceAnalysisLevel = TraceAnalysisLevel.BASIC
     analyzed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "trace_id": self.trace_id,
@@ -136,8 +134,8 @@ class TraceAnalyzer:
         """Initialize trace analyzer."""
         self._redis_client = None
         self._is_initialized = False
-        self._trace_cache: Dict[str, List[Span]] = {}
-        self._analysis_cache: Dict[str, TraceAnalysis] = {}
+        self._trace_cache: dict[str, list[Span]] = {}
+        self._analysis_cache: dict[str, TraceAnalysis] = {}
         self._max_trace_age_hours = 24
         self._max_cache_size = 10000
         
@@ -283,7 +281,7 @@ class TraceAnalyzer:
         except Exception as e:
             _logger.error("trace_analysis_failed", trace_id=trace_id, error=str(e))
             
-    def _create_trace_summary(self, trace_id: str, spans: List[Span]) -> TraceSummary:
+    def _create_trace_summary(self, trace_id: str, spans: list[Span]) -> TraceSummary:
         """Create trace summary.
         
         Args:
@@ -336,7 +334,7 @@ class TraceAnalyzer:
             sampling_decision="recorded",  # Would come from span context
         )
         
-    def _analyze_performance(self, spans: List[Span]) -> PerformanceMetrics:
+    def _analyze_performance(self, spans: list[Span]) -> PerformanceMetrics:
         """Analyze performance metrics.
         
         Args:
@@ -383,7 +381,7 @@ class TraceAnalyzer:
             traces_per_minute=0.0,  # Would be calculated over time window
         )
         
-    def _analyze_errors(self, spans: List[Span]) -> Dict[str, Any]:
+    def _analyze_errors(self, spans: list[Span]) -> dict[str, Any]:
         """Analyze errors in trace.
         
         Args:
@@ -428,7 +426,7 @@ class TraceAnalyzer:
             "error_rate": len(error_spans) / len(spans),
         }
         
-    def _analyze_security(self, spans: List[Span]) -> Dict[str, Any]:
+    def _analyze_security(self, spans: list[Span]) -> dict[str, Any]:
         """Analyze security aspects of trace.
         
         Args:
@@ -472,7 +470,7 @@ class TraceAnalyzer:
             "issue_count": len(security_issues),
         }
         
-    def _analyze_business(self, spans: List[Span]) -> Dict[str, Any]:
+    def _analyze_business(self, spans: list[Span]) -> dict[str, Any]:
         """Analyze business metrics from trace.
         
         Args:
@@ -520,7 +518,7 @@ class TraceAnalyzer:
             "action_count": len(user_actions),
         }
         
-    def _generate_recommendations(self, analysis: TraceAnalysis) -> List[str]:
+    def _generate_recommendations(self, analysis: TraceAnalysis) -> list[str]:
         """Generate recommendations based on analysis.
         
         Args:
@@ -577,7 +575,7 @@ class TraceAnalyzer:
         except Exception as e:
             _logger.error("trace_analysis_storage_failed", trace_id=trace_id, error=str(e))
             
-    async def get_trace(self, trace_id: str) -> Optional[Dict[str, Any]]:
+    async def get_trace(self, trace_id: str) -> dict[str, Any] | None:
         """Get trace by ID.
         
         Args:
@@ -608,13 +606,13 @@ class TraceAnalyzer:
         
     async def search_traces(
         self,
-        service_name: Optional[str] = None,
-        span_name: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        attributes: Optional[Dict[str, Any]] = None,
+        service_name: str | None = None,
+        span_name: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        attributes: dict[str, Any] | None = None,
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search traces with filters.
         
         Args:
@@ -710,7 +708,7 @@ class TraceAnalyzer:
         else:
             self._stats["avg_analysis_time_ms"] = (current_avg * count + duration_ms) / (count + 1)
             
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get analyzer statistics.
         
         Returns:
@@ -731,7 +729,7 @@ class TraceAnalyzer:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform analyzer health check.
         
         Returns:
@@ -782,7 +780,7 @@ class TraceAnalyzer:
 
 
 # Global trace analyzer instance
-_trace_analyzer: Optional[TraceAnalyzer] = None
+_trace_analyzer: TraceAnalyzer | None = None
 
 
 def get_trace_analyzer() -> TraceAnalyzer:

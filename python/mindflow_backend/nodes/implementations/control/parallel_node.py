@@ -6,10 +6,11 @@ supporting various parallel execution patterns and synchronization strategies.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
 import asyncio
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -27,12 +28,12 @@ class ParallelNode(StatefulNode, BaseNode):
         self,
         node_id: str = "parallel",
         execution_mode: str = "all",  # all, any, race, map
-        tasks: Optional[List[Dict[str, Any]]] = None,
-        task_function: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
-        map_function: Optional[Callable[[Any], Dict[str, Any]]] = None,
-        collection: Optional[List[Any]] = None,
-        timeout: Optional[float] = None,
-        max_concurrency: Optional[int] = None,
+        tasks: list[dict[str, Any]] | None = None,
+        task_function: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        map_function: Callable[[Any], dict[str, Any]] | None = None,
+        collection: list[Any] | None = None,
+        timeout: float | None = None,
+        max_concurrency: int | None = None,
         error_handling: str = "continue",  # continue, fail, collect
         description: str = ""
     ) -> None:
@@ -77,7 +78,7 @@ class ParallelNode(StatefulNode, BaseNode):
         self._execution_count = 0
         self._parallel_results = {}
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute parallel tasks based on configured mode."""
         try:
             if self.execution_mode == "all":
@@ -108,7 +109,7 @@ class ParallelNode(StatefulNode, BaseNode):
                 "metadata": {"execution_mode": self.execution_mode, "status": "error"}
             }
     
-    async def _execute_parallel_all(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_parallel_all(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute all tasks in parallel and wait for all to complete."""
         tasks = state.get("tasks", self.tasks)
         
@@ -185,7 +186,7 @@ class ParallelNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_parallel_any(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_parallel_any(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute tasks in parallel and return first successful result."""
         tasks = state.get("tasks", self.tasks)
         
@@ -210,7 +211,7 @@ class ParallelNode(StatefulNode, BaseNode):
                 )
             else:
                 results = await asyncio.gather(*coroutines, return_exceptions=True)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Handle timeout
             return {
                 "result": None,
@@ -268,7 +269,7 @@ class ParallelNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_parallel_race(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_parallel_race(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute tasks in parallel and return first result (race condition)."""
         # Similar to _execute_parallel_any but returns first result regardless of success/failure
         tasks = state.get("tasks", self.tasks)
@@ -294,7 +295,7 @@ class ParallelNode(StatefulNode, BaseNode):
                 )
             else:
                 results = await asyncio.gather(*coroutines, return_exceptions=True)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return {
                 "result": None,
                 "parallel_results": {"timeout": True},
@@ -334,7 +335,7 @@ class ParallelNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_parallel_map(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_parallel_map(self, state: dict[str, Any]) -> dict[str, Any]:
         """Apply map function to collection in parallel."""
         collection = state.get("collection", self.collection)
         map_function = state.get("map_function", self.map_function)
@@ -405,7 +406,7 @@ class ParallelNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_task_with_function(self, task: Dict[str, Any], index: int) -> Dict[str, Any]:
+    async def _execute_task_with_function(self, task: dict[str, Any], index: int) -> dict[str, Any]:
         """Execute a task using the provided function."""
         task_data = {
             "task": task,
@@ -418,7 +419,7 @@ class ParallelNode(StatefulNode, BaseNode):
         except Exception as e:
             return e
     
-    async def _execute_task_direct(self, task: Dict[str, Any], index: int) -> Dict[str, Any]:
+    async def _execute_task_direct(self, task: dict[str, Any], index: int) -> dict[str, Any]:
         """Execute a task directly (for simple data tasks)."""
         # For simple tasks, just return the task data
         return {
@@ -427,7 +428,7 @@ class ParallelNode(StatefulNode, BaseNode):
             "executed_at": asyncio.get_event_loop().time()
         }
     
-    async def _execute_map_function(self, map_function: Callable, item: Any, index: int) -> Dict[str, Any]:
+    async def _execute_map_function(self, map_function: Callable, item: Any, index: int) -> dict[str, Any]:
         """Execute map function on an item."""
         try:
             result = await map_function(item)
@@ -451,7 +452,7 @@ class ParallelNode(StatefulNode, BaseNode):
             self.execution_mode = execution_mode.lower()
             self._setup_required_inputs()
     
-    def set_tasks(self, tasks: List[Dict[str, Any]]) -> None:
+    def set_tasks(self, tasks: list[dict[str, Any]]) -> None:
         """Set the tasks to execute."""
         self.tasks = tasks
     
@@ -463,7 +464,7 @@ class ParallelNode(StatefulNode, BaseNode):
         """Set timeout for parallel execution."""
         self.timeout = timeout
     
-    def get_parallel_info(self) -> Dict[str, Any]:
+    def get_parallel_info(self) -> dict[str, Any]:
         """Get information about the current parallel configuration."""
         return {
             "execution_mode": self.execution_mode,
@@ -488,9 +489,9 @@ class ParallelMapNode(ParallelNode):
     def __init__(
         self,
         node_id: str = "parallel_map",
-        map_function: Optional[Callable[[Any], Dict[str, Any]]] = None,
-        max_concurrency: Optional[int] = None,
-        timeout: Optional[float] = None,
+        map_function: Callable[[Any], dict[str, Any]] | None = None,
+        max_concurrency: int | None = None,
+        timeout: float | None = None,
         description: str = "Parallel map operation"
     ) -> None:
         super().__init__(
@@ -509,9 +510,9 @@ class ParallelAnyNode(ParallelNode):
     def __init__(
         self,
         node_id: str = "parallel_any",
-        tasks: Optional[List[Dict[str, Any]]] = None,
-        timeout: Optional[float] = None,
-        max_concurrency: Optional[int] = None,
+        tasks: list[dict[str, Any]] | None = None,
+        timeout: float | None = None,
+        max_concurrency: int | None = None,
         description: str = "Parallel any (first success) operation"
     ) -> None:
         super().__init__(
@@ -530,9 +531,9 @@ class ParallelRaceNode(ParallelNode):
     def __init__(
         self,
         node_id: str = "parallel_race",
-        tasks: Optional[List[Dict[str, Any]]] = None,
-        timeout: Optional[float] = None,
-        max_concurrency: Optional[int] = None,
+        tasks: list[dict[str, Any]] | None = None,
+        timeout: float | None = None,
+        max_concurrency: int | None = None,
         description: str = "Parallel race (first result) operation"
     ) -> None:
         super().__init__(

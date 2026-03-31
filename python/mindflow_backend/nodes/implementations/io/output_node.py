@@ -6,10 +6,11 @@ file output, API output, stream output, and database output.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
 import asyncio
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -29,13 +30,13 @@ class OutputNode(StatefulNode, BaseNode):
         self,
         node_id: str = "output",
         output_type: str = "static",  # static, file, api, stream, database, queue
-        output_data: Optional[Any] = None,
-        file_path: Optional[str] = None,
-        api_config: Optional[Dict[str, Any]] = None,
-        stream_destination: Optional[Callable[[Any], None]] = None,
-        database_config: Optional[Dict[str, Any]] = None,
-        queue_config: Optional[Dict[str, Any]] = None,
-        format_function: Optional[Callable[[Any], str]] = None,
+        output_data: Any | None = None,
+        file_path: str | None = None,
+        api_config: dict[str, Any] | None = None,
+        stream_destination: Callable[[Any], None] | None = None,
+        database_config: dict[str, Any] | None = None,
+        queue_config: dict[str, Any] | None = None,
+        format_function: Callable[[Any], str] | None = None,
         append_mode: bool = False,
         encoding: str = "utf-8",
         description: str = ""
@@ -87,7 +88,7 @@ class OutputNode(StatefulNode, BaseNode):
         """Initialize the output node."""
         await super().initialize()
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the output operation based on configured type."""
         output_data = state.get("output_data", self.output_data)
         
@@ -140,13 +141,13 @@ class OutputNode(StatefulNode, BaseNode):
                 "metadata": {"output_type": self.output_type, "status": "error"}
             }
     
-    async def _execute_static_output(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _execute_static_output(self, data: Any, state: dict[str, Any]) -> Any:
         """Execute static output operation."""
         # Static output just returns the data
         # In a real system, this might update a shared state
         return data
     
-    async def _execute_file_output(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _execute_file_output(self, data: Any, state: dict[str, Any]) -> Any:
         """Execute file output operation."""
         file_path = state.get("file_path", self.file_path)
         
@@ -180,10 +181,10 @@ class OutputNode(StatefulNode, BaseNode):
             
             return data
             
-        except IOError as e:
-            raise IOError(f"Error writing to file {file_path}: {str(e)}")
+        except OSError as e:
+            raise OSError(f"Error writing to file {file_path}: {str(e)}")
     
-    async def _execute_api_output(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _execute_api_output(self, data: Any, state: dict[str, Any]) -> Any:
         """Execute API output operation."""
         endpoint = state.get("endpoint", self.api_config.get("endpoint"))
         method = state.get("method", self.api_config.get("method", "POST"))
@@ -222,16 +223,16 @@ class OutputNode(StatefulNode, BaseNode):
             return data
             
         except Exception as e:
-            raise IOError(f"Error calling API {endpoint}: {str(e)}")
+            raise OSError(f"Error calling API {endpoint}: {str(e)}")
     
     async def _process_api_response(self, response) -> Any:
         """Process API response and extract data."""
         if response.status >= 200 and response.status < 300:
             return {"status": "success", "response": response}
         else:
-            raise IOError(f"API request failed with status {response.status}")
+            raise OSError(f"API request failed with status {response.status}")
     
-    async def _execute_stream_output(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _execute_stream_output(self, data: Any, state: dict[str, Any]) -> Any:
         """Execute stream output operation."""
         if not self.stream_destination:
             raise ValueError("Stream destination is required for stream output")
@@ -251,9 +252,9 @@ class OutputNode(StatefulNode, BaseNode):
             return data
             
         except Exception as e:
-            raise IOError(f"Error writing to stream: {str(e)}")
+            raise OSError(f"Error writing to stream: {str(e)}")
     
-    async def _execute_database_output(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _execute_database_output(self, data: Any, state: dict[str, Any]) -> Any:
         """Execute database output operation."""
         connection_config = state.get("connection", self.database_config.get("connection"))
         
@@ -277,9 +278,9 @@ class OutputNode(StatefulNode, BaseNode):
             return data
             
         except Exception as e:
-            raise IOError(f"Error writing to database: {str(e)}")
+            raise OSError(f"Error writing to database: {str(e)}")
     
-    async def _execute_queue_output(self, data: Any, state: Dict[str, Any]) -> Any:
+    async def _execute_queue_output(self, data: Any, state: dict[str, Any]) -> Any:
         """Execute queue output operation."""
         queue_name = state.get("queue_name", self.queue_config.get("queue_name"))
         
@@ -289,7 +290,6 @@ class OutputNode(StatefulNode, BaseNode):
         try:
             # This would integrate with the actual message queue system
             # For now, simulate queue write
-            import json
             
             message = {
                 "data": data,
@@ -309,9 +309,9 @@ class OutputNode(StatefulNode, BaseNode):
             return data
             
         except Exception as e:
-            raise IOError(f"Error writing to queue {queue_name}: {str(e)}")
+            raise OSError(f"Error writing to queue {queue_name}: {str(e)}")
     
-    def _get_destination_info(self) -> Dict[str, Any]:
+    def _get_destination_info(self) -> dict[str, Any]:
         """Get information about the output destination."""
         if self.output_type == "file":
             return {"file_path": self.file_path, "append_mode": self.append_mode}
@@ -324,7 +324,7 @@ class OutputNode(StatefulNode, BaseNode):
         else:
             return {}
     
-    def get_output_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_output_history(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get the output history."""
         return self._output_history[-limit:] if len(self._output_history) > limit else self._output_history
     
@@ -338,7 +338,7 @@ class OutputNode(StatefulNode, BaseNode):
         self.output_data = output_data
         self._setup_required_inputs()
     
-    def get_output_info(self) -> Dict[str, Any]:
+    def get_output_info(self) -> dict[str, Any]:
         """Get information about the current output configuration."""
         return {
             "output_type": self.output_type,
@@ -379,7 +379,7 @@ class StreamOutputNode(OutputNode):
         self.buffer_size = buffer_size
         self.flush_interval = flush_interval
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute streaming output with buffering."""
         output_data = state.get("output_data")
         buffer = []
@@ -430,4 +430,4 @@ class StreamOutputNode(OutputNode):
             }
             
         except Exception as e:
-            raise IOError(f"Error in stream output: {str(e)}")
+            raise OSError(f"Error in stream output: {str(e)}")

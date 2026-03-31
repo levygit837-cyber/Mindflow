@@ -7,14 +7,15 @@ Also includes research agent components and utilities.
 
 from __future__ import annotations
 
+from .analysis import *
+
 # Web search tools
 from .browser_search import *
-from .search_web import *
 
 # Research components
 from .core import *
-from .analysis import *
 from .monitoring.pinchtab_service import get_pinchtab_service
+from .search_web import *
 
 __all__ = [
     # Web search tools

@@ -5,22 +5,24 @@ and provides storage-specific extensions.
 """
 
 # Import core storage interfaces
+from mindflow_backend.interfaces.infrastructure.grpc import GrpcClient as GrpcClientInterface
+from mindflow_backend.interfaces.infrastructure.grpc import GrpcServer as GrpcServerInterface
+
+# Import global interfaces that relate to storage
+from mindflow_backend.interfaces.services.memory import MemoryServiceInterface
+
 from ..core.base import (
     BaseComponentInterface,
 )
 from ..core.config import (
     ConfigurableInterface,
 )
-
-# Import global interfaces that relate to storage
-from mindflow_backend.interfaces.services.memory import MemoryServiceInterface
-from mindflow_backend.interfaces.infrastructure.grpc import GrpcClient as GrpcClientInterface, GrpcServer as GrpcServerInterface
+from .cache import CacheManagerInterface
 
 # Storage-specific extensions
 from .database import DatabaseRepositoryInterface
-from .vector import VectorStoreInterface
-from .cache import CacheManagerInterface
 from .memory import MemoryStoreInterface
+from .vector import VectorStoreInterface
 
 __all__ = [
     # Core interfaces

@@ -6,7 +6,7 @@ Defines the interface that all cache backends must implement.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..models import CacheEntry
 
@@ -18,7 +18,7 @@ class CacheBackend(ABC):
     """
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get cache entry by key.
 
         Args:
@@ -64,7 +64,7 @@ class CacheBackend(ABC):
         pass
 
     @abstractmethod
-    async def keys(self, pattern: str = "*") -> List[str]:
+    async def keys(self, pattern: str = "*") -> list[str]:
         """Get keys matching pattern.
 
         Args:
@@ -85,7 +85,7 @@ class CacheBackend(ABC):
         pass
 
     @abstractmethod
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache backend statistics.
 
         Returns:

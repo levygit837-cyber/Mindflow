@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import pytest
 from starlette.requests import Request
 
-import pytest
-
-from mindflow_backend.api.v1 import providers as provider_routes
 from mindflow_backend.api.schemas.requests import ProviderConfigRequest, ProviderTestRequest
+from mindflow_backend.api.v1 import providers as provider_routes
 
 
 def _make_request(path: str, method: str = "GET") -> Request:

@@ -7,13 +7,13 @@ and component initialization.
 from .server import (
     EnhancedGrpcAgentServer,
     GrpcAgentServer,
-    get_server,
     get_grpc_server,
+    get_server,
+    run,
+    serve,
+    setup_signal_handlers,
     start_grpc_server,
     stop_grpc_server,
-    setup_signal_handlers,
-    serve,
-    run,
 )
 
 __all__ = [

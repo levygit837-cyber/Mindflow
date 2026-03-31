@@ -10,7 +10,6 @@ from mindflow_backend.workers.base.worker import WorkerStatus
 from mindflow_backend.workers.config.queues import QueueDefinitions
 from mindflow_backend.workers.infrastructure.monitoring import WorkerMonitor
 
-
 REPO_ROOT = Path(__file__).resolve().parents[4]
 RUNBOOK_PATH = REPO_ROOT / "docs" / "runbooks" / "rabbitmq-rollout.md"
 

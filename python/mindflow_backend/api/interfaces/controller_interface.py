@@ -9,11 +9,11 @@ Use: from mindflow_backend.interfaces.api import AgentControllerInterface, Sessi
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.api.controllers import (
     AgentControllerInterface,
-    SessionControllerInterface,
+    BaseControllerInterface,
+    MemoryControllerInterface,
     OrchestrationControllerInterface,
     ProviderControllerInterface,
-    MemoryControllerInterface,
-    BaseControllerInterface,
+    SessionControllerInterface,
 )
 
 # Maintain backward compatibility

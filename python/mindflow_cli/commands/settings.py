@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import typer
 import json
 import os
 from pathlib import Path
+
+import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.prompt import Confirm
 from rich.text import Text
-from rich.prompt import Prompt, Confirm
 
 from mindflow_cli.render.theme import MINDFLOW_THEME
 
@@ -24,7 +24,7 @@ def load_settings() -> dict:
     """Load settings from file."""
     if SETTINGS_FILE.exists():
         try:
-            with open(SETTINGS_FILE, 'r') as f:
+            with open(SETTINGS_FILE) as f:
                 return json.load(f)
         except Exception:
             return {}
@@ -64,7 +64,7 @@ def register_settings_commands(app: typer.Typer) -> None:
             return
         
         # Display settings in categories
-        console.print(f"[bold]🔗 API Configuration:[/]")
+        console.print("[bold]🔗 API Configuration:[/]")
         api_url = settings.get("api_url", os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000"))
         console.print(f"  Base URL: {api_url}")
         
@@ -74,13 +74,13 @@ def register_settings_commands(app: typer.Typer) -> None:
         default_model = settings.get("default_model", "gemini-3.1-flash-lite-preview")
         console.print(f"  Default Model: {default_model}")
         
-        console.print(f"[bold]🤖 Agent Configuration:[/]")
+        console.print("[bold]🤖 Agent Configuration:[/]")
         default_agent = settings.get("default_agent", "auto")
         console.print(f"  Default Agent: {default_agent}")
         auto_orchestrate = settings.get("auto_orchestrate", True)
         console.print(f"  Auto Orchestrate: {auto_orchestrate}")
         
-        console.print(f"[bold]🎨 Interface Configuration:[/]")
+        console.print("[bold]🎨 Interface Configuration:[/]")
         debug_mode = settings.get("debug_mode", False)
         console.print(f"  Debug Mode: {debug_mode}")
         show_routing = settings.get("show_routing", False)
@@ -88,13 +88,13 @@ def register_settings_commands(app: typer.Typer) -> None:
         show_agent_selection = settings.get("show_agent_selection", False)
         console.print(f"  Show Agent Selection: {show_agent_selection}")
         
-        console.print(f"[bold]📊 Performance Configuration:[/]")
+        console.print("[bold]📊 Performance Configuration:[/]")
         timeout_seconds = settings.get("timeout_seconds", 300)
         console.print(f"  Request Timeout: {timeout_seconds}s")
         max_retries = settings.get("max_retries", 3)
         console.print(f"  Max Retries: {max_retries}")
         
-        console.print(f"[bold]💾 Session Configuration:[/]")
+        console.print("[bold]💾 Session Configuration:[/]")
         save_history = settings.get("save_history", True)
         console.print(f"  Save Chat History: {save_history}")
         max_history_items = settings.get("max_history_items", 100)
@@ -128,9 +128,7 @@ def register_settings_commands(app: typer.Typer) -> None:
             return
         
         # Convert value to appropriate type
-        if key in ["auto_orchestrate", "save_history"]:
-            value = value.lower() in ["true", "1", "yes", "on"]
-        elif key in ["debug_mode", "show_routing", "show_agent_selection"]:
+        if key in ["auto_orchestrate", "save_history"] or key in ["debug_mode", "show_routing", "show_agent_selection"]:
             value = value.lower() in ["true", "1", "yes", "on"]
         elif key in ["timeout_seconds", "max_retries", "max_history_items"]:
             try:
@@ -216,7 +214,7 @@ def register_settings_commands(app: typer.Typer) -> None:
     ) -> None:
         """Import settings from a file."""
         try:
-            with open(input_file, 'r') as f:
+            with open(input_file) as f:
                 imported_settings = json.load(f)
             
             # Validate imported settings

@@ -5,8 +5,7 @@ Evicts entries based on their expiration time.
 
 from __future__ import annotations
 
-import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..config import CacheConfig
 from ..entry import CacheEntry
@@ -26,7 +25,7 @@ class TTLCacheStrategy(CacheStrategy):
             config: Cache configuration
         """
         super().__init__(config)
-        self._cache: Dict[str, CacheEntry] = {}
+        self._cache: dict[str, CacheEntry] = {}
         self._stats = {
             "hits": 0,
             "misses": 0,
@@ -34,7 +33,7 @@ class TTLCacheStrategy(CacheStrategy):
             "expired_removals": 0,
         }
 
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry if not expired."""
         with self._lock:
             if key not in self._cache:
@@ -101,7 +100,7 @@ class TTLCacheStrategy(CacheStrategy):
             self._stats["expired_removals"] += len(expired_keys)
             return len(expired_keys)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         with self._lock:
             total = self._stats["hits"] + self._stats["misses"]

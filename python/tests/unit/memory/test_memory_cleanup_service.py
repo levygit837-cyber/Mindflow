@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-import pytest
 
 from mindflow_backend.memory.cleanup import SessionMemoryCleanupService
-from mindflow_backend.memory.storage.models import Base, ChatMessage, ChatSession, SessionBlock, SessionEmbedding
+from mindflow_backend.memory.storage.models import (
+    Base,
+    ChatMessage,
+    ChatSession,
+    SessionBlock,
+    SessionEmbedding,
+)
 
 
 class _AsyncSessionAdapter:

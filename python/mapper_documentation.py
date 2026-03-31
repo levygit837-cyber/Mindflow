@@ -4,17 +4,15 @@ Gerador de documentação para estrutura de diretórios e arquivos Python.
 Mapeia todos os diretórios e arquivos .py no formato solicitado.
 """
 
-import os
-from pathlib import Path
-from typing import Dict, List, Set
 import argparse
+from pathlib import Path
 
 
 class DocumentationMapper:
     def __init__(self, base_path: str):
         self.base_path = Path(base_path)
-        self.directories: Set[str] = set()
-        self.python_files: Dict[str, List[str]] = {}
+        self.directories: set[str] = set()
+        self.python_files: dict[str, list[str]] = {}
         self.stats = {
             'total_directories': 0,
             'total_python_files': 0,
@@ -100,7 +98,7 @@ class DocumentationMapper:
         
         return "\n".join(stats)
 
-    def validate_structure(self) -> List[str]:
+    def validate_structure(self) -> list[str]:
         """
         Valida a estrutura encontrada e retorna possíveis problemas.
         """
@@ -150,7 +148,7 @@ class DocumentationMapper:
             f.write(documentation)
         
         print(f"\n📝 Documentação salva em: {output_file}")
-        print(f"📊 Resumo:")
+        print("📊 Resumo:")
         print(f"   - Diretórios: {self.stats['total_directories']}")
         print(f"   - Arquivos Python: {self.stats['total_python_files']}")
         print(f"   - Total de Arquivos: {self.stats['total_files']}")

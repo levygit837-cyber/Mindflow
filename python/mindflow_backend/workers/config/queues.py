@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar
 
-from mindflow_backend.infra.config import get_settings
 from mindflow_backend.workers.contracts.schemas.retry_policy import RetryPolicy
 
 

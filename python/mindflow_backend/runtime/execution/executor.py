@@ -14,13 +14,18 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from mindflow_backend.agents.tools.search_web import search_web
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+    build_simple_orchestrator_flow,
+)
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import build_simple_orchestrator_flow
+from mindflow_backend.runtime.providers import (
+    get_model_for_provider,
+    resolve_provider_model_for_tools,
+)
 from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
-from mindflow_backend.runtime.providers import get_model_for_provider, resolve_provider_model_for_tools
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
 
 try:

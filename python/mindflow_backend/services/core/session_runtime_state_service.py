@@ -15,8 +15,9 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from sqlalchemy import select
+
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 

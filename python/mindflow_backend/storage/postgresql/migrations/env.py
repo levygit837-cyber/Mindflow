@@ -18,7 +18,6 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import sys
 # Read DATABASE_URL from environment directly (avoids settings misconfiguration)
 _db_url = os.environ.get("DATABASE_URL")
 if not _db_url:

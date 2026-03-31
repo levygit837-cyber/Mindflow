@@ -168,8 +168,7 @@ async def _validate_key(api_key: str) -> bool:
     """
     from sqlalchemy import select
 
-    from mindflow_backend.storage import async_session_factory
-    from mindflow_backend.storage import ApiKey
+    from mindflow_backend.storage import ApiKey, async_session_factory
 
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
 

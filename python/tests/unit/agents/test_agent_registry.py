@@ -4,7 +4,6 @@ import pytest
 
 from mindflow_backend.agents._registry import (
     get_registry,
-    register_all_specialists,
 )
 from mindflow_backend.agents.specialists.factories import create_coder_agent
 from mindflow_backend.schemas.orchestrator import AgentType

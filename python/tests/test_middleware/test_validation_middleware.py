@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import patch, AsyncMock
+from fastapi import Request, Response
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from mindflow_backend.api.middleware.validation import ValidationMiddleware
 

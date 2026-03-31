@@ -5,11 +5,9 @@ This test validates that each browser instance has its own HTTP client and base 
 """
 
 import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock
 
 from mindflow_backend.agents.research.pinchtab_service import PinchTabService
-from mindflow_backend.schemas.research import BrowserSession, ResearchStatus
 
 
 async def test_multi_instance_isolation():
@@ -161,7 +159,7 @@ async def main():
     test1_result = await test_multi_instance_isolation()
     test2_result = await test_request_routing()
     
-    print(f"\n📊 Test Results:")
+    print("\n📊 Test Results:")
     print(f"   Multi-instance isolation: {'✅ PASS' if test1_result else '❌ FAIL'}")
     print(f"   Request routing: {'✅ PASS' if test2_result else '❌ FAIL'}")
     

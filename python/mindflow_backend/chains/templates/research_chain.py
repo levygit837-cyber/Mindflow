@@ -10,12 +10,11 @@ This template provides a standardized research workflow with steps for:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from mindflow_backend.chains.builders.sequential_builder import SequentialChainBuilder
 from mindflow_backend.chains.base.chain import BaseChain
 from mindflow_backend.chains.base.step import StepType
-from mindflow_backend.chains.base.types import ChainConfig
+from mindflow_backend.chains.builders.sequential_builder import SequentialChainBuilder
 
 
 class ResearchChain:
@@ -89,7 +88,7 @@ class ResearchChain:
             description="Generate citations and reference list"
         )
     
-    async def _analyze_research_query(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _analyze_research_query(self, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze and expand the research query."""
         query = context.get("input", {}).get("query", "")
         
@@ -114,7 +113,7 @@ class ResearchChain:
             }
         }
     
-    async def _identify_research_sources(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _identify_research_sources(self, context: dict[str, Any]) -> dict[str, Any]:
         """Identify relevant research sources."""
         query_analysis = context.get("input", {})
         
@@ -147,7 +146,7 @@ class ResearchChain:
             }
         }
     
-    async def _gather_information_from_sources(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _gather_information_from_sources(self, context: dict[str, Any]) -> dict[str, Any]:
         """Gather information from identified sources."""
         sources = context.get("input", {}).get("identified_sources", [])
         query_analysis = context.get("input", {})
@@ -188,7 +187,7 @@ class ResearchChain:
             }
         }
     
-    async def _validate_and_fact_check(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _validate_and_fact_check(self, context: dict[str, Any]) -> dict[str, Any]:
         """Validate sources and perform fact-checking."""
         information = context.get("input", {}).get("gathered_information", [])
         
@@ -233,7 +232,7 @@ class ResearchChain:
             }
         }
     
-    async def _synthesize_research_findings(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _synthesize_research_findings(self, context: dict[str, Any]) -> dict[str, Any]:
         """Synthesize research findings into comprehensive answer."""
         information = context.get("input", {})
         
@@ -274,7 +273,7 @@ class ResearchChain:
             }
         }
     
-    async def _generate_citations_and_references(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_citations_and_references(self, context: dict[str, Any]) -> dict[str, Any]:
         """Generate proper citations and reference list."""
         synthesis = context.get("input", {})
         
@@ -311,7 +310,7 @@ class ResearchChain:
     
     # Helper methods (simplified implementations for demonstration)
     
-    def _extract_key_concepts(self, query: str) -> List[str]:
+    def _extract_key_concepts(self, query: str) -> list[str]:
         """Extract key concepts from query."""
         # Simple keyword extraction (would use NLP in production)
         words = query.lower().split()
@@ -319,7 +318,7 @@ class ResearchChain:
         concepts = [word for word in words if len(word) > 3 and word not in stop_words]
         return list(set(concepts))
     
-    def _generate_expanded_queries(self, query: str, concepts: List[str]) -> List[str]:
+    def _generate_expanded_queries(self, query: str, concepts: list[str]) -> list[str]:
         """Generate expanded search queries."""
         expanded = [query]  # Include original
         for concept in concepts[:3]:  # Limit expansions
@@ -369,7 +368,7 @@ class ResearchChain:
         time_sensitive_words = ["latest", "recent", "current", "today", "now", "2023", "2024", "2025"]
         return any(word in query.lower() for word in time_sensitive_words)
     
-    def _determine_needed_source_types(self, query_analysis: Dict[str, Any]) -> List[str]:
+    def _determine_needed_source_types(self, query_analysis: dict[str, Any]) -> list[str]:
         """Determine what types of sources are needed."""
         domain = query_analysis.get("research_scope", {}).get("domain", "general")
         
@@ -382,7 +381,7 @@ class ResearchChain:
         else:
             return ["general_web", "encyclopedia", "news_articles"]
     
-    async def _find_sources_by_type(self, query_analysis: Dict[str, Any], source_type: str) -> List[Dict]:
+    async def _find_sources_by_type(self, query_analysis: dict[str, Any], source_type: str) -> list[dict]:
         """Find sources of a specific type."""
         # This would integrate with actual search APIs
         # For now, return mock sources
@@ -403,7 +402,7 @@ class ResearchChain:
         
         return mock_sources.get(source_type, [])
     
-    def _rank_sources_by_relevance(self, sources: List[Dict], query_analysis: Dict[str, Any]) -> List[Dict]:
+    def _rank_sources_by_relevance(self, sources: list[dict], query_analysis: dict[str, Any]) -> list[dict]:
         """Rank sources by relevance to the query."""
         # Simple ranking based on title matching
         concepts = query_analysis.get("key_concepts", [])
@@ -418,7 +417,7 @@ class ResearchChain:
         
         return sorted(sources, key=relevance_score, reverse=True)
     
-    async def _extract_from_source(self, source: Dict, query_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    async def _extract_from_source(self, source: dict, query_analysis: dict[str, Any]) -> dict[str, Any]:
         """Extract information from a source."""
         # This would integrate with web scraping, API calls, etc.
         return {
@@ -429,7 +428,7 @@ class ResearchChain:
             "confidence": 0.85
         }
     
-    def _merge_similar_information(self, information: List[Dict]) -> List[Dict]:
+    def _merge_similar_information(self, information: list[dict]) -> list[dict]:
         """Merge and deduplicate similar information."""
         # Simple deduplication based on content similarity
         seen_content = set()
@@ -445,7 +444,7 @@ class ResearchChain:
         
         return merged
     
-    def _assess_information_quality(self, information: List[Dict]) -> Dict[str, Any]:
+    def _assess_information_quality(self, information: list[dict]) -> dict[str, Any]:
         """Assess the quality of gathered information."""
         if not information:
             return {"overall_quality": 0.0, "completeness": 0.0}
@@ -459,7 +458,7 @@ class ResearchChain:
             "source_diversity": len(set(info.get("source", {}).get("type", "") for info in information))
         }
     
-    def _validate_source_credibility(self, source: Dict) -> Dict[str, Any]:
+    def _validate_source_credibility(self, source: dict) -> dict[str, Any]:
         """Validate the credibility of a source."""
         source_type = source.get("type", "")
         
@@ -478,14 +477,14 @@ class ResearchChain:
             "verification_needed": source_type in ["web", "news"]
         }
     
-    def _extract_key_claims(self, information: str) -> List[str]:
+    def _extract_key_claims(self, information: str) -> list[str]:
         """Extract key claims from information."""
         # Simple sentence extraction (would use NLP in production)
         sentences = information.split('.')
         claims = [s.strip() for s in sentences if len(s.strip()) > 20]
         return claims[:5]  # Limit to top 5 claims
     
-    async def _fact_check_claim(self, claim: str) -> Dict[str, Any]:
+    async def _fact_check_claim(self, claim: str) -> dict[str, Any]:
         """Fact-check a specific claim."""
         # This would integrate with fact-checking APIs
         return {
@@ -496,7 +495,7 @@ class ResearchChain:
             "contradictory_evidence": []
         }
     
-    def _assess_overall_credibility(self, validation_results: List[Dict]) -> float:
+    def _assess_overall_credibility(self, validation_results: list[dict]) -> float:
         """Assess overall credibility of all sources."""
         if not validation_results:
             return 0.0
@@ -508,14 +507,14 @@ class ResearchChain:
         
         return sum(credibility_scores) / len(credibility_scores)
     
-    def _filter_low_credibility_info(self, validation_results: List[Dict], threshold: float) -> List[Dict]:
+    def _filter_low_credibility_info(self, validation_results: list[dict], threshold: float) -> list[dict]:
         """Filter out information from low-credibility sources."""
         return [
             result for result in validation_results
             if result["source_validation"]["credibility_score"] >= threshold
         ]
     
-    async def _generate_comprehensive_synthesis(self, information: List[Dict], fact_checks: List[Dict]) -> Dict[str, Any]:
+    async def _generate_comprehensive_synthesis(self, information: list[dict], fact_checks: list[dict]) -> dict[str, Any]:
         """Generate comprehensive synthesis of findings."""
         return {
             "content": "Comprehensive synthesis of research findings with detailed analysis...",
@@ -524,7 +523,7 @@ class ResearchChain:
             "confidence": 0.85
         }
     
-    async def _generate_concise_synthesis(self, information: List[Dict], fact_checks: List[Dict]) -> Dict[str, Any]:
+    async def _generate_concise_synthesis(self, information: list[dict], fact_checks: list[dict]) -> dict[str, Any]:
         """Generate concise synthesis of findings."""
         return {
             "content": "Concise summary of key research findings...",
@@ -533,7 +532,7 @@ class ResearchChain:
             "confidence": 0.8
         }
     
-    async def _generate_academic_synthesis(self, information: List[Dict], fact_checks: List[Dict]) -> Dict[str, Any]:
+    async def _generate_academic_synthesis(self, information: list[dict], fact_checks: list[dict]) -> dict[str, Any]:
         """Generate academic-style synthesis of findings."""
         return {
             "content": "Academic synthesis with formal structure and citations...",
@@ -542,11 +541,11 @@ class ResearchChain:
             "confidence": 0.9
         }
     
-    async def _generate_default_synthesis(self, information: List[Dict], fact_checks: List[Dict]) -> Dict[str, Any]:
+    async def _generate_default_synthesis(self, information: list[dict], fact_checks: list[dict]) -> dict[str, Any]:
         """Generate default synthesis of findings."""
         return await self._generate_comprehensive_synthesis(information, fact_checks)
     
-    def _extract_cited_sources(self, synthesis: Dict[str, Any]) -> List[Dict]:
+    def _extract_cited_sources(self, synthesis: dict[str, Any]) -> list[dict]:
         """Extract sources cited in the synthesis."""
         # This would parse the synthesis to extract citations
         # For now, return mock sources
@@ -555,19 +554,19 @@ class ResearchChain:
             {"title": "Source 2", "type": "web", "url": "example.com/2"}
         ]
     
-    def _generate_apa_citations(self, sources: List[Dict]) -> List[str]:
+    def _generate_apa_citations(self, sources: list[dict]) -> list[str]:
         """Generate APA format citations."""
         return [f"Author, A. ({2024}). {source['title']}. Journal." for source in sources]
     
-    def _generate_mla_citations(self, sources: List[Dict]) -> List[str]:
+    def _generate_mla_citations(self, sources: list[dict]) -> list[str]:
         """Generate MLA format citations."""
         return [f'Author. "{source["title"]}". Website, 2024.' for source in sources]
     
-    def _generate_chicago_citations(self, sources: List[Dict]) -> List[str]:
+    def _generate_chicago_citations(self, sources: list[dict]) -> list[str]:
         """Generate Chicago format citations."""
         return [f'Author. {source["title"]}. (2024).' for source in sources]
     
-    def _generate_bibtex_citations(self, sources: List[Dict]) -> List[str]:
+    def _generate_bibtex_citations(self, sources: list[dict]) -> list[str]:
         """Generate BibTeX format citations."""
         return [
             f'''@article{{key,
@@ -577,7 +576,7 @@ class ResearchChain:
 }}''' for source in sources
         ]
     
-    def _generate_reference_list(self, sources: List[Dict]) -> List[Dict]:
+    def _generate_reference_list(self, sources: list[dict]) -> list[dict]:
         """Generate formatted reference list."""
         return [
             {

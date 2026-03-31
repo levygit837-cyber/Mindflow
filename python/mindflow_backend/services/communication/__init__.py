@@ -6,6 +6,7 @@ real-time event streaming.
 
 from __future__ import annotations
 
+
 # Factory functions for communication services
 def get_grpc_service():
     """Factory function for GrpcService."""

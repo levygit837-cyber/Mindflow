@@ -6,12 +6,12 @@ for efficient memory management.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-import sqlite3
-import json
 import asyncio
+import json
+import sqlite3
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -29,7 +29,7 @@ class SimpleContextStorage:
         """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection: Optional[sqlite3.Connection] = None
+        self._connection: sqlite3.Connection | None = None
     
     async def initialize(self) -> None:
         """Initialize database and create tables."""
@@ -74,7 +74,7 @@ class SimpleContextStorage:
         session_id: str,
         agent_id: str,
         content: str,
-        embedding: Optional[List[float]],
+        embedding: list[float] | None,
         token_start: int,
         token_end: int,
         timestamp: datetime,
@@ -126,10 +126,10 @@ class SimpleContextStorage:
     async def get_by_token_range(
         self,
         session_id: str,
-        token_start: Optional[int] = None,
-        token_end: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        token_start: int | None = None,
+        token_end: int | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Get context entries by token range.
         
         Args:
@@ -174,10 +174,10 @@ class SimpleContextStorage:
     async def search_by_embedding(
         self,
         session_id: str,
-        query_embedding: List[float],
+        query_embedding: list[float],
         limit: int = 10,
         min_similarity: float = 0.3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search context by embedding similarity.
         
         Args:
@@ -236,7 +236,7 @@ class SimpleContextStorage:
         
         return await loop.run_in_executor(None, _search)
     
-    async def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_stats(self, session_id: str) -> dict[str, Any]:
         """Get session statistics.
         
         Args:

@@ -4,13 +4,12 @@ import json
 from typing import Any
 
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
 from rich.live import Live
+from rich.panel import Panel
 from rich.spinner import Spinner
+from rich.text import Text
 
 from mindflow_backend.schemas.agent import StreamEvent
-from mindflow_cli.render.theme import MINDFLOW_THEME
 
 
 class ChatStreamRenderer:

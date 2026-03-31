@@ -15,9 +15,9 @@ def test_imports():
     
     try:
         # Test core imports
-        from mindflow_backend.tools.core.registry import EnhancedToolRegistry
         from mindflow_backend.tools.core.executor import ToolExecutor
         from mindflow_backend.tools.core.permissions import PermissionManager
+        from mindflow_backend.tools.core.registry import EnhancedToolRegistry
         print("✅ Core imports successful")
         
         # Test filesystem imports
@@ -35,8 +35,8 @@ def test_imports():
         print("✅ Schema imports successful")
         
         # Test interface imports
-        from mindflow_backend.interfaces.tools.base import ToolInterface
         from mindflow_backend.interfaces.tools.ai import ModelInterface
+        from mindflow_backend.interfaces.tools.base import ToolInterface
         print("✅ Interface imports successful")
         
         return True
@@ -52,7 +52,6 @@ def test_tool_structure():
     
     try:
         from mindflow_backend.tools.filesystem.operations import FileReadTool
-        from mindflow_backend.interfaces.tools.base import ToolInterface
         
         # Check if tool implements interface
         tool = FileReadTool()
@@ -169,8 +168,8 @@ def test_interface_structure():
     print("🔌 Testing Interface Structure...")
     
     try:
-        from mindflow_backend.interfaces.tools.base import ToolInterface
         from mindflow_backend.interfaces.tools.ai import ModelInterface
+        from mindflow_backend.interfaces.tools.base import ToolInterface
         from mindflow_backend.interfaces.tools.system import SystemInfoCollector
         
         # Check interface methods

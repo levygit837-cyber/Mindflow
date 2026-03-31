@@ -6,11 +6,10 @@ timings, gauges, and dashboard creation capabilities.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC, timedelta
-import asyncio
-from collections import defaultdict, deque
 import time
+from collections import defaultdict, deque
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
@@ -29,13 +28,13 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         super().__init__()
         
         # Metrics storage
-        self._counters: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
-        self._timings: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self._gauges: Dict[str, float] = {}
+        self._counters: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._timings: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self._gauges: dict[str, float] = {}
         
         # Aggregated metrics
-        self._aggregated_metrics: Dict[str, Dict[str, Any]] = {}
-        self._alert_rules: List[Dict[str, Any]] = []
+        self._aggregated_metrics: dict[str, dict[str, Any]] = {}
+        self._alert_rules: list[dict[str, Any]] = []
         
         # Configuration
         self._retention_period_hours = 24  # Keep 24 hours of detailed metrics
@@ -49,9 +48,9 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         self,
         metric_name: str,
         value: float,
-        tags: Optional[Dict[str, str]] = None,
-        timestamp: Optional[str] = None
-    ) -> Dict[str, Any]:
+        tags: dict[str, str] | None = None,
+        timestamp: str | None = None
+    ) -> dict[str, Any]:
         """Record a metric value.
         
         Args:
@@ -101,9 +100,9 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
     async def increment_counter(
         self,
         counter_name: str,
-        tags: Optional[Dict[str, str]] = None,
+        tags: dict[str, str] | None = None,
         value: int = 1
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Increment a counter metric.
         
         Args:
@@ -146,8 +145,8 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         self,
         operation_name: str,
         duration_ms: float,
-        tags: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        tags: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Record operation timing.
         
         Args:
@@ -194,10 +193,10 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
     
     async def get_metrics(
         self,
-        metric_names: Optional[List[str]] = None,
-        time_range: Optional[Tuple[str, str]] = None,
-        tags: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        metric_names: list[str] | None = None,
+        time_range: Tuple[str, str] | None = None,
+        tags: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Get metrics data with optional filtering.
         
         Args:
@@ -229,8 +228,8 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         self,
         metric_name: str,
         aggregation: str = "avg",
-        time_range: Optional[Tuple[str, str]] = None
-    ) -> Dict[str, Any]:
+        time_range: Tuple[str, str] | None = None
+    ) -> dict[str, Any]:
         """Get aggregated metrics for a specific metric.
         
         Args:
@@ -296,8 +295,8 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
     
     async def create_dashboard(
         self,
-        dashboard_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        dashboard_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Create a metrics dashboard configuration.
         
         Args:
@@ -348,7 +347,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
             self._logger.error(f"Error creating dashboard: {str(exc)}")
             raise
     
-    async def get_alert_rules(self) -> List[Dict[str, Any]]:
+    async def get_alert_rules(self) -> list[dict[str, Any]]:
         """Get configured alert rules.
         
         Returns:
@@ -365,8 +364,8 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
     
     async def create_alert_rule(
         self,
-        rule_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        rule_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Create an alert rule.
         
         Args:
@@ -414,7 +413,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
     
     # Helper methods
     
-    def _get_tag_key(self, tags: Optional[Dict[str, str]]) -> str:
+    def _get_tag_key(self, tags: dict[str, str] | None) -> str:
         """Generate tag key from tags dictionary."""
         if not tags:
             return ""
@@ -431,7 +430,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         # For now, we'll do immediate aggregation
         pass
     
-    def _get_filtered_counters(self, metric_names: Optional[List[str]], tags: Optional[Dict[str, str]]) -> Dict[str, Any]:
+    def _get_filtered_counters(self, metric_names: list[str] | None, tags: dict[str, str] | None) -> dict[str, Any]:
         """Get filtered counter metrics."""
         filtered_counters = {}
         
@@ -450,7 +449,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return filtered_counters
     
-    def _get_filtered_timings(self, metric_names: Optional[List[str]], tags: Optional[Dict[str, str]], time_range: Optional[Tuple[str, str]]) -> Dict[str, Any]:
+    def _get_filtered_timings(self, metric_names: list[str] | None, tags: dict[str, str] | None, time_range: Tuple[str, str] | None) -> dict[str, Any]:
         """Get filtered timing metrics."""
         filtered_timings = {}
         
@@ -480,7 +479,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return filtered_timings
     
-    def _get_filtered_gauges(self, metric_names: Optional[List[str]], tags: Optional[Dict[str, str]]) -> Dict[str, Any]:
+    def _get_filtered_gauges(self, metric_names: list[str] | None, tags: dict[str, str] | None) -> dict[str, Any]:
         """Get filtered gauge metrics."""
         filtered_gauges = {}
         
@@ -504,7 +503,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return filtered_gauges
     
-    def _get_filtered_aggregated_metrics(self, metric_names: Optional[List[str]], time_range: Optional[Tuple[str, str]]) -> Dict[str, Any]:
+    def _get_filtered_aggregated_metrics(self, metric_names: list[str] | None, time_range: Tuple[str, str] | None) -> dict[str, Any]:
         """Get filtered aggregated metrics."""
         filtered_aggregated = {}
         
@@ -525,7 +524,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return filtered_aggregated
     
-    def _get_timing_data_for_metric(self, metric_name: str, time_range: Optional[Tuple[str, str]]) -> List[Dict[str, Any]]:
+    def _get_timing_data_for_metric(self, metric_name: str, time_range: Tuple[str, str] | None) -> list[dict[str, Any]]:
         """Get timing data for a specific metric."""
         timing_data = self._timings.get(metric_name, deque())
         
@@ -543,7 +542,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return filtered_data
     
-    def _calculate_percentile(self, values: List[float], percentile: int) -> float:
+    def _calculate_percentile(self, values: list[float], percentile: int) -> float:
         """Calculate percentile value."""
         if not values:
             return 0.0
@@ -556,7 +555,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return sorted_values[index]
     
-    def _tags_match(self, tag_key: str, required_tags: Dict[str, str]) -> bool:
+    def _tags_match(self, tag_key: str, required_tags: dict[str, str]) -> bool:
         """Check if tag key matches required tags."""
         if not tag_key or not required_tags:
             return True
@@ -572,7 +571,7 @@ class MetricsService(BaseAbstractService, MetricsServiceInterface):
         
         return True
     
-    async def _process_dashboard_widget(self, widget: Dict[str, Any]) -> Dict[str, Any]:
+    async def _process_dashboard_widget(self, widget: dict[str, Any]) -> dict[str, Any]:
         """Process dashboard widget configuration."""
         widget_type = widget.get("type", "metric")
         

@@ -5,17 +5,22 @@ Handler for processing MCP messages and managing individual client connections.
 Implements the MCP protocol logic for initialization, tool execution, and resource access.
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Awaitable
+from typing import Any
 
 from mindflow_backend.schemas.mcp.base import (
-    MCPMessage, MCPRequest, MCPResponse, MCPError, MCPErrorCode,
-    MCPInitializeParams, MCPInitializeResult, MCPServerInfo, MCPCapability,
-    MCPVersion
+    MCPCapability,
+    MCPError,
+    MCPErrorCode,
+    MCPInitializeParams,
+    MCPInitializeResult,
+    MCPMessage,
+    MCPRequest,
+    MCPResponse,
+    MCPVersion,
 )
-from mindflow_backend.schemas.mcp.tools import MCPToolDefinition, MCPToolResult
 from mindflow_backend.schemas.mcp.resources import MCPResourceDefinition, MCPResourceResult
+from mindflow_backend.schemas.mcp.tools import MCPToolDefinition, MCPToolResult
 
 
 class BaseMCPHandler:
@@ -32,7 +37,7 @@ class MCPToolHandler(BaseMCPHandler):
         super().__init__()
         self.server = server
     
-    async def list_tools(self) -> List[MCPToolDefinition]:
+    async def list_tools(self) -> list[MCPToolDefinition]:
         """
         Get list of available tools.
         
@@ -41,7 +46,7 @@ class MCPToolHandler(BaseMCPHandler):
         """
         return self.server.available_tools
     
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """
         Execute a tool.
         
@@ -74,7 +79,7 @@ class MCPResourceHandler(BaseMCPHandler):
         super().__init__()
         self.server = server
     
-    async def list_resources(self) -> List[MCPResourceDefinition]:
+    async def list_resources(self) -> list[MCPResourceDefinition]:
         """
         Get list of available resources.
         
@@ -128,14 +133,14 @@ class MCPServerHandler(BaseMCPHandler):
         self.server = server
         self.connection_id = connection_id
         self.initialized = False
-        self.client_info: Optional[Dict[str, Any]] = None
-        self.client_capabilities: List[MCPCapability] = []
+        self.client_info: dict[str, Any] | None = None
+        self.client_capabilities: list[MCPCapability] = []
         
         # Sub-handlers
         self.tool_handler = MCPToolHandler(server)
         self.resource_handler = MCPResourceHandler(server)
     
-    async def handle_message(self, message: MCPMessage) -> Optional[MCPResponse]:
+    async def handle_message(self, message: MCPMessage) -> MCPResponse | None:
         """
         Handle an incoming MCP message.
         

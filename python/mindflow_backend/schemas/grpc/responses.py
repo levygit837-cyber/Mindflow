@@ -1,6 +1,7 @@
 """gRPC response schemas."""
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 from mindflow_backend.schemas.chat.agent import StreamEvent

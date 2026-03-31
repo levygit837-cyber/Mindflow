@@ -6,11 +6,11 @@ with support for structured logging, log levels, and monitoring integration.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any, Optional
-from enum import Enum
+from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
-from contextlib import AbstractAsyncContextManager, AbstractContextManager
+from enum import Enum
+from typing import Any, Protocol, runtime_checkable
 
 
 class LogLevel(Enum):
@@ -165,7 +165,7 @@ class StructuredLoggingInterface(LoggableInterface, Protocol):
         """
         ...
     
-    def with_context(self, **context) -> "StructuredLoggingInterface":
+    def with_context(self, **context) -> StructuredLoggingInterface:
         """Create a logger with additional context.
         
         Args:
@@ -176,7 +176,7 @@ class StructuredLoggingInterface(LoggableInterface, Protocol):
         """
         ...
     
-    def with_correlation_id(self, correlation_id: str) -> "StructuredLoggingInterface":
+    def with_correlation_id(self, correlation_id: str) -> StructuredLoggingInterface:
         """Create a logger with correlation ID.
         
         Args:
@@ -318,7 +318,7 @@ class LoggingContextInterface(Protocol):
         """
         ...
     
-    def with_context(self, **context) -> AbstractContextManager["LoggingContextInterface"]:
+    def with_context(self, **context) -> AbstractContextManager[LoggingContextInterface]:
         """Create a context manager with additional context.
         
         Args:
@@ -329,7 +329,7 @@ class LoggingContextInterface(Protocol):
         """
         ...
     
-    async def with_async_context(self, **context) -> AbstractAsyncContextManager["LoggingContextInterface"]:
+    async def with_async_context(self, **context) -> AbstractAsyncContextManager[LoggingContextInterface]:
         """Create an async context manager with additional context.
         
         Args:

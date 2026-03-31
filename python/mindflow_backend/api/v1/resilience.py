@@ -4,15 +4,14 @@ Provides REST API endpoints for managing gRPC resilience features
 including circuit breakers, retry policies, bulkhead pattern, and fallback strategies.
 """
 
-from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Query, Body
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import AdaptiveThresholdType, EnhancedCircuitBreakerConfig
-from mindflow_backend.grpc.resilience.advanced_retry import AdaptiveBackoffType, RetryConditionType, AdvancedRetryConfig
-from mindflow_backend.grpc.resilience.bulkhead import BulkheadConfig
-from mindflow_backend.grpc.resilience.fallback import FallbackConfig
+from mindflow_backend.grpc.resilience.advanced_retry import AdaptiveBackoffType, RetryConditionType
+from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import AdaptiveThresholdType
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -62,7 +61,7 @@ class FallbackConfigRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_resilience_status() -> Dict[str, Any]:
+async def get_resilience_status() -> dict[str, Any]:
     """Get current resilience configuration and metrics."""
     try:
         # Get global gRPC server instance
@@ -81,7 +80,7 @@ async def get_resilience_status() -> Dict[str, Any]:
 
 
 @router.get("/circuit-breaker/status")
-async def get_circuit_breaker_status() -> Dict[str, Any]:
+async def get_circuit_breaker_status() -> dict[str, Any]:
     """Get circuit breaker status and metrics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -98,7 +97,7 @@ async def get_circuit_breaker_status() -> Dict[str, Any]:
 
 
 @router.post("/circuit-breaker/config")
-async def update_circuit_breaker_config(config: CircuitBreakerConfigRequest) -> Dict[str, Any]:
+async def update_circuit_breaker_config(config: CircuitBreakerConfigRequest) -> dict[str, Any]:
     """Update circuit breaker configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -108,7 +107,9 @@ async def update_circuit_breaker_config(config: CircuitBreakerConfigRequest) -> 
             raise HTTPException(status_code=404, detail="Circuit breaker not available")
         
         # Update circuit breaker configuration
-        from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import EnhancedCircuitBreakerConfig
+        from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import (
+            EnhancedCircuitBreakerConfig,
+        )
         new_config = EnhancedCircuitBreakerConfig(
             failure_threshold=config.failure_threshold,
             recovery_timeout=config.recovery_timeout,
@@ -130,7 +131,7 @@ async def update_circuit_breaker_config(config: CircuitBreakerConfigRequest) -> 
 
 
 @router.post("/circuit-breaker/force-open")
-async def force_open_circuit_breaker() -> Dict[str, Any]:
+async def force_open_circuit_breaker() -> dict[str, Any]:
     """Force circuit breaker to open state (for testing)."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -151,7 +152,7 @@ async def force_open_circuit_breaker() -> Dict[str, Any]:
 
 
 @router.post("/circuit-breaker/force-close")
-async def force_close_circuit_breaker() -> Dict[str, Any]:
+async def force_close_circuit_breaker() -> dict[str, Any]:
     """Force circuit breaker to closed state (for testing)."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -172,7 +173,7 @@ async def force_close_circuit_breaker() -> Dict[str, Any]:
 
 
 @router.get("/retry-policy/status")
-async def get_retry_policy_status() -> Dict[str, Any]:
+async def get_retry_policy_status() -> dict[str, Any]:
     """Get retry policy status and metrics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -189,7 +190,7 @@ async def get_retry_policy_status() -> Dict[str, Any]:
 
 
 @router.post("/retry-policy/config")
-async def update_retry_policy_config(config: RetryPolicyConfigRequest) -> Dict[str, Any]:
+async def update_retry_policy_config(config: RetryPolicyConfigRequest) -> dict[str, Any]:
     """Update retry policy configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -222,7 +223,7 @@ async def update_retry_policy_config(config: RetryPolicyConfigRequest) -> Dict[s
 
 
 @router.get("/bulkhead/status")
-async def get_bulkhead_status() -> Dict[str, Any]:
+async def get_bulkhead_status() -> dict[str, Any]:
     """Get bulkhead status and metrics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -242,7 +243,7 @@ async def get_bulkhead_status() -> Dict[str, Any]:
 
 
 @router.post("/bulkhead/config")
-async def update_bulkhead_config(config: BulkheadConfigRequest) -> Dict[str, Any]:
+async def update_bulkhead_config(config: BulkheadConfigRequest) -> dict[str, Any]:
     """Update bulkhead configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -274,7 +275,7 @@ async def update_bulkhead_config(config: BulkheadConfigRequest) -> Dict[str, Any
 
 
 @router.get("/fallback/status")
-async def get_fallback_status() -> Dict[str, Any]:
+async def get_fallback_status() -> dict[str, Any]:
     """Get fallback manager status and metrics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -291,7 +292,7 @@ async def get_fallback_status() -> Dict[str, Any]:
 
 
 @router.post("/fallback/config")
-async def update_fallback_config(config: FallbackConfigRequest) -> Dict[str, Any]:
+async def update_fallback_config(config: FallbackConfigRequest) -> dict[str, Any]:
     """Update fallback manager configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -322,10 +323,10 @@ async def update_fallback_config(config: FallbackConfigRequest) -> Dict[str, Any
 
 @router.get("/metrics")
 async def get_resilience_metrics(
-    start_time: Optional[float] = Query(None, description="Start timestamp"),
-    end_time: Optional[float] = Query(None, description="End timestamp"),
-    component: Optional[str] = Query(None, description="Component filter")
-) -> Dict[str, Any]:
+    start_time: float | None = Query(None, description="Start timestamp"),
+    end_time: float | None = Query(None, description="End timestamp"),
+    component: str | None = Query(None, description="Component filter")
+) -> dict[str, Any]:
     """Get resilience metrics for analysis."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -361,7 +362,7 @@ async def get_resilience_metrics(
 
 
 @router.post("/reset-metrics")
-async def reset_resilience_metrics() -> Dict[str, Any]:
+async def reset_resilience_metrics() -> dict[str, Any]:
     """Reset all resilience metrics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -397,7 +398,7 @@ async def reset_resilience_metrics() -> Dict[str, Any]:
 
 
 @router.get("/health-check")
-async def perform_resilience_health_check() -> Dict[str, Any]:
+async def perform_resilience_health_check() -> dict[str, Any]:
     """Perform comprehensive resilience health check."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server

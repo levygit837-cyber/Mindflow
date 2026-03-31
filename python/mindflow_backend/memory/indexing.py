@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-import re
-
 
 _CONTINUATION_PATTERNS = (
     r"\bretom",

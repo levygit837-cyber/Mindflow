@@ -3,9 +3,8 @@
 Functions for formatting, parsing, and manipulating dates and times.
 """
 
-from datetime import datetime, timedelta, UTC
-from typing import Optional, Union
 import re
+from datetime import UTC, datetime, timedelta
 
 
 def format_datetime_iso(dt: datetime) -> str:
@@ -43,7 +42,7 @@ def format_datetime_long(dt: datetime) -> str:
     return dt.strftime("%A, %B %d, %Y at %I:%M %p")
 
 
-def parse_datetime_iso(dt_str: str) -> Optional[datetime]:
+def parse_datetime_iso(dt_str: str) -> datetime | None:
     """Parse ISO datetime string."""
     try:
         return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
@@ -51,7 +50,7 @@ def parse_datetime_iso(dt_str: str) -> Optional[datetime]:
         return None
 
 
-def parse_datetime_flexible(dt_str: str) -> Optional[datetime]:
+def parse_datetime_flexible(dt_str: str) -> datetime | None:
     """Parse datetime string in various formats."""
     formats = [
         "%Y-%m-%d %H:%M:%S",
@@ -77,7 +76,7 @@ def parse_datetime_flexible(dt_str: str) -> Optional[datetime]:
     return parse_datetime_iso(dt_str)
 
 
-def parse_relative_time(relative_str: str) -> Optional[datetime]:
+def parse_relative_time(relative_str: str) -> datetime | None:
     """Parse relative time strings like '2 hours ago', '3 days ago'."""
     now = datetime.now(UTC)
     
@@ -104,14 +103,14 @@ def parse_relative_time(relative_str: str) -> Optional[datetime]:
     return None
 
 
-def get_timestamp(dt: Optional[datetime] = None) -> float:
+def get_timestamp(dt: datetime | None = None) -> float:
     """Get Unix timestamp."""
     if dt is None:
         dt = datetime.now(UTC)
     return dt.timestamp()
 
 
-def get_timestamp_ms(dt: Optional[datetime] = None) -> int:
+def get_timestamp_ms(dt: datetime | None = None) -> int:
     """Get Unix timestamp in milliseconds."""
     return int(get_timestamp(dt) * 1000)
 
@@ -307,7 +306,7 @@ def format_duration_iso(duration: timedelta) -> str:
     return f"PT{''.join(parts)}"
 
 
-def parse_duration_iso(duration_str: str) -> Optional[timedelta]:
+def parse_duration_iso(duration_str: str) -> timedelta | None:
     """Parse ISO duration format (PT...)."""
     if not duration_str.startswith('PT'):
         return None

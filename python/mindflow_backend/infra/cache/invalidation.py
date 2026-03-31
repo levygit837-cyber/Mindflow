@@ -9,16 +9,14 @@ from __future__ import annotations
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Callable, Union
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from enum import Enum
-import hashlib
-import json
-import weakref
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.cache.cache_manager import get_cache_manager
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -51,18 +49,18 @@ class InvalidationRule:
     strategy: InvalidationStrategy = InvalidationStrategy.IMMEDIATE
     trigger: InvalidationTrigger = InvalidationTrigger.MANUAL
     priority: int = 1                    # Higher priority = executed first
-    conditions: Dict[str, Any] = field(default_factory=dict)
+    conditions: dict[str, Any] = field(default_factory=dict)
     delay_seconds: float = 0.0
     batch_size: int = 100
-    cascade_rules: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
+    cascade_rules: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
     enabled: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    last_triggered: Optional[datetime] = None
+    last_triggered: datetime | None = None
     trigger_count: int = 0
     invalidation_count: int = 0
     
-    def should_trigger(self, context: Dict[str, Any]) -> bool:
+    def should_trigger(self, context: dict[str, Any]) -> bool:
         """Check if rule should be triggered.
         
         Args:
@@ -115,13 +113,13 @@ class InvalidationEvent:
     pattern: str
     strategy: InvalidationStrategy
     trigger: InvalidationTrigger
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    scheduled_at: Optional[datetime] = None
-    executed_at: Optional[datetime] = None
-    affected_keys: List[str] = field(default_factory=list)
-    success: Optional[bool] = None
-    error_message: Optional[str] = None
+    scheduled_at: datetime | None = None
+    executed_at: datetime | None = None
+    affected_keys: list[str] = field(default_factory=list)
+    success: bool | None = None
+    error_message: str | None = None
     duration_ms: float = 0.0
 
 
@@ -130,8 +128,8 @@ class DependencyTracker:
     
     def __init__(self):
         """Initialize dependency tracker."""
-        self._dependencies: Dict[str, Set[str]] = {}  # key -> dependencies
-        self._dependents: Dict[str, Set[str]] = {}     # key -> dependents
+        self._dependencies: dict[str, set[str]] = {}  # key -> dependencies
+        self._dependents: dict[str, set[str]] = {}     # key -> dependents
         self._lock = asyncio.Lock()
         
     async def add_dependency(self, key: str, dependency: str) -> None:
@@ -168,7 +166,7 @@ class DependencyTracker:
                 if not self._dependents[dependency]:
                     del self._dependents[dependency]
                     
-    async def get_dependents(self, key: str) -> Set[str]:
+    async def get_dependents(self, key: str) -> set[str]:
         """Get all dependents of a key.
         
         Args:
@@ -180,7 +178,7 @@ class DependencyTracker:
         async with self._lock:
             return self._dependents.get(key, set()).copy()
             
-    async def get_dependencies(self, key: str) -> Set[str]:
+    async def get_dependencies(self, key: str) -> set[str]:
         """Get all dependencies of a key.
         
         Args:
@@ -192,7 +190,7 @@ class DependencyTracker:
         async with self._lock:
             return self._dependencies.get(key, set()).copy()
             
-    async def get_all_dependents(self, key: str) -> Set[str]:
+    async def get_all_dependents(self, key: str) -> set[str]:
         """Get all transitive dependents of a key.
         
         Args:
@@ -221,7 +219,7 @@ class InvalidationStrategy(ABC):
     """Abstract base class for invalidation strategies."""
     
     @abstractmethod
-    async def execute(self, keys: List[str], context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
         """Execute invalidation strategy.
         
         Args:
@@ -237,7 +235,7 @@ class InvalidationStrategy(ABC):
 class ImmediateInvalidationStrategy(InvalidationStrategy):
     """Immediate cache invalidation."""
     
-    async def execute(self, keys: List[str], context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
         """Execute immediate invalidation."""
         cache_manager = get_cache_manager()
         
@@ -276,7 +274,7 @@ class DelayedInvalidationStrategy(InvalidationStrategy):
         """
         self.delay_seconds = delay_seconds
         
-    async def execute(self, keys: List[str], context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
         """Execute delayed invalidation."""
         await asyncio.sleep(self.delay_seconds)
         
@@ -296,7 +294,7 @@ class BatchedInvalidationStrategy(InvalidationStrategy):
         """
         self.batch_size = batch_size
         
-    async def execute(self, keys: List[str], context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
         """Execute batched invalidation."""
         cache_manager = get_cache_manager()
         
@@ -341,7 +339,7 @@ class BatchedInvalidationStrategy(InvalidationStrategy):
 class ConditionalInvalidationStrategy(InvalidationStrategy):
     """Conditional cache invalidation."""
     
-    def __init__(self, condition: Callable[[str, Dict[str, Any]], bool]):
+    def __init__(self, condition: Callable[[str, dict[str, Any]], bool]):
         """Initialize conditional invalidation.
         
         Args:
@@ -349,7 +347,7 @@ class ConditionalInvalidationStrategy(InvalidationStrategy):
         """
         self.condition = condition
         
-    async def execute(self, keys: List[str], context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
         """Execute conditional invalidation."""
         cache_manager = get_cache_manager()
         
@@ -395,16 +393,16 @@ class CacheInvalidator:
     
     def __init__(self):
         """Initialize cache invalidator."""
-        self._rules: Dict[str, InvalidationRule] = {}
-        self._events: List[InvalidationEvent] = []
+        self._rules: dict[str, InvalidationRule] = {}
+        self._events: list[InvalidationEvent] = []
         self._dependency_tracker = DependencyTracker()
-        self._strategies: Dict[InvalidationStrategy, InvalidationStrategy] = {
+        self._strategies: dict[InvalidationStrategy, InvalidationStrategy] = {
             InvalidationStrategy.IMMEDIATE: ImmediateInvalidationStrategy(),
             InvalidationStrategy.DELAYED: DelayedInvalidationStrategy(0.0),
             InvalidationStrategy.BATCHED: BatchedInvalidationStrategy(),
         }
         self._pending_invalidations: asyncio.Queue = asyncio.Queue()
-        self._worker_task: Optional[asyncio.Task] = None
+        self._worker_task: asyncio.Task | None = None
         self._is_running = False
         
         # Statistics
@@ -468,9 +466,9 @@ class CacheInvalidator:
         self,
         pattern: str,
         strategy: InvalidationStrategy = InvalidationStrategy.IMMEDIATE,
-        context: Optional[Dict[str, Any]] = None,
-        rule_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+        context: dict[str, Any] | None = None,
+        rule_name: str | None = None
+    ) -> dict[str, Any]:
         """Invalidate cache entries matching pattern.
         
         Args:
@@ -548,7 +546,7 @@ class CacheInvalidator:
         
         return result
         
-    async def invalidate_by_dependency(self, dependency_key: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def invalidate_by_dependency(self, dependency_key: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Invalidate cache entries by dependency.
         
         Args:
@@ -601,7 +599,7 @@ class CacheInvalidator:
         await self._dependency_tracker.remove_dependency(key, dependency)
         _logger.debug("dependency_removed", key=key, dependency=dependency)
         
-    async def trigger_rule(self, rule_name: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def trigger_rule(self, rule_name: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Trigger an invalidation rule.
         
         Args:
@@ -689,7 +687,7 @@ class CacheInvalidator:
                 # Get next invalidation task
                 try:
                     task = await asyncio.wait_for(self._pending_invalidations.get(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                     
                 # Execute invalidation task
@@ -708,7 +706,7 @@ class CacheInvalidator:
                 _logger.error("invalidation_worker_error", error=str(e))
                 await asyncio.sleep(1)
                 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get invalidation statistics.
         
         Returns:
@@ -754,7 +752,7 @@ class CacheInvalidator:
 
 
 # Global cache invalidator instance
-_cache_invalidator: Optional[CacheInvalidator] = None
+_cache_invalidator: CacheInvalidator | None = None
 
 
 def get_cache_invalidator() -> CacheInvalidator:

@@ -13,10 +13,10 @@ Submodules:
 - core: Interfaces base, tipos e exceções compartilhadas
 """
 
+from .core import MemoryRetrievalResult, MemoryServiceInterface
 from .embeddings import IEmbeddingProvider
+from .retrieval import ContextRetriever, ResultRanker, SemanticRetriever
 from .storage import MemoryDatabase, MemoryVectorDB, VectorStore
-from .retrieval import SemanticRetriever, ContextRetriever, ResultRanker
-from .core import MemoryServiceInterface, MemoryRetrievalResult
 
 __all__ = [
     # Embeddings

@@ -7,8 +7,8 @@ Provides message formatting, parsing, and template creation.
 
 import json
 import logging
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +26,9 @@ class XMPPProtocol:
         to_jid: str,
         content: str,
         message_type: str = "default",
-        metadata: Optional[Dict[str, Any]] = None,
-        sender_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+        sender_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a standardized XMPP message.
         
@@ -63,9 +63,9 @@ class XMPPProtocol:
     def create_request(
         to_jid: str,
         action: str,
-        params: Optional[Dict[str, Any]] = None,
-        sender_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        sender_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a request message.
         
@@ -95,9 +95,9 @@ class XMPPProtocol:
         to_jid: str,
         result: Any,
         success: bool = True,
-        error: Optional[str] = None,
-        sender_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        error: str | None = None,
+        sender_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a response message.
         
@@ -128,9 +128,9 @@ class XMPPProtocol:
     def create_notification(
         to_jid: str,
         event: str,
-        data: Optional[Dict[str, Any]] = None,
-        sender_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        sender_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a notification message.
         
@@ -156,7 +156,7 @@ class XMPPProtocol:
         )
     
     @staticmethod
-    def parse_message(message: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_message(message: dict[str, Any]) -> dict[str, Any]:
         """
         Parse an XMPP message into structured data.
         
@@ -262,7 +262,7 @@ class XMPPProtocol:
         return ""
     
     @staticmethod
-    def build_jid(username: str, domain: str, resource: Optional[str] = None) -> str:
+    def build_jid(username: str, domain: str, resource: str | None = None) -> str:
         """
         Build JID from components.
         

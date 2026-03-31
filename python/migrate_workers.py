@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Archive legacy workers and complete migration to new system."""
 
-import os
 import shutil
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 
 def archive_legacy_workers():
     """Archive legacy worker files to prevent accidental use."""

@@ -8,12 +8,13 @@ Suitable for command-line tools and subprocess communication.
 import asyncio
 import json
 import subprocess
-import sys
-from typing import Optional, TextIO
-import logging
 
 from mindflow_backend.interfaces.mcp.transport.base import (
-    MCPTransport, TransportState, TransportError, ConnectionError, MessageError
+    ConnectionError,
+    MCPTransport,
+    MessageError,
+    TransportError,
+    TransportState,
 )
 from mindflow_backend.schemas.mcp.base import MCPMessage
 from mindflow_backend.schemas.mcp.transport import StdioConfig
@@ -40,11 +41,11 @@ class StdioTransport(MCPTransport):
             config: Stdio transport configuration
         """
         super().__init__(config)
-        self.process: Optional[subprocess.Popen] = None
-        self.stdin_writer: Optional[asyncio.StreamWriter] = None
-        self.stdout_reader: Optional[asyncio.StreamReader] = None
-        self.stderr_reader: Optional[asyncio.StreamReader] = None
-        self._stderr_monitor_task: Optional[asyncio.Task] = None
+        self.process: subprocess.Popen | None = None
+        self.stdin_writer: asyncio.StreamWriter | None = None
+        self.stdout_reader: asyncio.StreamReader | None = None
+        self.stderr_reader: asyncio.StreamReader | None = None
+        self._stderr_monitor_task: asyncio.Task | None = None
     
     async def connect(self) -> None:
         """
@@ -164,7 +165,7 @@ class StdioTransport(MCPTransport):
             self._update_metrics("error")
             raise MessageError(f"Failed to send message: {e}")
     
-    async def receive_message(self) -> Optional[MCPMessage]:
+    async def receive_message(self) -> MCPMessage | None:
         """
         Receive a message from stdout.
         
@@ -258,7 +259,7 @@ class StdioTransport(MCPTransport):
                             asyncio.get_event_loop().run_in_executor(None, self.process.wait),
                             timeout=5.0
                         )
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Force kill if terminate doesn't work
                         self.process.kill()
                         await asyncio.get_event_loop().run_in_executor(None, self.process.wait)

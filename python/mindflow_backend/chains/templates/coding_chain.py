@@ -11,12 +11,11 @@ This template provides a standardized coding workflow with steps for:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from mindflow_backend.chains.builders.sequential_builder import SequentialChainBuilder
 from mindflow_backend.chains.base.chain import BaseChain
 from mindflow_backend.chains.base.step import StepType
-from mindflow_backend.chains.base.types import ChainConfig
+from mindflow_backend.chains.builders.sequential_builder import SequentialChainBuilder
 
 
 class CodingChain:
@@ -104,7 +103,7 @@ class CodingChain:
                 description="Generate comprehensive documentation"
             )
     
-    async def _analyze_coding_requirements(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _analyze_coding_requirements(self, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze coding requirements and specifications."""
         requirements = context.get("input", {}).get("requirements", "")
         
@@ -137,7 +136,7 @@ class CodingChain:
             }
         }
     
-    async def _design_solution_architecture(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _design_solution_architecture(self, context: dict[str, Any]) -> dict[str, Any]:
         """Design solution architecture and structure."""
         requirements = context.get("input", {})
         
@@ -164,7 +163,7 @@ class CodingChain:
             }
         }
     
-    async def _implement_solution_code(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _implement_solution_code(self, context: dict[str, Any]) -> dict[str, Any]:
         """Implement the solution code."""
         design = context.get("input", {})
         
@@ -191,7 +190,7 @@ class CodingChain:
             }
         }
     
-    async def _review_and_validate_code(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _review_and_validate_code(self, context: dict[str, Any]) -> dict[str, Any]:
         """Review code for quality and best practices."""
         implementation = context.get("input", {})
         
@@ -222,7 +221,7 @@ class CodingChain:
             }
         }
     
-    async def _generate_unit_tests(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_unit_tests(self, context: dict[str, Any]) -> dict[str, Any]:
         """Generate unit tests for the implementation."""
         implementation = context.get("input", {})
         
@@ -251,7 +250,7 @@ class CodingChain:
             }
         }
     
-    async def _lint_and_format_code(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _lint_and_format_code(self, context: dict[str, Any]) -> dict[str, Any]:
         """Lint and format code according to standards."""
         implementation = context.get("input", {})
         
@@ -275,7 +274,7 @@ class CodingChain:
             }
         }
     
-    async def _generate_code_documentation(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_code_documentation(self, context: dict[str, Any]) -> dict[str, Any]:
         """Generate comprehensive documentation."""
         implementation = context.get("input", {})
         
@@ -311,7 +310,7 @@ class CodingChain:
     
     # Helper methods (simplified implementations for demonstration)
     
-    def _parse_requirements(self, requirements: str) -> Dict[str, Any]:
+    def _parse_requirements(self, requirements: str) -> dict[str, Any]:
         """Parse and structure requirements."""
         return {
             "raw_text": requirements,
@@ -320,7 +319,7 @@ class CodingChain:
             "assumptions": self._extract_assumptions(requirements)
         }
     
-    def _extract_features(self, requirements: str) -> List[str]:
+    def _extract_features(self, requirements: str) -> list[str]:
         """Extract feature requirements from text."""
         # Simple pattern matching (would use NLP in production)
         feature_patterns = ["should", "must", "will", "shall", "needs to"]
@@ -333,7 +332,7 @@ class CodingChain:
         
         return features
     
-    def _extract_constraints(self, requirements: str) -> List[str]:
+    def _extract_constraints(self, requirements: str) -> list[str]:
         """Extract constraints from requirements."""
         constraint_patterns = ["limit", "restrict", "must not", "cannot", "within"]
         constraints = []
@@ -345,7 +344,7 @@ class CodingChain:
         
         return constraints
     
-    def _extract_assumptions(self, requirements: str) -> List[str]:
+    def _extract_assumptions(self, requirements: str) -> list[str]:
         """Extract assumptions from requirements."""
         assumption_patterns = ["assume", "assuming", "given that"]
         assumptions = []
@@ -357,11 +356,11 @@ class CodingChain:
         
         return assumptions
     
-    def _extract_functional_requirements(self, parsed_reqs: Dict[str, Any]) -> List[str]:
+    def _extract_functional_requirements(self, parsed_reqs: dict[str, Any]) -> list[str]:
         """Extract functional requirements."""
         return parsed_reqs.get("features", [])
     
-    def _extract_non_functional_requirements(self, parsed_reqs: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _extract_non_functional_requirements(self, parsed_reqs: dict[str, Any]) -> dict[str, list[str]]:
         """Extract non-functional requirements."""
         return {
             "performance": self._extract_performance_requirements(parsed_reqs),
@@ -370,7 +369,7 @@ class CodingChain:
             "scalability": self._extract_scalability_requirements(parsed_reqs)
         }
     
-    def _assess_coding_complexity(self, parsed_reqs: Dict[str, Any]) -> str:
+    def _assess_coding_complexity(self, parsed_reqs: dict[str, Any]) -> str:
         """Assess the complexity of coding requirements."""
         feature_count = len(parsed_reqs.get("features", []))
         constraint_count = len(parsed_reqs.get("constraints", []))
@@ -382,7 +381,7 @@ class CodingChain:
         else:
             return "low"
     
-    def _determine_project_scope(self, parsed_reqs: Dict[str, Any]) -> str:
+    def _determine_project_scope(self, parsed_reqs: dict[str, Any]) -> str:
         """Determine the scope of the project."""
         feature_count = len(parsed_reqs.get("features", []))
         
@@ -395,7 +394,7 @@ class CodingChain:
         else:
             return "utility"
     
-    def _estimate_components(self, parsed_reqs: Dict[str, Any]) -> List[str]:
+    def _estimate_components(self, parsed_reqs: dict[str, Any]) -> list[str]:
         """Estimate required components."""
         features = parsed_reqs.get("features", [])
         
@@ -410,7 +409,7 @@ class CodingChain:
         
         return components
     
-    def _identify_dependencies(self, parsed_reqs: Dict[str, Any]) -> List[str]:
+    def _identify_dependencies(self, parsed_reqs: dict[str, Any]) -> list[str]:
         """Identify potential dependencies."""
         features = parsed_reqs.get("features", [])
         dependencies = []
@@ -425,7 +424,7 @@ class CodingChain:
         
         return list(set(dependencies))
     
-    def _design_system_architecture(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+    def _design_system_architecture(self, requirements: dict[str, Any]) -> dict[str, Any]:
         """Design the overall system architecture."""
         return {
             "pattern": "layered_architecture",
@@ -434,7 +433,7 @@ class CodingChain:
             "communication": "rest_api" if self.programming_language == "python" else "rpc"
         }
     
-    def _design_component_structure(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+    def _design_component_structure(self, requirements: dict[str, Any]) -> dict[str, Any]:
         """Design the component structure."""
         return {
             "main_module": "main.py",
@@ -444,7 +443,7 @@ class CodingChain:
             "api_layer": ["endpoints.py", "schemas.py"]
         }
     
-    def _design_data_flow(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+    def _design_data_flow(self, requirements: dict[str, Any]) -> dict[str, Any]:
         """Design the data flow architecture."""
         return {
             "flow_pattern": "request_response",
@@ -452,7 +451,7 @@ class CodingChain:
             "storage_points": ["database", "cache", "logs"]
         }
     
-    def _design_interfaces(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+    def _design_interfaces(self, requirements: dict[str, Any]) -> dict[str, Any]:
         """Design APIs and interfaces."""
         return {
             "rest_endpoints": ["/api/v1/resource"],
@@ -461,7 +460,7 @@ class CodingChain:
             "error_handling": "standardized_errors"
         }
     
-    def _select_design_patterns(self, requirements: Dict[str, Any]) -> List[str]:
+    def _select_design_patterns(self, requirements: dict[str, Any]) -> list[str]:
         """Select appropriate design patterns."""
         patterns = ["singleton", "factory", "observer"]
         
@@ -470,7 +469,7 @@ class CodingChain:
         
         return patterns
     
-    def _define_technology_stack(self, requirements: Dict[str, Any]) -> Dict[str, str]:
+    def _define_technology_stack(self, requirements: dict[str, Any]) -> dict[str, str]:
         """Define the technology stack."""
         return {
             "language": self.programming_language,
@@ -480,7 +479,7 @@ class CodingChain:
             "documentation": "sphinx"
         }
     
-    def _generate_code_structure(self, design: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_code_structure(self, design: dict[str, Any]) -> dict[str, str]:
         """Generate the basic code structure."""
         structure = {}
         
@@ -493,7 +492,7 @@ class CodingChain:
         
         return structure
     
-    def _implement_core_logic(self, design: Dict[str, Any]) -> Dict[str, str]:
+    def _implement_core_logic(self, design: dict[str, Any]) -> dict[str, str]:
         """Implement the core business logic."""
         return {
             "main.py": '''
@@ -517,7 +516,7 @@ class Service:
 '''
         }
     
-    def _implement_utilities(self, design: Dict[str, Any]) -> Dict[str, str]:
+    def _implement_utilities(self, design: dict[str, Any]) -> dict[str, str]:
         """Implement utility functions."""
         return {
             "utils.py": '''
@@ -548,7 +547,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
 '''
         }
     
-    def _assemble_complete_code(self, structure: Dict, core: Dict, utilities: Dict) -> Dict[str, str]:
+    def _assemble_complete_code(self, structure: dict, core: dict, utilities: dict) -> dict[str, str]:
         """Assemble complete code from all parts."""
         complete_code = {}
         complete_code.update(structure)
@@ -556,11 +555,11 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
         complete_code.update(utilities)
         return complete_code
     
-    def _list_created_files(self, code: Dict[str, str]) -> List[str]:
+    def _list_created_files(self, code: dict[str, str]) -> list[str]:
         """List all created files."""
         return list(code.keys())
     
-    def _generate_implementation_notes(self, design: Dict[str, Any]) -> List[str]:
+    def _generate_implementation_notes(self, design: dict[str, Any]) -> list[str]:
         """Generate implementation notes."""
         return [
             f"Implemented using {design.get('technology_stack', {}).get('language', 'python')}",
@@ -569,7 +568,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
             "Error handling implemented where appropriate"
         ]
     
-    def _analyze_code_quality(self, implementation: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_code_quality(self, implementation: dict[str, Any]) -> dict[str, Any]:
         """Analyze code quality metrics."""
         code = implementation.get("implementation", {})
         
@@ -586,7 +585,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
             "maintainability_index": 0.8
         }
     
-    def _review_best_practices(self, implementation: Dict[str, Any]) -> Dict[str, Any]:
+    def _review_best_practices(self, implementation: dict[str, Any]) -> dict[str, Any]:
         """Review code against best practices."""
         return {
             "naming_conventions": "compliant",
@@ -596,7 +595,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
             "testing": "included" if self.include_tests else "not_included"
         }
     
-    def _review_security_practices(self, implementation: Dict[str, Any]) -> Dict[str, Any]:
+    def _review_security_practices(self, implementation: dict[str, Any]) -> dict[str, Any]:
         """Review security practices."""
         return {
             "input_validation": "implemented",
@@ -605,7 +604,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
             "data_encryption": "recommended"
         }
     
-    def _review_performance_considerations(self, implementation: Dict[str, Any]) -> Dict[str, Any]:
+    def _review_performance_considerations(self, implementation: dict[str, Any]) -> dict[str, Any]:
         """Review performance considerations."""
         return {
             "algorithmic_complexity": "acceptable",
@@ -614,7 +613,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
             "caching": "recommended"
         }
     
-    def _calculate_overall_quality_score(self, reviews: List[Dict]) -> float:
+    def _calculate_overall_quality_score(self, reviews: list[dict]) -> float:
         """Calculate overall quality score from reviews."""
         # Simple scoring algorithm
         scores = []
@@ -625,7 +624,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
         
         return sum(scores) / len(scores) if scores else 0.0
     
-    def _generate_improvement_recommendations(self, reviews: List[Dict]) -> List[str]:
+    def _generate_improvement_recommendations(self, reviews: list[dict]) -> list[str]:
         """Generate improvement recommendations."""
         recommendations = []
         
@@ -637,7 +636,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
         
         return list(set(recommendations))
     
-    def _identify_testable_components(self, implementation: Dict[str, Any]) -> List[str]:
+    def _identify_testable_components(self, implementation: dict[str, Any]) -> list[str]:
         """Identify components that should be tested."""
         files = implementation.get("files_created", [])
         testable = []
@@ -648,7 +647,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
         
         return testable
     
-    def _generate_test_cases_for_component(self, component: str) -> List[Dict[str, Any]]:
+    def _generate_test_cases_for_component(self, component: str) -> list[dict[str, Any]]:
         """Generate test cases for a specific component."""
         return [
             {
@@ -665,7 +664,7 @@ def safe_get(data: Dict[str, Any], key: str, default: Any = None) -> Any:
             }
         ]
     
-    def _generate_test_code(self, test_cases: List[Dict], implementation: Dict) -> str:
+    def _generate_test_code(self, test_cases: list[dict], implementation: dict) -> str:
         """Generate test code from test cases."""
         test_code = '''
 import pytest
@@ -685,7 +684,7 @@ class TestImplementation:
         
         return test_code
     
-    def _generate_test_documentation(self, test_cases: List[Dict]) -> str:
+    def _generate_test_documentation(self, test_cases: list[dict]) -> str:
         """Generate documentation for tests."""
         docs = "# Test Documentation\\n\\n"
         
@@ -697,7 +696,7 @@ class TestImplementation:
         
         return docs
     
-    def _calculate_test_coverage(self, test_cases: List[Dict], implementation: Dict) -> Dict[str, float]:
+    def _calculate_test_coverage(self, test_cases: list[dict], implementation: dict) -> dict[str, float]:
         """Calculate test coverage metrics."""
         components = implementation.get("files_created", [])
         tested_components = set()
@@ -725,7 +724,7 @@ class TestImplementation:
         }
         return framework_map.get(self.programming_language, "pytest")
     
-    def _run_linting_analysis(self, implementation: Dict[str, Any]) -> Dict[str, Any]:
+    def _run_linting_analysis(self, implementation: dict[str, Any]) -> dict[str, Any]:
         """Run linting analysis on the code."""
         # Mock linting results
         return {
@@ -735,7 +734,7 @@ class TestImplementation:
             "score": 9.2
         }
     
-    def _format_code(self, implementation: Dict[str, Any]) -> Dict[str, str]:
+    def _format_code(self, implementation: dict[str, Any]) -> dict[str, str]:
         """Format code according to style guidelines."""
         # Simple formatting (would use actual formatter in production)
         formatted = {}
@@ -750,7 +749,7 @@ class TestImplementation:
         
         return formatted
     
-    def _check_style_compliance(self, formatted_code: Dict[str, str]) -> Dict[str, Any]:
+    def _check_style_compliance(self, formatted_code: dict[str, str]) -> dict[str, Any]:
         """Check code style compliance."""
         return {
             "compliant": True,
@@ -759,7 +758,7 @@ class TestImplementation:
             "score": 10.0
         }
     
-    def _identify_formatting_changes(self, original: str, formatted: str) -> List[str]:
+    def _identify_formatting_changes(self, original: str, formatted: str) -> list[str]:
         """Identify changes made during formatting."""
         changes = []
         
@@ -771,7 +770,7 @@ class TestImplementation:
         
         return changes
     
-    def _generate_api_documentation(self, implementation: Dict[str, Any]) -> str:
+    def _generate_api_documentation(self, implementation: dict[str, Any]) -> str:
         """Generate API documentation."""
         return '''
 # API Documentation
@@ -791,7 +790,7 @@ Create a new resource.
 **Returns**: Created resource
 '''
     
-    def _generate_code_comments(self, implementation: Dict[str, Any]) -> str:
+    def _generate_code_comments(self, implementation: dict[str, Any]) -> str:
         """Generate inline code documentation."""
         return '''
 ## Code Documentation
@@ -806,7 +805,7 @@ Contains business logic and service classes.
 Contains helper functions and utilities.
 '''
     
-    def _generate_user_documentation(self, implementation: Dict[str, Any]) -> str:
+    def _generate_user_documentation(self, implementation: dict[str, Any]) -> str:
         """Generate user-facing documentation."""
         return '''
 # User Guide
@@ -820,7 +819,7 @@ Contains helper functions and utilities.
 Basic usage examples and tutorials.
 '''
     
-    def _generate_developer_documentation(self, implementation: Dict[str, Any]) -> str:
+    def _generate_developer_documentation(self, implementation: dict[str, Any]) -> str:
         """Generate developer documentation."""
         return '''
 # Developer Guide
@@ -835,7 +834,7 @@ Setting up development environment.
 Guidelines for contributing to the project.
 '''
     
-    def _define_documentation_structure(self) -> Dict[str, str]:
+    def _define_documentation_structure(self) -> dict[str, str]:
         """Define the documentation structure."""
         return {
             "readme": "README.md",

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from mindflow_backend.agents.prompts.base import build_system_prompt
 
-
 ORCHESTRATOR_CHAINS = """\
 ## Chains, Graphs, and Specialist Catalog
 

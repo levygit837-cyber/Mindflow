@@ -8,7 +8,6 @@ relevance validation, and payload size limits.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 _CHARS_PER_TOKEN = 4
 
@@ -59,9 +58,9 @@ def check_staleness(
     current_turn: int,
     context_turn: int,
     max_stale_turns: int = 10,
-) -> List[QualityIssue]:
+) -> list[QualityIssue]:
     """Flag context older than N turns without refresh."""
-    issues: List[QualityIssue] = []
+    issues: list[QualityIssue] = []
     age = current_turn - context_turn
     if age > max_stale_turns:
         issues.append(QualityIssue(
@@ -72,12 +71,12 @@ def check_staleness(
 
 
 def check_relevance(
-    context_topics: List[str],
-    task_topics: List[str],
+    context_topics: list[str],
+    task_topics: list[str],
     min_similarity: float = 0.5,
-) -> List[QualityIssue]:
+) -> list[QualityIssue]:
     """Check if context topics relate to current task."""
-    issues: List[QualityIssue] = []
+    issues: list[QualityIssue] = []
     if not task_topics or not context_topics:
         return issues
 
@@ -98,12 +97,12 @@ def validate_context(
     payload: str,
     current_turn: int,
     context_turn: int,
-    context_topics: List[str],
-    task_topics: List[str],
+    context_topics: list[str],
+    task_topics: list[str],
     max_tokens: int = 1000,
     max_stale_turns: int = 10,
     min_similarity: float = 0.5,
-) -> List[QualityIssue]:
+) -> list[QualityIssue]:
     """Comprehensive context validation.
     
     Combines payload size validation with quality gates.

@@ -6,20 +6,21 @@ process management, and environment access.
 
 from __future__ import annotations
 
-# System tools (unified from backend)
-from .shell_executor import (
-    ShellExecutorTool,
-)
+from .process_manager import ProcessManagerTool
 from .resource_monitor import (
     ResourceMonitorTool,
-)
-from .system_info import (
-    SystemInfoCollector,
 )
 
 # Original system tools
 from .sandbox import MindFlowSandbox
-from .process_manager import ProcessManagerTool
+
+# System tools (unified from backend)
+from .shell_executor import (
+    ShellExecutorTool,
+)
+from .system_info import (
+    SystemInfoCollector,
+)
 
 __all__ = [
     # System tools (unified)

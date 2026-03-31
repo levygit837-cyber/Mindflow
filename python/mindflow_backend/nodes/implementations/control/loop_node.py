@@ -6,9 +6,10 @@ for loops, and iterator-based loops with proper exit conditions.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -25,12 +26,12 @@ class LoopNode(StatefulNode, BaseNode):
         self,
         node_id: str = "loop",
         loop_type: str = "while",  # while, for, iterator, do_while
-        condition: Optional[Union[str, Callable[[Dict[str, Any]], bool]]] = None,
-        iterator: Optional[Union[str, List, Callable]] = None,
-        loop_body: Optional[Callable[[Dict[str, Any], int], Dict[str, Any]]] = None,
-        max_iterations: Optional[int] = None,
-        break_condition: Optional[Union[str, Callable[[Dict[str, Any]], bool]]] = None,
-        continue_condition: Optional[Union[str, Callable[[Dict[str, Any]], bool]]] = None,
+        condition: str | Callable[[dict[str, Any]], bool] | None = None,
+        iterator: str | list | Callable | None = None,
+        loop_body: Callable[[dict[str, Any], int], dict[str, Any]] | None = None,
+        max_iterations: int | None = None,
+        break_condition: str | Callable[[dict[str, Any]], bool] | None = None,
+        continue_condition: str | Callable[[dict[str, Any]], bool] | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -61,9 +62,7 @@ class LoopNode(StatefulNode, BaseNode):
         """Setup required inputs based on loop type."""
         if self.loop_type == "while":
             self.config.required_inputs = {"data", "condition"}
-        elif self.loop_type == "for":
-            self.config.required_inputs = {"data", "iterator"}
-        elif self.loop_type == "iterator":
+        elif self.loop_type == "for" or self.loop_type == "iterator":
             self.config.required_inputs = {"data", "iterator"}
         elif self.loop_type == "do_while":
             self.config.required_inputs = {"data", "condition"}
@@ -79,7 +78,7 @@ class LoopNode(StatefulNode, BaseNode):
         self._loop_data = {}
         self._loop_complete = False
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the loop based on configured type."""
         data = state.get("data", {})
         
@@ -112,7 +111,7 @@ class LoopNode(StatefulNode, BaseNode):
                 "metadata": {"loop_type": self.loop_type, "status": "error"}
             }
     
-    async def _execute_while_loop(self, data: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_while_loop(self, data: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
         """Execute a while loop."""
         if not self.loop_body:
             raise ValueError("Loop body function is required for while loop")
@@ -167,7 +166,7 @@ class LoopNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_for_loop(self, data: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_for_loop(self, data: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
         """Execute a for loop over a collection."""
         if not self.loop_body:
             raise ValueError("Loop body function is required for for loop")
@@ -229,7 +228,7 @@ class LoopNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_iterator_loop(self, data: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_iterator_loop(self, data: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
         """Execute a loop using an iterator function."""
         if not self.loop_body:
             raise ValueError("Loop body function is required for iterator loop")
@@ -293,7 +292,7 @@ class LoopNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _execute_do_while_loop(self, data: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_do_while_loop(self, data: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
         """Execute a do-while loop (execute body, then check condition)."""
         if not self.loop_body:
             raise ValueError("Loop body function is required for do-while loop")
@@ -348,7 +347,7 @@ class LoopNode(StatefulNode, BaseNode):
             }
         }
     
-    async def _get_iterator_collection(self, data: Dict[str, Any], state: Dict[str, Any]) -> List[Any]:
+    async def _get_iterator_collection(self, data: dict[str, Any], state: dict[str, Any]) -> list[Any]:
         """Get the collection to iterate over."""
         if isinstance(self.iterator, str):
             # Field path in data
@@ -366,7 +365,7 @@ class LoopNode(StatefulNode, BaseNode):
         
         return []
     
-    async def _evaluate_condition(self, data: Dict[str, Any], state: Dict[str, Any]) -> bool:
+    async def _evaluate_condition(self, data: dict[str, Any], state: dict[str, Any]) -> bool:
         """Evaluate the loop condition."""
         if self.condition is None:
             return True  # Default to infinite loop
@@ -385,7 +384,7 @@ class LoopNode(StatefulNode, BaseNode):
         
         return bool(self.condition)
     
-    async def _should_break(self, data: Dict[str, Any], loop_data: Dict[str, Any]) -> bool:
+    async def _should_break(self, data: dict[str, Any], loop_data: dict[str, Any]) -> bool:
         """Check if loop should break."""
         if not self.break_condition:
             return False
@@ -404,7 +403,7 @@ class LoopNode(StatefulNode, BaseNode):
         
         return False
     
-    async def _should_continue(self, data: Dict[str, Any], loop_data: Dict[str, Any]) -> bool:
+    async def _should_continue(self, data: dict[str, Any], loop_data: dict[str, Any]) -> bool:
         """Check if loop should continue to next iteration."""
         if not self.continue_condition:
             return False
@@ -423,7 +422,7 @@ class LoopNode(StatefulNode, BaseNode):
         
         return False
     
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_nested_value(self, data: dict[str, Any], path: str) -> Any:
         """Get nested value from data using dot notation."""
         keys = path.split('.')
         current = data
@@ -446,7 +445,7 @@ class LoopNode(StatefulNode, BaseNode):
         """Set maximum number of iterations."""
         self.max_iterations = max_iterations
     
-    def get_loop_info(self) -> Dict[str, Any]:
+    def get_loop_info(self) -> dict[str, Any]:
         """Get information about the current loop configuration."""
         return {
             "loop_type": self.loop_type,
@@ -475,8 +474,8 @@ class ForEachNode(LoopNode):
         node_id: str = "for_each",
         collection_path: str = "items",
         item_name: str = "item",
-        loop_body: Optional[Callable[[Dict[str, Any], int], Dict[str, Any]]] = None,
-        max_iterations: Optional[int] = None,
+        loop_body: Callable[[dict[str, Any], int], dict[str, Any]] | None = None,
+        max_iterations: int | None = None,
         description: str = "For each loop over collection"
     ) -> None:
         # Create iterator that extracts collection from data
@@ -508,9 +507,9 @@ class WhileNode(LoopNode):
     def __init__(
         self,
         node_id: str = "while_loop",
-        condition: Union[str, Callable[[Dict[str, Any]], bool]] = None,
-        loop_body: Optional[Callable[[Dict[str, Any], int], Dict[str, Any]]] = None,
-        max_iterations: Optional[int] = None,
+        condition: str | Callable[[dict[str, Any]], bool] = None,
+        loop_body: Callable[[dict[str, Any], int], dict[str, Any]] | None = None,
+        max_iterations: int | None = None,
         description: str = "While loop with condition check"
     ) -> None:
         super().__init__(
@@ -529,9 +528,9 @@ class DoWhileNode(LoopNode):
     def __init__(
         self,
         node_id: str = "do_while_loop",
-        condition: Union[str, Callable[[Dict[str, Any]], bool]] = None,
-        loop_body: Optional[Callable[[Dict[str, Any], int], Dict[str, Any]]] = None,
-        max_iterations: Optional[int] = None,
+        condition: str | Callable[[dict[str, Any]], bool] = None,
+        loop_body: Callable[[dict[str, Any], int], dict[str, Any]] | None = None,
+        max_iterations: int | None = None,
         description: str = "Do-while loop (execute then check)"
     ) -> None:
         super().__init__(

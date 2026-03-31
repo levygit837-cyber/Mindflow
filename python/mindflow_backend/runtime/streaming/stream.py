@@ -8,14 +8,23 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from mindflow_backend.agents.tools.search_web import search_web
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+    build_simple_orchestrator_flow,
+)
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import build_simple_orchestrator_flow
 from mindflow_backend.memory.indexing import is_continuation_prompt
+from mindflow_backend.runtime.providers import (
+    get_model_for_provider,
+    resolve_provider_model_for_tools,
+)
 from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
+from mindflow_backend.runtime.streaming.history_loader import (
+    _HISTORY_WINDOW,
+    _load_history_messages,
+)
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
-from mindflow_backend.runtime.providers import get_model_for_provider, resolve_provider_model_for_tools
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
 
 try:
@@ -51,7 +60,11 @@ except Exception as exc:  # pragma: no cover - import guard for lean test envs
 
 try:
     from mindflow_backend.infra.database.connection import get_db_session as db_session
-    from mindflow_backend.storage.postgresql.models import AgentMemoryEvent, ChatMessage, ChatSession
+    from mindflow_backend.storage.postgresql.models import (
+        AgentMemoryEvent,
+        ChatMessage,
+        ChatSession,
+    )
 except Exception as exc:  # pragma: no cover - import guard for lean test envs
     db_session = None
     AgentMemoryEvent = None
@@ -430,7 +443,7 @@ class AgentRuntime:
 
         async for event in self._stream_chat_orchestrated(
             payload,
-            graph_input.get("session_id") or getattr(execution, "session_id"),
+            graph_input.get("session_id") or execution.session_id,
             run_id,
             execution_id=execution_id,
             resume=True,
@@ -1310,6 +1323,7 @@ class AgentRuntime:
         if AgentMemoryEvent is None:
             return
         from sqlalchemy import select
+
         from mindflow_backend.utils.core import estimate_token_count
 
         token_count = estimate_token_count(content)

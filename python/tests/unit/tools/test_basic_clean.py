@@ -52,14 +52,26 @@ def test_class_existence():
     
     try:
         # Test filesystem classes
-        from mindflow_backend.tools.filesystem.file_operations import FileReadTool, FileWriteTool, FileEditTool
-        from mindflow_backend.tools.filesystem.search_tools import GrepSearchTool, GlobSearchTool, FindFilesTool
-        
+        from mindflow_backend.tools.filesystem.file_operations import (
+            FileEditTool,
+            FileReadTool,
+            FileWriteTool,
+        )
+        from mindflow_backend.tools.filesystem.search_tools import (
+            FindFilesTool,
+            GlobSearchTool,
+            GrepSearchTool,
+        )
+
         # Test system classes
-        from mindflow_backend.tools.system.shell_tools import ShellExecutorTool, ProcessManagerTool
-        
+        from mindflow_backend.tools.system.shell_tools import ProcessManagerTool, ShellExecutorTool
+
         # Test web classes
-        from mindflow_backend.tools.web.web_tools import HttpClientTool, WebScraperTool, ApiClientTool
+        from mindflow_backend.tools.web.web_tools import (
+            ApiClientTool,
+            HttpClientTool,
+            WebScraperTool,
+        )
         
         print("✅ Key classes exist")
         return True
@@ -87,7 +99,7 @@ def test_clean_naming():
             continue
             
         try:
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 content = f.read()
             
             # Check for "enhanced" (case insensitive)

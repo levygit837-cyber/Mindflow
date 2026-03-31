@@ -4,12 +4,16 @@ Provides REST API endpoints for managing gRPC monitoring features
 including metrics collection, health checks, alerting, and profiling.
 """
 
-from typing import Dict, Any, Optional, List
-from fastapi import APIRouter, HTTPException, Query, Body
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.monitoring.alerting import AlertSeverity, NotificationChannel, AlertConfig, AlertCondition
+from mindflow_backend.grpc.monitoring.alerting import (
+    AlertSeverity,
+    NotificationChannel,
+)
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -23,14 +27,14 @@ router = APIRouter(
 class AlertConfigRequest(BaseModel):
     """Request model for alert configuration."""
     enabled: bool = True
-    notification_channels: List[NotificationChannel] = [NotificationChannel.LOG]
-    webhook_url: Optional[str] = None
+    notification_channels: list[NotificationChannel] = [NotificationChannel.LOG]
+    webhook_url: str | None = None
     webhook_timeout_seconds: float = Field(default=10.0, ge=1.0)
     webhook_retry_attempts: int = Field(default=3, ge=1)
-    email_from: Optional[str] = None
-    email_to: List[str] = Field(default_factory=list)
-    slack_webhook_url: Optional[str] = None
-    slack_channel: Optional[str] = None
+    email_from: str | None = None
+    email_to: list[str] = Field(default_factory=list)
+    slack_webhook_url: str | None = None
+    slack_channel: str | None = None
     enable_rate_limiting: bool = True
     max_alerts_per_hour: int = Field(default=50, ge=1)
     enable_deduplication: bool = True
@@ -58,7 +62,7 @@ class HealthCheckConfigRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_monitoring_status() -> Dict[str, Any]:
+async def get_monitoring_status() -> dict[str, Any]:
     """Get current monitoring configuration and metrics."""
     try:
         # Get global gRPC server instance
@@ -96,10 +100,10 @@ async def get_monitoring_status() -> Dict[str, Any]:
 
 @router.get("/alerts")
 async def get_alerts(
-    severity: Optional[AlertSeverity] = Query(None, description="Filter by severity"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    severity: AlertSeverity | None = Query(None, description="Filter by severity"),
+    status: str | None = Query(None, description="Filter by status"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of alerts to return")
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get active alerts and alert history."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -143,7 +147,7 @@ async def get_alerts(
 
 
 @router.post("/alerts/config")
-async def update_alert_config(config: AlertConfigRequest) -> Dict[str, Any]:
+async def update_alert_config(config: AlertConfigRequest) -> dict[str, Any]:
     """Update alert manager configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -186,7 +190,7 @@ async def update_alert_config(config: AlertConfigRequest) -> Dict[str, Any]:
 
 
 @router.post("/alerts/conditions")
-async def add_alert_condition(condition: AlertConditionRequest) -> Dict[str, Any]:
+async def add_alert_condition(condition: AlertConditionRequest) -> dict[str, Any]:
     """Add new alert condition."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -219,7 +223,7 @@ async def add_alert_condition(condition: AlertConditionRequest) -> Dict[str, Any
 
 
 @router.delete("/alerts/conditions/{condition_name}")
-async def remove_alert_condition(condition_name: str) -> Dict[str, Any]:
+async def remove_alert_condition(condition_name: str) -> dict[str, Any]:
     """Remove alert condition."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -240,7 +244,7 @@ async def remove_alert_condition(condition_name: str) -> Dict[str, Any]:
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str) -> Dict[str, Any]:
+async def acknowledge_alert(alert_id: str) -> dict[str, Any]:
     """Acknowledge an alert."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -264,7 +268,7 @@ async def acknowledge_alert(alert_id: str) -> Dict[str, Any]:
 
 
 @router.post("/alerts/{alert_id}/resolve")
-async def resolve_alert(alert_id: str) -> Dict[str, Any]:
+async def resolve_alert(alert_id: str) -> dict[str, Any]:
     """Manually resolve an alert."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -288,7 +292,7 @@ async def resolve_alert(alert_id: str) -> Dict[str, Any]:
 
 
 @router.get("/health-check/status")
-async def get_health_check_status() -> Dict[str, Any]:
+async def get_health_check_status() -> dict[str, Any]:
     """Get health checker status and metrics."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -314,7 +318,7 @@ async def get_health_check_status() -> Dict[str, Any]:
 
 
 @router.post("/health-check/config")
-async def update_health_check_config(config: HealthCheckConfigRequest) -> Dict[str, Any]:
+async def update_health_check_config(config: HealthCheckConfigRequest) -> dict[str, Any]:
     """Update health checker configuration."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -335,10 +339,10 @@ async def update_health_check_config(config: HealthCheckConfigRequest) -> Dict[s
 
 @router.get("/metrics")
 async def get_monitoring_metrics(
-    start_time: Optional[float] = Query(None, description="Start timestamp"),
-    end_time: Optional[float] = Query(None, description="End timestamp"),
-    metric_type: Optional[str] = Query(None, description="Metric type filter")
-) -> Dict[str, Any]:
+    start_time: float | None = Query(None, description="Start timestamp"),
+    end_time: float | None = Query(None, description="End timestamp"),
+    metric_type: str | None = Query(None, description="Metric type filter")
+) -> dict[str, Any]:
     """Get monitoring metrics for analysis."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -394,7 +398,7 @@ grpc_request_duration_seconds_count 100
 
 
 @router.get("/dashboard")
-async def get_monitoring_dashboard() -> Dict[str, Any]:
+async def get_monitoring_dashboard() -> dict[str, Any]:
     """Get monitoring dashboard data."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server
@@ -426,7 +430,7 @@ async def get_monitoring_dashboard() -> Dict[str, Any]:
 
 
 @router.post("/test-alert")
-async def test_alert() -> Dict[str, Any]:
+async def test_alert() -> dict[str, Any]:
     """Trigger a test alert to verify alerting system."""
     try:
         from mindflow_backend.grpc.server import get_grpc_server

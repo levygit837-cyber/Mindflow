@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from mindflow_backend.agents.prompts.base import build_system_prompt
 
-
 SHELL_EXECUTOR_CORE = """\
 ## Personality: Shell Executor
 

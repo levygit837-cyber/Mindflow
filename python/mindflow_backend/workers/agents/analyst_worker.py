@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -19,7 +19,7 @@ class AnalystWorker(BaseWorker):
         """Initialize the Analyst worker."""
         super().__init__(queue_config, worker_name="analyst_worker")
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process analysis and metrics tasks.
         
         Supported task types:
@@ -73,7 +73,7 @@ class AnalystWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
     
-    async def _handle_metrics_calculation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_metrics_calculation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle complex metrics calculation tasks."""
         metrics_type = message_data.get("metrics_type", "performance")
         data_source = message_data.get("data_source")
@@ -100,7 +100,7 @@ class AnalystWorker(BaseWorker):
             },
         )
     
-    async def _handle_data_processing(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_data_processing(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle large dataset processing tasks."""
         dataset_path = message_data.get("dataset_path")
         processing_type = message_data.get("processing_type", "aggregation")
@@ -123,7 +123,7 @@ class AnalystWorker(BaseWorker):
             },
         )
     
-    async def _handle_report_generation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_report_generation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle analytical report generation."""
         report_type = message_data.get("report_type", "summary")
         data_sources = message_data.get("data_sources", [])
@@ -150,7 +150,7 @@ class AnalystWorker(BaseWorker):
             },
         )
     
-    async def _handle_trend_analysis(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_trend_analysis(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle trend and pattern analysis."""
         analysis_target = message_data.get("analysis_target")
         time_period = message_data.get("time_period", "7d")
@@ -179,7 +179,7 @@ class AnalystWorker(BaseWorker):
             },
         )
     
-    async def _handle_performance_analysis(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_performance_analysis(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle performance metrics analysis."""
         component = message_data.get("component")
         metrics = message_data.get("metrics", [])

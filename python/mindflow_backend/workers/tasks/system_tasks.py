@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
@@ -26,8 +26,8 @@ class SystemTask:
     session_id: str
     system_component: str
     priority: str = "medium"
-    task_data: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    task_data: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self) -> None:
         """Generate task ID if not provided."""
@@ -39,7 +39,7 @@ class SystemTask:
         """Get task ID."""
         return self.metadata["task_id"]
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert task to dictionary for queue publishing."""
         envelope = QueueMessageEnvelope(
             schema_version="1.0",
@@ -48,7 +48,7 @@ class SystemTask:
             session_id=self.session_id,
             correlation_id=self.task_id,
             idempotency_key=self.task_id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             metadata={
                 **self.metadata,
                 "system_component": self.system_component,
@@ -183,7 +183,7 @@ class SystemTaskDefinitions:
     def create_token_management_task(
         session_id: str,
         action: str = "reset_window",
-        new_window_size: Optional[int] = None,
+        new_window_size: int | None = None,
         budget_adjustment: int = 0,
     ) -> SystemTask:
         """Create a token management task."""
@@ -208,7 +208,7 @@ class SystemTaskDefinitions:
         session_id: str,
         cleanup_criteria: str = "inactive_7d",
         dry_run: bool = True,
-        target_sessions: List[str] = None,
+        target_sessions: list[str] = None,
     ) -> SystemTask:
         """Create a session cleanup task."""
         return SystemTask(
@@ -231,7 +231,7 @@ class SystemTaskDefinitions:
     @staticmethod
     def create_batch_indexing_task(
         session_id: str,
-        embeddings_batch: List[Dict[str, Any]],
+        embeddings_batch: list[dict[str, Any]],
         vector_store: str = "default",
         batch_size: int = 100,
     ) -> SystemTask:
@@ -255,7 +255,7 @@ class SystemTaskDefinitions:
     @staticmethod
     def create_incremental_indexing_task(
         session_id: str,
-        new_embeddings: List[Dict[str, Any]],
+        new_embeddings: list[dict[str, Any]],
         update_strategy: str = "append",
     ) -> SystemTask:
         """Create an incremental vector indexing task."""
@@ -301,7 +301,7 @@ class SystemTaskDefinitions:
     @staticmethod
     def create_embedding_generation_task(
         session_id: str,
-        content_items: List[Dict[str, Any]],
+        content_items: list[dict[str, Any]],
         embedding_model: str = "default",
         batch_process: bool = True,
     ) -> SystemTask:
@@ -325,8 +325,8 @@ class SystemTaskDefinitions:
     @staticmethod
     def create_vector_search_task(
         session_id: str,
-        query_vector: List[float],
-        search_params: Dict[str, Any],
+        query_vector: list[float],
+        search_params: dict[str, Any],
         result_limit: int = 10,
         similarity_threshold: float = 0.7,
     ) -> SystemTask:
@@ -355,7 +355,7 @@ class SystemTaskDefinitions:
         cleanup_scope: str = "all",
         retention_days: int = 30,
         dry_run: bool = False,
-        target_components: List[str] = None,
+        target_components: list[str] = None,
     ) -> SystemTask:
         """Create a memory cleanup task."""
         return SystemTask(
@@ -404,7 +404,7 @@ class SystemTaskDefinitions:
         session_id: str,
         cache_type: str = "all",
         management_action: str = "cleanup",
-        cache_policy: Dict[str, Any] = None,
+        cache_policy: dict[str, Any] = None,
     ) -> SystemTask:
         """Create a cache management task."""
         return SystemTask(
@@ -453,7 +453,7 @@ class SystemTaskDefinitions:
     def create_garbage_collection_task(
         session_id: str,
         gc_type: str = "full",
-        target_components: List[str] = None,
+        target_components: list[str] = None,
         aggressive_mode: bool = False,
     ) -> SystemTask:
         """Create a garbage collection task."""
@@ -478,7 +478,7 @@ class SystemTaskDefinitions:
         session_id: str,
         monitoring_scope: str = "all",
         analysis_depth: str = "standard",
-        alert_thresholds: Dict[str, Any] = None,
+        alert_thresholds: dict[str, Any] = None,
     ) -> SystemTask:
         """Create a memory monitoring task."""
         return SystemTask(
@@ -503,7 +503,7 @@ class SystemTaskDefinitions:
         session_id: str,
         check_scope: str = "full",
         check_depth: str = "standard",
-        include_components: List[str] = None,
+        include_components: list[str] = None,
     ) -> SystemTask:
         """Create a system health check task."""
         return SystemTask(
@@ -525,9 +525,9 @@ class SystemTaskDefinitions:
     @staticmethod
     def create_component_monitoring_task(
         session_id: str,
-        target_components: List[str],
+        target_components: list[str],
         monitoring_duration: int = 300,
-        metrics_collected: List[str] = None,
+        metrics_collected: list[str] = None,
     ) -> SystemTask:
         """Create a component monitoring task."""
         return SystemTask(
@@ -573,8 +573,8 @@ class SystemTaskDefinitions:
     @staticmethod
     def create_alert_evaluation_task(
         session_id: str,
-        alert_rules: List[Dict[str, Any]],
-        evaluation_context: Dict[str, Any],
+        alert_rules: list[dict[str, Any]],
+        evaluation_context: dict[str, Any],
         auto_resolve: bool = True,
     ) -> SystemTask:
         """Create an alert evaluation task."""
@@ -722,7 +722,7 @@ class SystemTaskPublisher:
         
         return priority_mapping.get(task_priority, 5)
     
-    async def publish_multiple_tasks(self, tasks: List[SystemTask]) -> Dict[str, bool]:
+    async def publish_multiple_tasks(self, tasks: list[SystemTask]) -> dict[str, bool]:
         """Publish multiple tasks to queues.
         
         Args:
@@ -740,7 +740,7 @@ class SystemTaskPublisher:
 
 
 # Global task publisher instance
-_task_publisher: Optional[SystemTaskPublisher] = None
+_task_publisher: SystemTaskPublisher | None = None
 
 
 def get_system_task_publisher() -> SystemTaskPublisher:

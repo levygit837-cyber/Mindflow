@@ -7,15 +7,12 @@ automatic citation formatting, and gap identification.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Set, Tuple
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.agents.research import (
     ResearchFinding,
-    SourceClassification,
     SourceType,
-    ConfidenceLevel,
 )
 
 _logger = get_logger(__name__)
@@ -28,7 +25,7 @@ class ConflictDetector:
         """Initialize conflict detector."""
         pass
         
-    def find_conflicts(self, findings: List[ResearchFinding]) -> List[Dict[str, any]]:
+    def find_conflicts(self, findings: list[ResearchFinding]) -> list[dict[str, any]]:
         """Find conflicts between research findings.
         
         Args:
@@ -57,7 +54,7 @@ class ConflictDetector:
         
         return conflicts
         
-    def _find_numerical_conflicts(self, findings: List[ResearchFinding]) -> List[Dict[str, any]]:
+    def _find_numerical_conflicts(self, findings: list[ResearchFinding]) -> list[dict[str, any]]:
         """Find contradictions in numerical data.
         
         Args:
@@ -103,7 +100,7 @@ class ConflictDetector:
                     
         return conflicts
         
-    def _find_factual_conflicts(self, findings: List[ResearchFinding]) -> List[Dict[str, any]]:
+    def _find_factual_conflicts(self, findings: list[ResearchFinding]) -> list[dict[str, any]]:
         """Find contradictions in factual statements.
         
         Args:
@@ -146,7 +143,7 @@ class ConflictDetector:
                         
         return conflicts
         
-    def _find_temporal_conflicts(self, findings: List[ResearchFinding]) -> List[Dict[str, any]]:
+    def _find_temporal_conflicts(self, findings: list[ResearchFinding]) -> list[dict[str, any]]:
         """Find contradictions in temporal information.
         
         Args:
@@ -192,7 +189,7 @@ class ConflictDetector:
                 
         return conflicts
         
-    def _find_recommendation_conflicts(self, findings: List[ResearchFinding]) -> List[Dict[str, any]]:
+    def _find_recommendation_conflicts(self, findings: list[ResearchFinding]) -> list[dict[str, any]]:
         """Find conflicts in recommendations.
         
         Args:
@@ -226,7 +223,7 @@ class ConflictDetector:
                     
         return conflicts
         
-    def _extract_numbers(self, text: str) -> List[Tuple[float, str]]:
+    def _extract_numbers(self, text: str) -> list[tuple[float, str]]:
         """Extract numerical values with context.
         
         Args:
@@ -250,7 +247,7 @@ class ConflictDetector:
                 
         return numbers
         
-    def _extract_factual_statements(self, text: str) -> List[str]:
+    def _extract_factual_statements(self, text: str) -> list[str]:
         """Extract factual statements from text.
         
         Args:
@@ -275,7 +272,7 @@ class ConflictDetector:
             
         return statements
         
-    def _extract_dates(self, text: str) -> List[Tuple[str, str]]:
+    def _extract_dates(self, text: str) -> list[tuple[str, str]]:
         """Extract dates with context.
         
         Args:
@@ -299,7 +296,7 @@ class ConflictDetector:
                 
         return dates
         
-    def _extract_recommendations(self, text: str) -> List[str]:
+    def _extract_recommendations(self, text: str) -> list[str]:
         """Extract recommendations from text.
         
         Args:
@@ -430,7 +427,7 @@ class ConfidenceWeightedSynthesizer:
         """Initialize confidence-weighted synthesizer."""
         pass
         
-    def synthesize_findings(self, findings: List[ResearchFinding]) -> Dict[str, any]:
+    def synthesize_findings(self, findings: list[ResearchFinding]) -> dict[str, any]:
         """Synthesize findings using confidence-weighted approach.
         
         Args:
@@ -472,7 +469,7 @@ class ConfidenceWeightedSynthesizer:
             ],
         }
         
-    def _calculate_confidence_breakdown(self, findings: List[ResearchFinding]) -> Dict[str, float]:
+    def _calculate_confidence_breakdown(self, findings: list[ResearchFinding]) -> dict[str, float]:
         """Calculate confidence score breakdown by source type.
         
         Args:
@@ -494,7 +491,7 @@ class ConfidenceWeightedSynthesizer:
             
         return dict(avg_breakdown)
         
-    def _extract_weighted_key_points(self, findings: List[ResearchFinding]) -> List[str]:
+    def _extract_weighted_key_points(self, findings: list[ResearchFinding]) -> list[str]:
         """Extract key points weighted by confidence.
         
         Args:
@@ -528,7 +525,7 @@ class ConfidenceWeightedSynthesizer:
         
         return [item["point"] for item in sorted_points[:10]]  # Top 10 points
         
-    def _generate_weighted_summary(self, findings: List[ResearchFinding]) -> str:
+    def _generate_weighted_summary(self, findings: list[ResearchFinding]) -> str:
         """Generate a confidence-weighted summary.
         
         Args:
@@ -572,7 +569,7 @@ class ConfidenceWeightedSynthesizer:
             
         return ". ".join(summary_parts)
         
-    def _analyze_consensus(self, findings: List[ResearchFinding]) -> Dict[str, any]:
+    def _analyze_consensus(self, findings: list[ResearchFinding]) -> dict[str, any]:
         """Analyze consensus and disagreements among sources.
         
         Args:
@@ -611,7 +608,7 @@ class ConfidenceWeightedSynthesizer:
                 
         return consensus_analysis
         
-    def _group_by_content_similarity(self, findings: List[ResearchFinding]) -> List[List[ResearchFinding]]:
+    def _group_by_content_similarity(self, findings: list[ResearchFinding]) -> list[list[ResearchFinding]]:
         """Group findings by content similarity.
         
         Args:
@@ -667,7 +664,7 @@ class ConfidenceWeightedSynthesizer:
         
         return overlap / total_points > 0.5
         
-    def _find_group_conflicts(self, group: List[ResearchFinding]) -> List[str]:
+    def _find_group_conflicts(self, group: list[ResearchFinding]) -> list[str]:
         """Find conflicts within a content group.
         
         Args:
@@ -738,9 +735,9 @@ class ResultSynthesizer:
         
     def synthesize_results(
         self,
-        findings: List[ResearchFinding],
+        findings: list[ResearchFinding],
         original_query: str,
-    ) -> Dict[str, any]:
+    ) -> dict[str, any]:
         """Synthesize research results with comprehensive analysis.
         
         Args:
@@ -806,7 +803,7 @@ class ResultSynthesizer:
         
         return result
         
-    def _identify_gaps(self, findings: List[ResearchFinding], query: str) -> List[str]:
+    def _identify_gaps(self, findings: list[ResearchFinding], query: str) -> list[str]:
         """Identify information gaps in research findings.
         
         Args:
@@ -870,10 +867,10 @@ class ResultSynthesizer:
         
     def _generate_recommendations(
         self,
-        findings: List[ResearchFinding],
-        conflicts: List[Dict[str, any]],
-        gaps: List[str],
-    ) -> List[str]:
+        findings: list[ResearchFinding],
+        conflicts: list[dict[str, any]],
+        gaps: list[str],
+    ) -> list[str]:
         """Generate recommendations based on analysis.
         
         Args:
@@ -915,7 +912,7 @@ class ResultSynthesizer:
             
         return list(set(recommendations))  # Remove duplicates
         
-    def _format_citations(self, findings: List[ResearchFinding]) -> List[str]:
+    def _format_citations(self, findings: list[ResearchFinding]) -> list[str]:
         """Format citations for research findings.
         
         Args:
@@ -947,7 +944,7 @@ class ResultSynthesizer:
             
         return citations
         
-    def _calculate_overall_confidence(self, findings: List[ResearchFinding]) -> str:
+    def _calculate_overall_confidence(self, findings: list[ResearchFinding]) -> str:
         """Calculate overall confidence level.
         
         Args:

@@ -8,8 +8,6 @@ Suitable for real-time bidirectional communication with MCP servers.
 import asyncio
 import json
 import ssl
-from typing import Optional, Dict, Any
-import logging
 
 try:
     import websockets
@@ -24,7 +22,11 @@ except ImportError:
     WebSocketException = None
 
 from mindflow_backend.interfaces.mcp.transport.base import (
-    MCPTransport, TransportState, TransportError, ConnectionError, MessageError
+    ConnectionError,
+    MCPTransport,
+    MessageError,
+    TransportError,
+    TransportState,
 )
 from mindflow_backend.schemas.mcp.base import MCPMessage
 from mindflow_backend.schemas.mcp.transport import WebSocketConfig
@@ -54,12 +56,12 @@ class WebSocketTransport(MCPTransport):
             raise ImportError("websockets is required for WebSocket transport. Install with: pip install websockets")
         
         super().__init__(config)
-        self.connection: Optional[ClientConnection] = None
+        self.connection: ClientConnection | None = None
         self._message_queue: asyncio.Queue = asyncio.Queue()
-        self._listener_task: Optional[asyncio.Task] = None
-        self._ping_task: Optional[asyncio.Task] = None
+        self._listener_task: asyncio.Task | None = None
+        self._ping_task: asyncio.Task | None = None
         self._request_id_counter = 0
-        self._pending_requests: Dict[str, asyncio.Future] = {}
+        self._pending_requests: dict[str, asyncio.Future] = {}
     
     async def connect(self) -> None:
         """
@@ -171,7 +173,7 @@ class WebSocketTransport(MCPTransport):
             self._update_metrics("error")
             raise MessageError(f"Failed to send WebSocket message: {e}")
     
-    async def receive_message(self) -> Optional[MCPMessage]:
+    async def receive_message(self) -> MCPMessage | None:
         """
         Receive a message from WebSocket queue.
         
@@ -205,7 +207,7 @@ class WebSocketTransport(MCPTransport):
             self._update_metrics("error")
             raise MessageError(f"Failed to receive WebSocket message: {e}")
     
-    async def send_and_wait(self, message: MCPMessage, timeout: Optional[float] = None) -> MCPMessage:
+    async def send_and_wait(self, message: MCPMessage, timeout: float | None = None) -> MCPMessage:
         """
         Send a message and wait for response using WebSocket.
         
@@ -243,12 +245,12 @@ class WebSocketTransport(MCPTransport):
             
             return response_future.result()
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Clean up pending request
             if message.id in self._pending_requests:
                 del self._pending_requests[message.id]
             raise TimeoutError(f"Timeout waiting for response to message {message.id}")
-        except Exception as e:
+        except Exception:
             # Clean up pending request
             if message.id in self._pending_requests:
                 del self._pending_requests[message.id]
@@ -278,7 +280,7 @@ class WebSocketTransport(MCPTransport):
                                 self._pending_requests[request_id].set_result(response_message)
                                 del self._pending_requests[request_id]
                                 continue
-                            except Exception as e:
+                            except Exception:
                                 # If parsing fails, still put in queue for handler
                                 pass
                     

@@ -3,15 +3,15 @@
 Safe file operations and file system utilities.
 """
 
+import hashlib
 import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Any
-import hashlib
+from typing import Any
 
 
-def ensure_directory(directory: Union[str, Path]) -> bool:
+def ensure_directory(directory: str | Path) -> bool:
     """Ensure directory exists, create if necessary."""
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
@@ -42,7 +42,7 @@ def safe_filename(filename: str) -> str:
     return filename or "unnamed"
 
 
-def get_file_size(file_path: Union[str, Path]) -> int:
+def get_file_size(file_path: str | Path) -> int:
     """Get file size in bytes."""
     try:
         return os.path.getsize(file_path)
@@ -50,7 +50,7 @@ def get_file_size(file_path: Union[str, Path]) -> int:
         return 0
 
 
-def get_file_info(file_path: Union[str, Path]) -> Dict[str, Any]:
+def get_file_info(file_path: str | Path) -> dict[str, Any]:
     """Get comprehensive file information."""
     try:
         path = Path(file_path)
@@ -78,20 +78,20 @@ def get_file_info(file_path: Union[str, Path]) -> Dict[str, Any]:
 
 
 def read_file_safe(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     encoding: str = 'utf-8',
     default: str = "",
 ) -> str:
     """Safely read file content."""
     try:
-        with open(file_path, 'r', encoding=encoding) as f:
+        with open(file_path, encoding=encoding) as f:
             return f.read()
-    except (FileNotFoundError, IOError, OSError, UnicodeDecodeError):
+    except (FileNotFoundError, OSError, UnicodeDecodeError):
         return default
 
 
 def write_file_safe(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     content: str,
     encoding: str = 'utf-8',
     create_dirs: bool = True,
@@ -107,21 +107,21 @@ def write_file_safe(
             f.write(content)
         
         return True
-    except (IOError, OSError, PermissionError):
+    except (OSError, PermissionError):
         return False
 
 
-def read_file_bytes_safe(file_path: Union[str, Path], default: bytes = b"") -> bytes:
+def read_file_bytes_safe(file_path: str | Path, default: bytes = b"") -> bytes:
     """Safely read file as bytes."""
     try:
         with open(file_path, 'rb') as f:
             return f.read()
-    except (FileNotFoundError, IOError, OSError):
+    except (FileNotFoundError, OSError):
         return default
 
 
 def write_file_bytes_safe(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     content: bytes,
     create_dirs: bool = True,
 ) -> bool:
@@ -136,12 +136,12 @@ def write_file_bytes_safe(
             f.write(content)
         
         return True
-    except (IOError, OSError, PermissionError):
+    except (OSError, PermissionError):
         return False
 
 
 def append_file_safe(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     content: str,
     encoding: str = 'utf-8',
     create_dirs: bool = True,
@@ -157,38 +157,38 @@ def append_file_safe(
             f.write(content)
         
         return True
-    except (IOError, OSError, PermissionError):
+    except (OSError, PermissionError):
         return False
 
 
-def copy_file_safe(src: Union[str, Path], dst: Union[str, Path]) -> bool:
+def copy_file_safe(src: str | Path, dst: str | Path) -> bool:
     """Safely copy file."""
     try:
         shutil.copy2(src, dst)
         return True
-    except (FileNotFoundError, IOError, OSError, PermissionError):
+    except (FileNotFoundError, OSError, PermissionError):
         return False
 
 
-def move_file_safe(src: Union[str, Path], dst: Union[str, Path]) -> bool:
+def move_file_safe(src: str | Path, dst: str | Path) -> bool:
     """Safely move file."""
     try:
         shutil.move(src, dst)
         return True
-    except (FileNotFoundError, IOError, OSError, PermissionError):
+    except (FileNotFoundError, OSError, PermissionError):
         return False
 
 
-def delete_file_safe(file_path: Union[str, Path]) -> bool:
+def delete_file_safe(file_path: str | Path) -> bool:
     """Safely delete file."""
     try:
         os.remove(file_path)
         return True
-    except (FileNotFoundError, IOError, OSError, PermissionError):
+    except (FileNotFoundError, OSError, PermissionError):
         return False
 
 
-def delete_directory_safe(directory: Union[str, Path], recursive: bool = False) -> bool:
+def delete_directory_safe(directory: str | Path, recursive: bool = False) -> bool:
     """Safely delete directory."""
     try:
         if recursive:
@@ -196,16 +196,16 @@ def delete_directory_safe(directory: Union[str, Path], recursive: bool = False) 
         else:
             os.rmdir(directory)
         return True
-    except (FileNotFoundError, IOError, OSError, PermissionError):
+    except (FileNotFoundError, OSError, PermissionError):
         return False
 
 
 def list_files(
-    directory: Union[str, Path],
+    directory: str | Path,
     pattern: str = "*",
     recursive: bool = False,
     include_dirs: bool = True,
-) -> List[Path]:
+) -> list[Path]:
     """List files in directory matching pattern."""
     try:
         path = Path(directory)
@@ -226,12 +226,12 @@ def list_files(
 
 
 def find_files(
-    directory: Union[str, Path],
-    name_pattern: Optional[str] = None,
-    content_pattern: Optional[str] = None,
+    directory: str | Path,
+    name_pattern: str | None = None,
+    content_pattern: str | None = None,
     case_sensitive: bool = True,
-    max_depth: Optional[int] = None,
-) -> List[Path]:
+    max_depth: int | None = None,
+) -> list[Path]:
     """Find files by name or content pattern."""
     import re
     
@@ -271,7 +271,7 @@ def find_files(
                             content = item.read_text(encoding='utf-8', errors='ignore')
                             if not content_regex.search(content):
                                 continue
-                        except (UnicodeDecodeError, IOError):
+                        except (OSError, UnicodeDecodeError):
                             continue
                     
                     results.append(item)
@@ -287,7 +287,7 @@ def find_files(
 
 
 def get_file_hash(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     algorithm: str = 'sha256',
     chunk_size: int = 8192,
 ) -> str:
@@ -300,11 +300,11 @@ def get_file_hash(
                 hash_obj.update(chunk)
         
         return hash_obj.hexdigest()
-    except (FileNotFoundError, IOError, OSError):
+    except (FileNotFoundError, OSError):
         return ""
 
 
-def compare_files(file1: Union[str, Path], file2: Union[str, Path]) -> bool:
+def compare_files(file1: str | Path, file2: str | Path) -> bool:
     """Compare two files for equality."""
     try:
         # Quick size check
@@ -324,15 +324,15 @@ def compare_files(file1: Union[str, Path], file2: Union[str, Path]) -> bool:
                     break
         
         return True
-    except (FileNotFoundError, IOError, OSError):
+    except (FileNotFoundError, OSError):
         return False
 
 
 def backup_file(
-    file_path: Union[str, Path],
-    backup_suffix: Optional[str] = None,
-    backup_dir: Optional[Union[str, Path]] = None,
-) -> Optional[Path]:
+    file_path: str | Path,
+    backup_suffix: str | None = None,
+    backup_dir: str | Path | None = None,
+) -> Path | None:
     """Create backup of file."""
     try:
         source = Path(file_path)
@@ -354,14 +354,14 @@ def backup_file(
         shutil.copy2(source, backup_path)
         return backup_path
     
-    except (IOError, OSError, PermissionError):
+    except (OSError, PermissionError):
         return None
 
 
 def create_temp_file(
     suffix: str = "",
     prefix: str = "tmp",
-    directory: Optional[Union[str, Path]] = None,
+    directory: str | Path | None = None,
     text: bool = True,
 ) -> Path:
     """Create temporary file."""
@@ -373,7 +373,7 @@ def create_temp_file(
 def create_temp_directory(
     suffix: str = "",
     prefix: str = "tmp",
-    directory: Optional[Union[str, Path]] = None,
+    directory: str | Path | None = None,
 ) -> Path:
     """Create temporary directory."""
     return Path(tempfile.mkdtemp(suffix, prefix, directory))
@@ -407,7 +407,7 @@ def clean_temp_files(max_age_hours: int = 24, pattern: str = "tmp*") -> int:
     return cleaned_count
 
 
-def get_directory_size(directory: Union[str, Path]) -> int:
+def get_directory_size(directory: str | Path) -> int:
     """Get total size of directory in bytes."""
     total_size = 0
     
@@ -425,7 +425,7 @@ def get_directory_size(directory: Union[str, Path]) -> int:
     return total_size
 
 
-def get_directory_info(directory: Union[str, Path]) -> Dict[str, Any]:
+def get_directory_info(directory: str | Path) -> dict[str, Any]:
     """Get comprehensive directory information."""
     try:
         path = Path(directory)
@@ -463,8 +463,8 @@ def get_directory_info(directory: Union[str, Path]) -> Dict[str, Any]:
 
 
 def compress_file(
-    input_path: Union[str, Path],
-    output_path: Optional[Union[str, Path]] = None,
+    input_path: str | Path,
+    output_path: str | Path | None = None,
     compression: str = 'gzip',
 ) -> bool:
     """Compress file."""
@@ -476,31 +476,28 @@ def compress_file(
         
         if compression == 'gzip':
             import gzip
-            with open(input_file, 'rb') as f_in:
-                with gzip.open(output_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with open(input_file, 'rb') as f_in, gzip.open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
         elif compression == 'bz2':
             import bz2
-            with open(input_file, 'rb') as f_in:
-                with bz2.open(output_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with open(input_file, 'rb') as f_in, bz2.open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
         elif compression == 'lzma':
             import lzma
-            with open(input_file, 'rb') as f_in:
-                with lzma.open(output_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with open(input_file, 'rb') as f_in, lzma.open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
         else:
             return False
         
         return True
     
-    except (ImportError, IOError, OSError):
+    except (ImportError, OSError):
         return False
 
 
 def decompress_file(
-    input_path: Union[str, Path],
-    output_path: Optional[Union[str, Path]] = None,
+    input_path: str | Path,
+    output_path: str | Path | None = None,
 ) -> bool:
     """Decompress file."""
     try:
@@ -527,28 +524,25 @@ def decompress_file(
         
         if compression == 'gzip':
             import gzip
-            with gzip.open(input_file, 'rb') as f_in:
-                with open(output_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with gzip.open(input_file, 'rb') as f_in, open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
         elif compression == 'bz2':
             import bz2
-            with bz2.open(input_file, 'rb') as f_in:
-                with open(output_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with bz2.open(input_file, 'rb') as f_in, open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
         elif compression == 'lzma':
             import lzma
-            with lzma.open(input_file, 'rb') as f_in:
-                with open(output_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with lzma.open(input_file, 'rb') as f_in, open(output_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
         
         return True
     
-    except (ImportError, IOError, OSError):
+    except (ImportError, OSError):
         return False
 
 
 def watch_file(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     callback: callable,
     interval: float = 1.0,
 ) -> None:

@@ -92,54 +92,64 @@ schemas/api/                ← Nova (CANÔNICA)
 ## 🟠 ALTO — Classes Monolíticas (>500 linhas)
 
 ### 7. AgentRuntime — 2.289 linhas
+
 **Arquivo:** `runtime/streaming/stream.py`
 
 Classe com ~50 métodos que gerencia todo o ciclo de vida de streaming.
 
 **Decomposição:**
+
 - `stream.py` (~300) — orquestrador principal
 - `context_builder.py` (~150) — _build_context_bundle
-- `decision_handler.py` (~200) — _is_direct_response, _serialize_decision
+- `decision_handler.py` (~200) — _is_direct_response,_serialize_decision
 - `event_processor.py` (~200) — processamento de StreamEvent
 - `history_loader.py` (~100) — _load_history_messages
 - `watchdog.py` (~150) — watchdog logic
 
 ### 8. EnhancedGrpcAgentServer — 647 linhas
+
 **Arquivo:** `grpc/server.py`
 
 **Decomposição:** `server.py` (core ~300), `server_lifecycle.py` (~150), `server_components.py` (~200)
 
 ### 9. MemoryFacade — 879 linhas
+
 **Arquivo:** `memory/facade.py`
 
 **Decomposição:** `facade.py` (~300), `facade_helpers.py` (~200), `facade_embeddings.py` (~150), `facade_categorization.py` (~150)
 
 ### 10. CacheManager — 779 linhas
+
 **Arquivo:** `infra/cache/cache_manager.py`
 
 **Decomposição:** `cache_manager.py` (~400), `backends/memory_backend.py` (~130), `backends/redis_backend.py` (~190), `cache_entry.py` (~50)
 
 ### 11. DatabaseManager — 640 linhas
+
 **Arquivo:** `infra/database/connection.py`
 
 **Decomposição:** `connection.py` (~350), `pool_monitor.py` (~120), `connection_metrics.py` (~60), `health_check.py` (~80)
 
 ### 12. GrpcResponseCache — 654 linhas
+
 **Arquivo:** `grpc/performance/caching/cache.py`
 
 **Decomposição:** `cache.py` (~200), strategies LRU/TTL/SizeBased separados, `cache_config.py` (~80)
 
 ### 13. EnhancedGrpcCircuitBreaker — 632 linhas
+
 **Arquivo:** `grpc/resilience/enhanced_circuit_breaker.py`
 
 **Decomposição:** core (~300), `adaptive_thresholds.py` (~150), `circuit_breaker_metrics.py` (~120)
 
 ### 14. IntelligentRouter — 501 linhas
+
 **Arquivo:** `orchestrator/routing/intelligent_router.py`
 
 **Decomposição:** `intelligent_router.py` (~250), `intent_analysis.py` (~100), `routing_helpers.py` (~100)
 
 ### 15. DelegationEngine — 499 linhas
+
 **Arquivo:** `orchestrator/delegation/engine.py`
 
 **Decomposição:** `engine.py` (~250), `event_dispatcher.py` (~100), `sandbox_manager.py` (~80), `response_parser.py` (~80)
@@ -174,6 +184,7 @@ Classe com ~50 métodos que gerencia todo o ciclo de vida de streaming.
 ### 19. Specialist Tools — Incompletos
 
 Diretórios com apenas `__init__.py`:
+
 - `agents/tools/specialist/analyst/code_analysis/`
 - `agents/tools/specialist/coder/filesystem/`
 - `agents/tools/specialist/research/analysis/`
@@ -196,6 +207,7 @@ Diretórios com apenas `__init__.py`:
 ### 22. Duplicação de Circuit Breakers
 
 4 implementações de circuit breaker:
+
 - `communication/circuit_breaker/breaker.py` (~100 linhas)
 - `grpc/resilience/circuit_breaker.py` (332 linhas)
 - `grpc/resilience/enhanced_circuit_breaker.py` (632 linhas)
@@ -206,6 +218,7 @@ Diretórios com apenas `__init__.py`:
 ### 23. Duplicação de Cache
 
 3 implementações de cache:
+
 - `infra/cache/cache_manager.py` (779 linhas)
 - `grpc/performance/caching/cache.py` (654 linhas)
 - `grpc/performance/caching/strategies.py` (~200 linhas)
@@ -251,20 +264,24 @@ Diretórios com apenas `__init__.py`:
 ## 📋 Plano de Execução por Fase
 
 ### Fase 1 — Limpeza Imediata (1-2 dias)
-- [ ] Deletar `tools_backup/`, `tools_migration_backup_20260313_175943/`, `memory_backup/`
-- [ ] Deletar `agents/prompts/backup/`
-- [ ] Deletar `exceptions/base/core.py` e `core_simple.py`
-- [ ] Deletar `exceptions/base/business.py` e `patterns.py`
+
+- [x] Deletar `tools_backup/`, `tools_migration_backup_20260313_175943/`, `memory_backup/`
+- [x] Deletar `agents/prompts/backup/` (já deletado anteriormente)
+- [x] Deletar `exceptions/base/core_simple.py` e `patterns.py`
+- [ ] Deletar `exceptions/base/core.py` e `business.py` (shims — converter imports primeiro)
 - [ ] Deletar `agents/interfaces/` inteiro
-- [ ] Deletar `api/schemas/` inteiro
+- [x] Deletar `api/schemas/` inteiro (schemas únicos movidos para `schemas/api/`)
+- [x] Deletar shims: `orchestrator/router.py`, `memory/core/types.py`, `memory/shared/core/types.py`, `schemas/research.py`, `agents/research.py`
 - [ ] Executar `run_static_analysis`
 
 ### Fase 2 — Remover Shims ✅ CONCLUÍDA (30/03/2026)
+
 - [x] Atualizar imports de todos os shims listados na seção 6
 - [x] Deletar todos os shims após migração
 - [x] Executar `run_static_analysis`
 
 ### Fase 3 — Decompor Classes (5-7 dias)
+
 - [ ] Decompor AgentRuntime (2.289 linhas) em 6 módulos
 - [ ] Decompor MemoryFacade (879) em 4 módulos
 - [ ] Decompor CacheManager (779) em 4 módulos
@@ -277,21 +294,24 @@ Diretórios com apenas `__init__.py`:
 - [ ] Executar `run_static_analysis` após cada decomposição
 
 ### Fase 4 — Stubs (3-4 dias)
-- [ ] Avaliar e implementar ou deletar: `api/v1/orchestration.py`, `planning_metrics.py`, `providers.py`
-- [ ] Avaliar `grpc/config/features/` e `profiles/` — implementar ou deletar
-- [ ] Completar `memory/task_memory/` ou deletar
-- [ ] Implementar ou deletar specialist tools vazios
-- [ ] Implementar ou deletar `decomposition/context/` e `scoring/`
+
+- [x] Deletar `api/v1/orchestration.py` e `planning_metrics.py` (conforme instrução do usuário)
+- [ ] Implementar `grpc/config/features/` e `profiles/` (conforme instrução do usuário)
+- [ ] Implementar `memory/task_memory/` (conforme instrução do usuário)
+- [ ] Specialist tools — definir lógica depois
+- [ ] Decomposition — definir lógica depois
 - [ ] Executar `run_static_analysis`
 
 ### Fase 5 — Consolidar Duplicações (3-4 dias)
-- [ ] Consolidar Circuit Breakers em base única
-- [ ] Consolidar Cache em `infra/cache/` unificado
-- [ ] Consolidar Monitoring em `infra/monitoring/`
-- [ ] Deletar routers antigos
-- [ ] Executar `run_static_analysis`
+
+- [x] Consolidar Circuit Breakers em base única ✅ 30/03/2026
+- [ ] Consolidar Cache em `infra/cache/` unificado (deferred — gRPC cache é específico)
+- [ ] Consolidar Monitoring em `infra/monitoring/` (deferred — próximo sprint)
+- [x] Deletar routers antigos ✅ (já feito em commit anterior)
+- [x] Executar `run_static_analysis` ✅ 30/03/2026
 
 ### Fase 6 — Validação (1-2 dias)
+
 - [ ] Executar `make check` (Python)
 - [ ] Executar testes de integração
 - [ ] Verificar cobertura ≥80%

@@ -5,8 +5,8 @@ middleware pipeline, and advanced API management.
 """
 
 from .gateway import APIGateway, get_api_gateway
-from .router import RequestRouter, get_request_router
 from .middleware import MiddlewarePipeline, get_middleware_pipeline
+from .router import RequestRouter, get_request_router
 
 __all__ = [
     "APIGateway",

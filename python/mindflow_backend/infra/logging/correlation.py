@@ -6,11 +6,11 @@ for request tracing across system components.
 
 from __future__ import annotations
 
-import uuid
 import time
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+import uuid
 from contextvars import ContextVar
+from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
@@ -27,13 +27,13 @@ _request_start_time: ContextVar[float] = ContextVar("request_start_time", defaul
 class CorrelationContext:
     """Correlation context with metadata."""
     correlation_id: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     chain: list[str] = None
     start_time: float = 0.0
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    request_id: Optional[str] = None
-    tags: Dict[str, str] = None
+    user_id: str | None = None
+    session_id: str | None = None
+    request_id: str | None = None
+    tags: dict[str, str] = None
     
     def __post_init__(self) -> None:
         if self.chain is None:
@@ -57,7 +57,7 @@ class CorrelationManager:
     
     def __init__(self) -> None:
         """Initialize correlation manager."""
-        self._current_context: Optional[CorrelationContext] = None
+        self._current_context: CorrelationContext | None = None
         self._configured = False
         
     def configure(self) -> None:
@@ -75,11 +75,11 @@ class CorrelationManager:
         
     def start_correlation(
         self,
-        correlation_id: Optional[str] = None,
-        parent_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        correlation_id: str | None = None,
+        parent_id: str | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
+        request_id: str | None = None,
         **tags: str
     ) -> CorrelationContext:
         """Start a new correlation context.
@@ -137,7 +137,7 @@ class CorrelationManager:
         
         return context
         
-    def get_current_context(self) -> Optional[CorrelationContext]:
+    def get_current_context(self) -> CorrelationContext | None:
         """Get current correlation context.
         
         Returns:
@@ -145,7 +145,7 @@ class CorrelationManager:
         """
         return self._current_context
         
-    def get_correlation_id(self) -> Optional[str]:
+    def get_correlation_id(self) -> str | None:
         """Get current correlation ID.
         
         Returns:
@@ -162,7 +162,7 @@ class CorrelationManager:
         """
         return list(_correlation_chain.get([]))
         
-    def get_parent_id(self) -> Optional[str]:
+    def get_parent_id(self) -> str | None:
         """Get parent correlation ID.
         
         Returns:
@@ -188,7 +188,7 @@ class CorrelationManager:
                 value=value,
             )
             
-    def get_tags(self) -> Dict[str, str]:
+    def get_tags(self) -> dict[str, str]:
         """Get all tags from current context.
         
         Returns:
@@ -197,7 +197,7 @@ class CorrelationManager:
         context = self.get_current_context()
         return context.tags if context else {}
         
-    def get_tag(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get_tag(self, key: str, default: str | None = None) -> str | None:
         """Get specific tag from current context.
         
         Args:
@@ -210,7 +210,7 @@ class CorrelationManager:
         context = self.get_current_context()
         return context.tags.get(key, default) if context else default
         
-    def end_correlation(self) -> Optional[CorrelationContext]:
+    def end_correlation(self) -> CorrelationContext | None:
         """End current correlation context.
         
         Returns:
@@ -289,7 +289,7 @@ class CorrelationManager:
         """
         return self.get_request_duration() * 1000
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert current correlation context to dictionary.
         
         Returns:
@@ -317,11 +317,11 @@ class CorrelationContextManager:
     
     def __init__(
         self,
-        correlation_id: Optional[str] = None,
-        parent_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        correlation_id: str | None = None,
+        parent_id: str | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
+        request_id: str | None = None,
         **tags: str
     ):
         """Initialize correlation context manager.
@@ -341,7 +341,7 @@ class CorrelationContextManager:
         self.request_id = request_id
         self.tags = tags
         self.manager = get_correlation_manager()
-        self.context: Optional[CorrelationContext] = None
+        self.context: CorrelationContext | None = None
         
     def __enter__(self) -> CorrelationContext:
         """Enter correlation context."""
@@ -365,11 +365,11 @@ class CorrelationContextManager:
 
 
 def with_correlation(
-    correlation_id: Optional[str] = None,
-    parent_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    session_id: Optional[str] = None,
-    request_id: Optional[str] = None,
+    correlation_id: str | None = None,
+    parent_id: str | None = None,
+    user_id: str | None = None,
+    session_id: str | None = None,
+    request_id: str | None = None,
     **tags: str
 ) -> CorrelationContextManager:
     """Create correlation context manager.
@@ -417,7 +417,7 @@ def with_child_correlation(operation_name: str, **tags: str) -> CorrelationConte
 
 
 # Global correlation manager instance
-_correlation_manager: Optional[CorrelationManager] = None
+_correlation_manager: CorrelationManager | None = None
 
 
 def get_correlation_manager() -> CorrelationManager:

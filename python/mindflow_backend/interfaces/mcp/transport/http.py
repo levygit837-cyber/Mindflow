@@ -8,12 +8,10 @@ Suitable for web-based MCP servers and REST API integration.
 import asyncio
 import json
 import ssl
-from typing import Optional, Dict, Any
-import logging
 
 try:
     import aiohttp
-    from aiohttp import ClientSession, ClientTimeout, ClientError
+    from aiohttp import ClientError, ClientSession, ClientTimeout
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
@@ -23,7 +21,11 @@ except ImportError:
     ClientError = None
 
 from mindflow_backend.interfaces.mcp.transport.base import (
-    MCPTransport, TransportState, TransportError, ConnectionError, MessageError
+    ConnectionError,
+    MCPTransport,
+    MessageError,
+    TransportError,
+    TransportState,
 )
 from mindflow_backend.schemas.mcp.base import MCPMessage
 from mindflow_backend.schemas.mcp.transport import HTTPConfig
@@ -53,9 +55,9 @@ class HTTPTransport(MCPTransport):
             raise ImportError("aiohttp is required for HTTP transport. Install with: pip install aiohttp")
         
         super().__init__(config)
-        self.session: Optional[ClientSession] = None
+        self.session: ClientSession | None = None
         self._request_id_counter = 0
-        self._pending_requests: Dict[str, asyncio.Future] = {}
+        self._pending_requests: dict[str, asyncio.Future] = {}
     
     async def connect(self) -> None:
         """
@@ -195,7 +197,7 @@ class HTTPTransport(MCPTransport):
             self._update_metrics("error")
             raise MessageError(f"Failed to send HTTP message: {e}")
     
-    async def receive_message(self) -> Optional[MCPMessage]:
+    async def receive_message(self) -> MCPMessage | None:
         """
         Receive a message via HTTP.
         
@@ -215,7 +217,7 @@ class HTTPTransport(MCPTransport):
         # This would need to be implemented with long polling or webhooks
         return None
     
-    async def send_and_wait(self, message: MCPMessage, timeout: Optional[float] = None) -> MCPMessage:
+    async def send_and_wait(self, message: MCPMessage, timeout: float | None = None) -> MCPMessage:
         """
         Send a message and wait for response using HTTP.
         
@@ -253,12 +255,12 @@ class HTTPTransport(MCPTransport):
             
             return response_future.result()
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Clean up pending request
             if message.id in self._pending_requests:
                 del self._pending_requests[message.id]
             raise TimeoutError(f"Timeout waiting for response to message {message.id}")
-        except Exception as e:
+        except Exception:
             # Clean up pending request
             if message.id in self._pending_requests:
                 del self._pending_requests[message.id]

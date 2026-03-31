@@ -9,7 +9,7 @@ import logging
 
 from mindflow_backend.agents.research import get_enhanced_researcher_agent
 from mindflow_backend.agents.research.pitchtab_monitor import get_pitchtab_monitor
-from mindflow_backend.schemas.research import ResearchRequest, ResearchConfig
+from mindflow_backend.schemas.research import ResearchConfig, ResearchRequest
 
 
 async def main():

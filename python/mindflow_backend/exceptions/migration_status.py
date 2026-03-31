@@ -6,10 +6,8 @@ and which still need migration.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 
 class MigrationStatusChecker:
@@ -22,10 +20,10 @@ class MigrationStatusChecker:
         self.pending_files = []
         self.legacy_files = []
         
-    def check_imports(self, file_path: Path) -> List[str]:
+    def check_imports(self, file_path: Path) -> list[str]:
         """Check which exception imports a file uses."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
                 
             imports = []
@@ -137,7 +135,7 @@ class MigrationStatusChecker:
             print(f"   Completed: {len(self.migrated_files)}/{total}")
         
         # Recommendations
-        print(f"\n🎯 RECOMMENDATIONS:")
+        print("\n🎯 RECOMMENDATIONS:")
         print("-" * 50)
         
         if self.pending_files:

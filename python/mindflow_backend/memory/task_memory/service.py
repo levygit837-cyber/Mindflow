@@ -6,25 +6,23 @@ com suporte a decomposição, dependências e recuperação cross-task.
 
 from __future__ import annotations
 
-import uuid
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.utils.core import estimate_token_count
-from mindflow_backend.memory.task_memory.models import (
-    TaskMemory,
-    TaskChunk, 
-    TaskEmbedding,
-    TaskDependency,
-)
 from mindflow_backend.memory.shared.core.interfaces import MemoryServiceInterface
-from mindflow_backend.memory.shared.core.types import MemoryRetrievalResult
+from mindflow_backend.memory.task_memory.models import (
+    TaskChunk,
+    TaskDependency,
+    TaskEmbedding,
+    TaskMemory,
+)
+from mindflow_backend.schemas.memory.contracts import MemoryRetrievalResult
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
+from mindflow_backend.utils.core import estimate_token_count
 
 _logger = get_logger(__name__)
 
@@ -35,8 +33,8 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
     def __init__(
         self,
         *,
-        embedding_dims: Optional[int] = None,
-        retrieval_top_k: Optional[int] = None,
+        embedding_dims: int | None = None,
+        retrieval_top_k: int | None = None,
     ) -> None:
         """Initialize Task Memory service."""
         super().__init__()
@@ -66,11 +64,11 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         task_id: str,
         title: str,
         description: str,
-        parent_task_id: Optional[str] = None,
+        parent_task_id: str | None = None,
         agent_id: str,
         session_id: str,
         priority: float = 1.0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Criar nova memória de task."""
         self.log_operation(
@@ -118,7 +116,7 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         task_memory_id: str,
         content: str,
         chunk_type: str = "content",
-        keywords: Optional[List[str]] = None,
+        keywords: list[str] | None = None,
     ) -> str:
         """Adicionar chunk a uma task."""
         self.log_operation(
@@ -172,7 +170,7 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         db: Session,
         *,
         task_id: str,
-        query: Optional[str] = None,
+        query: str | None = None,
         max_chunks: int = 10,
     ) -> MemoryRetrievalResult:
         """Recuperar contexto de uma task específica."""
@@ -249,7 +247,7 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         db: Session,
         task_id: str,
         max_results: int = 5,
-    ) -> List[TaskMemory]:
+    ) -> list[TaskMemory]:
         """Get tasks relacionadas."""
         try:
             # Get dependencies where this task is parent
@@ -283,7 +281,7 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         task_memory_id: str,
         content: str,
         content_type: str = "task",
-        chunk_id: Optional[str] = None,
+        chunk_id: str | None = None,
     ) -> None:
         """Armazenar embedding para task/chunk."""
         try:
@@ -310,9 +308,9 @@ class TaskMemoryService(BaseAbstractService, MemoryServiceInterface):
         db: Session,
         *,
         query: str,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Buscar tasks semanticamente usando pgvector direto."""
         self.log_operation(
             "search_tasks",

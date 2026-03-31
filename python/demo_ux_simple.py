@@ -3,19 +3,17 @@
 
 import sys
 import time
-from typing import Dict, Any
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 from rich.console import Console
+from rich.live import Live
 from rich.panel import Panel
+from rich.rule import Rule
+from rich.spinner import Spinner
 from rich.table import Table
 from rich.text import Text
-from rich.rule import Rule
-from rich.live import Live
-from rich.spinner import Spinner
-from rich.progress import Progress, BarColumn, TextColumn
 
 
 class SimpleOrchestratorDemo:
@@ -121,7 +119,7 @@ class SimpleOrchestratorDemo:
         time.sleep(2)
         
         # Show orchestrator step progression
-        progress_text = Text(f"🎯 ORQ Step 1/3: Task decomposition completed", style="bold gold3")
+        progress_text = Text("🎯 ORQ Step 1/3: Task decomposition completed", style="bold gold3")
         self.console.print(progress_text)
         
         progress_bar = "█" + "░" + "░"
@@ -177,7 +175,7 @@ The system should follow OWASP authentication guidelines and include proper erro
         
         # Orchestrator continues
         self.console.print()
-        progress_text = Text(f"🎯 ORQ Step 2/3: Security analysis complete, proceeding to implementation", style="bold gold3")
+        progress_text = Text("🎯 ORQ Step 2/3: Security analysis complete, proceeding to implementation", style="bold gold3")
         self.console.print(progress_text)
         progress_bar = "██" + "░"
         progress_display = Text(f"[{progress_bar}] 2/3", style="gold3")
@@ -259,7 +257,7 @@ This implementation includes secure password hashing, JWT token management, and 
         
         # Final orchestrator step
         self.console.print()
-        progress_text = Text(f"🎯 ORQ Step 3/3: Implementation complete, final validation", style="bold gold3")
+        progress_text = Text("🎯 ORQ Step 3/3: Implementation complete, final validation", style="bold gold3")
         self.console.print(progress_text)
         progress_bar = "███"
         progress_display = Text(f"[{progress_bar}] 3/3", style="gold3")

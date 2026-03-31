@@ -10,13 +10,12 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import uuid
-from collections.abc import AsyncGenerator
 from collections import defaultdict
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.security import (
     WorkspaceSecurityError,
     resolve_workspace_path,
@@ -24,6 +23,7 @@ from mindflow_backend.agents.tools.security import (
     sanitize_environment,
     validate_shell_command,
 )
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.shell_tabs import (
     ShellTabContract,
     ShellTabSnapshot,
@@ -235,7 +235,7 @@ class ShellTabService:
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=15)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield {
                         "type": "keepalive",
                         "session_id": session_id,

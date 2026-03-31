@@ -6,12 +6,11 @@ concurrently with support for synchronization and result aggregation.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
 import asyncio
+from typing import Any
 
-from mindflow_backend.graphs.base.graph import BaseGraph, GraphType, GraphState
+from mindflow_backend.graphs.base.graph import BaseGraph, GraphType
 from mindflow_backend.nodes.base.node import BaseNode
-from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
 class ParallelWorkflowGraph(BaseGraph):
@@ -28,10 +27,10 @@ class ParallelWorkflowGraph(BaseGraph):
     def __init__(
         self,
         graph_id: str = "parallel_workflow",
-        branches: List[Dict[str, Any]] = None,
+        branches: list[dict[str, Any]] = None,
         join_type: str = "all",  # all, any, first, custom
-        synchronization_points: List[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
+        synchronization_points: list[dict[str, Any]] = None,
+        timeout: float | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -54,8 +53,8 @@ class ParallelWorkflowGraph(BaseGraph):
     def add_branch(
         self,
         branch_id: str,
-        nodes: List[Union[BaseNode, str]],
-        condition: Optional[Dict[str, Any]] = None,
+        nodes: list[BaseNode | str],
+        condition: dict[str, Any] | None = None,
         weight: float = 1.0,
         description: str = ""
     ) -> None:
@@ -73,7 +72,7 @@ class ParallelWorkflowGraph(BaseGraph):
     def add_synchronization_point(
         self,
         point_id: str,
-        participants: List[str],  # Branch IDs that must sync
+        participants: list[str],  # Branch IDs that must sync
         sync_type: str = "barrier",  # barrier, semaphore, mutex
         description: str = ""
     ) -> None:
@@ -90,7 +89,7 @@ class ParallelWorkflowGraph(BaseGraph):
     def add_fork_join(
         self,
         fork_id: str,
-        fork_branches: List[str],
+        fork_branches: list[str],
         join_point: str,
         join_type: str = "wait_all",  # wait_all, wait_any, merge, custom
         description: str = ""
@@ -99,7 +98,7 @@ class ParallelWorkflowGraph(BaseGraph):
         # This would be stored and processed during execution
         pass
     
-    async def execute(self, initial_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute(self, initial_state: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute the parallel workflow."""
         workflow_state = initial_state or {}
         workflow_state.update(self._workflow_state)
@@ -150,7 +149,7 @@ class ParallelWorkflowGraph(BaseGraph):
                 "total_branches": len(self.branches)
             }
     
-    async def _evaluate_branch_conditions(self, workflow_state: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _evaluate_branch_conditions(self, workflow_state: dict[str, Any]) -> list[dict[str, Any]]:
         """Evaluate conditions for all branches and return active ones."""
         active_branches = []
         
@@ -169,7 +168,7 @@ class ParallelWorkflowGraph(BaseGraph):
         
         return active_branches
     
-    async def _execute_parallel_branches(self, branches: List[Dict[str, Any]], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_parallel_branches(self, branches: list[dict[str, Any]], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute multiple branches in parallel."""
         branch_tasks = []
         
@@ -234,7 +233,7 @@ class ParallelWorkflowGraph(BaseGraph):
             
             return result_dict
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Handle timeout
             error_dict = {}
             for i, branch in enumerate(branches):
@@ -242,7 +241,7 @@ class ParallelWorkflowGraph(BaseGraph):
             
             return error_dict
     
-    async def _apply_join_condition(self, branch_results: Dict[str, Any], workflow_state: Dict[str, Any]) -> Any:
+    async def _apply_join_condition(self, branch_results: dict[str, Any], workflow_state: dict[str, Any]) -> Any:
         """Apply the join condition to determine final result."""
         if not branch_results:
             return None
@@ -288,7 +287,7 @@ class ParallelWorkflowGraph(BaseGraph):
             # Custom join type
             return self._apply_custom_join(branch_results, workflow_state)
     
-    def _apply_custom_join(self, branch_results: Dict[str, Any], workflow_state: Dict[str, Any]) -> Any:
+    def _apply_custom_join(self, branch_results: dict[str, Any], workflow_state: dict[str, Any]) -> Any:
         """Apply custom join logic."""
         # This would be implemented based on specific requirements
         # For now, return all results combined
@@ -303,7 +302,7 @@ class ParallelWorkflowGraph(BaseGraph):
             "combined_results": combined
         }
     
-    def _apply_first_join(self, branch_results: Dict[str, Any], workflow_state: Dict[str, Any]) -> Any:
+    def _apply_first_join(self, branch_results: dict[str, Any], workflow_state: dict[str, Any]) -> Any:
         """Apply first-to-complete join logic."""
         # Sort by weight if available, then by order
         branch_list = list(self.branches)
@@ -324,7 +323,7 @@ class ParallelWorkflowGraph(BaseGraph):
         
         return None
     
-    def _evaluate_condition(self, condition: Dict[str, Any], workflow_state: Dict[str, Any]) -> bool:
+    def _evaluate_condition(self, condition: dict[str, Any], workflow_state: dict[str, Any]) -> bool:
         """Evaluate a condition for branch activation."""
         for field, expected_value in condition.items():
             if field.startswith("state."):
@@ -340,7 +339,7 @@ class ParallelWorkflowGraph(BaseGraph):
         
         return True
     
-    async def _execute_synchronization_points(self, workflow_state: Dict[str, Any]) -> None:
+    async def _execute_synchronization_points(self, workflow_state: dict[str, Any]) -> None:
         """Execute synchronization points."""
         for sync_point in self.synchronization_points:
             sync_type = sync_point.get("sync_type")
@@ -353,7 +352,7 @@ class ParallelWorkflowGraph(BaseGraph):
             elif sync_type == "mutex":
                 await self._execute_mutex(participants, workflow_state)
     
-    async def _execute_barrier(self, participants: List[str], workflow_state: Dict[str, Any]) -> None:
+    async def _execute_barrier(self, participants: list[str], workflow_state: dict[str, Any]) -> None:
         """Execute a barrier synchronization point."""
         # This would implement a barrier where all participants wait
         # For now, just log the synchronization
@@ -361,21 +360,21 @@ class ParallelWorkflowGraph(BaseGraph):
         logger = get_logger(__name__)
         logger.info("barrier_synchronization", participants=participants)
     
-    async def _execute_semaphore(self, participants: List[str], workflow_state: Dict[str, Any]) -> None:
+    async def _execute_semaphore(self, participants: list[str], workflow_state: dict[str, Any]) -> None:
         """Execute a semaphore synchronization point."""
         # This would implement semaphore logic
         from mindflow_backend.infra.logging import get_logger
         logger = get_logger(__name__)
         logger.info("semaphore_synchronization", participants=participants)
     
-    async def _execute_mutex(self, participants: List[str], workflow_state: Dict[str, Any]) -> None:
+    async def _execute_mutex(self, participants: list[str], workflow_state: dict[str, Any]) -> None:
         """Execute a mutex synchronization point."""
         # This would implement mutex logic
         from mindflow_backend.infra.logging import get_logger
         logger = get_logger(__name__)
         logger.info("mutex_synchronization", participants=participants)
     
-    def get_workflow_info(self) -> Dict[str, Any]:
+    def get_workflow_info(self) -> dict[str, Any]:
         """Get information about the workflow configuration."""
         return {
             "graph_id": self.graph_id,

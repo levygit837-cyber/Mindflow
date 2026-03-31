@@ -1,14 +1,17 @@
 """Tests for the DT RAG system components."""
 
-import pytest
 import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
+
+from mindflow_backend.orchestrator.decomposition.component_router import (
+    get_rag_aware_router,
+)
 from mindflow_backend.orchestrator.decomposition.dt_dependency_resolver import (
-    get_dt_dependency_resolver,
     DependencyAnalysis,
-    DependencyValidation,
+    get_dt_dependency_resolver,
 )
 from mindflow_backend.orchestrator.decomposition.dt_rag_context_manager import (
     get_dt_rag_context_manager,
@@ -16,15 +19,12 @@ from mindflow_backend.orchestrator.decomposition.dt_rag_context_manager import (
 from mindflow_backend.orchestrator.decomposition.dt_state_orchestrator import (
     get_dt_state_orchestrator,
 )
-from mindflow_backend.orchestrator.decomposition.component_router import (
-    get_rag_aware_router,
-)
 from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+    ComponentEvidence,
     ComponentOwner,
     ComponentStatus,
     SubComponentContract,
     SubComponentState,
-    ComponentEvidence,
 )
 
 

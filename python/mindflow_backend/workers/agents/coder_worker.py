@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -19,7 +19,7 @@ class CoderWorker(BaseWorker):
         """Initialize the Coder worker."""
         super().__init__(queue_config, worker_name="coder_worker")
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process code-related tasks.
         
         Supported task types:
@@ -73,7 +73,7 @@ class CoderWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
     
-    async def _handle_code_analysis(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_code_analysis(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle static code analysis tasks."""
         file_path = message_data.get("file_path")
         analysis_type = message_data.get("analysis_type", "basic")
@@ -94,7 +94,7 @@ class CoderWorker(BaseWorker):
             },
         )
     
-    async def _handle_dependency_scan(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_dependency_scan(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle dependency vulnerability scanning."""
         project_path = message_data.get("project_path")
         scan_depth = message_data.get("scan_depth", "direct")
@@ -115,7 +115,7 @@ class CoderWorker(BaseWorker):
             },
         )
     
-    async def _handle_test_execution(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_test_execution(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle asynchronous test execution."""
         test_path = message_data.get("test_path")
         test_type = message_data.get("test_type", "unit")
@@ -139,7 +139,7 @@ class CoderWorker(BaseWorker):
             },
         )
     
-    async def _handle_code_generation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_code_generation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle code generation tasks."""
         prompt = message_data.get("prompt")
         language = message_data.get("language", "python")
@@ -161,7 +161,7 @@ class CoderWorker(BaseWorker):
             },
         )
     
-    async def _handle_refactoring(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_refactoring(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle code refactoring tasks."""
         file_path = message_data.get("file_path")
         refactoring_type = message_data.get("refactoring_type", "extract_method")

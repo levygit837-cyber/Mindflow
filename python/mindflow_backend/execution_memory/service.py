@@ -6,8 +6,8 @@ paused, resumed, inspected, and audited after process restarts.
 
 from __future__ import annotations
 
-import json
 import inspect
+import json
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime

@@ -4,9 +4,10 @@ for implementing consistent tool behavior across the system.
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
 from datetime import datetime
+from typing import Any
 
 
 class ToolInterface(ABC):
@@ -31,7 +32,7 @@ class ToolInterface(ABC):
         self.secure_mode: bool = False
 
     @abstractmethod
-    def execute(self, **kwargs) -> Dict[str, Any]:
+    def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute the tool with given parameters.
         Args:
@@ -42,7 +43,7 @@ class ToolInterface(ABC):
         pass
 
     @abstractmethod
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get the tool schema definition.
         Returns:
@@ -50,7 +51,7 @@ class ToolInterface(ABC):
         """
         pass
 
-    def _format_result(self, success: bool, result: Optional[Any] = None, error: Optional[str] = None) -> Dict[str, Any]:
+    def _format_result(self, success: bool, result: Any | None = None, error: str | None = None) -> dict[str, Any]:
         """
         Format tool execution result consistently.
         Args:
@@ -76,7 +77,7 @@ class AsyncToolInterface(ToolInterface):
     """
 
     @abstractmethod
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute the tool asynchronously with given parameters.
         Args:
@@ -95,9 +96,9 @@ class ToolResult:
     def __init__(
         self,
         success: bool,
-        data: Optional[Any] = None,
-        error: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        data: Any | None = None,
+        error: str | None = None,
+        metadata: dict[str, Any] | None = None
     ):
         self.success = success
         self.data = data
@@ -105,7 +106,7 @@ class ToolResult:
         self.metadata = metadata or {}
         self.timestamp = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary format.
         Returns:

@@ -11,17 +11,28 @@ Provides modular, extensible tool architecture with:
 
 from __future__ import annotations
 
-from typing import Any
 from pathlib import Path
+from typing import Any
+
+from mindflow_backend.agents.specialists.runtime_policy import AGENT_RUNTIME_POLICY
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
+
+from mindflow_backend.agents.tools.contextplus_fallback import (
+    ContextPlusFallbackEngine,
+    FallbackConfig,
+    FALLBACK_CHAINS,
+)
+from mindflow_backend.agents.tools.contextplus_validator import (
+    ContextPlusValidator,
+    ValidationConfig,
+)
 
 # Core components
 from .base.tool_registry import ToolRegistry
 from .base.tool_schemas import ToolSchema
 from .sandbox import MindFlowSandbox
 from .security import normalize_sandbox_mode, secure_sandbox_enabled
-from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
-from mindflow_backend.agents.specialists.runtime_policy import AGENT_RUNTIME_POLICY
 
 _logger = get_logger(__name__)
 
@@ -114,9 +125,15 @@ class _DefaultRegistry:
         
         try:
             from .filesystem import (
-                FileReadTool, FileWriteTool, FileEditTool,
-                GrepSearchTool, GlobSearchTool, FindFilesTool,
-                DirectoryListTool, FileDeleteTool, DirectoryCreateTool
+                DirectoryCreateTool,
+                DirectoryListTool,
+                FileDeleteTool,
+                FileEditTool,
+                FileReadTool,
+                FileWriteTool,
+                FindFilesTool,
+                GlobSearchTool,
+                GrepSearchTool,
             )
             
             tools = [
@@ -143,16 +160,16 @@ class _DefaultRegistry:
         
         try:
             from .system import (
-                ShellExecutorTool,
-                ResourceMonitorTool,
-                SystemInfoTool,  # Corrigido: SystemInfoCollector → SystemInfoTool
                 ProcessManagerTool,
-                ShellTabOpenTool,
-                ShellTabListTool,
-                ShellTabStatusTool,
-                ShellTabExecTool,
-                ShellTabReadTool,
+                ResourceMonitorTool,
+                ShellExecutorTool,
                 ShellTabCloseTool,
+                ShellTabExecTool,
+                ShellTabListTool,
+                ShellTabOpenTool,
+                ShellTabReadTool,
+                ShellTabStatusTool,
+                SystemInfoTool,  # Corrigido: SystemInfoCollector → SystemInfoTool
             )
             
             tools = [
@@ -180,9 +197,9 @@ class _DefaultRegistry:
         
         try:
             from .web import (
-                WebScraperTool,
-                HttpClientTool,
                 ApiClientTool,
+                HttpClientTool,
+                WebScraperTool,
             )
             
             tools = [
@@ -291,15 +308,15 @@ class _DefaultRegistry:
         
         try:
             from .code import (
-                GitNexusStatusTool,
-                GitNexusQueryTool,
                 GitNexusContextTool,
                 GitNexusImpactTool,
+                GitNexusQueryTool,
+                GitNexusStatusTool,
             )
             from .filesystem import (
                 FileReadTool,
-                GrepSearchTool,
                 GlobSearchTool,
+                GrepSearchTool,
             )
             
             tools = [
@@ -323,10 +340,7 @@ class _DefaultRegistry:
         tools = []
         
         try:
-            from .data import (
-                DatabaseTool,
-                CSVProcessorTool
-            )
+            from .data import CSVProcessorTool, DatabaseTool
             
             tools = [
                 DatabaseTool(),
@@ -345,10 +359,10 @@ class _DefaultRegistry:
 
         try:
             from .integration.memory_tools import (
-                StoreFactTool,
-                SearchFactsTool,
-                RetrieveTaskContextTool,
                 RecallSessionMemoryTool,
+                RetrieveTaskContextTool,
+                SearchFactsTool,
+                StoreFactTool,
             )
 
             tools = [
@@ -370,9 +384,9 @@ class _DefaultRegistry:
 
         try:
             from .planning import (
-                WriteTodosTool,
-                ReadTodosTool,
                 FocusTodosTool,
+                ReadTodosTool,
+                WriteTodosTool,
             )
 
             tools = [
@@ -401,6 +415,13 @@ class _DefaultRegistry:
             _logger.warning(f"Could not import delegation tools: {e}")
 
         return tools
+
+    def _get_contextplus_analysis_tools(self) -> list[Any]:
+        """Get Context+ analysis tools for codebase exploration."""
+        return [
+            ContextPlusFallbackEngine,
+            ContextPlusValidator,
+        ]
 
     def get_tools_for_scopes(self, scopes: list[Any]) -> list[Any]:
         """Get concrete tool instances for an explicit scope list."""

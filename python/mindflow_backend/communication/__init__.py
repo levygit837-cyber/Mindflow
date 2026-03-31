@@ -12,23 +12,34 @@ Components:
     - schemas: Data models for communication
 """
 
+from .bus.communication_bus import (
+    CommunicationBus,
+    InternalCommunicationBus,
+    get_communication_bus,
+    set_communication_bus,
+)
+from .connection.xmpp_connection import XMPPConnectionConfig, XMPPConnectionManager
+from .mixins.agent_communication import AgentCommunicationMixin
+from .protocols.p2p_protocol import MessageType, P2PMessage, P2PProtocol
 from .protocols.xmpp_protocol import XMPPProtocol
-from .protocols.p2p_protocol import P2PProtocol, P2PMessage, MessageType
+from .services.p2p_service import P2PService
+from .services.team_service import TeamService
+from .services.xmpp_service import XMPPService
 from .teams.team import Team, TeamMember, TeamStatus
 from .teams.team_chat import TeamChat, TeamMessage
 from .teams.team_manager import TeamManager
-from .connection.xmpp_connection import XMPPConnectionManager, XMPPConfig
-from .services.xmpp_service import XMPPService
-from .services.p2p_service import P2PService
-from .services.team_service import TeamService
 
 __all__ = [
+    # Bus
+    "CommunicationBus",
+    "InternalCommunicationBus",
+    "get_communication_bus",
+    "set_communication_bus",
     # Protocols
     "XMPPProtocol",
     "P2PProtocol",
     "P2PMessage",
     "MessageType",
-    
     # Teams
     "Team",
     "TeamMember",
@@ -36,13 +47,13 @@ __all__ = [
     "TeamChat",
     "TeamMessage",
     "TeamManager",
-    
     # Connection
     "XMPPConnectionManager",
-    "XMPPConfig",
-    
+    "XMPPConnectionConfig",
     # Services
     "XMPPService",
     "P2PService",
     "TeamService",
+    # Mixins
+    "AgentCommunicationMixin",
 ]

@@ -5,8 +5,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from mindflow_cli.commands.chat import register_chat_commands
-from mindflow_cli.render.chat_stream import ChatStreamRenderer
 from mindflow_cli.render.theme import MINDFLOW_THEME
 
 console = Console(theme=MINDFLOW_THEME)

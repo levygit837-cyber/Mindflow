@@ -7,11 +7,10 @@ Provides error classification, logging, and recovery strategies.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable
 from enum import Enum
+from typing import Any
 
-from mindflow_backend.schemas.mcp.base import MCPError, MCPErrorCode
-from mindflow_backend.schemas.mcp.base import MCPMessage
+from mindflow_backend.schemas.mcp.base import MCPError, MCPErrorCode, MCPMessage
 
 
 class ErrorSeverity(str, Enum):
@@ -41,12 +40,12 @@ class ErrorInfo:
     def __init__(
         self,
         error: Exception,
-        message: Optional[MCPMessage] = None,
+        message: MCPMessage | None = None,
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
         category: ErrorCategory = ErrorCategory.INTERNAL,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         recoverable: bool = True,
-        retry_after: Optional[float] = None
+        retry_after: float | None = None
     ):
         """
         Initialize error information.
@@ -135,7 +134,7 @@ class ErrorProcessor:
         else:
             self.logger.info(log_message)
     
-    async def _determine_recovery_action(self, error_info: ErrorInfo) -> Optional[str]:
+    async def _determine_recovery_action(self, error_info: ErrorInfo) -> str | None:
         """
         Determine the appropriate recovery action.
         
@@ -174,8 +173,8 @@ class MCPErrorHandler:
     def __init__(self):
         """Initialize the MCP error handler."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        self._processors: List[ErrorProcessor] = []
-        self._error_history: List[ErrorInfo] = []
+        self._processors: list[ErrorProcessor] = []
+        self._error_history: list[ErrorInfo] = []
         self._max_history = 1000
     
     def add_processor(self, processor: ErrorProcessor) -> None:
@@ -202,8 +201,8 @@ class MCPErrorHandler:
     async def handle_error(
         self,
         error: Exception,
-        message: Optional[MCPMessage] = None,
-        context: Optional[Dict[str, Any]] = None
+        message: MCPMessage | None = None,
+        context: dict[str, Any] | None = None
     ) -> bool:
         """
         Handle an error and attempt recovery.
@@ -244,8 +243,8 @@ class MCPErrorHandler:
     def _classify_error(
         self,
         error: Exception,
-        message: Optional[MCPMessage] = None,
-        context: Optional[Dict[str, Any]] = None
+        message: MCPMessage | None = None,
+        context: dict[str, Any] | None = None
     ) -> ErrorInfo:
         """
         Classify an error to determine severity and category.
@@ -322,7 +321,7 @@ class MCPErrorHandler:
         if len(self._error_history) > self._max_history:
             self._error_history = self._error_history[-self._max_history:]
     
-    def get_error_stats(self) -> Dict[str, Any]:
+    def get_error_stats(self) -> dict[str, Any]:
         """
         Get error statistics.
         
@@ -362,7 +361,7 @@ class MCPErrorHandler:
             "recoverable_rate": recoverable_count / total_errors if total_errors > 0 else 0.0
         }
     
-    def get_recent_errors(self, limit: int = 10) -> List[ErrorInfo]:
+    def get_recent_errors(self, limit: int = 10) -> list[ErrorInfo]:
         """
         Get recent errors from history.
         
@@ -397,7 +396,7 @@ class RetryProcessor(ErrorProcessor):
         self.base_delay = base_delay
         self.max_delay = max_delay
     
-    async def _determine_recovery_action(self, error_info: ErrorInfo) -> Optional[str]:
+    async def _determine_recovery_action(self, error_info: ErrorInfo) -> str | None:
         """Determine if retry is appropriate."""
         if not error_info.recoverable:
             return None
@@ -452,7 +451,7 @@ class LoggingProcessor(ErrorProcessor):
         super().__init__()
         self.include_stack_trace = include_stack_trace
     
-    async def _determine_recovery_action(self, error_info: ErrorInfo) -> Optional[str]:
+    async def _determine_recovery_action(self, error_info: ErrorInfo) -> str | None:
         """This processor only logs, doesn't recover."""
         return None
     

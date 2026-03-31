@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
-import re
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.runtime.node_registry import (
     NodeCategory as RuntimeNodeCategory,
+)
+from mindflow_backend.runtime.node_registry import (
     classify_node as runtime_classify_node,
+)
+from mindflow_backend.runtime.node_registry import (
     get_node_label as runtime_get_node_label,
+)
+from mindflow_backend.runtime.node_registry import (
     is_streamable_node as runtime_is_streamable_node,
 )
 
@@ -33,12 +38,12 @@ class NodeMetadata:
     
     def __init__(
         self,
-        node_class: Type[BaseNode],
+        node_class: type[BaseNode],
         node_type: NodeType,
         category: NodeCategory,
         description: str = "",
-        capabilities: List[NodeCapability] = None,
-        tags: List[str] = None,
+        capabilities: list[NodeCapability] = None,
+        tags: list[str] = None,
         version: str = "1.0.0",
         author: str = "",
     ) -> None:
@@ -61,7 +66,7 @@ class NodeMetadata:
         """Check if node has a specific capability."""
         return capability in self.capabilities
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary."""
         return {
             "node_class": self.node_class.__name__,
@@ -80,25 +85,25 @@ class NodeRegistry:
     """Enhanced registry for node discovery and instantiation."""
     
     def __init__(self) -> None:
-        self._nodes: Dict[str, NodeMetadata] = {}
-        self._node_instances: Dict[str, BaseNode] = {}
-        self._type_index: Dict[NodeType, List[str]] = {}
-        self._category_index: Dict[NodeCategory, List[str]] = {}
-        self._capability_index: Dict[NodeCapability, List[str]] = {}
-        self._tag_index: Dict[str, List[str]] = {}
+        self._nodes: dict[str, NodeMetadata] = {}
+        self._node_instances: dict[str, BaseNode] = {}
+        self._type_index: dict[NodeType, list[str]] = {}
+        self._category_index: dict[NodeCategory, list[str]] = {}
+        self._capability_index: dict[NodeCapability, list[str]] = {}
+        self._tag_index: dict[str, list[str]] = {}
     
     def register(
         self,
         node_id: str,
-        node_class: Type[BaseNode],
+        node_class: type[BaseNode],
         node_type: NodeType,
         category: NodeCategory,
         description: str = "",
-        capabilities: List[NodeCapability] = None,
-        tags: List[str] = None,
+        capabilities: list[NodeCapability] = None,
+        tags: list[str] = None,
         version: str = "1.0.0",
         author: str = "",
-        instance: Optional[BaseNode] = None,
+        instance: BaseNode | None = None,
     ) -> None:
         """Register a node class with the registry."""
         if node_id in self._nodes:
@@ -157,7 +162,7 @@ class NodeRegistry:
         
         return True
     
-    def get_metadata(self, node_id: str) -> Optional[NodeMetadata]:
+    def get_metadata(self, node_id: str) -> NodeMetadata | None:
         """Get metadata for a registered node."""
         return self._nodes.get(node_id)
     
@@ -165,7 +170,7 @@ class NodeRegistry:
         self, 
         node_id: str, 
         **kwargs
-    ) -> Optional[BaseNode]:
+    ) -> BaseNode | None:
         """Create an instance of a registered node."""
         metadata = self._nodes.get(node_id)
         if not metadata:
@@ -176,31 +181,31 @@ class NodeRegistry:
         except Exception:
             return None
     
-    def get_instance(self, node_id: str) -> Optional[BaseNode]:
+    def get_instance(self, node_id: str) -> BaseNode | None:
         """Get a stored instance of a node."""
         return self._node_instances.get(node_id)
     
-    def list_nodes(self) -> List[str]:
+    def list_nodes(self) -> list[str]:
         """List all registered node IDs."""
         return list(self._nodes.keys())
     
-    def find_by_type(self, node_type: NodeType) -> List[str]:
+    def find_by_type(self, node_type: NodeType) -> list[str]:
         """Find nodes by type."""
         return list(self._type_index.get(node_type, []))
     
-    def find_by_category(self, category: NodeCategory) -> List[str]:
+    def find_by_category(self, category: NodeCategory) -> list[str]:
         """Find nodes by category."""
         return list(self._category_index.get(category, []))
     
-    def find_by_capability(self, capability: NodeCapability) -> List[str]:
+    def find_by_capability(self, capability: NodeCapability) -> list[str]:
         """Find nodes by capability."""
         return list(self._capability_index.get(capability, []))
     
-    def find_by_tag(self, tag: str) -> List[str]:
+    def find_by_tag(self, tag: str) -> list[str]:
         """Find nodes by tag."""
         return list(self._tag_index.get(tag, []))
     
-    def search(self, query: str) -> List[str]:
+    def search(self, query: str) -> list[str]:
         """Search nodes by query in description, tags, and node ID."""
         query = query.lower()
         results = []
@@ -213,7 +218,7 @@ class NodeRegistry:
         
         return results
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get registry statistics."""
         return {
             "total_nodes": len(self._nodes),
@@ -232,7 +237,7 @@ class NodeRegistry:
             "total_instances": len(self._node_instances),
         }
     
-    def validate_node(self, node_id: str) -> List[str]:
+    def validate_node(self, node_id: str) -> list[str]:
         """Validate a registered node."""
         metadata = self._nodes.get(node_id)
         if not metadata:
@@ -256,7 +261,7 @@ class NodeRegistry:
         
         return issues
     
-    def export_registry(self) -> Dict[str, Any]:
+    def export_registry(self) -> dict[str, Any]:
         """Export registry data for serialization."""
         return {
             "nodes": {
@@ -274,7 +279,7 @@ class NodeRegistry:
 
 
 # Global registry instance
-_global_registry: Optional[NodeRegistry] = None
+_global_registry: NodeRegistry | None = None
 
 
 def get_node_registry() -> NodeRegistry:
@@ -334,9 +339,9 @@ def _auto_register_common_nodes() -> None:
     registry = get_node_registry()
     
     # Import nodes to register them
-    from mindflow_backend.nodes.orchestrator.route_node import RouteNode
     from mindflow_backend.nodes.orchestrator.execute_node import ExecuteNode
     from mindflow_backend.nodes.orchestrator.respond_node import RespondNode
+    from mindflow_backend.nodes.orchestrator.route_node import RouteNode
     
     # Register route node
     registry.register(

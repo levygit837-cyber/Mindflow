@@ -7,28 +7,37 @@ advanced retry policies, bulkhead pattern, fallback strategies, and alerting.
 """
 
 import asyncio
-import sys
 import os
-import time
 import random
-from typing import Dict, Any
+import sys
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mindflow_backend.grpc.resilience.bulkhead import GrpcBulkhead, BulkheadConfig
-from mindflow_backend.grpc.resilience.fallback import (
-    FallbackManager, FallbackConfig, FallbackType,
-    LocalCacheFallback, DefaultResponseFallback
-)
-from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import (
-    EnhancedGrpcCircuitBreaker, EnhancedCircuitBreakerConfig, AdaptiveThresholdType
+from mindflow_backend.grpc.monitoring.alerting import (
+    AlertCondition,
+    AlertConfig,
+    AlertManager,
+    AlertSeverity,
+    NotificationChannel,
 )
 from mindflow_backend.grpc.resilience.advanced_retry import (
-    AdvancedRetryPolicy, AdvancedRetryConfig, AdaptiveBackoffType, RetryConditionType
+    AdaptiveBackoffType,
+    AdvancedRetryConfig,
+    AdvancedRetryPolicy,
+    RetryConditionType,
 )
-from mindflow_backend.grpc.monitoring.alerting import (
-    AlertManager, AlertConfig, AlertCondition, AlertSeverity, NotificationChannel
+from mindflow_backend.grpc.resilience.bulkhead import BulkheadConfig, GrpcBulkhead
+from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import (
+    AdaptiveThresholdType,
+    EnhancedCircuitBreakerConfig,
+    EnhancedGrpcCircuitBreaker,
+)
+from mindflow_backend.grpc.resilience.fallback import (
+    DefaultResponseFallback,
+    FallbackConfig,
+    FallbackManager,
+    LocalCacheFallback,
 )
 from mindflow_backend.infra.logging import get_logger
 
@@ -93,7 +102,7 @@ class ResilienceGrpcDemo:
             
             # Get bulkhead metrics
             metrics = self.bulkhead.get_metrics()
-            print(f"   📈 Bulkhead Metrics:")
+            print("   📈 Bulkhead Metrics:")
             print(f"      Total requests: {metrics['total_requests']}")
             print(f"      Accepted requests: {metrics['accepted_requests']}")
             print(f"      Rejected requests: {metrics['rejected_requests']}")
@@ -182,7 +191,7 @@ class ResilienceGrpcDemo:
             
             # Get fallback metrics
             metrics = self.fallback_manager.get_metrics()
-            print(f"   📊 Fallback Metrics:")
+            print("   📊 Fallback Metrics:")
             print(f"      Total operations: {metrics['total_operations']}")
             print(f"      Primary success rate: {metrics['primary_success_rate']:.1f}%")
             print(f"      Fallback usage rate: {metrics['fallback_usage_rate']:.1f}%")
@@ -245,7 +254,7 @@ class ResilienceGrpcDemo:
             
             # Get enhanced metrics
             metrics = self.circuit_breaker.get_enhanced_metrics()
-            print(f"   📊 Enhanced Circuit Breaker Metrics:")
+            print("   📊 Enhanced Circuit Breaker Metrics:")
             print(f"      State: {metrics['state']}")
             print(f"      Total calls: {metrics['total_calls']}")
             print(f"      Success rate: {metrics['success_rate']:.1f}%")
@@ -306,7 +315,7 @@ class ResilienceGrpcDemo:
             
             # Get advanced metrics
             metrics = self.retry_policy.get_advanced_metrics()
-            print(f"   📊 Advanced Retry Metrics:")
+            print("   📊 Advanced Retry Metrics:")
             print(f"      Total operations: {metrics['total_operations']}")
             print(f"      Success rate: {metrics['success_rate']:.1f}%")
             print(f"      Average attempts: {metrics['average_attempts']:.1f}")
@@ -380,7 +389,7 @@ class ResilienceGrpcDemo:
             
             # Get alert metrics
             metrics = self.alert_manager.get_alert_metrics()
-            print(f"   📊 Alerting Metrics:")
+            print("   📊 Alerting Metrics:")
             print(f"      Total alerts: {metrics['total_alerts']}")
             print(f"      Active alerts: {metrics['active_alerts_count']}")
             print(f"      Alerts by severity: {metrics['alerts_by_severity']}")
@@ -389,7 +398,7 @@ class ResilienceGrpcDemo:
             # Show active alerts
             active_alerts = self.alert_manager.get_active_alerts()
             if active_alerts:
-                print(f"   🚨 Active Alerts:")
+                print("   🚨 Active Alerts:")
                 for alert in active_alerts:
                     print(f"      - {alert.condition_name}: {alert.message}")
                     print(f"        Severity: {alert.severity.value}")
@@ -463,14 +472,14 @@ class ResilienceGrpcDemo:
             successful = sum(1 for r in results if not isinstance(r, Exception))
             failed = sum(1 for r in results if isinstance(r, Exception))
             
-            print(f"   📊 Integrated Results:")
+            print("   📊 Integrated Results:")
             print(f"      Total operations: {len(tasks)}")
             print(f"      Successful: {successful}")
             print(f"      Failed: {failed}")
             print(f"      Success rate: {(successful/len(tasks))*100:.1f}%")
             
             # Get combined metrics
-            print(f"   📈 Combined Metrics:")
+            print("   📈 Combined Metrics:")
             print(f"      Bulkhead utilization: {bulkhead.get_status()['utilization_percent']:.1f}%")
             print(f"      Circuit breaker state: {circuit_breaker.get_enhanced_metrics()['state']}")
             print(f"      Retry success rate: {retry_policy.get_advanced_metrics()['success_rate']:.1f}%")

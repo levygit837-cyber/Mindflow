@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.logging.structured import get_correlation_id
@@ -32,7 +32,7 @@ class WorkerMetrics:
     tasks_successful: int = 0
     tasks_failed: int = 0
     average_processing_time: float = 0.0
-    last_activity: Optional[float] = None
+    last_activity: float | None = None
     uptime: float = 0.0
     error_rate: float = 0.0
     memory_usage_mb: float = 0.0
@@ -81,8 +81,8 @@ class SystemMetrics:
     system_success_rate: float = 0.0
     system_error_rate: float = 0.0
     average_processing_time: float = 0.0
-    worker_metrics: Dict[str, WorkerMetrics] = field(default_factory=dict)
-    queue_metrics: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    worker_metrics: dict[str, WorkerMetrics] = field(default_factory=dict)
+    queue_metrics: dict[str, dict[str, Any]] = field(default_factory=dict)
     
     @property
     def system_health_score(self) -> float:
@@ -109,14 +109,14 @@ class WorkerMonitor:
             monitoring_interval: Interval in seconds between monitoring cycles
         """
         self.monitoring_interval = monitoring_interval
-        self._workers: Dict[str, BaseWorker] = {}
+        self._workers: dict[str, BaseWorker] = {}
         self._metrics: SystemMetrics = SystemMetrics()
-        self._monitoring_task: Optional[asyncio.Task] = None
+        self._monitoring_task: asyncio.Task | None = None
         self._is_monitoring = False
         self._start_time = time.time()
         
         # Historical data for trends
-        self._historical_metrics: List[SystemMetrics] = []
+        self._historical_metrics: list[SystemMetrics] = []
         self._max_history_size = 1000
     
     def add_worker(self, worker: BaseWorker) -> None:
@@ -324,14 +324,14 @@ class WorkerMonitor:
         """Get current system metrics."""
         return self._metrics
     
-    def get_worker_metrics(self, worker_key: str) -> Optional[WorkerMetrics]:
+    def get_worker_metrics(self, worker_key: str) -> WorkerMetrics | None:
         """Get metrics for a specific worker."""
         return self._metrics.worker_metrics.get(worker_key)
     
     def get_historical_metrics(
         self,
-        limit: Optional[int] = None,
-    ) -> List[SystemMetrics]:
+        limit: int | None = None,
+    ) -> list[SystemMetrics]:
         """Get historical metrics.
         
         Args:
@@ -345,7 +345,7 @@ class WorkerMonitor:
         
         return self._historical_metrics[-limit:]
     
-    def get_health_summary(self) -> Dict[str, Any]:
+    def get_health_summary(self) -> dict[str, Any]:
         """Get a health summary of the worker system."""
         return self.get_health_report().model_dump(mode="json")
 
@@ -411,7 +411,7 @@ class WorkerMonitor:
             recommendations=self._generate_recommendations(),
         )
     
-    def _generate_recommendations(self) -> List[str]:
+    def _generate_recommendations(self) -> list[str]:
         """Generate recommendations based on metrics."""
         recommendations = []
         
@@ -437,7 +437,7 @@ class WorkerMonitor:
         
         return recommendations
     
-    def get_performance_trends(self, hours: int = 24) -> Dict[str, Any]:
+    def get_performance_trends(self, hours: int = 24) -> dict[str, Any]:
         """Get performance trends over time.
         
         Args:
@@ -483,7 +483,7 @@ class WorkerMonitor:
             "recommendations": self._generate_trend_recommendations(recent_metrics),
         }
     
-    def _generate_trend_recommendations(self, metrics: List[SystemMetrics]) -> List[str]:
+    def _generate_trend_recommendations(self, metrics: list[SystemMetrics]) -> list[str]:
         """Generate recommendations based on trends."""
         recommendations = []
         
@@ -504,7 +504,7 @@ class WorkerMonitor:
         
         return recommendations
 
-    def _get_worker_runtime_metrics(self, worker: BaseWorker) -> Dict[str, Any]:
+    def _get_worker_runtime_metrics(self, worker: BaseWorker) -> dict[str, Any]:
         """Fetch runtime metrics exposed by a worker with safe fallbacks."""
         if hasattr(worker, "get_metrics_snapshot"):
             try:
@@ -576,7 +576,7 @@ class WorkerMonitor:
 
 
 # Global worker monitor instance
-_worker_monitor: Optional[WorkerMonitor] = None
+_worker_monitor: WorkerMonitor | None = None
 
 
 def get_worker_monitor() -> WorkerMonitor:

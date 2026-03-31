@@ -6,12 +6,12 @@ while maintaining visibility into important events.
 
 from __future__ import annotations
 
+import hashlib
 import random
 import time
-from typing import Dict, Any, Optional, Set, List
 from dataclasses import dataclass, field
 from enum import Enum
-import hashlib
+from typing import Any
 
 import structlog
 
@@ -37,12 +37,12 @@ class SamplingRule:
     priority: int = 0
     sample_rate: float = 1.0
     rate_limit_per_second: float = 10.0
-    conditions: Dict[str, Any] = field(default_factory=dict)
-    exempt_levels: Set[str] = field(default_factory=lambda: {"ERROR", "CRITICAL"})
+    conditions: dict[str, Any] = field(default_factory=dict)
+    exempt_levels: set[str] = field(default_factory=lambda: {"ERROR", "CRITICAL"})
     last_sample_time: float = field(default=0.0)
     sample_count: int = field(default=0)
     
-    def should_sample(self, event_dict: Dict[str, Any]) -> bool:
+    def should_sample(self, event_dict: dict[str, Any]) -> bool:
         """Determine if event should be sampled.
         
         Args:
@@ -81,7 +81,7 @@ class SamplingRule:
             
         return True
         
-    def _check_conditions(self, event_dict: Dict[str, Any]) -> bool:
+    def _check_conditions(self, event_dict: dict[str, Any]) -> bool:
         """Check if event matches sampling conditions.
         
         Args:
@@ -128,7 +128,7 @@ class SamplingRule:
                     
         return True
         
-    def _intelligent_sampling(self, event_dict: Dict[str, Any], current_time: float) -> bool:
+    def _intelligent_sampling(self, event_dict: dict[str, Any], current_time: float) -> bool:
         """Intelligent sampling based on event content.
         
         Args:
@@ -218,7 +218,7 @@ class LogSampler:
     
     def __init__(self) -> None:
         """Initialize log sampler."""
-        self._rules: List[SamplingRule] = []
+        self._rules: list[SamplingRule] = []
         self._default_rule = SamplingRule(
             name="default",
             strategy=SamplingStrategy.PROBABILITY,
@@ -318,7 +318,7 @@ class LogSampler:
                 return True
         return False
         
-    def should_sample(self, event_dict: Dict[str, Any]) -> bool:
+    def should_sample(self, event_dict: dict[str, Any]) -> bool:
         """Determine if event should be sampled.
         
         Args:
@@ -358,7 +358,7 @@ class LogSampler:
         self._metrics.reset()
         _logger.debug("sampling_metrics_reset")
         
-    def get_rules(self) -> List[Dict[str, Any]]:
+    def get_rules(self) -> list[dict[str, Any]]:
         """Get all sampling rules.
         
         Returns:
@@ -392,10 +392,10 @@ class LogSampler:
     def update_rule(
         self,
         name: str,
-        strategy: Optional[SamplingStrategy] = None,
-        sample_rate: Optional[float] = None,
-        priority: Optional[int] = None,
-        conditions: Optional[Dict[str, Any]] = None
+        strategy: SamplingStrategy | None = None,
+        sample_rate: float | None = None,
+        priority: int | None = None,
+        conditions: dict[str, Any] | None = None
     ) -> bool:
         """Update an existing sampling rule.
         
@@ -428,7 +428,7 @@ class LogSampler:
                 
         return False
         
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get comprehensive sampling statistics.
         
         Returns:
@@ -453,7 +453,7 @@ class LogSampler:
 
 
 # Global log sampler instance
-_log_sampler: Optional[LogSampler] = None
+_log_sampler: LogSampler | None = None
 
 
 def get_log_sampler() -> LogSampler:

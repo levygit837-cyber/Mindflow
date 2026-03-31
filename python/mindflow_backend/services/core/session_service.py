@@ -6,14 +6,14 @@ retrieval, message handling, and context coordination with memory services.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.storage import ChatRepository, async_db_session, ChatSession, ChatMessage
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.core_interfaces import SessionServiceInterface
+from mindflow_backend.storage import ChatMessage, ChatRepository, ChatSession
 
 
 class SessionService(BaseAbstractService, SessionServiceInterface):
@@ -52,9 +52,9 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     
     async def create_session(
         self,
-        title: Optional[str] = None,
-        user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        title: str | None = None,
+        user_id: str | None = None
+    ) -> dict[str, Any]:
         """Create a new chat session using real database operations.
         
         Args:
@@ -103,7 +103,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             self._logger.error(f"Error creating session: {str(exc)}")
             raise
     
-    async def get_session(self, session_id: str) -> Dict[str, Any]:
+    async def get_session(self, session_id: str) -> dict[str, Any]:
         """Get session details and history from database.
         
         Args:
@@ -161,8 +161,8 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self,
         limit: int = 50,
         offset: int = 0,
-        user_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        user_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """List sessions with pagination and filtering.
         
         Args:
@@ -201,8 +201,8 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     async def update_session(
         self,
         session_id: str,
-        title: Optional[str] = None
-    ) -> Dict[str, Any]:
+        title: str | None = None
+    ) -> dict[str, Any]:
         """Update session information.
         
         Args:
@@ -276,9 +276,9 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         session_id: str,
         role: str,
         content: str,
-        provider: Optional[str] = None,
-        model: Optional[str] = None
-    ) -> Dict[str, Any]:
+        provider: str | None = None,
+        model: str | None = None
+    ) -> dict[str, Any]:
         """Add a message to a session.
         
         Args:
@@ -368,7 +368,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         session_id: str,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get messages from a session with pagination.
         
         Args:
@@ -406,7 +406,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             self._logger.error(f"Error getting messages for session {session_id}: {str(exc)}")
             raise
     
-    async def get_session_context(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_context(self, session_id: str) -> dict[str, Any]:
         """Get comprehensive session context including memory.
         
         Args:
@@ -445,7 +445,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         # Rough estimate: ~4 characters per token
         return max(1, len(text) // 4)
     
-    def _generate_context_summary(self, session_data: Dict[str, Any], memory_context: Dict[str, Any]) -> str:
+    def _generate_context_summary(self, session_data: dict[str, Any], memory_context: dict[str, Any]) -> str:
         """Generate a summary of session context."""
         message_count = session_data.get("message_count", 0)
         session_age = datetime.now(UTC) - datetime.fromisoformat(session_data.get("created_at"))

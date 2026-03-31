@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import pytest
 
 # Keep import path stable when generated gRPC bindings are absent in test checkouts.
 _pb2 = types.ModuleType("mindflow_backend.grpc.generated.mindflow_backend_pb2")
@@ -14,7 +13,6 @@ sys.modules.setdefault("mindflow_backend.grpc.generated.mindflow_backend_pb2", _
 sys.modules.setdefault("mindflow_backend.grpc.generated.mindflow_backend_pb2_grpc", _pb2_grpc)
 
 from mindflow_backend.api.v1.agent import router as agent_router
-
 
 app = FastAPI()
 app.include_router(agent_router, prefix="/v1")

@@ -1,9 +1,9 @@
 """Orchestrator-specific node implementations."""
 
-from .route_node import RouteNode
+from .decomposition_nodes import DecompositionNode
 from .execute_node import ExecuteNode
 from .respond_node import RespondNode
-from .decomposition_nodes import DecompositionNode
+from .route_node import RouteNode
 
 __all__ = [
     "RouteNode",

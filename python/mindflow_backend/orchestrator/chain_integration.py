@@ -14,28 +14,32 @@ The Orchestrator can:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
 import asyncio
 import time
+from dataclasses import dataclass
+from typing import Any
 
+from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 from mindflow_backend.chains.factory import (
-    get_chain_factory,
-    ChainRequest,
-    ChainMetadata,
     ChainCapability,
     ChainComplexity,
+    ChainMetadata,
+    ChainRequest,
+    get_chain_factory,
 )
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import (
-    ExecutionStrategy,
     AgentType,
     ChainType,
+    ExecutionStrategy,
     OrchestratorDecision,
 )
-from mindflow_backend.schemas.orchestration.workflow import WorkflowPlan, WorkflowRouteDecision, WorkflowStep
-from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
+from mindflow_backend.schemas.orchestration.workflow import (
+    WorkflowPlan,
+    WorkflowRouteDecision,
+    WorkflowStep,
+)
 
 _logger = get_logger(__name__)
 
@@ -46,10 +50,10 @@ class ChainSelectionCriteria:
     
     task_type: str
     complexity_threshold: float = 0.5
-    required_capabilities: Optional[List[ChainCapability]] = None
-    exclude_chains: Optional[List[str]] = None
-    max_execution_time: Optional[float] = None
-    preferred_agents: Optional[List[AgentType]] = None
+    required_capabilities: list[ChainCapability] | None = None
+    exclude_chains: list[str] | None = None
+    max_execution_time: float | None = None
+    preferred_agents: list[AgentType] | None = None
 
 
 @dataclass
@@ -57,9 +61,9 @@ class ChainExecutionPlan:
     """Plan for chain execution with fallback options."""
     
     primary_chain: str
-    primary_config: Dict[str, Any]
-    fallback_chains: List[tuple[str, Dict[str, Any]]]  # (chain_id, config)
-    execution_order: List[str]  # For chained executions
+    primary_config: dict[str, Any]
+    fallback_chains: list[tuple[str, dict[str, Any]]]  # (chain_id, config)
+    execution_order: list[str]  # For chained executions
     timeout: float
     retry_attempts: int
 
@@ -69,15 +73,15 @@ class ChainOrchestrator:
     
     def __init__(self) -> None:
         self.factory = get_chain_factory()
-        self._execution_history: Dict[str, List[Dict[str, Any]]] = {}
-        self._active_plans: Dict[str, ChainExecutionPlan] = {}
+        self._execution_history: dict[str, list[dict[str, Any]]] = {}
+        self._active_plans: dict[str, ChainExecutionPlan] = {}
     
     async def select_chain_for_task(
         self,
         message: str,
         complexity_score: float,
-        session_context: Optional[Dict[str, Any]] = None,
-        criteria: Optional[ChainSelectionCriteria] = None,
+        session_context: dict[str, Any] | None = None,
+        criteria: ChainSelectionCriteria | None = None,
     ) -> ChainExecutionPlan:
         """Select the most appropriate chain for a task."""
         
@@ -114,7 +118,7 @@ class ChainOrchestrator:
         
         return plan
     
-    def _analyze_task_requirements(self, message: str, complexity_score: float) -> Dict[str, Any]:
+    def _analyze_task_requirements(self, message: str, complexity_score: float) -> dict[str, Any]:
         """Build task analysis from complexity score only — no keyword matching.
 
         The routing decision (which chain to use) was already made by the LLM
@@ -136,8 +140,8 @@ class ChainOrchestrator:
     def _find_suitable_chains(
         self,
         criteria: ChainSelectionCriteria,
-        task_analysis: Dict[str, Any],
-    ) -> List[ChainMetadata]:
+        task_analysis: dict[str, Any],
+    ) -> list[ChainMetadata]:
         """Find chains that match the criteria."""
         
         # Determine required capabilities
@@ -204,9 +208,9 @@ class ChainOrchestrator:
     def _build_execution_plan(
         self,
         primary_chain: ChainMetadata,
-        fallback_chains: List[ChainMetadata],
-        task_analysis: Dict[str, Any],
-        session_context: Dict[str, Any],
+        fallback_chains: list[ChainMetadata],
+        task_analysis: dict[str, Any],
+        session_context: dict[str, Any],
     ) -> ChainExecutionPlan:
         """Build an execution plan with primary and fallback options."""
         
@@ -237,9 +241,9 @@ class ChainOrchestrator:
     def _build_chain_config(
         self,
         chain: ChainMetadata,
-        task_analysis: Dict[str, Any],
-        session_context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task_analysis: dict[str, Any],
+        session_context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Build dynamic configuration for a chain."""
         
         config = dict(chain.default_config)
@@ -264,9 +268,9 @@ class ChainOrchestrator:
     async def execute_chain_plan(
         self,
         plan: ChainExecutionPlan,
-        context: Dict[str, Any],
-        execution_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any],
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
         """Execute a chain plan with fallback handling."""
         
         execution_id = execution_id or f"plan_exec_{int(time.time())}"
@@ -345,11 +349,11 @@ class ChainOrchestrator:
     async def _execute_single_chain(
         self,
         chain_id: str,
-        config: Dict[str, Any],
-        context: Dict[str, Any],
+        config: dict[str, Any],
+        context: dict[str, Any],
         timeout: float,
         execution_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute a single chain with timeout."""
         
         request = ChainRequest(
@@ -368,7 +372,7 @@ class ChainOrchestrator:
             
             return result
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return {
                 "response": "",
                 "error": f"Chain execution timed out after {timeout}s",
@@ -379,9 +383,9 @@ class ChainOrchestrator:
         self,
         execution_id: str,
         plan: ChainExecutionPlan,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         execution_time: float,
-        fallback_used: Optional[int] = None,
+        fallback_used: int | None = None,
     ) -> None:
         """Record successful execution."""
         
@@ -433,7 +437,7 @@ class ChainOrchestrator:
                       execution_id=execution_id,
                       execution_time=execution_time)
     
-    def get_execution_history(self, session_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_execution_history(self, session_id: str | None = None) -> dict[str, Any]:
         """Get execution history for analysis."""
         
         if session_id:
@@ -441,7 +445,7 @@ class ChainOrchestrator:
         
         return {"sessions": dict(self._execution_history)}
     
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics for chain executions."""
         
         all_executions = []
@@ -627,7 +631,7 @@ def plan_orchestrator_execution(
 
 
 # Integration function for orchestrator graph
-def _resolve_chain_id(chain_id: Optional[str], complexity_score: float) -> str:
+def _resolve_chain_id(chain_id: str | None, complexity_score: float) -> str:
     """Resolve the final chain_id to execute, including automatic variant selection.
 
     For `file_analysis`, automatically upgrades to a more capable variant based
@@ -656,10 +660,10 @@ def _resolve_chain_id(chain_id: Optional[str], complexity_score: float) -> str:
 async def execute_chain_with_intelligence(
     message: str,
     complexity_score: float,
-    context: Dict[str, Any],
-    session_id: Optional[str] = None,
-    chain_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    context: dict[str, Any],
+    session_id: str | None = None,
+    chain_id: str | None = None,
+) -> dict[str, Any]:
     """Execute a chain using the LLM-decided chain_id (no keyword selection).
 
     The chain_id is decided upstream by IntelligentRouter's LLM call.

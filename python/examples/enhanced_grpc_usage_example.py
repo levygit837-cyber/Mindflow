@@ -7,17 +7,19 @@ timeout management, and health checking.
 
 import asyncio
 import logging
-from contextlib import asynccontextmanager
 
 from mindflow_backend.grpc.client import EnhancedGrpcAgentClient
-from mindflow_backend.grpc.server import EnhancedGrpcAgentServer, start_grpc_server, stop_grpc_server
-from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.grpc.config import GrpcClientConfig, GrpcConfig
 from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
-from mindflow_backend.grpc.monitoring.health import AdvancedHealthChecker
-from mindflow_backend.grpc.resilience.circuit_breaker import GrpcCircuitBreaker, CircuitBreakerConfig
+from mindflow_backend.grpc.resilience.circuit_breaker import (
+    CircuitBreakerConfig,
+    GrpcCircuitBreaker,
+)
 from mindflow_backend.grpc.resilience.retry import AdvancedRetryPolicy, RetryConfig
-from mindflow_backend.grpc.resilience.timeout import TimeoutManager, TimeoutConfig
-from mindflow_backend.infra.config import get_settings
+from mindflow_backend.grpc.resilience.timeout import TimeoutConfig, TimeoutManager
+from mindflow_backend.grpc.server import (
+    EnhancedGrpcAgentServer,
+)
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -142,7 +144,7 @@ async def example_enhanced_grpc_server():
         # Start server
         await server.start()
         
-        print(f"   ✅ Enhanced server started successfully!")
+        print("   ✅ Enhanced server started successfully!")
         print(f"   📊 Features enabled: {list(server.get_server_info()['features'].keys())}")
         
         # Get server information
@@ -260,7 +262,7 @@ async def example_circuit_breaker():
     
     # Show final statistics
     final_stats = circuit_breaker.get_statistics()
-    print(f"\n   📊 Final Statistics:")
+    print("\n   📊 Final Statistics:")
     print(f"      - Total Calls: {final_stats['total_calls']}")
     print(f"      - Success Rate: {final_stats['success_rate_percent']:.1f}%")
     print(f"      - Final State: {final_stats['state']}")
@@ -316,7 +318,7 @@ async def example_retry_policies():
     
     # Show retry statistics
     stats = retry_policy.get_statistics()
-    print(f"\n   📊 Retry Statistics:")
+    print("\n   📊 Retry Statistics:")
     print(f"      - Total Attempts: {stats['total_attempts']}")
     print(f"      - Success Rate: {stats['success_rate']:.1f}%")
     print(f"      - Average Duration: {stats['average_duration']:.3f}s")
@@ -377,7 +379,7 @@ async def example_timeout_management():
     
     # Show timeout statistics
     stats = timeout_manager.get_statistics()
-    print(f"\n   📊 Timeout Statistics:")
+    print("\n   📊 Timeout Statistics:")
     print(f"      - Total Operations: {stats['total_operations']}")
     print(f"      - Successful Operations: {stats['successful_operations']}")
     print(f"      - Timeout Operations: {stats['timeout_operations']}")

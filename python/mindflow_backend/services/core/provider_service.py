@@ -6,9 +6,8 @@ configuration, connection testing, and fallback chain management.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC
-import asyncio
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
@@ -78,14 +77,14 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
         self._fallback_chain = ["google", "anthropic", "openai", "ollama"]
         
         # Connection status cache
-        self._connection_cache: Dict[str, Dict[str, Any]] = {}
+        self._connection_cache: dict[str, dict[str, Any]] = {}
         self._cache_ttl = 300  # 5 minutes
     
     def _get_logger(self) -> Any:
         """Get logger instance for this service."""
         return get_logger(__name__)
     
-    async def list_providers(self) -> List[Dict[str, Any]]:
+    async def list_providers(self) -> list[dict[str, Any]]:
         """List available LLM providers with their status and capabilities.
         
         Returns:
@@ -124,7 +123,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             self._logger.error(f"Error listing providers: {str(exc)}")
             raise
     
-    async def get_provider_models(self, provider_id: str) -> List[Dict[str, Any]]:
+    async def get_provider_models(self, provider_id: str) -> list[dict[str, Any]]:
         """Get available models for a specific provider.
         
         Args:
@@ -163,7 +162,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             self._logger.error(f"Error getting provider models for {provider_id}: {str(exc)}")
             raise
     
-    async def test_provider_connection(self, provider_id: str) -> Dict[str, Any]:
+    async def test_provider_connection(self, provider_id: str) -> dict[str, Any]:
         """Test connection to a provider and measure performance.
         
         Args:
@@ -230,7 +229,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             self._logger.error(f"Error testing provider connection for {provider_id}: {str(exc)}")
             raise
     
-    async def get_provider_config(self, provider_id: str) -> Dict[str, Any]:
+    async def get_provider_config(self, provider_id: str) -> dict[str, Any]:
         """Get current configuration for a provider.
         
         Args:
@@ -292,8 +291,8 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
     async def update_provider_config(
         self,
         provider_id: str,
-        config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update provider configuration.
         
         Args:
@@ -331,7 +330,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             self._logger.error(f"Error updating provider config for {provider_id}: {str(exc)}")
             raise
     
-    async def get_fallback_chain(self) -> List[str]:
+    async def get_fallback_chain(self) -> list[str]:
         """Get the current fallback provider chain.
         
         Returns:
@@ -359,7 +358,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
         self,
         provider_id: str,
         error: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Handle provider failure and suggest fallback options.
         
         Args:
@@ -409,8 +408,8 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
     async def get_optimal_provider(
         self,
         task_type: str,
-        model_requirements: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        model_requirements: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Get optimal provider for a specific task type.
         
         Args:
@@ -491,7 +490,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             self._logger.error(f"Error getting optimal provider for {task_type}: {str(exc)}")
             raise
     
-    async def validate_provider_config(self, config: Dict[str, Any]) -> bool:
+    async def validate_provider_config(self, config: dict[str, Any]) -> bool:
         """Validate provider configuration.
         
         Args:
@@ -540,7 +539,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
     
     # Helper methods
     
-    async def _perform_connection_test(self, provider_id: str, model: Any) -> Dict[str, Any]:
+    async def _perform_connection_test(self, provider_id: str, model: Any) -> dict[str, Any]:
         """Perform a lightweight connection test."""
         try:
             # This is a simplified test - in production you'd use a minimal test prompt
@@ -557,7 +556,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
                 "test_passed": False
             }
     
-    async def _get_cached_connection_status(self, provider_id: str) -> Dict[str, Any]:
+    async def _get_cached_connection_status(self, provider_id: str) -> dict[str, Any]:
         """Get cached connection status or perform fresh test."""
         if provider_id in self._connection_cache:
             cached = self._connection_cache[provider_id]
@@ -572,7 +571,7 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
         
         return test_result
     
-    def _cache_connection_status(self, provider_id: str, result: Dict[str, Any]) -> None:
+    def _cache_connection_status(self, provider_id: str, result: dict[str, Any]) -> None:
         """Cache connection status result."""
         cache_entry = {
             "last_checked": result.get("tested_at", datetime.now(UTC).isoformat()),

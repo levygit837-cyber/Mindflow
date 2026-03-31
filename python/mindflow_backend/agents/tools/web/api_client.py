@@ -4,16 +4,14 @@ API requests with various authentication methods and response handling.
 """
 
 from __future__ import annotations
-import asyncio
-import json
+
 import base64
-from typing import Any, Dict, List, Optional, Union
-from urllib.parse import urljoin
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import AsyncToolInterface
 from mindflow_backend.schemas.tools.web_schemas import API_CLIENT_SCHEMA
+
+from ..base.tool_interface import AsyncToolInterface
 
 _logger = get_logger(__name__)
 
@@ -30,7 +28,7 @@ class ApiClientTool(AsyncToolInterface):
 
         self._schema = API_CLIENT_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute API request with authentication.
         Args:
@@ -144,7 +142,7 @@ class ApiClientTool(AsyncToolInterface):
                 error=f"API request failed: {str(e)}"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

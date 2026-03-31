@@ -99,7 +99,7 @@ def test_final_validation():
         if category_path.exists():
             for py_file in category_path.rglob("*.py"):
                 try:
-                    with open(py_file, 'r', encoding='utf-8') as f:
+                    with open(py_file, encoding='utf-8') as f:
                         content = f.read().lower()
                     if "deepagents" in content:
                         deepagents_files.append(str(py_file.relative_to(base_path)))
@@ -116,7 +116,7 @@ def test_final_validation():
         print("   ✅ No DeepAgents references found")
     
     # Overall results
-    print(f"\n📋 Final Validation Results:")
+    print("\n📋 Final Validation Results:")
     print(f"   ✅ Categories: {categories_found}/{len(expected_categories)}")
     print(f"   ✅ Files: {files_found}/{len(key_files)}")
     print(f"   ✅ Old directory removed: {old_removed}")

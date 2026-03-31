@@ -6,12 +6,11 @@ in sequence, with support for branching, error handling, and state management.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
 import asyncio
+from typing import Any
 
-from mindflow_backend.graphs.base.graph import BaseGraph, GraphType, GraphState
+from mindflow_backend.graphs.base.graph import BaseGraph, GraphType
 from mindflow_backend.nodes.base.node import BaseNode
-from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
 class SequentialWorkflowGraph(BaseGraph):
@@ -28,11 +27,11 @@ class SequentialWorkflowGraph(BaseGraph):
     def __init__(
         self,
         graph_id: str = "sequential_workflow",
-        steps: List[Dict[str, Any]] = None,
+        steps: list[dict[str, Any]] = None,
         error_handling: str = "continue",  # continue, stop, retry
         max_retries: int = 3,
         state_persistence: bool = True,
-        timeout_per_step: Optional[Dict[str, float]] = None,
+        timeout_per_step: dict[str, float] | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -56,10 +55,10 @@ class SequentialWorkflowGraph(BaseGraph):
     def add_step(
         self,
         step_id: str,
-        node: Union[BaseNode, str],
+        node: BaseNode | str,
         step_type: str = "process",  # process, condition, branch, merge
-        condition: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
+        condition: dict[str, Any] | None = None,
+        timeout: float | None = None,
         retry_on_error: bool = False,
         description: str = ""
     ) -> None:
@@ -79,9 +78,9 @@ class SequentialWorkflowGraph(BaseGraph):
     def add_condition_step(
         self,
         step_id: str,
-        condition: Dict[str, Any],
+        condition: dict[str, Any],
         true_step_id: str,
-        false_step_id: Optional[str] = None,
+        false_step_id: str | None = None,
         description: str = ""
     ) -> None:
         """Add a conditional branching step."""
@@ -98,9 +97,9 @@ class SequentialWorkflowGraph(BaseGraph):
     def add_parallel_step(
         self,
         step_id: str,
-        nodes: List[Union[BaseNode, str]],
+        nodes: list[BaseNode | str],
         wait_for_all: bool = True,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         description: str = ""
     ) -> None:
         """Add a parallel execution step."""
@@ -116,7 +115,7 @@ class SequentialWorkflowGraph(BaseGraph):
     def add_merge_step(
         self,
         step_id: str,
-        input_steps: List[str],
+        input_steps: list[str],
         merge_function: str = "last",  # first, last, all, custom
         description: str = ""
     ) -> None:
@@ -132,7 +131,7 @@ class SequentialWorkflowGraph(BaseGraph):
             description=description
         )
     
-    async def execute(self, initial_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute(self, initial_state: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute the sequential workflow."""
         workflow_state = initial_state or {}
         workflow_state.update(self._workflow_state)
@@ -207,7 +206,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 "total_steps": len(self.steps)
             }
     
-    async def _execute_step(self, step: Dict[str, Any], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_step(self, step: dict[str, Any], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute a single workflow step."""
         step_id = step["step_id"]
         step_type = step["step_type"]
@@ -235,7 +234,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 "state_updates": {}
             }
     
-    async def _execute_process_step(self, step: Dict[str, Any], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_process_step(self, step: dict[str, Any], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute a processing step."""
         node = step["node"]
         timeout = step.get("timeout", self.timeout_per_step.get(step["step_id"]))
@@ -276,7 +275,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 "state_updates": {"step_result": result}
             }
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             execution_time = asyncio.get_event_loop().time() - asyncio.get_event_loop().time()
             
             return {
@@ -295,7 +294,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 "state_updates": {}
             }
     
-    async def _execute_condition_step(self, step: Dict[str, Any], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_condition_step(self, step: dict[str, Any], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute a conditional branching step."""
         condition = step.get("condition", {})
         true_step_id = step.get("true_step_id")
@@ -320,7 +319,7 @@ class SequentialWorkflowGraph(BaseGraph):
             "state_updates": {"condition_met": condition_met}
         }
     
-    async def _execute_parallel_step(self, step: Dict[str, Any], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_parallel_step(self, step: dict[str, Any], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute a parallel step."""
         nodes = step["node"]
         condition = step.get("condition", {})
@@ -407,7 +406,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 }
             }
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return {
                 "status": "timeout",
                 "error": f"Parallel step {step['step_id']} timed out after {timeout}s",
@@ -422,7 +421,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 "state_updates": {}
             }
     
-    async def _execute_merge_step(self, step: Dict[str, Any], workflow_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_merge_step(self, step: dict[str, Any], workflow_state: dict[str, Any]) -> dict[str, Any]:
         """Execute a merge step."""
         input_steps = step.get("condition", {}).get("input_steps", [])
         merge_function = step.get("condition", {}).get("merge_function", "last")
@@ -462,7 +461,7 @@ class SequentialWorkflowGraph(BaseGraph):
             "state_updates": {"merged_result": merged_result}
         }
     
-    def _combine_all_results(self, results: List[Any]) -> Any:
+    def _combine_all_results(self, results: list[Any]) -> Any:
         """Combine all results from input steps."""
         if not results:
             return None
@@ -484,7 +483,7 @@ class SequentialWorkflowGraph(BaseGraph):
         # Mixed types - return as list
         return results
     
-    def _evaluate_condition(self, condition: Dict[str, Any], workflow_state: Dict[str, Any]) -> bool:
+    def _evaluate_condition(self, condition: dict[str, Any], workflow_state: dict[str, Any]) -> bool:
         """Evaluate a condition for conditional branching."""
         for field, expected_value in condition.items():
             if field.startswith("state."):
@@ -507,7 +506,7 @@ class SequentialWorkflowGraph(BaseGraph):
                 return i
         return -1
     
-    def get_workflow_info(self) -> Dict[str, Any]:
+    def get_workflow_info(self) -> dict[str, Any]:
         """Get information about the workflow configuration."""
         return {
             "graph_id": self.graph_id,
@@ -520,7 +519,7 @@ class SequentialWorkflowGraph(BaseGraph):
             "execution_history_count": len(self._execution_history)
         }
     
-    def get_execution_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_execution_history(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get the execution history."""
         return self._execution_history[-limit:] if len(self._execution_history) > limit else self._execution_history
     

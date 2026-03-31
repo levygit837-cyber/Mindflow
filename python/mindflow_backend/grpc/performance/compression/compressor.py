@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import gzip
 import zlib
-from typing import Dict, Any, Optional, Union, Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -87,7 +87,7 @@ class CompressionResult:
     compression_ratio: float
     compression_time_ms: float
     success: bool
-    error_message: Optional[str] = None
+    error_message: str | None = None
     
     @property
     def bandwidth_saved(self) -> int:
@@ -284,9 +284,9 @@ class DeflateCompressionStrategy(CompressionStrategy):
 class GrpcMessageCompressor:
     """Main gRPC message compressor with strategy selection."""
     
-    def __init__(self, config: Optional[CompressionConfig] = None):
+    def __init__(self, config: CompressionConfig | None = None):
         self.config = config or CompressionConfig()
-        self._strategies: Dict[CompressionAlgorithm, CompressionStrategy] = {
+        self._strategies: dict[CompressionAlgorithm, CompressionStrategy] = {
             CompressionAlgorithm.NONE: NoCompressionStrategy(self.config),
             CompressionAlgorithm.GZIP: GzipCompressionStrategy(self.config),
             CompressionAlgorithm.DEFLATE: DeflateCompressionStrategy(self.config),
@@ -319,7 +319,7 @@ class GrpcMessageCompressor:
         self, 
         data: bytes, 
         content_type: str = "",
-        force_algorithm: Optional[CompressionAlgorithm] = None
+        force_algorithm: CompressionAlgorithm | None = None
     ) -> tuple[bytes, CompressionResult]:
         """Compress a gRPC message."""
         message_size = len(data)
@@ -369,7 +369,7 @@ class GrpcMessageCompressor:
         strategy = self._strategies[algorithm]
         return strategy.decompress(compressed_data)
     
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         """Get compression statistics."""
         stats = self._compression_stats.copy()
         

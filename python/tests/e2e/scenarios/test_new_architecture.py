@@ -3,7 +3,6 @@
 
 import asyncio
 import sys
-import os
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
@@ -14,7 +13,7 @@ async def test_graph_architecture():
     
     try:
         # Test graph factory
-        from mindflow_backend.graphs import get_graph_factory, create_orchestrator_graph
+        from mindflow_backend.graphs import create_orchestrator_graph, get_graph_factory
         
         factory = get_graph_factory()
         print(f"✓ Graph factory created: {factory}")
@@ -51,7 +50,7 @@ async def test_graph_architecture():
         print(f"✓ Backward compatible flow created: {flow}")
         
         # Test chain framework
-        from mindflow_backend.chains.base import SequentialChain, ChainType, ChainStep, StepType
+        from mindflow_backend.chains.base import ChainStep, SequentialChain, StepType
         
         chain = SequentialChain("test_chain")
         print(f"✓ Chain created: {chain}")
@@ -101,7 +100,7 @@ async def test_simple_execution():
         # Note: This might fail due to missing dependencies, but we can catch that
         try:
             result = await flow(test_state)
-            print(f"✓ Flow executed successfully")
+            print("✓ Flow executed successfully")
             print(f"  Result keys: {list(result.keys())}")
         except Exception as e:
             print(f"⚠️ Flow execution failed (expected due to test environment): {e}")

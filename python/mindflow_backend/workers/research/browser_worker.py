@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -24,7 +24,7 @@ class BrowserWorker(BaseWorker):
         self._browser_consumer = BrowserTaskConsumer()
         self._concurrency_limiter = asyncio.Semaphore(max(1, self.queue_config.concurrency))
 
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process browser automation and web research tasks."""
         start_time = time.time()
         message_data = self._normalize_message_data(message_data)
@@ -69,7 +69,7 @@ class BrowserWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
 
-    async def _handle_browser_pipeline(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_browser_pipeline(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle the real queued browser execution path."""
         result = await self._browser_consumer.consume_browser_task(message_data)
         return WorkerResult(
@@ -81,7 +81,7 @@ class BrowserWorker(BaseWorker):
     async def _simulate_legacy_task(
         self,
         task_type: str,
-        message_data: Dict[str, Any],
+        message_data: dict[str, Any],
     ) -> WorkerResult:
         """Keep lightweight compatibility for non-migrated research tasks."""
         await asyncio.sleep(0)

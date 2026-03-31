@@ -13,7 +13,6 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.indexing import (
     classify_memory_content,
-    is_continuation_prompt,
     normalized_lexical_similarity,
 )
 from mindflow_backend.memory.shared.embeddings import factory as embedding_factory
@@ -44,21 +43,6 @@ def _get_db_session_factory():
 
     return get_db_session
 
-from .facade_helpers import (
-    build_excerpt,
-    build_summary,
-    cosine_similarity,
-    derive_title,
-    extract_tags,
-    filter_and_rerank_hits,
-    format_context,
-    infer_category,
-    is_answer_bearing,
-    normalize_vector,
-    row_to_retrieval_hit,
-    to_memory_hit,
-    to_session_block_schema,
-)
 
 
 @dataclass(slots=True)

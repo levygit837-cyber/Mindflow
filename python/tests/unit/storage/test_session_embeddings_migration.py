@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 MIGRATION_PATH = Path(
     "/home/levybonito/Projetos/MindFlow/python/mindflow_backend/storage/postgresql/migrations/versions/20260316_0011_session_embeddings_table.py"
 )

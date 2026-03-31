@@ -6,7 +6,6 @@ integrating with global configuration system.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -34,9 +33,9 @@ class ConnectionConfig(BaseModel):
     
     # SSL configuration
     ssl_mode: str = Field(default="prefer", description="SSL mode")
-    ssl_cert: Optional[str] = Field(default=None, description="SSL certificate path")
-    ssl_key: Optional[str] = Field(default=None, description="SSL key path")
-    ssl_ca: Optional[str] = Field(default=None, description="SSL CA path")
+    ssl_cert: str | None = Field(default=None, description="SSL certificate path")
+    ssl_key: str | None = Field(default=None, description="SSL key path")
+    ssl_ca: str | None = Field(default=None, description="SSL CA path")
     
     # Connection options
     connect_timeout: int = Field(default=30, description="Connection timeout in seconds")
@@ -83,7 +82,7 @@ class MigrationConfig(BaseModel):
     backup_before_migrate: bool = Field(default=True, description="Backup before migration")
     
     # Version management
-    target_version: Optional[str] = Field(default=None, description="Target migration version")
+    target_version: str | None = Field(default=None, description="Target migration version")
     allow_downgrade: bool = Field(default=False, description="Allow downgrade migrations")
 
 
@@ -132,8 +131,8 @@ class DatabaseStats(BaseModel):
     pool_miss_rate: float = Field(default=0.0, description="Pool miss rate")
     
     # Timestamps
-    last_health_check: Optional[str] = Field(default=None, description="Last health check")
-    last_error: Optional[str] = Field(default=None, description="Last error timestamp")
+    last_health_check: str | None = Field(default=None, description="Last health check")
+    last_error: str | None = Field(default=None, description="Last error timestamp")
 
 
 class TransactionConfig(BaseModel):

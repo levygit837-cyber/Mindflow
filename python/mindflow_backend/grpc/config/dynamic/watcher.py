@@ -9,9 +9,9 @@ from __future__ import annotations
 import asyncio
 import os
 import time
-from pathlib import Path
-from typing import Callable, Optional, Set
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager
 from mindflow_backend.infra.logging import get_logger
@@ -22,9 +22,9 @@ _logger = get_logger(__name__)
 @dataclass
 class FileWatchConfig:
     """Configuration for file watching."""
-    watch_directories: Set[str]
-    file_patterns: Set[str]
-    ignore_patterns: Set[str]
+    watch_directories: set[str]
+    file_patterns: set[str]
+    ignore_patterns: set[str]
     check_interval: float = 1.0
     debounce_delay: float = 2.0
 
@@ -35,17 +35,17 @@ class ConfigWatcher:
     def __init__(
         self,
         config_manager: DynamicConfigManager,
-        watch_config: Optional[FileWatchConfig] = None
+        watch_config: FileWatchConfig | None = None
     ):
         self.config_manager = config_manager
         self.watch_config = watch_config or self._default_watch_config()
         
         # Watcher state
         self._running: bool = False
-        self._watch_task: Optional[asyncio.Task] = None
+        self._watch_task: asyncio.Task | None = None
         self._file_mtimes: Dict[str, float] = {}
-        self._pending_changes: Set[str] = set()
-        self._debounce_task: Optional[asyncio.Task] = None
+        self._pending_changes: set[str] = set()
+        self._debounce_task: asyncio.Task | None = None
         
         # Callbacks for change notifications
         self._change_callbacks: list[Callable[[str, float], None]] = []
@@ -59,7 +59,6 @@ class ConfigWatcher:
                 ".",  # Current directory
                 "config",
                 "grpc/config",
-                ".",
             },
             file_patterns={
                 "*.json",
@@ -198,7 +197,7 @@ class ConfigWatcher:
         
         _logger.debug("watch_loop_ended")
     
-    async def _check_file_changes(self) -> Set[str]:
+    async def _check_file_changes(self) -> set[str]:
         """Check for file modifications."""
         changed_files = set()
         
@@ -345,7 +344,7 @@ class EnvironmentVariableWatcher:
     def __init__(self, config_manager: DynamicConfigManager):
         self.config_manager = config_manager
         self._running: bool = False
-        self._watch_task: Optional[asyncio.Task] = None
+        self._watch_task: asyncio.Task | None = None
         self._env_values: Dict[str, str] = {}
         self._check_interval: float = 5.0
         self._change_callbacks: list[Callable[[str, float], None]] = []
@@ -458,7 +457,7 @@ class EnvironmentVariableWatcher:
         
         _logger.debug("env_watch_loop_ended")
     
-    async def _check_env_changes(self) -> Set[str]:
+    async def _check_env_changes(self) -> set[str]:
         """Check for environment variable changes."""
         changed_vars = set()
         

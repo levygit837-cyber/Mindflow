@@ -37,13 +37,13 @@ def test_phase2_migration():
         else:
             print(f"❌ Category {category} missing")
     
-    print(f"\n📊 Phase 2 Migration Summary:")
+    print("\n📊 Phase 2 Migration Summary:")
     print(f"   - New categories created: {len(new_categories)}")
     print(f"   - Tools migrated: {len(migrated_tools)}")
-    print(f"   - Status: Ready for Phase 3")
+    print("   - Status: Ready for Phase 3")
     
     # Test imports
-    print(f"\n🧪 Testing Imports...")
+    print("\n🧪 Testing Imports...")
     
     test_imports = [
         ("AI Tools", "from mindflow_backend.agents.tools.ai import LocalModelTool, EmbeddingTool"),
@@ -58,7 +58,7 @@ def test_phase2_migration():
         except Exception as e:
             print(f"   ❌ {test_name} - Import failed: {e}")
     
-    print(f"\n📋 Migrated Tools:")
+    print("\n📋 Migrated Tools:")
     for tool in migrated_tools:
         print(f"   - {tool}")
     

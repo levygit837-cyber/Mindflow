@@ -7,11 +7,11 @@ and enable automatic recovery when services become healthy again.
 from __future__ import annotations
 
 import asyncio
-import random
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
-from dataclasses import dataclass, field
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -41,7 +41,7 @@ class CallResult:
     """Result of a circuit breaker protected call."""
     success: bool
     duration: float
-    error: Optional[Exception] = None
+    error: Exception | None = None
     circuit_state: CircuitState = CircuitState.CLOSED
 
 
@@ -69,7 +69,7 @@ class GrpcCircuitBreaker:
         self._total_calls = 0
         self._total_failures = 0
         self._total_successes = 0
-        self._state_changes: Dict[str, float] = {}
+        self._state_changes: dict[str, float] = {}
         
         # Lock for thread safety
         self._lock = asyncio.Lock()
@@ -122,7 +122,7 @@ class GrpcCircuitBreaker:
             
             return result
             
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             duration = time.time() - start_time
             self._record_failure(duration, exc)
             raise
@@ -234,7 +234,7 @@ class GrpcCircuitBreaker:
         """Get current circuit state."""
         return self._state
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get circuit breaker statistics."""
         success_rate = (self._total_successes / max(self._total_calls, 1)) * 100
         
@@ -281,7 +281,7 @@ class CircuitBreakerRegistry:
     """Registry for managing multiple circuit breakers."""
     
     def __init__(self):
-        self._circuit_breakers: Dict[str, GrpcCircuitBreaker] = {}
+        self._circuit_breakers: dict[str, GrpcCircuitBreaker] = {}
     
     def get_circuit_breaker(self, name: str, config: CircuitBreakerConfig | None = None) -> GrpcCircuitBreaker:
         """Get or create circuit breaker."""
@@ -289,7 +289,7 @@ class CircuitBreakerRegistry:
             self._circuit_breakers[name] = GrpcCircuitBreaker(name, config)
         return self._circuit_breakers[name]
     
-    def get_all_statistics(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_statistics(self) -> dict[str, dict[str, Any]]:
         """Get statistics for all circuit breakers."""
         return {
             name: cb.get_statistics() 
@@ -321,7 +321,7 @@ def get_circuit_breaker(name: str, config: CircuitBreakerConfig | None = None) -
     return _circuit_breaker_registry.get_circuit_breaker(name, config)
 
 
-def get_all_circuit_breaker_statistics() -> Dict[str, Dict[str, Any]]:
+def get_all_circuit_breaker_statistics() -> dict[str, dict[str, Any]]:
     """Get statistics for all circuit breakers."""
     return _circuit_breaker_registry.get_all_statistics()
 

@@ -9,19 +9,18 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from mindflow_backend.graphs.base.graph import SimpleGraph
-from mindflow_backend.graphs.base.types import GraphConfig, GraphType
-from mindflow_backend.graphs.base.state import GraphState
-from mindflow_backend.nodes.implementations.orchestrator.route_node import RouteNode
-from mindflow_backend.nodes.implementations.orchestrator.execute_node import ExecuteNode
-from mindflow_backend.nodes.implementations.orchestrator.respond_node import RespondNode
-
 # Legacy imports for backward compatibility
 from mindflow_backend.agents._registry import get_agent
+from mindflow_backend.graphs.base.graph import SimpleGraph
+from mindflow_backend.graphs.base.state import GraphState
+from mindflow_backend.graphs.base.types import GraphConfig, GraphType
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.indexing import is_continuation_prompt
-from mindflow_backend.runtime import get_model_for_provider, extract_ai_message_content
+from mindflow_backend.nodes.implementations.orchestrator.execute_node import ExecuteNode
+from mindflow_backend.nodes.implementations.orchestrator.respond_node import RespondNode
+from mindflow_backend.nodes.implementations.orchestrator.route_node import RouteNode
+from mindflow_backend.runtime import get_model_for_provider
 from mindflow_backend.schemas.orchestration.orchestrator import (
     ExecutionStrategy,
     OrchestratorDecision,
@@ -184,9 +183,13 @@ class SimpleOrchestratorGraph(SimpleGraph):
         provider = state.get("provider") or settings.default_provider
         model = decision.model or state.get("model") or settings.default_model
         session_id = str(state.get("session_id", ""))
-        from mindflow_backend.schemas.orchestration.orchestrator import ExecutionStrategy, ThinkingMode
         from langchain_core.callbacks.manager import adispatch_custom_event
+
         from mindflow_backend.orchestrator.step_runner import run_workflow_step
+        from mindflow_backend.schemas.orchestration.orchestrator import (
+            ExecutionStrategy,
+            ThinkingMode,
+        )
 
         plan_steps = list(getattr(workflow_plan, "steps", []) or [])
         primary_step = plan_steps[0] if plan_steps else None
@@ -224,7 +227,9 @@ class SimpleOrchestratorGraph(SimpleGraph):
 
         # -0.5. GRAPH: Delegate to Plan-and-Execute multi-step graph
         if getattr(decision, "execution_strategy", ExecutionStrategy.DELEGATE) == ExecutionStrategy.GRAPH:
-            from mindflow_backend.graphs.implementations.orchestrator.plan_execute import build_plan_execute_flow
+            from mindflow_backend.graphs.implementations.orchestrator.plan_execute import (
+                build_plan_execute_flow,
+            )
             plan_graph = build_plan_execute_flow()
             result = await plan_graph.ainvoke({
                 "message": state["message"],
@@ -263,7 +268,9 @@ class SimpleOrchestratorGraph(SimpleGraph):
 
             # Use enhanced chain integration if available
             try:
-                from mindflow_backend.orchestrator.chain_integration import execute_chain_with_intelligence
+                from mindflow_backend.orchestrator.chain_integration import (
+                    execute_chain_with_intelligence,
+                )
 
                 # The Orchestrator creates the LLM and passes it to the chain so chains
                 # never instantiate their own models — they use whichever specialist was
@@ -348,9 +355,12 @@ class SimpleOrchestratorGraph(SimpleGraph):
         to answer directly or call delegate_to_agent to invoke a specialist.
         """
         from langchain_core.callbacks.manager import adispatch_custom_event
-        from mindflow_backend.agents.tools.orchestration.delegate_to_agent import DelegateToAgentTool
+
         from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
         from mindflow_backend.agents.tools.base.tool_invocation import stream_with_tools
+        from mindflow_backend.agents.tools.orchestration.delegate_to_agent import (
+            DelegateToAgentTool,
+        )
 
         agent = get_agent(agent_id="orchestrator")
         session_id = str(state.get("session_id", ""))
@@ -560,14 +570,22 @@ class SimpleOrchestratorGraph(SimpleGraph):
         """Execute Decomposition Thinking pipeline with semantic context."""
         from uuid import UUID as _UUID
 
-        from mindflow_backend.decomposition.pipeline.tasker import EnhancedTasker as TaskerV2
         from mindflow_backend.decomposition.pipeline.resolver import ContextAwareResolver
-        from mindflow_backend.decomposition.pipeline.scheduler import SemanticScheduler as SchedulerV2
-        from mindflow_backend.decomposition.pipeline.synthesizer import TaskSynthesizer as SynthesizerV2
+        from mindflow_backend.decomposition.pipeline.scheduler import (
+            SemanticScheduler as SchedulerV2,
+        )
+        from mindflow_backend.decomposition.pipeline.synthesizer import (
+            TaskSynthesizer as SynthesizerV2,
+        )
+        from mindflow_backend.decomposition.pipeline.tasker import EnhancedTasker as TaskerV2
         from mindflow_backend.decomposition.scoring import TaskScorer
-        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import ValidatedTask
+        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+            ValidatedTask,
+        )
         from mindflow_backend.services import get_todo_planning_service
-        from mindflow_backend.services.orchestration.todo_planning_service import build_todo_items_from_subtasks
+        from mindflow_backend.services.orchestration.todo_planning_service import (
+            build_todo_items_from_subtasks,
+        )
 
         try:
             session_id_str = str(state.get("session_id", "unknown"))
@@ -612,7 +630,9 @@ class SimpleOrchestratorGraph(SimpleGraph):
             }
 
             # Obtain context manager once for use during reflection
-            from mindflow_backend.orchestrator.semantic_context_manager import get_semantic_context_manager
+            from mindflow_backend.orchestrator.semantic_context_manager import (
+                get_semantic_context_manager,
+            )
             _sem_ctx_mgr = await get_semantic_context_manager()
 
             for contract in ordered:
@@ -892,7 +912,8 @@ def build_simple_orchestrator_flow(
                               ↑            ↓ (retry, max 2x)
                               └────────────┘
     """
-    from langgraph.graph import StateGraph, END  # type: ignore[import]
+    from langgraph.graph import END, StateGraph  # type: ignore[import]
+
     from mindflow_backend.nodes.implementations.orchestrator.supervisor_node import SupervisorNode
 
     graph_instance = SimpleOrchestratorGraph()
@@ -908,8 +929,10 @@ def build_simple_orchestrator_flow(
         if force_spec and state.get("decision"):
             decision = state["decision"]
             try:
+                from mindflow_backend.agents.specialists.runtime_policy import (
+                    get_agent_runtime_policy,
+                )
                 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
-                from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
                 workflow_plan = state.get("workflow_plan")
                 if workflow_plan and getattr(workflow_plan, "steps", None):
                     forced_spec = SpecialistType(force_spec)

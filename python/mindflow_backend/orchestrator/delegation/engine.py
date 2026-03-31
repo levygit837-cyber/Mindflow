@@ -11,6 +11,11 @@ from typing import Any
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+from mindflow_backend.communication.bus.communication_bus import (
+    CommunicationBus,
+    get_communication_bus,
+)
+from mindflow_backend.communication.mixins.agent_communication import AgentCommunicationMixin
 from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
@@ -29,7 +34,38 @@ class DelegationEngine(ExecutionMemoryMixin):
     def __init__(self, *, execution_memory: Any | None = None):
         self.settings = get_settings()
         self._execution_memory = execution_memory or get_execution_memory_service()
+
+        # Communication bus (optional, graceful degradation)
+        self._comm_bus: CommunicationBus | None = None
+        try:
+            self._comm_bus = get_communication_bus()
+        except Exception:
+            pass  # Bus not available — continue without P2P
+
+        # MissionLauncher (Phase 2B) — lazy init, None until needed
+        self._mission_launcher: Any | None = None
         
+    def _get_mission_launcher(self) -> Any | None:
+        """Lazy init MissionLauncher with graceful degradation.
+
+        Returns MissionLauncher if available, None otherwise.
+        Never raises — if anything goes wrong, returns None to fallback.
+        """
+        if self._mission_launcher is not None:
+            return self._mission_launcher
+
+        try:
+            from mindflow_backend.execution.missions.mission_launcher import (
+                get_mission_launcher as _get_launcher,
+            )
+            self._mission_launcher = _get_launcher(comm_bus=self._comm_bus)
+            _logger.debug("mission_launcher_initialized")
+        except Exception:
+            _logger.warning("mission_launcher_unavailable")
+            self._mission_launcher = None  # Ensure not retried
+
+        return self._mission_launcher
+
     async def delegate_task(
         self,
         task: DelegationTask,
@@ -47,6 +83,53 @@ class DelegationEngine(ExecutionMemoryMixin):
             task_id=str(task.task_id),
             objective=task.objective,
         )
+
+        # Phase 2B: Check if task has mission_type and launcher is available
+        mission_type = getattr(task, "metadata", {}).get("mission_type") if getattr(task, "metadata", None) else None
+        launcher = self._get_mission_launcher()
+
+        if mission_type and launcher:
+            try:
+                from mindflow_backend.schemas.orchestration.communication import (
+                    MissionGraphType,
+                )
+                mgt = MissionGraphType(mission_type)
+                agent_id = task.agent_id or (
+                    f"{task.agent.value}:{task.specialist.value}"
+                    if task.specialist
+                    else task.agent.value
+                )
+
+                mission_result = await launcher.launch_mission(
+                    agent_id=agent_id,
+                    mission_type=mgt,
+                    task=task.objective,
+                    session_id=session_id or session.id if session else "unknown",
+                    comm_bus=self._comm_bus,
+                    max_iterations=getattr(task, "max_iterations", 500),
+                )
+
+                # Convert MissionResult to DelegationResult
+                result_data = mission_result.to_delegation_result_data()
+                return DelegationResult(
+                    task_id=task.task_id,
+                    agent=task.agent,
+                    agent_role=task.agent_role or task.agent,
+                    specialist=task.specialist,
+                    agent_id=agent_id,
+                    status=result_data["status"],
+                    key_findings=result_data.get("key_findings", ""),
+                    full_output=result_data.get("full_output", ""),
+                    confidence=result_data.get("confidence", 0.0),
+                    tokens_consumed=result_data.get("tokens_consumed", 0),
+                    error_message=result_data.get("error_message"),
+                )
+            except Exception as exc:
+                _logger.warning(
+                    "mission_launcher_failed_falling_back",
+                    extra={"error": str(exc)},
+                )
+                # Fallback to regular delegation
 
         child_execution = await self._start_child_execution(
             task=task,
@@ -69,7 +152,23 @@ class DelegationEngine(ExecutionMemoryMixin):
         try:
             # Get the target agent
             agent = get_agent(task.agent_role or task.agent, specialist=task.specialist, agent_id=task.agent_id)
-            
+
+            # Inject P2P communication capability if bus is available
+            if self._comm_bus and self._comm_bus.is_available:
+                agent_id_str = task.agent_id or (
+                    f"{task.agent.value}:{task.specialist.value}"
+                    if task.specialist
+                    else task.agent.value
+                )
+                agent.comm = AgentCommunicationMixin(
+                    agent_id=agent_id_str,
+                    bus=self._comm_bus,
+                )
+                _logger.debug(
+                    "delegation_comm_injected",
+                    extra={"agent_id": agent_id_str, "task_id": str(task.task_id)},
+                )
+
             # Prepare messages for the agent
             messages = [
                 {"role": "system", "content": agent.system_prompt}
@@ -100,7 +199,9 @@ class DelegationEngine(ExecutionMemoryMixin):
                 tools = tool_registry.get_tools_for_agent(agent)
 
             if child_execution_id and (parent_execution_id or root_execution_id):
-                from mindflow_backend.agents.tools.orchestration.notify_orchestrator import NotifyOrchestratorTool
+                from mindflow_backend.agents.tools.orchestration.notify_orchestrator import (
+                    NotifyOrchestratorTool,
+                )
 
                 notify_tool = NotifyOrchestratorTool(execution_memory=self._execution_memory)
                 notify_tool.execution_id = child_execution_id

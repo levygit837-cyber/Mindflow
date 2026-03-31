@@ -4,12 +4,10 @@ Stream Manager - Handles stream event creation and normalization.
 Provides utilities for creating typed stream events.
 """
 
-import json
 import uuid
-from typing import Any, Optional
 
-from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
+from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
 
 class StreamManager:

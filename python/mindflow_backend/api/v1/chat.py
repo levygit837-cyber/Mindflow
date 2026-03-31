@@ -12,17 +12,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.api.dependencies.security import audit_log
-from mindflow_backend.infra.middleware.auth import require_api_key
-from mindflow_backend.infra.config import get_settings
 from mindflow_backend.execution_memory import get_execution_memory_service
+from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.database.connection import get_db_session
+from mindflow_backend.infra.middleware.auth import require_api_key
 from mindflow_backend.schemas.api.chat import (
     ChatSessionCreateRequest,
     ChatSessionMessageCreateRequest,
     ChatSessionTitleGenerateRequest,
     ChatSessionUpdateRequest,
 )
-from mindflow_backend.infra.database.connection import get_db_session
 from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
 
 router = APIRouter(prefix="/chat", tags=["chat"], dependencies=protected_route_dependencies)

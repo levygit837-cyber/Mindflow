@@ -13,10 +13,10 @@ Core Services:
 - TaskIntegration: Ponte com sistema de orquestração
 """
 
-from .service import TaskMemoryService
-from .retriever import TaskRetriever
 from .decomposer import TaskDecomposer
 from .integration import TaskIntegration
+from .retriever import TaskRetriever
+from .service import TaskMemoryService
 
 __all__ = [
     "TaskMemoryService",

@@ -9,13 +9,14 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Set
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.grpc.config.config import GrpcConfig
-from mindflow_backend.grpc.config.dynamic.validator import ConfigValidator, ValidationResult
 from mindflow_backend.grpc.config.dynamic.storage import ConfigStorage, MemoryConfigStorage
+from mindflow_backend.grpc.config.dynamic.validator import ConfigValidator, ValidationResult
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -37,9 +38,9 @@ class ConfigSnapshot:
     version: str
     change_type: ConfigChangeType
     description: str = ""
-    changed_fields: Set[str] = field(default_factory=set)
+    changed_fields: set[str] = field(default_factory=set)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert snapshot to dictionary."""
         return {
             "version": self.version,
@@ -54,7 +55,7 @@ class ConfigSnapshot:
 @dataclass
 class ConfigChangeEvent:
     """Event representing a configuration change."""
-    old_config: Optional[GrpcConfig]
+    old_config: GrpcConfig | None
     new_config: GrpcConfig
     snapshot: ConfigSnapshot
     validation_result: ValidationResult
@@ -63,21 +64,21 @@ class ConfigChangeEvent:
 class DynamicConfigManager:
     """Manages dynamic gRPC configuration with hot reload capabilities."""
     
-    def __init__(self, storage_backend: Optional[ConfigStorage] = None):
+    def __init__(self, storage_backend: ConfigStorage | None = None):
         self.storage = storage_backend or MemoryConfigStorage()
         self.validator = ConfigValidator()
         
         # Current configuration state
-        self.current_config: Optional[GrpcConfig] = None
+        self.current_config: GrpcConfig | None = None
         self.current_version: str = "initial"
         self.last_updated: float = time.time()
         
         # Configuration history
-        self.config_history: List[ConfigSnapshot] = []
+        self.config_history: list[ConfigSnapshot] = []
         self.max_history_size: int = 100
         
         # Subscribers for change notifications
-        self._subscribers: List[Callable[[ConfigChangeEvent], None]] = []
+        self._subscribers: list[Callable[[ConfigChangeEvent], None]] = []
         
         # Thread safety
         self._lock = asyncio.Lock()
@@ -85,7 +86,7 @@ class DynamicConfigManager:
         
         _logger.info("dynamic_config_manager_initialized", storage_type=type(self.storage).__name__)
     
-    async def initialize(self, initial_config: Optional[GrpcConfig] = None) -> bool:
+    async def initialize(self, initial_config: GrpcConfig | None = None) -> bool:
         """Initialize the configuration manager."""
         async with self._lock:
             try:
@@ -182,7 +183,7 @@ class DynamicConfigManager:
             finally:
                 self._update_in_progress = False
     
-    async def update_config(self, updates: Dict[str, Any], validate_only: bool = False) -> bool:
+    async def update_config(self, updates: dict[str, Any], validate_only: bool = False) -> bool:
         """Update specific configuration fields."""
         async with self._lock:
             if self._update_in_progress:
@@ -302,18 +303,18 @@ class DynamicConfigManager:
             finally:
                 self._update_in_progress = False
     
-    async def get_current_config(self) -> Optional[GrpcConfig]:
+    async def get_current_config(self) -> GrpcConfig | None:
         """Get current configuration."""
         async with self._lock:
             return self.current_config
     
-    async def get_config_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_config_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get configuration history."""
         async with self._lock:
             history = self.config_history[-limit:] if limit > 0 else self.config_history
             return [snapshot.to_dict() for snapshot in reversed(history)]
     
-    async def get_config_snapshot(self, version: str) -> Optional[Dict[str, Any]]:
+    async def get_config_snapshot(self, version: str) -> dict[str, Any] | None:
         """Get specific configuration snapshot."""
         async with self._lock:
             for snapshot in self.config_history:
@@ -363,7 +364,7 @@ class DynamicConfigManager:
         change_type: ConfigChangeType,
         description: str,
         validation_result: ValidationResult,
-        changed_fields: Optional[Set[str]] = None
+        changed_fields: set[str] | None = None
     ) -> bool:
         """Apply configuration update with notifications."""
         try:
@@ -441,7 +442,7 @@ class DynamicConfigManager:
         config_str = str(sorted(config.dict().items()))
         return hashlib.md5(config_str.encode()).hexdigest()[:8]
     
-    async def get_statistics(self) -> Dict[str, Any]:
+    async def get_statistics(self) -> dict[str, Any]:
         """Get configuration manager statistics."""
         async with self._lock:
             return {
@@ -456,7 +457,7 @@ class DynamicConfigManager:
 
 
 # Global configuration manager instance
-_global_config_manager: Optional[DynamicConfigManager] = None
+_global_config_manager: DynamicConfigManager | None = None
 
 
 async def get_config_manager() -> DynamicConfigManager:

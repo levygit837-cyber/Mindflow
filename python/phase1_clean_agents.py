@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Phase 1: Remove DeepAgents dependencies from agents/tools system."""
 
-import os
 import re
 from pathlib import Path
+
 
 def clean_deepagents_references(file_path: Path) -> bool:
     """Remove DeepAgents references from a file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
         
         original_content = content
@@ -54,11 +54,11 @@ def main():
     for file_path in cleaned_files:
         print(f"  - {file_path}")
     
-    print(f"\n📊 Phase 1 Summary:")
+    print("\n📊 Phase 1 Summary:")
     print(f"  - Files processed: {len(py_files)}")
     print(f"  - Files cleaned: {len(cleaned_files)}")
-    print(f"  - DeepAgents references: Removed")
-    print(f"  - Status: Ready for Phase 2")
+    print("  - DeepAgents references: Removed")
+    print("  - Status: Ready for Phase 2")
 
 if __name__ == "__main__":
     main()

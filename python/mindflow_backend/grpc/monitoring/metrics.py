@@ -6,12 +6,12 @@ throughput, error rates, connection metrics, and business-specific metrics.
 
 from __future__ import annotations
 
-import time
 import threading
+import time
 from collections import defaultdict, deque
-from typing import Any, Dict, List
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -31,7 +31,7 @@ class MetricValue:
     """Single metric value with timestamp."""
     value: float
     timestamp: float
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -49,14 +49,14 @@ class GrpcMetricsCollector:
         self._lock = threading.RLock()
         
         # Request metrics
-        self.request_count: Dict[str, float] = defaultdict(float)
-        self.request_duration: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_history_size))
-        self.request_errors: Dict[str, float] = defaultdict(float)
+        self.request_count: dict[str, float] = defaultdict(float)
+        self.request_duration: dict[str, deque] = defaultdict(lambda: deque(maxlen=max_history_size))
+        self.request_errors: dict[str, float] = defaultdict(float)
         
         # Connection metrics
-        self.active_connections: Dict[str, float] = defaultdict(float)
-        self.connection_errors: Dict[str, float] = defaultdict(float)
-        self.connection_duration: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_history_size))
+        self.active_connections: dict[str, float] = defaultdict(float)
+        self.connection_errors: dict[str, float] = defaultdict(float)
+        self.connection_duration: dict[str, deque] = defaultdict(lambda: deque(maxlen=max_history_size))
         
         # System metrics
         self.cpu_usage: deque = deque(maxlen=max_history_size)
@@ -66,7 +66,7 @@ class GrpcMetricsCollector:
         # Business metrics
         self.chat_requests_per_second: deque = deque(maxlen=60)  # Last 60 seconds
         self.session_duration: deque = deque(maxlen=max_history_size)
-        self.agent_performance: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_history_size))
+        self.agent_performance: dict[str, deque] = defaultdict(lambda: deque(maxlen=max_history_size))
         
         # Histogram buckets for latency (in seconds)
         self.latency_buckets = [
@@ -146,7 +146,7 @@ class GrpcMetricsCollector:
         with self._lock:
             self.agent_performance[agent_type].append(duration)
     
-    def get_request_metrics(self, method: str = None) -> Dict[str, Any]:
+    def get_request_metrics(self, method: str = None) -> dict[str, Any]:
         """Get request metrics for a specific method or all methods."""
         with self._lock:
             if method:
@@ -154,7 +154,7 @@ class GrpcMetricsCollector:
             else:
                 return {m: self._get_method_metrics(m) for m in self.request_count.keys()}
     
-    def get_connection_metrics(self) -> Dict[str, Any]:
+    def get_connection_metrics(self) -> dict[str, Any]:
         """Get connection-related metrics."""
         with self._lock:
             total_active = sum(self.active_connections.values())
@@ -173,7 +173,7 @@ class GrpcMetricsCollector:
                 'average_connection_duration': avg_connection_duration,
             }
     
-    def get_system_metrics(self) -> Dict[str, Any]:
+    def get_system_metrics(self) -> dict[str, Any]:
         """Get system-level metrics."""
         with self._lock:
             cpu_avg = sum(self.cpu_usage) / len(self.cpu_usage) if self.cpu_usage else 0
@@ -185,7 +185,7 @@ class GrpcMetricsCollector:
                 'network_io_bytes': list(self.network_io)[-10:] if self.network_io else [],  # Last 10 samples
             }
     
-    def get_business_metrics(self) -> Dict[str, Any]:
+    def get_business_metrics(self) -> dict[str, Any]:
         """Get business-specific metrics."""
         with self._lock:
             # Calculate requests per second (last 60 seconds)
@@ -213,7 +213,7 @@ class GrpcMetricsCollector:
                 'agent_performance': agent_summary,
             }
     
-    def get_latency_summary(self, method: str = None) -> Dict[str, Any]:
+    def get_latency_summary(self, method: str = None) -> dict[str, Any]:
         """Get latency summary with percentiles and bucket counts."""
         with self._lock:
             if method:
@@ -256,7 +256,7 @@ class GrpcMetricsCollector:
                 'buckets': bucket_counts,
             }
     
-    def _get_method_metrics(self, method: str) -> Dict[str, Any]:
+    def _get_method_metrics(self, method: str) -> dict[str, Any]:
         """Get metrics for a specific method."""
         durations = list(self.request_duration.get(method, []))
         

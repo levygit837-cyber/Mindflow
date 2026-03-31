@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Protocol, runtime_checkable
 
-from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
+from mindflow_backend.schemas.chat.agent import StreamEvent
 
 
 @runtime_checkable

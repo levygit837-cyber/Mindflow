@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter, Request
 
-from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.controllers.provider_controller import ProviderController
-from mindflow_backend.api.schemas.requests import ProviderConfigRequest, ProviderTestRequest
+from mindflow_backend.api.dependencies import protected_route_dependencies
+from mindflow_backend.schemas.api.requests import ProviderConfigRequest, ProviderTestRequest
 
 router = APIRouter(prefix="/providers", tags=["providers"], dependencies=protected_route_dependencies)
 

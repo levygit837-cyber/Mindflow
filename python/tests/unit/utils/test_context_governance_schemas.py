@@ -2,10 +2,9 @@
 
 from mindflow_backend.schemas.context_governance import (
     ContextBudgetConfig,
+    ContextEventType,
     ContextScope,
     ExplorerSummary,
-    ContextEvent,
-    ContextEventType,
 )
 
 

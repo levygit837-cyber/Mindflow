@@ -24,7 +24,7 @@ def test_phase4_reorganization():
         else:
             print(f"❌ {category}/ missing")
     
-    print(f"\n📊 Directory Structure:")
+    print("\n📊 Directory Structure:")
     print(f"   - Categories: {len(existing_categories)}/{len(expected_categories)}")
     
     # Test key files
@@ -50,7 +50,7 @@ def test_phase4_reorganization():
             
             # Test syntax
             try:
-                with open(full_path, 'r') as f:
+                with open(full_path) as f:
                     content = f.read()
                 compile(content, str(full_path), 'exec')
                 print(f"   ✅ {file_path} - Syntax OK")
@@ -60,12 +60,12 @@ def test_phase4_reorganization():
         else:
             print(f"   ❌ {file_path} missing")
     
-    print(f"\n📊 Key Files Status:")
+    print("\n📊 Key Files Status:")
     print(f"   - Files found: {len(existing_files)}/{len(key_files)}")
     print(f"   - Syntax errors: {len(syntax_errors)}")
     
     # Test imports (basic check)
-    print(f"\n🧪 Testing Basic Imports...")
+    print("\n🧪 Testing Basic Imports...")
     
     import_tests = [
         ("Filesystem", "from mindflow_backend.agents.tools.filesystem import FileReadTool"),
@@ -86,7 +86,7 @@ def test_phase4_reorganization():
             print(f"   ❌ {test_name} - Import Error: {e}")
             import_errors.append(test_name)
     
-    print(f"\n📊 Import Status:")
+    print("\n📊 Import Status:")
     print(f"   - Import errors: {len(import_errors)}")
     
     return len(existing_categories) >= 7 and len(syntax_errors) == 0 and len(import_errors) <= 2

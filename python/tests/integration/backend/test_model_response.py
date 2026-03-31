@@ -1,9 +1,10 @@
 import asyncio
 import json
-import uuid
-import sys
 import os
+import sys
+import uuid
 from unittest.mock import MagicMock
+
 
 # Load .env FROM ROOT (most reliable)
 def get_api_key():
@@ -36,12 +37,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Mock the database
 import mindflow_backend.storage.db as db_module
+
 db_module.db_session = MagicMock()
 db_module.db_session.return_value.__enter__.return_value = MagicMock()
 
+from mindflow_backend.agents._registry import register_all_personalities
 from mindflow_backend.runtime.stream import AgentRuntime
 from mindflow_backend.schemas.agent import AgentChatRequest
-from mindflow_backend.agents._registry import register_all_personalities
+
 
 async def test_gemini_3_1():
     print(f"🚀 Starting Gemini 3.1 Pro Test (API Key Found: {bool(api_key)})")

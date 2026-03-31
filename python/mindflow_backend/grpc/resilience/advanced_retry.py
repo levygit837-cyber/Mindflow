@@ -8,17 +8,19 @@ from __future__ import annotations
 
 import asyncio
 import random
-import time
+import statistics
 import threading
-from typing import Dict, Any, Optional, List, Callable, Type, Union
+import time
+from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import deque
-import statistics
-import math
+from typing import Any
 
 from mindflow_backend.grpc.resilience.retry import (
-    RetryStrategy, RetryDecision, RetryConfig, RetryableError
+    RetryableError,
+    RetryConfig,
+    RetryDecision,
 )
 from mindflow_backend.infra.logging import get_logger
 
@@ -56,14 +58,14 @@ class AdvancedRetryConfig(RetryConfig):
     
     # Retry condition settings
     retry_condition_type: RetryConditionType = RetryConditionType.ON_ERROR_TYPE
-    retryable_error_types: List[str] = field(default_factory=lambda: [
+    retryable_error_types: list[str] = field(default_factory=lambda: [
         "TimeoutError", "ConnectionError", "NetworkError"
     ])
-    non_retryable_error_types: List[str] = field(default_factory=lambda: [
+    non_retryable_error_types: list[str] = field(default_factory=lambda: [
         "AuthenticationError", "PermissionError", "ValidationError"
     ])
-    retryable_status_codes: List[int] = field(default_factory=lambda: [502, 503, 504])
-    non_retryable_status_codes: List[int] = field(default_factory=lambda: [400, 401, 403])
+    retryable_status_codes: list[int] = field(default_factory=lambda: [502, 503, 504])
+    non_retryable_status_codes: list[int] = field(default_factory=lambda: [400, 401, 403])
     
     # Performance-based retry
     enable_performance_retry: bool = True
@@ -72,7 +74,7 @@ class AdvancedRetryConfig(RetryConfig):
     
     # Circuit breaker integration
     enable_circuit_breaker: bool = True
-    circuit_breaker_name: Optional[str] = None
+    circuit_breaker_name: str | None = None
     
     # Budget management
     enable_retry_budget: bool = True
@@ -85,8 +87,8 @@ class AdvancedRetryConfig(RetryConfig):
     metrics_retention_count: int = 10000
     
     # Custom retry logic
-    custom_retry_predicate: Optional[Callable] = None
-    custom_backoff_function: Optional[Callable] = None
+    custom_retry_predicate: Callable | None = None
+    custom_backoff_function: Callable | None = None
 
 
 @dataclass
@@ -95,14 +97,14 @@ class RetryAttempt:
     
     attempt_number: int
     start_time: float
-    end_time: Optional[float] = None
+    end_time: float | None = None
     delay_before_attempt: float = 0.0
-    error: Optional[Exception] = None
+    error: Exception | None = None
     success: bool = False
-    response_time_ms: Optional[float] = None
+    response_time_ms: float | None = None
     
     @property
-    def duration_ms(self) -> Optional[float]:
+    def duration_ms(self) -> float | None:
         """Get duration of this attempt."""
         if self.end_time is None:
             return None
@@ -123,7 +125,7 @@ class AdvancedRetryMetrics:
     # Performance metrics
     response_times: deque = field(default_factory=lambda: deque(maxlen=1000))
     delay_times: deque = field(default_factory=lambda: deque(maxlen=1000))
-    retry_reasons: Dict[str, int] = field(default_factory=dict)
+    retry_reasons: dict[str, int] = field(default_factory=dict)
     
     # Budget metrics
     retry_budget_used: int = 0
@@ -166,7 +168,7 @@ class AdvancedRetryMetrics:
 class AdvancedRetryPolicy:
     """Advanced retry policy with adaptive backoff and intelligent retry logic."""
     
-    def __init__(self, name: str, config: Optional[AdvancedRetryConfig] = None):
+    def __init__(self, name: str, config: AdvancedRetryConfig | None = None):
         self.name = name
         self.config = config or AdvancedRetryConfig()
         
@@ -192,7 +194,7 @@ class AdvancedRetryPolicy:
     async def execute_with_retry(self, 
                              operation: Callable,
                              *args,
-                             operation_name: Optional[str] = None,
+                             operation_name: str | None = None,
                              **kwargs) -> Any:
         """Execute operation with advanced retry logic."""
         operation_name = operation_name or self.name
@@ -287,7 +289,7 @@ class AdvancedRetryPolicy:
         
         return await asyncio.wait_for(operation(*args, **kwargs), timeout=timeout)
     
-    def _should_retry(self, error: Exception, attempt_num: int, attempts: List[RetryAttempt]) -> RetryDecision:
+    def _should_retry(self, error: Exception, attempt_num: int, attempts: list[RetryAttempt]) -> RetryDecision:
         """Determine if operation should be retried based on advanced logic."""
         # Check if we've exceeded max attempts
         if attempt_num >= self.config.max_attempts:
@@ -321,8 +323,8 @@ class AdvancedRetryPolicy:
         # Default: retry for unknown errors
         return RetryDecision.RETRY
     
-    def _calculate_delay(self, attempt_num: int, error: Optional[Exception], 
-                      previous_attempts: List[RetryAttempt]) -> float:
+    def _calculate_delay(self, attempt_num: int, error: Exception | None, 
+                      previous_attempts: list[RetryAttempt]) -> float:
         """Calculate delay before next attempt using adaptive backoff."""
         if self.config.custom_backoff_function:
             try:
@@ -363,7 +365,7 @@ class AdvancedRetryPolicy:
         
         return delay
     
-    def _calculate_adaptive_delay(self, attempt_num: int, previous_attempts: List[RetryAttempt]) -> float:
+    def _calculate_adaptive_delay(self, attempt_num: int, previous_attempts: list[RetryAttempt]) -> float:
         """Calculate adaptive delay based on historical performance."""
         if len(previous_attempts) < 2:
             return self.config.base_delay
@@ -400,7 +402,7 @@ class AdvancedRetryPolicy:
         
         return delay
     
-    def _calculate_performance_based_delay(self, attempt_num: int, previous_attempts: List[RetryAttempt]) -> float:
+    def _calculate_performance_based_delay(self, attempt_num: int, previous_attempts: list[RetryAttempt]) -> float:
         """Calculate delay based on performance metrics."""
         if not self.config.enable_performance_retry:
             return self.config.base_delay * (self.config.multiplier ** (attempt_num - 1))
@@ -463,7 +465,7 @@ class AdvancedRetryPolicy:
             if self.config.enable_retry_budget:
                 self._metrics.retry_budget_used += 1
     
-    def _record_operation_failure(self, attempts: List[RetryAttempt], total_duration_ms: float) -> None:
+    def _record_operation_failure(self, attempts: list[RetryAttempt], total_duration_ms: float) -> None:
         """Record complete operation failure."""
         with self._metrics_lock:
             self._metrics.total_operations += 1
@@ -517,7 +519,7 @@ class AdvancedRetryPolicy:
             'trend': trend
         })
     
-    def get_advanced_metrics(self) -> Dict[str, Any]:
+    def get_advanced_metrics(self) -> dict[str, Any]:
         """Get comprehensive retry metrics."""
         with self._metrics_lock:
             base_metrics = {
@@ -582,7 +584,7 @@ class AdvancedRetryPolicy:
         
         _logger.info("advanced_retry_metrics_reset", name=self.name)
     
-    def _percentile(self, data: List[float], percentile: float) -> float:
+    def _percentile(self, data: list[float], percentile: float) -> float:
         """Calculate percentile of data."""
         if not data:
             return 0.0

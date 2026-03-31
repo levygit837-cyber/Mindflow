@@ -5,7 +5,6 @@ This script tests if agents can now access their assigned tools correctly.
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add the project root to Python path

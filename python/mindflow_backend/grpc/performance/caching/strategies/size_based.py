@@ -5,7 +5,7 @@ Evicts entries based on total memory usage.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..config import CacheConfig
 from ..entry import CacheEntry
@@ -25,7 +25,7 @@ class SizeBasedCacheStrategy(CacheStrategy):
             config: Cache configuration
         """
         super().__init__(config)
-        self._cache: Dict[str, CacheEntry] = {}
+        self._cache: dict[str, CacheEntry] = {}
         self._current_size_bytes: int = 0
         self._max_size_bytes: int = config.max_memory_mb * 1024 * 1024
         self._stats = {
@@ -35,7 +35,7 @@ class SizeBasedCacheStrategy(CacheStrategy):
             "expired_removals": 0,
         }
 
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry from cache."""
         with self._lock:
             if key not in self._cache:
@@ -111,7 +111,7 @@ class SizeBasedCacheStrategy(CacheStrategy):
             self._stats["expired_removals"] += len(expired_keys)
             return len(expired_keys)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         with self._lock:
             total = self._stats["hits"] + self._stats["misses"]

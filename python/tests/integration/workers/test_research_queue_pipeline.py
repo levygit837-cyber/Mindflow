@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock
 import pytest
 
 from mindflow_backend.services.core.pinchtab_fleet_service import PinchTabFleetService
-from mindflow_backend.workers.config.queues import QueueConfig, QueueDefinitions, QueuePriority, WorkerDomain
+from mindflow_backend.workers.config.queues import (
+    QueueConfig,
+    QueueDefinitions,
+    QueuePriority,
+    WorkerDomain,
+)
 from mindflow_backend.workers.research.browser_worker import BrowserWorker
 from mindflow_backend.workers.research.content_worker import ContentWorker
 from mindflow_backend.workers.research.publishers.browser_publisher import (

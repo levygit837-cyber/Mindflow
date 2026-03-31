@@ -6,8 +6,8 @@ version control, cloud services, and notifications.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
 from abc import ABC, abstractmethod
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -16,7 +16,7 @@ class GitInterface(ABC):
     """Interface for Git operations."""
     
     @abstractmethod
-    async def get_status(self, repository_path: str) -> Dict[str, Any]:
+    async def get_status(self, repository_path: str) -> dict[str, Any]:
         """Get Git repository status.
         
         Args:
@@ -32,8 +32,8 @@ class GitInterface(ABC):
         self,
         repository_path: str,
         message: str,
-        files: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        files: list[str] | None = None
+    ) -> dict[str, Any]:
         """Commit changes to repository.
         
         Args:
@@ -51,8 +51,8 @@ class GitInterface(ABC):
         self,
         repository_path: str,
         branch_name: str,
-        from_branch: Optional[str] = None
-    ) -> Dict[str, Any]:
+        from_branch: str | None = None
+    ) -> dict[str, Any]:
         """Create new branch.
         
         Args:
@@ -71,7 +71,7 @@ class GitInterface(ABC):
         repository_path: str,
         source_branch: str,
         target_branch: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Merge branches.
         
         Args:
@@ -89,8 +89,8 @@ class GitInterface(ABC):
         self,
         repository_path: str,
         limit: int = 10,
-        branch: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        branch: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get commit history.
         
         Args:
@@ -112,9 +112,9 @@ class DockerInterface(ABC):
         self,
         dockerfile_path: str,
         image_name: str,
-        context_path: Optional[str] = None,
-        build_args: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        context_path: str | None = None,
+        build_args: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Build Docker image.
         
         Args:
@@ -132,12 +132,12 @@ class DockerInterface(ABC):
     async def run_container(
         self,
         image_name: str,
-        container_name: Optional[str] = None,
-        ports: Optional[Dict[str, str]] = None,
-        volumes: Optional[Dict[str, str]] = None,
-        environment: Optional[Dict[str, str]] = None,
+        container_name: str | None = None,
+        ports: dict[str, str] | None = None,
+        volumes: dict[str, str] | None = None,
+        environment: dict[str, str] | None = None,
         detached: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run Docker container.
         
         Args:
@@ -154,7 +154,7 @@ class DockerInterface(ABC):
         pass
     
     @abstractmethod
-    async def list_containers(self, all_containers: bool = False) -> List[Dict[str, Any]]:
+    async def list_containers(self, all_containers: bool = False) -> list[dict[str, Any]]:
         """List Docker containers.
         
         Args:
@@ -166,7 +166,7 @@ class DockerInterface(ABC):
         pass
     
     @abstractmethod
-    async def stop_container(self, container_id: str) -> Dict[str, Any]:
+    async def stop_container(self, container_id: str) -> dict[str, Any]:
         """Stop Docker container.
         
         Args:
@@ -178,7 +178,7 @@ class DockerInterface(ABC):
         pass
     
     @abstractmethod
-    async def remove_container(self, container_id: str, force: bool = False) -> Dict[str, Any]:
+    async def remove_container(self, container_id: str, force: bool = False) -> dict[str, Any]:
         """Remove Docker container.
         
         Args:
@@ -199,8 +199,8 @@ class CloudInterface(ABC):
         self,
         local_path: str,
         remote_path: str,
-        bucket_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+        bucket_name: str | None = None
+    ) -> dict[str, Any]:
         """Upload file to cloud storage.
         
         Args:
@@ -218,8 +218,8 @@ class CloudInterface(ABC):
         self,
         remote_path: str,
         local_path: str,
-        bucket_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+        bucket_name: str | None = None
+    ) -> dict[str, Any]:
         """Download file from cloud storage.
         
         Args:
@@ -236,8 +236,8 @@ class CloudInterface(ABC):
     async def list_files(
         self,
         remote_path: str = "",
-        bucket_name: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        bucket_name: str | None = None
+    ) -> list[dict[str, Any]]:
         """List files in cloud storage.
         
         Args:
@@ -253,8 +253,8 @@ class CloudInterface(ABC):
     async def delete_file(
         self,
         remote_path: str,
-        bucket_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+        bucket_name: str | None = None
+    ) -> dict[str, Any]:
         """Delete file from cloud storage.
         
         Args:
@@ -273,12 +273,12 @@ class NotificationInterface(ABC):
     @abstractmethod
     async def send_email(
         self,
-        to: Union[str, List[str]],
+        to: str | list[str],
         subject: str,
         body: str,
-        html_body: Optional[str] = None,
-        attachments: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        html_body: str | None = None,
+        attachments: list[str] | None = None
+    ) -> dict[str, Any]:
         """Send email notification.
         
         Args:
@@ -297,10 +297,10 @@ class NotificationInterface(ABC):
     async def send_webhook(
         self,
         url: str,
-        payload: Dict[str, Any],
-        headers: Optional[Dict[str, str]] = None,
+        payload: dict[str, Any],
+        headers: dict[str, str] | None = None,
         method: str = "POST"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send webhook notification.
         
         Args:
@@ -318,9 +318,9 @@ class NotificationInterface(ABC):
     async def send_slack(
         self,
         message: str,
-        channel: Optional[str] = None,
-        webhook_url: Optional[str] = None
-    ) -> Dict[str, Any]:
+        channel: str | None = None,
+        webhook_url: str | None = None
+    ) -> dict[str, Any]:
         """Send Slack notification.
         
         Args:
@@ -338,9 +338,9 @@ class NotificationInterface(ABC):
         self,
         message: str,
         webhook_url: str,
-        username: Optional[str] = None,
-        avatar_url: Optional[str] = None
-    ) -> Dict[str, Any]:
+        username: str | None = None,
+        avatar_url: str | None = None
+    ) -> dict[str, Any]:
         """Send Discord notification.
         
         Args:
@@ -363,10 +363,10 @@ class GitStatus(BaseModel):
     branch: str
     commit_hash: str
     is_clean: bool
-    modified_files: List[str]
-    added_files: List[str]
-    deleted_files: List[str]
-    untracked_files: List[str]
+    modified_files: list[str]
+    added_files: list[str]
+    deleted_files: list[str]
+    untracked_files: list[str]
 
 
 class GitCommit(BaseModel):
@@ -377,7 +377,7 @@ class GitCommit(BaseModel):
     email: str
     date: str
     message: str
-    files_changed: List[str]
+    files_changed: list[str]
     insertions: int
     deletions: int
 
@@ -389,9 +389,9 @@ class DockerContainer(BaseModel):
     name: str
     image: str
     status: str
-    ports: Dict[str, str]
+    ports: dict[str, str]
     created: str
-    labels: Dict[str, str]
+    labels: dict[str, str]
 
 
 class DockerImage(BaseModel):
@@ -412,15 +412,15 @@ class CloudFile(BaseModel):
     size_bytes: int
     last_modified: str
     content_type: str
-    etag: Optional[str] = None
+    etag: str | None = None
 
 
 class NotificationResult(BaseModel):
     """Notification result schema."""
     
     success: bool
-    message_id: Optional[str] = None
-    error: Optional[str] = None
+    message_id: str | None = None
+    error: str | None = None
     timestamp: str
 
 
@@ -440,8 +440,8 @@ class BaseGit(GitInterface):
     async def _execute_git_command(
         self,
         repository_path: str,
-        command: List[str]
-    ) -> Dict[str, Any]:
+        command: list[str]
+    ) -> dict[str, Any]:
         """Execute Git command."""
         # Implementation would use subprocess or gitpython
         return {}
@@ -461,8 +461,8 @@ class BaseDocker(DockerInterface):
     
     async def _execute_docker_command(
         self,
-        command: List[str]
-    ) -> Dict[str, Any]:
+        command: list[str]
+    ) -> dict[str, Any]:
         """Execute Docker command."""
         # Implementation would use docker-py or subprocess
         return {}
@@ -493,7 +493,7 @@ class BaseNotification(NotificationInterface):
         self._provider_configs = {}
         self._rate_limits = {}
     
-    async def _validate_recipients(self, recipients: Union[str, List[str]]) -> bool:
+    async def _validate_recipients(self, recipients: str | list[str]) -> bool:
         """Validate recipient addresses."""
         # Implementation would validate email/webhook formats
         return True

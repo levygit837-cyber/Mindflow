@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import functools
 import time
-from typing import Any, Callable, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from mindflow_backend.exceptions import MindFlowError
 from mindflow_backend.infra.logging import get_logger
@@ -28,9 +29,9 @@ def handle_errors(
 ) -> Callable:
     """Decorator for consistent error handling."""
     
-    def decorator(func: Callable[..., T]) -> Callable[..., Union[T, Any]]:
+    def decorator(func: Callable[..., T]) -> Callable[..., T | Any]:
         @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Union[T, Any]:
+        def sync_wrapper(*args: Any, **kwargs: Any) -> T | Any:
             try:
                 return func(*args, **kwargs)
             except error_type as exc:
@@ -50,7 +51,7 @@ def handle_errors(
                 return default_return
         
         @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Union[T, Any]:
+        async def async_wrapper(*args: Any, **kwargs: Any) -> T | Any:
             try:
                 return await func(*args, **kwargs)
             except error_type as exc:
@@ -186,7 +187,7 @@ def timeout_handler(
         async def async_wrapper(*args: Any, **kwargs: Any) -> T:
             try:
                 return await asyncio.wait_for(func(*args, **kwargs), timeout=timeout_seconds)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 message = timeout_message or f"Function {func.__name__} timed out after {timeout_seconds} seconds"
                 _logger.error(
                     "function_timeout",
@@ -330,7 +331,7 @@ class CircuitBreaker:
             result = func(*args, **kwargs)
             self._on_success()
             return result
-        except self.expected_exception as exc:
+        except self.expected_exception:
             self._on_failure()
             raise
     
@@ -348,7 +349,7 @@ class CircuitBreaker:
             result = await func(*args, **kwargs)
             self._on_success()
             return result
-        except self.expected_exception as exc:
+        except self.expected_exception:
             self._on_failure()
             raise
     

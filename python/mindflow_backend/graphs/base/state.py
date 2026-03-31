@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, TypedDict
-from uuid import UUID, uuid4
+from typing import Any, TypedDict
+from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class GraphState(TypedDict, total=False):
@@ -24,29 +24,29 @@ class GraphState(TypedDict, total=False):
     
     # Results and errors
     response: str
-    error: Optional[str]
+    error: str | None
     
     # Metadata
     start_time: float
     end_time: float
-    metrics: Dict[str, Any]
+    metrics: dict[str, Any]
     
     # Custom state per graph type
-    custom_state: Dict[str, Any]
+    custom_state: dict[str, Any]
 
 
 class StateManager:
     """Manages state persistence and retrieval for graphs."""
     
     def __init__(self) -> None:
-        self._states: Dict[str, GraphState] = {}
-        self._execution_history: Dict[str, List[Dict[str, Any]]] = {}
+        self._states: dict[str, GraphState] = {}
+        self._execution_history: dict[str, List[dict[str, Any]]] = {}
     
     def create_state(
         self, 
         session_id: str,
         graph_id: str,
-        initial_data: Optional[Dict[str, Any]] = None
+        initial_data: dict[str, Any] | None = None
     ) -> GraphState:
         """Create a new graph state."""
         execution_id = str(uuid4())
@@ -75,15 +75,15 @@ class StateManager:
         
         return state
     
-    def get_state(self, execution_id: str) -> Optional[GraphState]:
+    def get_state(self, execution_id: str) -> GraphState | None:
         """Retrieve state by execution ID."""
         return self._states.get(execution_id)
     
     def update_state(
         self, 
         execution_id: str, 
-        updates: Dict[str, Any]
-    ) -> Optional[GraphState]:
+        updates: dict[str, Any]
+    ) -> GraphState | None:
         """Update state with new values."""
         if execution_id not in self._states:
             return None
@@ -109,7 +109,7 @@ class StateManager:
             return True
         return False
     
-    def get_execution_history(self, execution_id: str) -> List[Dict[str, Any]]:
+    def get_execution_history(self, execution_id: str) -> List[dict[str, Any]]:
         """Get execution history for debugging."""
         return self._execution_history.get(execution_id, [])
     
@@ -125,7 +125,7 @@ class StateSnapshot(BaseModel):
     session_id: str
     graph_id: str
     current_node: str
-    state_data: Dict[str, Any]
+    state_data: dict[str, Any]
     timestamp: float
     checksum: str
     

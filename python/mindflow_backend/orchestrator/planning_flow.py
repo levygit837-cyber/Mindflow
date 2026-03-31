@@ -21,9 +21,8 @@ from langchain_core.callbacks.manager import adispatch_custom_event
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.orchestrator.step_runner import run_workflow_step
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType, ExecutionStrategy
-from mindflow_backend.schemas.orchestration.planning import PlanStatus, PlanningRequest
-from mindflow_backend.schemas.orchestration.specialists import SpecialistType
+from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.schemas.orchestration.planning import PlanningRequest, PlanStatus
 from mindflow_backend.schemas.orchestration.workflow import WorkflowStep
 from mindflow_backend.schemas.tools.planning import TodoItemStatus
 
@@ -257,7 +256,6 @@ async def run_planning_phase(
     Returns a state update with the plan status.
     """
     from mindflow_backend.agents.planner_agent import get_planner_agent
-    from mindflow_backend.services.orchestration.planning_service import get_planning_service
     
     session_id = state.get("session_id", "")
     message = state.get("message", "")

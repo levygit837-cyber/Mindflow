@@ -6,17 +6,8 @@ Provides high-level client functionality with automatic transport selection,
 connection management, and protocol handling.
 """
 
-from .client import (
-    MCPClient,
-    MCPClientConfig,
-    MCPClientState,
-    MCPClientError
-)
-
-from .manager import (
-    MCPClientManager,
-    MCPClientPool
-)
+from .client import MCPClient, MCPClientConfig, MCPClientError, MCPClientState
+from .manager import MCPClientManager, MCPClientPool
 
 __all__ = [
     "MCPClient",

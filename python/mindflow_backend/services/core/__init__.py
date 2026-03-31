@@ -48,7 +48,9 @@ def get_pinchtab_container_service():
     """Factory for the PinchTab docker container orchestrator."""
     global _pinchtab_container_service
     if _pinchtab_container_service is None:
-        from mindflow_backend.services.core.pinchtab_container_service import PinchTabContainerService
+        from mindflow_backend.services.core.pinchtab_container_service import (
+            PinchTabContainerService,
+        )
 
         _pinchtab_container_service = PinchTabContainerService()
     return _pinchtab_container_service
@@ -94,7 +96,9 @@ def get_session_runtime_state_service():
     """Factory function for the session runtime state persistence service."""
     global _session_runtime_state_service
     if _session_runtime_state_service is None:
-        from mindflow_backend.services.core.session_runtime_state_service import SessionRuntimeStateService
+        from mindflow_backend.services.core.session_runtime_state_service import (
+            SessionRuntimeStateService,
+        )
 
         _session_runtime_state_service = SessionRuntimeStateService()
     return _session_runtime_state_service

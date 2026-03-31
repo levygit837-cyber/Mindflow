@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from typing import Any
+
 from fastapi import Request
 
-from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, audit_log
-from mindflow_backend.api.schemas.requests import ProviderConfigRequest, ProviderTestRequest
-from mindflow_backend.api.schemas.responses import (
-    ProviderResponse,
+from mindflow_backend.api.controllers.base_controller import BaseController, audit_log, require_auth
+from mindflow_backend.schemas.api.requests import ProviderConfigRequest, ProviderTestRequest
+from mindflow_backend.schemas.api.responses import (
     ProviderListResponse,
-    ProviderTestResponse
+    ProviderResponse,
+    ProviderTestResponse,
 )
 from mindflow_backend.services import get_provider_service
 

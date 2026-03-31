@@ -26,29 +26,61 @@ Usage:
 
 from __future__ import annotations
 
-# Core domain services
-from mindflow_backend.services.core import (
-    get_agent_service,
-    get_session_service,
-    get_provider_service,
-    get_pinchtab_service,
-    get_shell_tab_service,
-)
-
-# Orchestration domain services
-from mindflow_backend.services.orchestration import (
-    get_orchestration_service,
-    get_task_service,
-    get_routing_service,
-    get_todo_planning_service,
-    get_planning_service,
+# Communication domain services
+from mindflow_backend.services.communication import (
+    get_agent_runtime_service,
+    get_grpc_service,
+    get_streaming_service,
 )
 
 # Context domain services
 from mindflow_backend.services.context import (
-    get_retrieval_service,
     get_embedding_service,
+    get_retrieval_service,
     get_vector_service,
+)
+
+# Core domain services
+from mindflow_backend.services.core import (
+    get_agent_service,
+    get_pinchtab_service,
+    get_provider_service,
+    get_session_service,
+    get_shell_tab_service,
+)
+
+# Dependency injection container
+from mindflow_backend.services.core.container import (
+    get_container,
+    get_service,
+    initialize_core_services,
+    register_service,
+)
+
+# Service interfaces
+from mindflow_backend.services.interfaces import (
+    AgentServiceInterface,
+    BaseServiceInterface,
+    EmbeddingServiceInterface,
+    GrpcServiceInterface,
+    HealthServiceInterface,
+    MemoryServiceInterface,
+    MetricsServiceInterface,
+    OrchestrationServiceInterface,
+    ProviderServiceInterface,
+    RetrievalServiceInterface,
+    ReviewServiceInterface,
+    RoutingServiceInterface,
+    SessionServiceInterface,
+    StreamingServiceInterface,
+    TaskServiceInterface,
+    TodoPlanningServiceInterface,
+    VectorStoreInterface,
+)
+
+# Memory domain services
+from mindflow_backend.services.memory import (
+    get_memory_service,
 )
 
 # Monitoring domain services
@@ -58,45 +90,13 @@ from mindflow_backend.services.monitoring import (
     get_review_service,
 )
 
-# Communication domain services
-from mindflow_backend.services.communication import (
-    get_grpc_service,
-    get_streaming_service,
-    get_agent_runtime_service,
-)
-
-# Memory domain services
-from mindflow_backend.services.memory import (
-    get_memory_service,
-)
-
-# Dependency injection container
-from mindflow_backend.services.core.container import (
-    get_container,
-    get_service,
-    register_service,
-    initialize_core_services,
-)
-
-# Service interfaces
-from mindflow_backend.services.interfaces import (
-    BaseServiceInterface,
-    AgentServiceInterface,
-    SessionServiceInterface,
-    MemoryServiceInterface,
-    ProviderServiceInterface,
-    OrchestrationServiceInterface,
-    TaskServiceInterface,
-    RoutingServiceInterface,
-    TodoPlanningServiceInterface,
-    RetrievalServiceInterface,
-    EmbeddingServiceInterface,
-    VectorStoreInterface,
-    HealthServiceInterface,
-    MetricsServiceInterface,
-    ReviewServiceInterface,
-    GrpcServiceInterface,
-    StreamingServiceInterface,
+# Orchestration domain services
+from mindflow_backend.services.orchestration import (
+    get_orchestration_service,
+    get_planning_service,
+    get_routing_service,
+    get_task_service,
+    get_todo_planning_service,
 )
 
 # Public API - factory functions for all services

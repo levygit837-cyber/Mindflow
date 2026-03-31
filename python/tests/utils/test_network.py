@@ -1,15 +1,16 @@
 """Test cases for network utilities."""
 
+
 import pytest
-import asyncio
+
 from mindflow_backend.utils.network import (
-    retry_on_error,
+    add_query_params,
+    build_url,
+    find_free_port,
     get_port_manager,
     is_port_open,
-    find_free_port,
     parse_url,
-    build_url,
-    add_query_params,
+    retry_on_error,
 )
 
 

@@ -7,22 +7,18 @@ practical patterns and essential functionality.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 
-from mindflow_backend.exceptions.base.core_new import (
-    MindFlowError,
-    SystemError,
-    NetworkError,
-    TimeoutError,
-    ResourceError,
-    ErrorFactory,
-)
 from mindflow_backend.exceptions.base.business_new import (
-    BusinessLogicError,
-    ValidationError,
-    AuthenticationError,
     AuthorizationError,
     NotFoundError,
+    ValidationError,
+)
+from mindflow_backend.exceptions.base.core_new import (
+    ErrorFactory,
+    MindFlowError,
+    NetworkError,
+    ResourceError,
+    TimeoutError,
 )
 from mindflow_backend.exceptions.base.patterns_new import (
     ExceptionTemplates,
@@ -41,7 +37,7 @@ def demo_basic_usage():
         context={"host": "localhost", "port": 5432}
     )
     
-    print(f"✅ Created basic error:")
+    print("✅ Created basic error:")
     print(f"   Error ID: {error.error_id}")
     print(f"   Component: {error.component}")
     print(f"   Context: {error.context}")
@@ -57,7 +53,7 @@ def demo_basic_usage():
         suggestion="Use format: user@example.com"
     )
     
-    print(f"\n✅ Validation error:")
+    print("\n✅ Validation error:")
     print(f"   Field: {validation_error.field}")
     print(f"   Value: {validation_error.value}")
     print(f"   Expected: {validation_error.expected_format}")
@@ -75,7 +71,7 @@ def demo_factory_methods():
         cause=ConnectionError("Connection refused")
     )
     
-    print(f"✅ Network failure from factory:")
+    print("✅ Network failure from factory:")
     print(f"   Message: {network_error}")
     print(f"   Endpoint: {network_error.endpoint}")
     print(f"   Cause: {network_error.cause}")
@@ -86,15 +82,15 @@ def demo_factory_methods():
         30.0
     )
     
-    print(f"\n✅ Timeout error from factory:")
+    print("\n✅ Timeout error from factory:")
     print(f"   Message: {timeout_error}")
-    print(f"   Operation: user_registration")
+    print("   Operation: user_registration")
     print(f"   Timeout: {timeout_error.timeout_seconds}s")
     
     # Resource exhaustion
     resource_error = ErrorFactory.resource_exhausted("database_connections")
     
-    print(f"\n✅ Resource error from factory:")
+    print("\n✅ Resource error from factory:")
     print(f"   Message: {resource_error}")
     print(f"   Resource type: {resource_error.resource_type}")
 
@@ -110,7 +106,7 @@ def demo_exception_templates():
         value=None
     ).build()
     
-    print(f"✅ Missing field template:")
+    print("✅ Missing field template:")
     print(f"   Field: {missing_field_error.field}")
     print(f"   User message: {missing_field_error.user_message}")
     print(f"   Suggestion: {missing_field_error.suggestion}")
@@ -122,7 +118,7 @@ def demo_exception_templates():
         "phone_number"
     ).build()
     
-    print(f"\n✅ Invalid format template:")
+    print("\n✅ Invalid format template:")
     print(f"   Field: {invalid_format_error.field}")
     print(f"   Value: {invalid_format_error.value}")
     print(f"   Expected: {invalid_format_error.expected_format}")
@@ -133,7 +129,7 @@ def demo_exception_templates():
         user_identifier="john.doe"
     ).build()
     
-    print(f"\n✅ Authentication failed template:")
+    print("\n✅ Authentication failed template:")
     print(f"   Error code: {auth_failed_error.error_code}")
     print(f"   User message: {auth_failed_error.user_message}")
     print(f"   Suggestion: {auth_failed_error.suggestion}")
@@ -158,7 +154,7 @@ def demo_context_methods():
         .caused_by(ValueError("Invalid input data"))
     )
     
-    print(f"✅ Context-enriched error:")
+    print("✅ Context-enriched error:")
     print(f"   Original: {context_enriched_error}")
     print(f"   Context: {context_enriched_error.context}")
     print(f"   Cause: {context_enriched_error.cause}")
@@ -193,7 +189,7 @@ async def demo_error_handling():
         print(f"✅ Operation result: {result}")
         
     except Exception as exc:
-        print(f"\n✅ Caught exception:")
+        print("\n✅ Caught exception:")
         print(f"   Type: {type(exc).__name__}")
         print(f"   Message: {str(exc)}")
         

@@ -9,9 +9,9 @@ Tests:
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # OrchestratorDecision memory_recall defaults
@@ -43,7 +43,10 @@ def test_memory_recall_default_values():
 
 
 def test_memory_recall_can_be_overridden():
-    from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, MemoryRecallConfig
+    from mindflow_backend.schemas.orchestration.orchestrator import (
+        MemoryRecallConfig,
+        OrchestratorDecision,
+    )
 
     d = OrchestratorDecision(
         memory_recall=MemoryRecallConfig(
@@ -115,7 +118,10 @@ def test_agent_memory_snapshot_fields():
 @pytest.mark.asyncio
 async def test_recall_returns_session_hits_when_sufficient():
     """When session has ≥2 hits with best_score ≥ 0.55, no cross-session call is made."""
-    from mindflow_backend.orchestrator.memory_integration import MemoryIntegration, MemoryRecallRequest
+    from mindflow_backend.orchestrator.memory_integration import (
+        MemoryIntegration,
+        MemoryRecallRequest,
+    )
 
     mi = MemoryIntegration()
 
@@ -149,7 +155,10 @@ async def test_recall_returns_session_hits_when_sufficient():
 @pytest.mark.asyncio
 async def test_recall_falls_back_cross_session_when_too_few_hits():
     """When session has < 2 hits, cross-session fallback is triggered."""
-    from mindflow_backend.orchestrator.memory_integration import MemoryIntegration, MemoryRecallRequest
+    from mindflow_backend.orchestrator.memory_integration import (
+        MemoryIntegration,
+        MemoryRecallRequest,
+    )
 
     mi = MemoryIntegration()
 
@@ -175,7 +184,10 @@ async def test_recall_falls_back_cross_session_when_too_few_hits():
 @pytest.mark.asyncio
 async def test_recall_falls_back_cross_session_when_score_below_threshold():
     """When session best_score < 0.55, cross-session fallback is triggered even with ≥2 hits."""
-    from mindflow_backend.orchestrator.memory_integration import MemoryIntegration, MemoryRecallRequest
+    from mindflow_backend.orchestrator.memory_integration import (
+        MemoryIntegration,
+        MemoryRecallRequest,
+    )
 
     mi = MemoryIntegration()
 
@@ -202,7 +214,10 @@ async def test_recall_falls_back_cross_session_when_score_below_threshold():
 
 @pytest.mark.asyncio
 async def test_recall_cross_session_true_executes_direct_cross_session_search():
-    from mindflow_backend.orchestrator.memory_integration import MemoryIntegration, MemoryRecallRequest
+    from mindflow_backend.orchestrator.memory_integration import (
+        MemoryIntegration,
+        MemoryRecallRequest,
+    )
 
     mi = MemoryIntegration()
 
@@ -229,7 +244,10 @@ async def test_recall_cross_session_true_executes_direct_cross_session_search():
 @pytest.mark.asyncio
 async def test_recall_does_not_inject_empty_block():
     """When all recall paths return empty, context string must be empty (not a placeholder)."""
-    from mindflow_backend.orchestrator.memory_integration import MemoryIntegration, MemoryRecallRequest
+    from mindflow_backend.orchestrator.memory_integration import (
+        MemoryIntegration,
+        MemoryRecallRequest,
+    )
 
     mi = MemoryIntegration()
 
@@ -284,7 +302,9 @@ async def test_recall_memory_helper_uses_canonical_facade_response():
 @pytest.mark.asyncio
 async def test_simple_flow_retrieve_uses_canonical_facade():
     """_retrieve_memory_context in simple_flow must call SessionMemoryService, not the SQLite path."""
-    from mindflow_backend.graphs.implementations.orchestrator.simple_flow import SimpleOrchestratorGraph
+    from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+        SimpleOrchestratorGraph,
+    )
 
     graph = SimpleOrchestratorGraph()
 

@@ -7,12 +7,13 @@ deadline propagation, and adaptive timeout strategies.
 from __future__ import annotations
 
 import asyncio
+import builtins
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Any, Callable, Dict, Optional, Union
 from dataclasses import dataclass, field
+from typing import Any
 
-import grpc
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -27,7 +28,7 @@ class TimeoutConfig:
     streaming_timeout: float = 600.0        # Streaming operations timeout
     
     # Per-operation timeouts
-    operation_timeouts: Dict[str, float] = field(default_factory=dict)
+    operation_timeouts: dict[str, float] = field(default_factory=dict)
     
     # Adaptive timeout settings
     enable_adaptive: bool = False
@@ -58,8 +59,8 @@ class TimeoutManager:
     
     def __init__(self, config: TimeoutConfig | None = None):
         self.config = config or TimeoutConfig()
-        self._operation_history: Dict[str, List[Dict[str, Any]]] = {}
-        self._adaptive_timeouts: Dict[str, float] = {}
+        self._operation_history: dict[str, List[dict[str, Any]]] = {}
+        self._adaptive_timeouts: dict[str, float] = {}
     
     @asynccontextmanager
     async def timeout_context(self, operation: str, timeout: float | None = None):
@@ -79,7 +80,7 @@ class TimeoutManager:
             
             yield effective_timeout
             
-        except asyncio.TimeoutError:
+        except builtins.TimeoutError:
             elapsed = time.time() - start_time
             self._record_operation_timeout(operation, effective_timeout, elapsed)
             raise TimeoutError(operation, effective_timeout, elapsed)
@@ -107,7 +108,7 @@ class TimeoutManager:
                     timeout=effective_timeout
                 )
                 return result
-            except asyncio.TimeoutError:
+            except builtins.TimeoutError:
                 elapsed = time.time() - time.time()
                 raise TimeoutError(operation_name, effective_timeout, elapsed)
     
@@ -131,7 +132,7 @@ class TimeoutManager:
         else:
             return self.config.default_timeout
     
-    def create_grpc_options(self, operation: str, timeout: float | None = None) -> Dict[str, Any]:
+    def create_grpc_options(self, operation: str, timeout: float | None = None) -> dict[str, Any]:
         """Create gRPC options with timeout."""
         effective_timeout = timeout or self.get_timeout_for_operation(operation)
         
@@ -260,7 +261,7 @@ class TimeoutManager:
         short_keywords = ['ping', 'health', 'status', 'echo', 'validate']
         return any(keyword in operation.lower() for keyword in short_keywords)
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get timeout statistics."""
         stats = {
             'total_operations': 0,

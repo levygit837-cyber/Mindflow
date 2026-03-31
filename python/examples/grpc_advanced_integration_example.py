@@ -8,18 +8,17 @@ patterns in the OmniMind gRPC system.
 """
 
 import asyncio
-import sys
 import os
-from typing import Dict, Any
+import sys
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.grpc.client import EnhancedGrpcAgentClient
+from mindflow_backend.grpc.config import GrpcClientConfig, GrpcConfig
 from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
 from mindflow_backend.grpc.config.profiles import get_environment_loader
 from mindflow_backend.grpc.server import EnhancedGrpcAgentServer
-from mindflow_backend.grpc.client import EnhancedGrpcAgentClient
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -132,7 +131,7 @@ class GrpcAdvancedIntegrationExample:
         
         # Start server
         await self.server.start()
-        print(f"   ✅ Server started successfully")
+        print("   ✅ Server started successfully")
         
         # Get server information
         server_info = self.server.get_server_info()
@@ -160,7 +159,7 @@ class GrpcAdvancedIntegrationExample:
         print(f"   ✅ Connection pool size: {client_config.pool_size}")
         print(f"   ✅ Load balancing: {client_config.load_balancing_policy}")
         print(f"   ✅ Compression: {client_config.compression_algorithm}")
-        print(f"   ✅ Enhanced features: monitoring, circuit_breaker, retry, timeout, pooling")
+        print("   ✅ Enhanced features: monitoring, circuit_breaker, retry, timeout, pooling")
     
     async def demonstrate_monitoring(self):
         """Demonstrate monitoring and metrics collection."""
@@ -227,7 +226,7 @@ class GrpcAdvancedIntegrationExample:
             
             # Get statistics
             stats = await self.config_manager.get_statistics()
-            print(f"   Current statistics:")
+            print("   Current statistics:")
             print(f"   - Current version: {stats.get('current_version', 'unknown')}")
             print(f"   - Total updates: {stats.get('total_updates', 0)}")
             print(f"   - Last update: {stats.get('last_update_timestamp', 0)}")

@@ -7,8 +7,9 @@ and environment profile support.
 
 from __future__ import annotations
 
-from typing import Literal, Optional
-from pydantic import Field, BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from mindflow_backend.infra.config import get_settings
 
@@ -176,7 +177,7 @@ class GrpcConfig(BaseModel):
         )
     
     @classmethod
-    async def load_dynamic(cls, profile: Optional[str] = None) -> GrpcConfig:
+    async def load_dynamic(cls, profile: str | None = None) -> GrpcConfig:
         """Load configuration with dynamic overrides and profile support."""
         try:
             # Load base configuration
@@ -281,7 +282,7 @@ class GrpcClientConfig(BaseModel):
     )
     
     @classmethod
-    def from_settings(cls, settings=None) -> "GrpcClientConfig":
+    def from_settings(cls, settings=None) -> GrpcClientConfig:
         """Create client config from application settings."""
         if settings is None:
             from mindflow_backend.infra.config import get_settings

@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Optional, Set, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import grpc
+
 from grpc.aio import Channel
 
+import grpc
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -118,8 +118,8 @@ class GrpcConnectionPool:
         
         # Connection management
         self.available_connections: asyncio.Queue[GrpcConnection] = asyncio.Queue()
-        self.active_connections: Set[GrpcConnection] = set()
-        self.all_connections: Set[GrpcConnection] = set()
+        self.active_connections: set[GrpcConnection] = set()
+        self.all_connections: set[GrpcConnection] = set()
         
         # Pool state
         self._lock = asyncio.Lock()
@@ -132,8 +132,8 @@ class GrpcConnectionPool:
         self._max_response_times = 1000  # Keep last 1000 response times
         
         # Background tasks
-        self._health_check_task: Optional[asyncio.Task] = None
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
+        self._cleanup_task: asyncio.Task | None = None
         
         _logger.info("grpc_connection_pool_created", 
                     pool_id=pool_id, 
@@ -195,7 +195,7 @@ class GrpcConnectionPool:
             
             return connection
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.stats.failed_requests += 1
             raise ConnectionPoolTimeoutError(f"Connection timeout after {timeout}s")
         except Exception as exc:
@@ -326,7 +326,7 @@ class GrpcConnectionPool:
                 timeout=timeout
             )
             return connection
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise ConnectionPoolExhaustedError("No connections available and pool is at maximum size")
     
     async def _create_and_get_connection(self, timeout: float) -> GrpcConnection:

@@ -9,8 +9,8 @@ Use: from mindflow_backend.interfaces.infrastructure import GrpcClient, GrpcServ
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.infrastructure.grpc import (
     GrpcClient,
-    GrpcServer,
     GrpcConnectionManager,
+    GrpcServer,
 )
 
 # Maintain backward compatibility

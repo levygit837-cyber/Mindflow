@@ -14,12 +14,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from mindflow_backend.agents._base import BaseAgent
-from mindflow_backend.agents.prompts.core.analyst import ANALYST_SYSTEM_PROMPT, compose_analyst_prompt
+from mindflow_backend.agents.prompts.core.analyst import (
+    ANALYST_SYSTEM_PROMPT,
+    compose_analyst_prompt,
+)
 from mindflow_backend.agents.prompts.core.coder import CODER_SYSTEM_PROMPT, compose_coder_prompt
 from mindflow_backend.agents.prompts.core.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from mindflow_backend.agents.prompts.core.researcher import RESEARCHER_SYSTEM_PROMPT
 from mindflow_backend.agents.prompts.specialized.deep_analysis import DEEP_ANALYSIS_PROMPT
 from mindflow_backend.agents.prompts.specialized.planning import PLANNING_PROMPT
+from mindflow_backend.schemas.orchestration.communication import (
+    CommRole,
+    MissionGraphType,
+)
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
     SandboxMode,
@@ -43,6 +50,19 @@ class AgentRuntimePolicy:
     max_iterations: int = 1
     summary: str = ""
     use_when: str = ""
+
+    # ── Communication and mission fields (Phase 1C) ──────────────────
+    comm_role: CommRole = CommRole.SPECIALIST
+    """Papel na sessão colaborativa: leader | specialist | observer"""
+
+    available_mission_graphs: tuple[MissionGraphType, ...] = ()
+    """Tipos de execution graphs que este agente pode executar"""
+
+    can_observe: bool = False
+    """Se True, o agente pode entrar em modo observer após missão"""
+
+    mission_types: tuple[str, ...] = ()
+    """Tipos de missão que este agente pode liderar (strings descritivas)"""
 
     @property
     def agent_id(self) -> str:
@@ -73,6 +93,11 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=1000,  # Practically unlimited for deep orchestration
         summary="Central conversational agent that delegates to specialists via delegate_to_agent tool.",
         use_when="All user messages — the Orchestrator is the sole entry point.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.LEADER,
+        available_mission_graphs=(),  # Não executa missões; lança missões de outros
+        can_observe=True,  # Monitora todas as missões em andamento
+        mission_types=("coordination", "synthesis", "team_session"),
     ),
     "analyst": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -83,6 +108,16 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=500,  # Unlimited for deep code investigation
         summary="Code investigation, structure analysis, symbol tracing, workspace exploration.",
         use_when="Understanding code, tracing bugs, auditing and explaining implementations.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.ANALYSIS,
+            MissionGraphType.DEEP_INVESTIGATION,
+            MissionGraphType.SECURITY_AUDIT,
+            MissionGraphType.CODE_REVIEW,
+        ),
+        can_observe=True,
+        mission_types=("analysis", "code_investigation", "review"),
     ),
     "analyst:security_guard": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -94,6 +129,14 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=500,  # Unlimited for thorough security audits
         summary="Security audits, auth flow review, vulnerability-oriented investigation.",
         use_when="Security reviews, auth analysis and vulnerability checks.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.SECURITY_AUDIT,
+            MissionGraphType.VULNERABILITY_SCAN,
+        ),
+        can_observe=True,
+        mission_types=("security_audit", "vulnerability_scan"),
     ),
     "analyst:critic": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -105,6 +148,14 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=500,  # Unlimited for comprehensive code review
         summary="Code review, critique, regression and best-practice assessment.",
         use_when="Focused review of implementation quality and risks.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.CODE_REVIEW,
+            MissionGraphType.ANALYSIS,
+        ),
+        can_observe=False,
+        mission_types=("code_review", "quality_assessment"),
     ),
     "analyst:brainstorm": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -116,6 +167,14 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=500,  # Unlimited for extensive ideation
         summary="Structured idea generation, alternatives exploration and option scoring.",
         use_when="Ideation, alternatives exploration and brainstorming requests.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.IDEATION,
+            MissionGraphType.EXPLORATION,
+        ),
+        can_observe=False,
+        mission_types=("ideation", "exploration"),
     ),
     "analyst:deep_iteration": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -127,6 +186,14 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=1000,  # Unlimited for exhaustive multi-pass analysis
         summary="Deep multi-file investigation with iterative exhaustive analysis.",
         use_when="Cross-cutting, high-complexity analysis requiring multiple passes.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.DEEP_INVESTIGATION,
+            MissionGraphType.MULTI_PASS_ANALYSIS,
+        ),
+        can_observe=True,
+        mission_types=("deep_analysis", "multi_pass_investigation"),
     ),
     "analyst:planner": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -138,6 +205,14 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=500,  # Unlimited for complex planning
         summary="Structured implementation planning with file impact analysis and task decomposition.",
         use_when="Complex tasks requiring explicit planning before implementation.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.ANALYSIS,
+            MissionGraphType.DEEP_INVESTIGATION,
+        ),
+        can_observe=False,
+        mission_types=("planning", "impact_analysis"),
     ),
     "coder": AgentRuntimePolicy(
         agent_role=AgentType.CODER,
@@ -148,6 +223,16 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=1000,  # Unlimited for complex implementations
         summary="Code writing, implementation, refactoring and bug fixing.",
         use_when="Implementing features, fixing bugs and editing the codebase.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.CODING_TASK,
+            MissionGraphType.REFACTOR,
+            MissionGraphType.BUG_FIX,
+            MissionGraphType.IMPLEMENTATION,
+        ),
+        can_observe=False,
+        mission_types=("coding", "bug_fix", "refactor", "implementation"),
     ),
     "coder:arch_tech": AgentRuntimePolicy(
         agent_role=AgentType.CODER,
@@ -159,6 +244,15 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=1000,  # Unlimited for architectural work
         summary="Architecture design, structural decisions and implementation planning.",
         use_when="Architecture-heavy coding or structural refactoring requests.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.ARCHITECTURE_DESIGN,
+            MissionGraphType.STRUCTURAL_REFACTOR,
+            MissionGraphType.CODING_TASK,
+        ),
+        can_observe=False,
+        mission_types=("architecture_design", "structural_refactor"),
     ),
     "researcher": AgentRuntimePolicy(
         agent_role=AgentType.RESEARCHER,
@@ -169,6 +263,15 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         max_iterations=500,  # Unlimited for thorough research
         summary="Web search, documentation lookup and external research.",
         use_when="External research, documentation lookup and technology comparisons.",
+        # ── Communication fields ──────────────────────────────────────
+        comm_role=CommRole.SPECIALIST,
+        available_mission_graphs=(
+            MissionGraphType.WEB_RESEARCH,
+            MissionGraphType.DOCUMENTATION_LOOKUP,
+            MissionGraphType.COMPARISON_ANALYSIS,
+        ),
+        can_observe=False,
+        mission_types=("web_research", "documentation", "comparison"),
     ),
 }
 

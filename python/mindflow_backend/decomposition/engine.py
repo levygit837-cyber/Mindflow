@@ -14,7 +14,6 @@ from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 impor
     SubTaskContract,
 )
 
-
 # ---------------------------------------------------------------------------
 # Abstract base classes (contracts for each pipeline stage)
 # ---------------------------------------------------------------------------

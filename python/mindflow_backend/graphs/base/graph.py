@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.graphs.base.state import GraphState, StateManager
 from mindflow_backend.graphs.base.types import GraphConfig, GraphMetrics, GraphType, NodeConnection
@@ -15,14 +15,14 @@ class BaseGraph(ABC):
     def __init__(
         self,
         graph_id: str,
-        config: Optional[GraphConfig] = None,
-        state_manager: Optional[StateManager] = None
+        config: GraphConfig | None = None,
+        state_manager: StateManager | None = None
     ) -> None:
         self.graph_id = graph_id
         self.config = config or GraphConfig()
         self.state_manager = state_manager or StateManager()
-        self._nodes: Dict[str, Any] = {}
-        self._connections: List[NodeConnection] = []
+        self._nodes: dict[str, Any] = {}
+        self._connections: list[NodeConnection] = []
         self._entry_point: str = ""
     
     @property
@@ -37,7 +37,7 @@ class BaseGraph(ABC):
         ...
     
     @abstractmethod
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate the graph structure and return any issues."""
         ...
     
@@ -74,19 +74,19 @@ class BaseGraph(ABC):
             raise ValueError(f"Entry point node {node_id} not found")
         self._entry_point = node_id
     
-    def get_node(self, node_id: str) -> Optional[Any]:
+    def get_node(self, node_id: str) -> Any | None:
         """Get a node by ID."""
         return self._nodes.get(node_id)
     
-    def get_nodes(self) -> Dict[str, Any]:
+    def get_nodes(self) -> dict[str, Any]:
         """Get all nodes in the graph."""
         return dict(self._nodes)
     
-    def get_connections(self) -> List[NodeConnection]:
+    def get_connections(self) -> list[NodeConnection]:
         """Get all connections in the graph."""
         return list(self._connections)
     
-    def get_next_nodes(self, current_node: str) -> List[str]:
+    def get_next_nodes(self, current_node: str) -> list[str]:
         """Get the next nodes based on connections."""
         return [
             conn.target_node 
@@ -97,7 +97,7 @@ class BaseGraph(ABC):
     def create_state(
         self, 
         session_id: str,
-        initial_data: Optional[Dict[str, Any]] = None
+        initial_data: dict[str, Any] | None = None
     ) -> GraphState:
         """Create a new state for this graph."""
         return self.state_manager.create_state(
@@ -150,7 +150,7 @@ class BaseGraph(ABC):
         
         return result_state, metrics
     
-    def validate_structure(self) -> List[str]:
+    def validate_structure(self) -> list[str]:
         """Validate the basic structure of the graph."""
         issues = []
         
@@ -181,7 +181,7 @@ class BaseGraph(ABC):
         
         return issues
     
-    def get_graph_info(self) -> Dict[str, Any]:
+    def get_graph_info(self) -> dict[str, Any]:
         """Get information about the graph structure."""
         return {
             "graph_id": self.graph_id,
@@ -244,7 +244,7 @@ class SimpleGraph(BaseGraph):
         
         return state
     
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate simple graph structure."""
         issues = self.validate_structure()
         

@@ -3,10 +3,10 @@
 Generic validation functions that can be reused across the system.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 
-def validate_memory_data(data: Dict[str, Any]) -> List[str]:
+def validate_memory_data(data: dict[str, Any]) -> list[str]:
     """Validate memory data and return list of errors."""
     errors = []
     
@@ -30,7 +30,7 @@ def validate_memory_data(data: Dict[str, Any]) -> List[str]:
     return errors
 
 
-def validate_search_query(query: str) -> List[str]:
+def validate_search_query(query: str) -> list[str]:
     """Validate search query and return list of errors."""
     errors = []
     
@@ -43,7 +43,7 @@ def validate_search_query(query: str) -> List[str]:
     return errors
 
 
-def validate_session_id(session_id: str) -> List[str]:
+def validate_session_id(session_id: str) -> list[str]:
     """Validate session ID and return list of errors."""
     errors = []
     
@@ -73,7 +73,7 @@ def validate_uuid(uuid_str: str) -> bool:
         return False
 
 
-def validate_json_schema(data: dict, schema: dict) -> List[str]:
+def validate_json_schema(data: dict, schema: dict) -> list[str]:
     """Validate data against a JSON schema and return list of errors."""
     errors = []
     

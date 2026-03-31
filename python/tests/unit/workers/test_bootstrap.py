@@ -10,7 +10,6 @@ import pytest
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
 from mindflow_backend.workers.config.queues import QueueDefinitions
 
-
 PYTHON_ROOT = Path(__file__).resolve().parents[3]
 PYPROJECT_PATH = PYTHON_ROOT / "pyproject.toml"
 

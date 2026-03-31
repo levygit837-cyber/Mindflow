@@ -9,8 +9,8 @@ Use: from mindflow_backend.interfaces.services import OrchestrationServiceInterf
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.services.orchestration import (
     OrchestrationServiceInterface,
-    TaskServiceInterface,
     RoutingServiceInterface,
+    TaskServiceInterface,
     TodoPlanningServiceInterface,
 )
 

@@ -6,8 +6,9 @@ cache hierarchy, and performance optimization.
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
-from pydantic import field_validator,  Field, validator
+from typing import Any
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -30,8 +31,8 @@ class CacheConfig(BaseSettings):
     redis_host: str = Field(default="localhost", description="Redis host")
     redis_port: int = Field(default=6379, description="Redis port")
     redis_db: int = Field(default=0, description="Redis database number")
-    redis_password: Optional[str] = Field(default=None, description="Redis password")
-    redis_username: Optional[str] = Field(default=None, description="Redis username")
+    redis_password: str | None = Field(default=None, description="Redis password")
+    redis_username: str | None = Field(default=None, description="Redis username")
     
     # Connection Pool Configuration
     redis_pool_size: int = Field(default=10, description="Redis connection pool size")
@@ -43,9 +44,9 @@ class CacheConfig(BaseSettings):
     # SSL Configuration
     redis_ssl: bool = Field(default=False, description="Enable Redis SSL")
     redis_ssl_cert_reqs: str = Field(default="required", description="Redis SSL certificate requirements")
-    redis_ssl_ca_certs: Optional[str] = Field(default=None, description="Redis SSL CA certificates path")
-    redis_ssl_certfile: Optional[str] = Field(default=None, description="Redis SSL certificate file path")
-    redis_ssl_keyfile: Optional[str] = Field(default=None, description="Redis SSL key file path")
+    redis_ssl_ca_certs: str | None = Field(default=None, description="Redis SSL CA certificates path")
+    redis_ssl_certfile: str | None = Field(default=None, description="Redis SSL certificate file path")
+    redis_ssl_keyfile: str | None = Field(default=None, description="Redis SSL key file path")
     
     # Cache Hierarchy Configuration
     enable_l1_cache: bool = Field(default=True, description="Enable L1 (memory) cache")
@@ -190,7 +191,7 @@ class CacheConfig(BaseSettings):
             raise ValueError(f"l1_cache_ttl ({v}) should be less than l2_cache_ttl ({l2_ttl})")
         return v
 
-    def get_redis_config(self) -> Dict[str, Any]:
+    def get_redis_config(self) -> dict[str, Any]:
         """Get Redis connection configuration.
         
         Returns:
@@ -215,7 +216,7 @@ class CacheConfig(BaseSettings):
             "ssl_keyfile": self.redis_ssl_keyfile,
         }
 
-    def get_cache_hierarchy_config(self) -> Dict[str, Any]:
+    def get_cache_hierarchy_config(self) -> dict[str, Any]:
         """Get cache hierarchy configuration.
         
         Returns:
@@ -232,7 +233,7 @@ class CacheConfig(BaseSettings):
             "min_ttl": self.min_ttl,
         }
 
-    def get_performance_config(self) -> Dict[str, Any]:
+    def get_performance_config(self) -> dict[str, Any]:
         """Get performance optimization configuration.
         
         Returns:
@@ -247,7 +248,7 @@ class CacheConfig(BaseSettings):
             "default_serializer": self.default_serializer,
         }
 
-    def get_monitoring_config(self) -> Dict[str, Any]:
+    def get_monitoring_config(self) -> dict[str, Any]:
         """Get monitoring configuration.
         
         Returns:
@@ -265,7 +266,7 @@ class CacheConfig(BaseSettings):
             "log_cache_keys": self.log_cache_keys,
         }
 
-    def get_cluster_config(self) -> Dict[str, Any]:
+    def get_cluster_config(self) -> dict[str, Any]:
         """Get cluster configuration.
         
         Returns:

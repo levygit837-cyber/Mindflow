@@ -10,20 +10,13 @@ This module intentionally returns concrete chain instances with an async
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # Import the new factory system
 from mindflow_backend.chains.factory import (
-    get_chain_factory,
     ChainRequest,
-    create_and_execute_chain,
-)
-
-# Legacy imports for backward compatibility
-from mindflow_backend.chains.templates.conditional_workflow_chain import (
-    ConditionalWorkflowChain,
-    ConditionalWorkflowConfig,
-    create_conditional_workflow_chain,
+    get_chain_factory,
 )
 from mindflow_backend.chains.templates.analysis_chain import (
     AnalysisChain,
@@ -34,22 +27,28 @@ from mindflow_backend.chains.templates.coding_task_chain import (
     CodingTaskChain,
     CodingTaskChainConfig,
 )
-from mindflow_backend.chains.templates.file_analysis_chain import (
-    FileAnalysisChain,
-    FileAnalysisChainConfig,
-    create_file_analysis_chain,
-)
 from mindflow_backend.chains.templates.conditional_file_chain import (
     ConditionalFileChain,
     ConditionalFileChainConfig,
     create_conditional_file_chain,
+)
+
+# Legacy imports for backward compatibility
+from mindflow_backend.chains.templates.conditional_workflow_chain import (
+    ConditionalWorkflowChain,
+    ConditionalWorkflowConfig,
+    create_conditional_workflow_chain,
+)
+from mindflow_backend.chains.templates.file_analysis_chain import (
+    FileAnalysisChain,
+    FileAnalysisChainConfig,
+    create_file_analysis_chain,
 )
 from mindflow_backend.chains.templates.parallel_file_chain import (
     ParallelFileChain,
     ParallelFileChainConfig,
     create_parallel_file_chain,
 )
-
 
 ChainFactory = Callable[[], Any]
 

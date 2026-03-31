@@ -7,20 +7,18 @@ and advanced API management capabilities.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union, Callable, AsyncGenerator
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from enum import Enum
-import json
-import uuid
-import weakref
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.tracing.tracer import get_tracer, SpanKind
 from mindflow_backend.infra.security.rate_limiter import get_rate_limiter
-from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.tracing.tracer import SpanKind, get_tracer
 
 _logger = get_logger(__name__)
 
@@ -39,14 +37,14 @@ class RequestInfo:
     request_id: str
     method: str
     path: str
-    headers: Dict[str, str]
-    query_params: Dict[str, str]
-    body: Optional[bytes] = None
+    headers: dict[str, str]
+    query_params: dict[str, str]
+    body: bytes | None = None
     client_ip: str = "unknown"
     user_agent: str = "unknown"
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "request_id": self.request_id,
@@ -64,12 +62,12 @@ class RequestInfo:
 class ResponseInfo:
     """Response information."""
     status_code: int
-    headers: Dict[str, str]
-    body: Optional[bytes] = None
+    headers: dict[str, str]
+    body: bytes | None = None
     duration_ms: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "status_code": self.status_code,
@@ -89,10 +87,10 @@ class RouteConfig:
     timeout_ms: int = 30000
     retry_attempts: int = 3
     load_balancer: str = "round_robin"
-    middleware: List[str] = field(default_factory=list)
-    rate_limit_config: Optional[str] = None
+    middleware: list[str] = field(default_factory=list)
+    rate_limit_config: str | None = None
     auth_required: bool = True
-    cache_ttl: Optional[int] = None
+    cache_ttl: int | None = None
     health_check_path: str = "/health"
     circuit_breaker_threshold: float = 0.5
     enabled: bool = True
@@ -102,7 +100,7 @@ class RouteConfig:
 class ServiceConfig:
     """Service configuration."""
     name: str
-    endpoints: List[str]
+    endpoints: list[str]
     load_balancer: str = "round_robin"
     health_check_interval: int = 30
     health_check_timeout: int = 5000
@@ -117,7 +115,7 @@ class LoadBalancer(ABC):
     """Abstract load balancer."""
     
     @abstractmethod
-    def select_endpoint(self, endpoints: List[str]) -> str:
+    def select_endpoint(self, endpoints: list[str]) -> str:
         """Select endpoint for request."""
         pass
         
@@ -133,9 +131,9 @@ class RoundRobinLoadBalancer(LoadBalancer):
     def __init__(self):
         """Initialize round-robin load balancer."""
         self._current_index = 0
-        self._healthy_endpoints: Dict[str, bool] = {}
+        self._healthy_endpoints: dict[str, bool] = {}
         
-    def select_endpoint(self, endpoints: List[str]) -> str:
+    def select_endpoint(self, endpoints: list[str]) -> str:
         """Select next endpoint in round-robin fashion."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -166,14 +164,14 @@ class WeightedLoadBalancer(LoadBalancer):
     
     def __init__(self):
         """Initialize weighted load balancer."""
-        self._weights: Dict[str, float] = {}
-        self._healthy_endpoints: Dict[str, bool] = {}
+        self._weights: dict[str, float] = {}
+        self._healthy_endpoints: dict[str, bool] = {}
         
     def set_weight(self, endpoint: str, weight: float) -> None:
         """Set endpoint weight."""
         self._weights[endpoint] = weight
         
-    def select_endpoint(self, endpoints: List[str]) -> str:
+    def select_endpoint(self, endpoints: list[str]) -> str:
         """Select endpoint based on weights."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -225,7 +223,7 @@ class CircuitBreaker:
         self.timeout = timeout
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
         
     async def call(self, endpoint: str, operation: Callable) -> Any:
@@ -287,7 +285,7 @@ class CircuitBreaker:
                 
             raise e
             
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get circuit breaker state.
         
         Returns:
@@ -321,11 +319,11 @@ class APIGateway:
     
     def __init__(self):
         """Initialize API Gateway."""
-        self._routes: Dict[str, RouteConfig] = {}
-        self._services: Dict[str, ServiceConfig] = {}
-        self._load_balancers: Dict[str, LoadBalancer] = {}
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
-        self._middleware_pipeline: Optional[Any] = None
+        self._routes: dict[str, RouteConfig] = {}
+        self._services: dict[str, ServiceConfig] = {}
+        self._load_balancers: dict[str, LoadBalancer] = {}
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+        self._middleware_pipeline: Any | None = None
         self._tracer = get_tracer()
         self._rate_limiter = get_rate_limiter()
         self._status = GatewayStatus.ACTIVE
@@ -502,7 +500,7 @@ class APIGateway:
             duration_ms = (time.time() - start_time) * 1000
             self._update_response_time_stats(duration_ms)
             
-    def _find_route(self, method: str, path: str) -> Optional[RouteConfig]:
+    def _find_route(self, method: str, path: str) -> RouteConfig | None:
         """Find matching route for method and path.
         
         Args:
@@ -585,7 +583,7 @@ class APIGateway:
             duration_ms=10.0,
         )
         
-    def _create_error_response(self, status_code: int, message: str, headers: Optional[Dict[str, str]] = None) -> ResponseInfo:
+    def _create_error_response(self, status_code: int, message: str, headers: dict[str, str] | None = None) -> ResponseInfo:
         """Create error response.
         
         Args:
@@ -631,7 +629,7 @@ class APIGateway:
         else:
             self._stats["avg_response_time_ms"] = (current_avg * count + duration_ms) / (count + 1)
             
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get gateway statistics.
         
         Returns:
@@ -658,7 +656,7 @@ class APIGateway:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform gateway health check.
         
         Returns:
@@ -708,7 +706,7 @@ class APIGateway:
 
 
 # Global API gateway instance
-_api_gateway: Optional[APIGateway] = None
+_api_gateway: APIGateway | None = None
 
 
 def get_api_gateway() -> APIGateway:

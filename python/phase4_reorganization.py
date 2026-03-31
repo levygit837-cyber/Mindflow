@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Phase 4: Reorganize structure and cleanup."""
 
-import os
 import re
 from pathlib import Path
+
 
 def fix_corrupted_files(directory: Path) -> int:
     """Fix corrupted files (add line breaks)."""
@@ -14,7 +14,7 @@ def fix_corrupted_files(directory: Path) -> int:
             continue
             
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
             
             # Check if file is corrupted (all in one line)
@@ -93,10 +93,10 @@ def reorganize_structure():
             print(f"✅ Renamed {old_file} -> {new_file}")
             replaced_count += 1
     
-    print(f"\n📊 Phase 4 Reorganization Summary:")
+    print("\n📊 Phase 4 Reorganization Summary:")
     print(f"   - Files fixed: {fixed_count}")
     print(f"   - Files renamed: {replaced_count}")
-    print(f"   - Status: Ready for Phase 5")
+    print("   - Status: Ready for Phase 5")
     
     return fixed_count > 0 or replaced_count > 0
 

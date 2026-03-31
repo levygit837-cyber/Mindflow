@@ -5,19 +5,17 @@ for the new simple memory service.
 """
 
 import asyncio
-import pytest
-from datetime import datetime
-from pathlib import Path
-import tempfile
 import os
+import tempfile
 
-from mindflow_backend.services.memory import create_memory_service, MemoryService
-from mindflow_backend.services.nlp_embeddings import EmbeddingMethod
+import pytest
+
 from mindflow_backend.orchestrator.memory_integration import (
     MemoryIntegration,
-    get_context_for_agent,
     get_token_range_context,
 )
+from mindflow_backend.services.memory import create_memory_service
+from mindflow_backend.services.nlp_embeddings import EmbeddingMethod
 
 
 class TestMemoryService:

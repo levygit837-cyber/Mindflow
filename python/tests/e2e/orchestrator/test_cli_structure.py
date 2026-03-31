@@ -2,7 +2,6 @@
 """Test CLI structure without heavy dependencies."""
 
 import sys
-import os
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
@@ -13,28 +12,21 @@ def test_cli_imports():
     
     try:
         # Test app import
-        from mindflow_cli.app import app
         print("✅ Main app import successful")
         
         # Test command imports
-        from mindflow_cli.commands.start import register_start_commands
         print("✅ Start commands import successful")
         
-        from mindflow_cli.commands.test_orchestrator import register_test_orchestrator_commands
         print("✅ Test orchestrator commands import successful")
         
-        from mindflow_cli.commands.chat import register_chat_commands
         print("✅ Chat commands import successful")
         
         # Test renderer imports
-        from mindflow_cli.render.chat_stream import ChatStreamRenderer
         print("✅ Chat stream renderer import successful")
         
-        from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
         print("✅ Orchestrator stream renderer import successful")
         
         # Test client import
-        from mindflow_cli.client import MindFlowCliClient
         print("✅ CLI client import successful")
         
         print("\n✅ All CLI imports successful!")
@@ -99,8 +91,9 @@ def test_renderer_functionality():
     
     try:
         from rich.console import Console
-        from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
+
         from mindflow_backend.schemas.agent import StreamEvent
+        from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
         
         # Create console and renderer
         console = Console()

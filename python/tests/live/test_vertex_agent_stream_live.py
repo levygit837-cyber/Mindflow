@@ -44,22 +44,21 @@ async def test_live_vertex_stream_returns_model_thought_and_response() -> None:
     }
 
     events: list[StreamEvent] = []
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream(
-            "POST",
-            f"{base_url}/v1/agent/chat/stream",
-            json=payload,
-            headers={"Accept": "text/event-stream"},
-        ) as response:
-            response.raise_for_status()
-            async for payload_json in _iter_sse_payloads(response.aiter_lines()):
-                try:
-                    raw = json.loads(payload_json)
-                except json.JSONDecodeError:
-                    continue
-                events.append(StreamEvent.model_validate(raw))
-                if events[-1].type == "done":
-                    break
+    async with httpx.AsyncClient(timeout=120.0) as client, client.stream(
+        "POST",
+        f"{base_url}/v1/agent/chat/stream",
+        json=payload,
+        headers={"Accept": "text/event-stream"},
+    ) as response:
+        response.raise_for_status()
+        async for payload_json in _iter_sse_payloads(response.aiter_lines()):
+            try:
+                raw = json.loads(payload_json)
+            except json.JSONDecodeError:
+                continue
+            events.append(StreamEvent.model_validate(raw))
+            if events[-1].type == "done":
+                break
 
     thought_count = sum(1 for e in events if e.type == "thought")
     response_count = sum(1 for e in events if e.type == "response")

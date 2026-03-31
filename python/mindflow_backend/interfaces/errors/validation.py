@@ -6,17 +6,13 @@ failures, and data integrity validation problems.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any, Dict, Optional, List, Union
 from abc import abstractmethod
+from typing import Any, Protocol, runtime_checkable
 
 from mindflow_backend.schemas.errors import (
-    ValidationErrorSchema,
-    SchemaErrorSchema,
     SanitizationErrorSchema,
     SecurityValidationErrorSchema,
-    RequestValidationErrorSchema,
-    ErrorCategory,
-    ErrorSeverity,
+    ValidationErrorSchema,
 )
 
 from .base import BaseErrorHandlerContract
@@ -34,9 +30,9 @@ class ValidationErrorHandlerContract(BaseErrorHandlerContract, Protocol):
     async def validate_input(
         self,
         input_data: Any,
-        schema: Dict[str, Any],
-        context: Dict[str, Any] | None = None,
-    ) -> tuple[bool, List[ValidationErrorSchema]]:
+        schema: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> tuple[bool, list[ValidationErrorSchema]]:
         """Validate input data against schema.
         
         Args:
@@ -53,8 +49,8 @@ class ValidationErrorHandlerContract(BaseErrorHandlerContract, Protocol):
     async def sanitize_data(
         self,
         data: Any,
-        sanitization_rules: Dict[str, Any],
-    ) -> tuple[Any, List[SanitizationErrorSchema]]:
+        sanitization_rules: dict[str, Any],
+    ) -> tuple[Any, list[SanitizationErrorSchema]]:
         """Sanitize data according to rules.
         
         Args:
@@ -70,8 +66,8 @@ class ValidationErrorHandlerContract(BaseErrorHandlerContract, Protocol):
     async def validate_security_constraints(
         self,
         data: Any,
-        security_rules: Dict[str, Any],
-    ) -> tuple[bool, List[SecurityValidationErrorSchema]]:
+        security_rules: dict[str, Any],
+    ) -> tuple[bool, list[SecurityValidationErrorSchema]]:
         """Validate security constraints on data.
         
         Args:
@@ -87,8 +83,8 @@ class ValidationErrorHandlerContract(BaseErrorHandlerContract, Protocol):
     async def handle_validation_failure(
         self,
         error: ValidationErrorSchema,
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Handle validation failure with appropriate response.
         
         Args:

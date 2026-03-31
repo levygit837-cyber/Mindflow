@@ -6,11 +6,7 @@ file operations, directory listing, search tools, and file manipulation.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-
 from mindflow_backend.schemas.tools.tool_config import ToolParameter, ToolSchema
-
 
 # File Read Tool Schema
 READ_FILE_SCHEMA = ToolSchema(

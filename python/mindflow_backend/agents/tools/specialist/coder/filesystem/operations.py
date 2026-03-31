@@ -7,7 +7,7 @@ Some modules still import basic tools from `operations.py`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
@@ -28,13 +28,13 @@ class DirectoryListTool(AsyncToolInterface):
             returns={"type": "object", "description": "Directory listing"},
         )
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         path = Path(kwargs["path"])
         if not path.exists() or not path.is_dir():
             return {"success": False, "error": f"Not a directory: {path}"}
         return {"success": True, "entries": [p.name for p in path.iterdir()]}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -53,14 +53,14 @@ class FileDeleteTool(AsyncToolInterface):
             returns={"type": "object", "description": "Deletion result"},
         )
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         path = Path(kwargs["path"])
         if not path.exists() or not path.is_file():
             return {"success": False, "error": f"Not a file: {path}"}
         path.unlink()
         return {"success": True}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -81,13 +81,13 @@ class DirectoryCreateTool(AsyncToolInterface):
             returns={"type": "object", "description": "Create directory result"},
         )
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         path = Path(kwargs["path"])
         parents = bool(kwargs.get("parents", True))
         exist_ok = bool(kwargs.get("exist_ok", True))
         path.mkdir(parents=parents, exist_ok=exist_ok)
         return {"success": True}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 

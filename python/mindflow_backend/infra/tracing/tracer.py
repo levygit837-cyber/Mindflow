@@ -9,18 +9,16 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union, Callable, AsyncGenerator, Generator
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from enum import Enum
-import json
-import weakref
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.tracing.span import Span, SpanContext, SpanKind
+from mindflow_backend.infra.tracing.span import Span, SpanKind
 from mindflow_backend.infra.tracing.trace_analyzer import TraceAnalyzer
-from mindflow_backend.infra.config import get_settings
 
 _logger = get_logger(__name__)
 
@@ -44,7 +42,7 @@ class TraceConfig:
     include_resource_spans: bool = True
     export_batch_size: int = 100
     export_timeout_ms: int = 30000
-    headers_to_propagate: List[str] = field(default_factory=lambda: [
+    headers_to_propagate: list[str] = field(default_factory=lambda: [
         "traceparent",
         "tracestate",
         "x-trace-id",
@@ -63,13 +61,13 @@ class TraceContext:
     """Trace context for propagation."""
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str] = None
-    baggage: Dict[str, str] = field(default_factory=dict)
+    parent_span_id: str | None = None
+    baggage: dict[str, str] = field(default_factory=dict)
     sampling_decision: TraceSamplingDecision = TraceSamplingDecision.RECORD_AND_SAMPLE
     trace_flags: int = 0
     trace_state: str = ""
     
-    def to_headers(self) -> Dict[str, str]:
+    def to_headers(self) -> dict[str, str]:
         """Convert trace context to HTTP headers."""
         headers = {}
         
@@ -94,7 +92,7 @@ class TraceContext:
         return headers
         
     @classmethod
-    def from_headers(cls, headers: Dict[str, str]) -> Optional[TraceContext]:
+    def from_headers(cls, headers: dict[str, str]) -> TraceContext | None:
         """Extract trace context from HTTP headers."""
         traceparent = headers.get("traceparent")
         if not traceparent:
@@ -147,10 +145,10 @@ class DistributedTracer:
     
     def __init__(self):
         """Initialize distributed tracer."""
-        self._config: Optional[TraceConfig] = None
-        self._active_spans: Dict[str, Span] = {}
-        self._trace_analyzer: Optional[TraceAnalyzer] = None
-        self._context_var: Optional[Any] = None
+        self._config: TraceConfig | None = None
+        self._active_spans: dict[str, Span] = {}
+        self._trace_analyzer: TraceAnalyzer | None = None
+        self._context_var: Any | None = None
         self._is_initialized = False
         
         # Statistics
@@ -164,7 +162,7 @@ class DistributedTracer:
             "span_durations": [],
         }
         
-    async def initialize(self, config: Optional[TraceConfig] = None) -> None:
+    async def initialize(self, config: TraceConfig | None = None) -> None:
         """Initialize distributed tracer.
         
         Args:
@@ -200,10 +198,10 @@ class DistributedTracer:
         self,
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
-        parent_context: Optional[TraceContext] = None,
-        attributes: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        links: Optional[List[Dict[str, Any]]] = None
+        parent_context: TraceContext | None = None,
+        attributes: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        links: list[dict[str, Any]] | None = None
     ) -> AsyncGenerator[Span, None]:
         """Start a new span.
         
@@ -290,10 +288,10 @@ class DistributedTracer:
         self,
         name: str,
         kind: SpanKind = SpanKind.INTERNAL,
-        parent_context: Optional[TraceContext] = None,
-        attributes: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        links: Optional[List[Dict[str, Any]]] = None
+        parent_context: TraceContext | None = None,
+        attributes: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        links: list[dict[str, Any]] | None = None
     ) -> Generator[Span, None, None]:
         """Start a new span (synchronous version).
         
@@ -368,7 +366,7 @@ class DistributedTracer:
             duration_ms=duration_ms,
         )
         
-    def _determine_sampling(self, context: Optional[TraceContext]) -> TraceSamplingDecision:
+    def _determine_sampling(self, context: TraceContext | None) -> TraceSamplingDecision:
         """Determine sampling decision.
         
         Args:
@@ -392,7 +390,7 @@ class DistributedTracer:
             self._stats["traces_dropped"] += 1
             return TraceSamplingDecision.DROP
             
-    def _get_current_context(self) -> Optional[TraceContext]:
+    def _get_current_context(self) -> TraceContext | None:
         """Get current trace context.
         
         Returns:
@@ -405,7 +403,7 @@ class DistributedTracer:
                 return None
         return None
         
-    def get_current_span(self) -> Optional[Span]:
+    def get_current_span(self) -> Span | None:
         """Get current active span.
         
         Returns:
@@ -427,7 +425,7 @@ class DistributedTracer:
         if span:
             span.set_attribute(key, value)
             
-    def add_span_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_span_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Add event to current span.
         
         Args:
@@ -459,7 +457,7 @@ class DistributedTracer:
         if span:
             span.set_status(code, message)
             
-    def extract_context_from_headers(self, headers: Dict[str, str]) -> Optional[TraceContext]:
+    def extract_context_from_headers(self, headers: dict[str, str]) -> TraceContext | None:
         """Extract trace context from HTTP headers.
         
         Args:
@@ -470,7 +468,7 @@ class DistributedTracer:
         """
         return TraceContext.from_headers(headers)
         
-    def inject_context_to_headers(self, context: Optional[TraceContext] = None) -> Dict[str, str]:
+    def inject_context_to_headers(self, context: TraceContext | None = None) -> dict[str, str]:
         """Inject trace context into HTTP headers.
         
         Args:
@@ -484,7 +482,7 @@ class DistributedTracer:
             return ctx.to_headers()
         return {}
         
-    async def get_trace(self, trace_id: str) -> Optional[Dict[str, Any]]:
+    async def get_trace(self, trace_id: str) -> dict[str, Any] | None:
         """Get trace by ID.
         
         Args:
@@ -500,13 +498,13 @@ class DistributedTracer:
         
     async def search_traces(
         self,
-        service_name: Optional[str] = None,
-        span_name: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        attributes: Optional[Dict[str, Any]] = None,
+        service_name: str | None = None,
+        span_name: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        attributes: dict[str, Any] | None = None,
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search traces with filters.
         
         Args:
@@ -532,7 +530,7 @@ class DistributedTracer:
             limit=limit,
         )
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get tracer statistics.
         
         Returns:
@@ -568,7 +566,7 @@ class DistributedTracer:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform tracer health check.
         
         Returns:
@@ -614,7 +612,7 @@ class DistributedTracer:
 
 
 # Global tracer instance
-_tracer: Optional[DistributedTracer] = None
+_tracer: DistributedTracer | None = None
 
 
 def get_tracer() -> DistributedTracer:
@@ -631,9 +629,9 @@ def get_tracer() -> DistributedTracer:
 
 # Convenience decorators
 def trace_span(
-    name: Optional[str] = None,
+    name: str | None = None,
     kind: SpanKind = SpanKind.INTERNAL,
-    attributes: Optional[Dict[str, Any]] = None
+    attributes: dict[str, Any] | None = None
 ):
     """Decorator to trace function execution.
     

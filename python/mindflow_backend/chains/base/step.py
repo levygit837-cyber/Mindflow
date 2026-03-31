@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -38,30 +38,30 @@ class ChainStep(BaseModel):
     
     step_id: str
     step_type: StepType
-    agent: Optional[AgentType] = None
+    agent: AgentType | None = None
     task: str = ""
-    tools: List[ToolScope] = Field(default_factory=list)
+    tools: list[ToolScope] = Field(default_factory=list)
     
     # Execution configuration
-    timeout: Optional[float] = Field(default=30.0, gt=0.0)
+    timeout: float | None = Field(default=30.0, gt=0.0)
     retry_attempts: int = Field(default=3, ge=0)
     enable_streaming: bool = False
     
     # Dependencies and conditions
-    depends_on: List[str] = Field(default_factory=list)
-    condition: Optional[str] = None  # Conditional execution logic
-    parallel_group: Optional[str] = None  # For parallel execution
+    depends_on: list[str] = Field(default_factory=list)
+    condition: str | None = None  # Conditional execution logic
+    parallel_group: str | None = None  # For parallel execution
     
     # Input/Output mapping
-    input_mapping: Dict[str, str] = Field(default_factory=dict)
-    output_mapping: Dict[str, str] = Field(default_factory=dict)
-    required_inputs: List[str] = Field(default_factory=list)
-    expected_outputs: List[str] = Field(default_factory=list)
+    input_mapping: dict[str, str] = Field(default_factory=dict)
+    output_mapping: dict[str, str] = Field(default_factory=dict)
+    required_inputs: list[str] = Field(default_factory=list)
+    expected_outputs: list[str] = Field(default_factory=list)
     
     # Metadata
     description: str = ""
-    tags: List[str] = Field(default_factory=list)
-    custom_parameters: Dict[str, Any] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+    custom_parameters: dict[str, Any] = Field(default_factory=dict)
     
     class Config:
         use_enum_values = True
@@ -72,15 +72,15 @@ class StepResult(BaseModel):
     
     step_id: str
     status: StepStatus
-    output: Dict[str, Any] = Field(default_factory=dict)
-    error: Optional[str] = None
+    output: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
     execution_time: float = 0.0
     tokens_used: int = 0
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     
     # Execution details
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
+    started_at: float | None = None
+    completed_at: float | None = None
     retry_count: int = 0
     
     class Config:
@@ -93,13 +93,13 @@ class StepContext(BaseModel):
     chain_id: str
     execution_id: str
     step_id: str
-    global_state: Dict[str, Any] = Field(default_factory=dict)
-    step_state: Dict[str, Any] = Field(default_factory=dict)
+    global_state: dict[str, Any] = Field(default_factory=dict)
+    step_state: dict[str, Any] = Field(default_factory=dict)
     
     # Execution metadata
     execution_order: int = 0
-    parent_step: Optional[str] = None
-    parallel_group: Optional[str] = None
+    parent_step: str | None = None
+    parallel_group: str | None = None
     
     class Config:
         use_enum_values = True
@@ -115,7 +115,7 @@ class StepMetrics(BaseModel):
     total_execution_time: float = 0.0
     average_execution_time: float = 0.0
     total_tokens_used: int = 0
-    last_execution_time: Optional[float] = None
+    last_execution_time: float | None = None
     
     class Config:
         use_enum_values = True
@@ -141,7 +141,7 @@ class StepDependency(BaseModel):
     step_id: str
     depends_on: str
     dependency_type: str = "completion"  # completion, success, failure
-    condition: Optional[str] = None
+    condition: str | None = None
     
     class Config:
         use_enum_values = True
@@ -154,11 +154,11 @@ class StepTemplate(BaseModel):
     step_type: StepType
     name: str
     description: str
-    default_parameters: Dict[str, Any] = Field(default_factory=dict)
-    required_parameters: List[str] = Field(default_factory=list)
+    default_parameters: dict[str, Any] = Field(default_factory=dict)
+    required_parameters: list[str] = Field(default_factory=list)
     
     # Template structure
-    step_template: Dict[str, Any] = Field(default_factory=dict)
+    step_template: dict[str, Any] = Field(default_factory=dict)
     
     class Config:
         use_enum_values = True

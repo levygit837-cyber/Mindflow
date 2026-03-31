@@ -5,20 +5,21 @@ personalities, specialists, enhanced agents, and orchestration.
 """
 
 from ..core.base import AgentInterface
-from .streaming import StreamingContract
-from .session import SessionManagerContract
-from .context import ContextRetriever, VectorStore, Cache
-from .specialist import SpecialistSelector, RuleEngine
-from .core_personality import CorePersonalityContract
-from .personality import SpecialistSelector as PersonalitySpecialistSelector, RuleEngine as PersonalityRuleEngine
-from .researcher import EnhancedResearcher
-from .task_rag_agent import TaskRagAgent
 from .analyst import Analyst
 from .coder import Coder
-from .reviewer import Reviewer
-from .enhanced_coder import EnhancedCoder
+from .context import Cache, ContextRetriever, VectorStore
+from .core_personality import CorePersonalityContract
 from .enhanced_analyst import EnhancedAnalyst
+from .enhanced_coder import EnhancedCoder
 from .enhanced_reviewer import EnhancedReviewer
+from .personality import RuleEngine as PersonalityRuleEngine
+from .personality import SpecialistSelector as PersonalitySpecialistSelector
+from .researcher import EnhancedResearcher
+from .reviewer import Reviewer
+from .session import SessionManagerContract
+from .specialist import RuleEngine, SpecialistSelector
+from .streaming import StreamingContract
+from .task_rag_agent import TaskRagAgent
 
 __all__ = [
     # Core agent contracts

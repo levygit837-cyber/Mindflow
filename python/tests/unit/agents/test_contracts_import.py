@@ -10,49 +10,44 @@ def test_imports():
     # Test main interfaces import
     try:
         from mindflow_backend.agents.interfaces import (
-            # Core interfaces
-            ContextRetriever,
-            VectorStore,
-            Cache,
-            SpecialistSelector,
-            RuleEngine,
-            ContentAnalyzer,
-            ResultParser,
-            Logger,
-            AgentRuntime,
             AgentFactory,
+            AgentInterface,
             AgentLogBus,
-            SessionManagerContract,
-            StreamingContract,
-
-            # Agent interfaces
-            CorePersonalityContract,
-            EnhancedResearcher,
-            EnhancedCoder,
-            EnhancedAnalyst,
-            EnhancedReviewer,
+            AgentRuntime,
             Analyst,
-            Coder,
-            Reviewer,
-
             # Infrastructure interfaces
             BackendProtocol,
-
+            Cache,
             # API interfaces
             ChatInterface,
-            AgentInterface,
-
+            Coder,
+            ContentAnalyzer,
+            # Core interfaces
+            ContextRetriever,
+            # Agent interfaces
+            CorePersonalityContract,
+            # Orchestrator DT interfaces
+            DecomposerProtocol,
+            DelegationManagerContract,
+            EnhancedAnalyst,
+            EnhancedCoder,
+            EnhancedResearcher,
+            EnhancedReviewer,
+            Logger,
             # Orchestrator interfaces
             OrchestratorCoreContract,
             PersonalityManagerContract,
-            DelegationManagerContract,
-            
-            # Orchestrator DT interfaces
-            DecomposerProtocol,
-            SchedulerProtocol,
             ResolverProtocol,
-            SynthesizerProtocol,
+            ResultParser,
+            Reviewer,
+            RuleEngine,
+            SchedulerProtocol,
             ScorerProtocol,
+            SessionManagerContract,
+            SpecialistSelector,
+            StreamingContract,
+            SynthesizerProtocol,
+            VectorStore,
         )
         print("✅ All main imports successful")
     except ImportError as e:
@@ -61,9 +56,21 @@ def test_imports():
     
     # Test individual module imports
     try:
-        from mindflow_backend.agents.interfaces.core import SessionManagerContract, StreamingContract
-        from mindflow_backend.agents.interfaces.agents import CorePersonalityContract, EnhancedCoder, EnhancedAnalyst, EnhancedReviewer
-        from mindflow_backend.agents.interfaces.orchestrator import OrchestratorCoreContract, PersonalityManagerContract, DelegationManagerContract
+        from mindflow_backend.agents.interfaces.agents import (
+            CorePersonalityContract,
+            EnhancedAnalyst,
+            EnhancedCoder,
+            EnhancedReviewer,
+        )
+        from mindflow_backend.agents.interfaces.core import (
+            SessionManagerContract,
+            StreamingContract,
+        )
+        from mindflow_backend.agents.interfaces.orchestrator import (
+            DelegationManagerContract,
+            OrchestratorCoreContract,
+            PersonalityManagerContract,
+        )
         print("✅ All module imports successful")
     except ImportError as e:
         print(f"❌ Module import error: {e}")
@@ -72,7 +79,10 @@ def test_imports():
     # Test that contracts are runtime checkable
     try:
         import inspect
-        from mindflow_backend.agents.interfaces.agents.core_personality import CorePersonalityContract
+
+        from mindflow_backend.agents.interfaces.agents.core_personality import (
+            CorePersonalityContract,
+        )
         
         # Check if it has _is_runtime_protocol attribute (runtime_checkable)
         if hasattr(CorePersonalityContract, '_is_runtime_protocol'):
@@ -98,12 +108,21 @@ def test_schema_integration():
     
     try:
         # Test schema imports used in contracts
-        from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, AgentType
-        from mindflow_backend.schemas.orchestration.personality import SpecialistDecisionResult, SpecialistType
-        from mindflow_backend.schemas.orchestration.delegation import DelegationTask, DelegationResult
-        from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
         from mindflow_backend.schemas.agents.research import ResearchRequest, ResearchResponse
-        from mindflow_backend.schemas.session.contracts import SessionReview, RetrievedContext
+        from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
+        from mindflow_backend.schemas.orchestration.delegation import (
+            DelegationResult,
+            DelegationTask,
+        )
+        from mindflow_backend.schemas.orchestration.orchestrator import (
+            AgentType,
+            OrchestratorDecision,
+        )
+        from mindflow_backend.schemas.orchestration.personality import (
+            SpecialistDecisionResult,
+            SpecialistType,
+        )
+        from mindflow_backend.schemas.session.contracts import RetrievedContext, SessionReview
         
         print("✅ All schema imports successful")
         return True

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import patch, AsyncMock
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
-from fastapi.responses import StreamingResponse
 from starlette.requests import Request
 
 import mindflow_backend.api.v1.agent as agent_routes

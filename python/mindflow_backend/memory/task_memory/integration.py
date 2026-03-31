@@ -5,7 +5,7 @@ Integração entre Task Memory e o sistema de orquestração.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -50,7 +50,7 @@ class TaskIntegration(BaseAbstractService):
         db: Session,
         *,
         task_id: str,
-        execution_result: Dict[str, Any],
+        execution_result: dict[str, Any],
         agent_id: str,
         session_id: str,
     ) -> str:
@@ -89,7 +89,7 @@ class TaskIntegration(BaseAbstractService):
         db: Session,
         task_id: str,
         agent_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Obter task para decomposição com contexto completo."""
         self.log_operation(
             "get_task_for_decomposition",
@@ -134,10 +134,10 @@ class TaskIntegration(BaseAbstractService):
         self,
         db: Session,
         task_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Obter task com chunks."""
         try:
-            from mindflow_backend.memory.task_memory.models import TaskMemory, TaskChunk
+            from mindflow_backend.memory.task_memory.models import TaskChunk, TaskMemory
             
             task = db.scalar(
                 select(TaskMemory).where(TaskMemory.task_id == task_id)

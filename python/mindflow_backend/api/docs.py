@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Any
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -14,7 +14,7 @@ from mindflow_backend.infra.config import get_settings
 settings = get_settings()
 
 
-def custom_openapi(app: FastAPI) -> Dict[str, Any]:
+def custom_openapi(app: FastAPI) -> dict[str, Any]:
     """Generate custom OpenAPI schema with enhanced documentation."""
     if app.openapi_schema:
         return app.openapi_schema
@@ -228,7 +228,7 @@ def setup_documentation_routes(app: FastAPI) -> None:
         )
     
     @app.get("/openapi.json", include_in_schema=False)
-    async def get_openapi_endpoint() -> Dict[str, Any]:
+    async def get_openapi_endpoint() -> dict[str, Any]:
         """Get OpenAPI schema."""
         return custom_openapi(app)
 
@@ -280,7 +280,7 @@ def add_operation_examples(app: FastAPI) -> None:
                 }
 
 
-def create_api_info() -> Dict[str, Any]:
+def create_api_info() -> dict[str, Any]:
     """Create comprehensive API information."""
     return {
         "title": "MindFlow API",

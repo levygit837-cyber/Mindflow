@@ -6,14 +6,12 @@ multiple models, caching, and optimization for different task types.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
-from functools import lru_cache
+import asyncio
 import hashlib
 import math
 import os
 import re
-from datetime import datetime, UTC
-import asyncio
+from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
@@ -38,7 +36,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
         self.default_dimensions = getattr(self.settings, 'embedding_dimensions', 768)
         
         # Cache for embeddings
-        self._embedding_cache: Dict[str, List[float]] = {}
+        self._embedding_cache: dict[str, list[float]] = {}
         self._cache_size_limit = 10000
         self._cache_hits = 0
         self._cache_misses = 0
@@ -64,9 +62,9 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     async def generate_embedding(
         self,
         text: str,
-        model: Optional[str] = None,
-        language: Optional[str] = None
-    ) -> List[float]:
+        model: str | None = None,
+        language: str | None = None
+    ) -> list[float]:
         """Generate embedding for text.
         
         Args:
@@ -115,10 +113,10 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     
     async def generate_batch_embeddings(
         self,
-        texts: List[str],
-        model: Optional[str] = None,
+        texts: list[str],
+        model: str | None = None,
         batch_size: int = 32
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """Generate embeddings for batch of texts.
         
         Args:
@@ -165,7 +163,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
             self._logger.error(f"Error generating batch embeddings: {str(exc)}")
             raise
     
-    async def get_embedding_model_info(self, model: str) -> Dict[str, Any]:
+    async def get_embedding_model_info(self, model: str) -> dict[str, Any]:
         """Get embedding model information.
         
         Args:
@@ -229,8 +227,8 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     
     async def compare_embeddings(
         self,
-        embedding1: List[float],
-        embedding2: List[float]
+        embedding1: list[float],
+        embedding2: list[float]
     ) -> float:
         """Compare two embeddings and return similarity score.
         
@@ -306,7 +304,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
             self._logger.error(f"Error detecting language: {str(exc)}")
             return "en"
     
-    async def get_supported_languages(self) -> List[str]:
+    async def get_supported_languages(self) -> list[str]:
         """Get supported languages for multilingual embeddings.
         
         Returns:
@@ -316,9 +314,9 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     
     async def optimize_embedding_for_task(
         self,
-        embedding: List[float],
+        embedding: list[float],
         task_type: str
-    ) -> List[float]:
+    ) -> list[float]:
         """Optimize embedding for specific task type.
         
         Args:
@@ -349,7 +347,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     
     # Helper methods
     
-    async def _generate_llm_embedding(self, text: str, model: str) -> List[float]:
+    async def _generate_llm_embedding(self, text: str, model: str) -> list[float]:
         """Generate embedding using LLM provider."""
         try:
             # Try to use Google Generative AI embeddings
@@ -378,7 +376,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
             self._logger.warning(f"LLM embedding failed, using fallback: {str(exc)}")
             return self._generate_hash_embedding(text, self.default_dimensions)
     
-    def _generate_hash_embedding(self, text: str, dims: int) -> List[float]:
+    def _generate_hash_embedding(self, text: str, dims: int) -> list[float]:
         """Generate hash-based fallback embedding."""
         vector = [0.0] * dims
         tokens = self._tokenize(text)
@@ -399,11 +397,11 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
         
         return vector
     
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Tokenize text for hash embedding."""
         return re.findall(r"[a-zA-Z0-9_]+", text.lower())
     
-    def _normalize_vector_dimensions(self, vector: List[float], target_dims: int) -> List[float]:
+    def _normalize_vector_dimensions(self, vector: list[float], target_dims: int) -> list[float]:
         """Normalize vector to target dimensions."""
         if len(vector) == target_dims:
             return vector
@@ -413,7 +411,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
             # Pad with zeros
             return vector + [0.0] * (target_dims - len(vector))
     
-    def _get_cache_key(self, text: str, model: Optional[str], language: Optional[str]) -> str:
+    def _get_cache_key(self, text: str, model: str | None, language: str | None) -> str:
         """Generate cache key for embedding."""
         key_parts = [
             text[:100],  # First 100 chars
@@ -422,7 +420,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
         ]
         return hashlib.md5("|".join(key_parts).encode()).hexdigest()
     
-    async def _cache_embedding(self, key: str, embedding: List[float]) -> None:
+    async def _cache_embedding(self, key: str, embedding: list[float]) -> None:
         """Cache embedding with size management."""
         # Check cache size limit
         if len(self._embedding_cache) >= self._cache_size_limit:
@@ -433,7 +431,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
         
         self._embedding_cache[key] = embedding
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get embedding cache statistics."""
         total_requests = self._cache_hits + self._cache_misses
         hit_rate = self._cache_hits / total_requests if total_requests > 0 else 0.0

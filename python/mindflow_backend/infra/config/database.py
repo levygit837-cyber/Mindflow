@@ -6,8 +6,7 @@ health monitoring, and performance optimization settings.
 
 from __future__ import annotations
 
-from typing import Optional
-from pydantic import field_validator,  Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -59,9 +58,9 @@ class DatabaseConfig(BaseSettings):
     
     # SSL Configuration
     ssl_mode: str = Field(default="prefer", description="SSL mode for connections")
-    ssl_cert_file: Optional[str] = Field(default=None, description="SSL certificate file path")
-    ssl_key_file: Optional[str] = Field(default=None, description="SSL key file path")
-    ssl_ca_file: Optional[str] = Field(default=None, description="SSL CA file path")
+    ssl_cert_file: str | None = Field(default=None, description="SSL certificate file path")
+    ssl_key_file: str | None = Field(default=None, description="SSL key file path")
+    ssl_ca_file: str | None = Field(default=None, description="SSL CA file path")
     
     # Logging Configuration
     echo: bool = Field(default=False, description="Enable SQL query logging")
@@ -85,11 +84,11 @@ class DatabaseConfig(BaseSettings):
     require_ssl: bool = Field(default=False, description="Require SSL for all connections")
     
     # Connection String Components (for backward compatibility)
-    host: Optional[str] = Field(default=None, description="Database host")
-    port: Optional[int] = Field(default=None, description="Database port")
-    database: Optional[str] = Field(default=None, description="Database name")
-    username: Optional[str] = Field(default=None, description="Database username")
-    password: Optional[str] = Field(default=None, description="Database password")
+    host: str | None = Field(default=None, description="Database host")
+    port: int | None = Field(default=None, description="Database port")
+    database: str | None = Field(default=None, description="Database name")
+    username: str | None = Field(default=None, description="Database username")
+    password: str | None = Field(default=None, description="Database password")
 
     @field_validator("url", mode="before")
     @classmethod

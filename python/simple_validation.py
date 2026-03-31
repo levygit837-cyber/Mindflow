@@ -3,6 +3,7 @@
 
 import sys
 
+
 def test_basic_imports():
     """Test basic imports without complex schemas."""
     print("🔍 Testing basic imports...")

@@ -8,17 +8,17 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, UTC
-from typing import AsyncGenerator, Dict, Any, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
-import asyncpg
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import event, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.resilience import with_retry, RetryConfig
+from mindflow_backend.infra.resilience import RetryConfig, with_retry
 
 from .models import ConnectionMetrics, ConnectionStatus, PoolState
 from .pool_monitor import ConnectionPoolMonitor
@@ -50,8 +50,8 @@ class DatabaseManager:
         self._last_health_check = None
         self._connection_lock = asyncio.Lock()
         self._pool_monitor = ConnectionPoolMonitor(self)
-        self._connection_times: List[float] = []
-        self._recovery_task: Optional[asyncio.Task] = None
+        self._connection_times: list[float] = []
+        self._recovery_task: asyncio.Task | None = None
         self._is_initialized = False
 
     @property
@@ -138,7 +138,7 @@ class DatabaseManager:
 
         await with_retry(RetryConfig(max_retries=database_config.retry_attempts))(_init_engines)()
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform comprehensive database health check.
 
         Returns:
@@ -244,12 +244,12 @@ class DatabaseManager:
 
                 yield session
 
-        except Exception as e:
+        except Exception:
             self._metrics.connection_errors += 1
             self._metrics.last_error = datetime.now(UTC)
             raise
 
-    async def recycle_connections(self) -> Dict[str, Any]:
+    async def recycle_connections(self) -> dict[str, Any]:
         """Recycle old connections in the pool.
 
         Returns:
@@ -301,7 +301,7 @@ class DatabaseManager:
             _logger.error("connection_recycling_failed", **error_result)
             return error_result
 
-    async def optimize_pool(self) -> Dict[str, Any]:
+    async def optimize_pool(self) -> dict[str, Any]:
         """Optimize connection pool configuration.
 
         Returns:
@@ -385,7 +385,7 @@ class DatabaseManager:
         self._metrics.idle_connections += 1
         _logger.debug("database_connection_checked_in")
 
-    async def get_detailed_metrics(self) -> Dict[str, Any]:
+    async def get_detailed_metrics(self) -> dict[str, Any]:
         """Get detailed database metrics.
 
         Returns:

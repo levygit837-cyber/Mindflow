@@ -6,7 +6,6 @@ model management, embedding generation, and text processing.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from mindflow_backend.schemas.tools.tool_config import ToolParameter, ToolSchema
@@ -16,9 +15,9 @@ class LocalModelParameters(BaseModel):
     """Parameters for local model operations."""
     
     action: str = Field(..., description="Action to perform (load, unload, list, generate, info)")
-    model_name: Optional[str] = Field(None, description="Model name or path")
+    model_name: str | None = Field(None, description="Model name or path")
     model_type: str = Field(default="llm", description="Model type (llm, embedding, classifier)")
-    prompt: Optional[str] = Field(None, description="Text prompt for generation")
+    prompt: str | None = Field(None, description="Text prompt for generation")
     max_tokens: int = Field(default=100, description="Maximum tokens to generate")
     temperature: float = Field(default=0.7, description="Generation temperature")
 
@@ -27,9 +26,9 @@ class EmbeddingParameters(BaseModel):
     """Parameters for embedding generation."""
     
     action: str = Field(..., description="Action to perform (generate, list_models, load_model)")
-    text: Optional[str] = Field(None, description="Text to embed")
+    text: str | None = Field(None, description="Text to embed")
     model_name: str = Field(default="default", description="Embedding model name")
-    texts: Optional[List[str]] = Field(default_factory=list, description="Multiple texts to embed")
+    texts: list[str] | None = Field(default_factory=list, description="Multiple texts to embed")
 
 
 # Predefined schemas for AI tools

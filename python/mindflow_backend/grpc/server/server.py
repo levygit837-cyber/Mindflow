@@ -9,25 +9,25 @@ from __future__ import annotations
 import asyncio
 import signal
 import time
-from typing import Any, Dict
+from typing import Any
 
-import grpc
 from grpc.aio import Server
 
-from mindflow_backend.grpc.interfaces.server import GrpcServer
-from mindflow_backend.grpc.interceptors.error_handler import ErrorHandlerInterceptor
-from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
-from mindflow_backend.grpc.monitoring.interceptor import MetricsInterceptor
-from mindflow_backend.grpc.monitoring.health import AdvancedHealthChecker
-from mindflow_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
+import grpc
 from mindflow_backend.grpc.config import GrpcConfig
+from mindflow_backend.grpc.interceptors.error_handler import ErrorHandlerInterceptor
+from mindflow_backend.grpc.interfaces.server import GrpcServer
+from mindflow_backend.grpc.monitoring.health import AdvancedHealthChecker
+from mindflow_backend.grpc.monitoring.interceptor import MetricsInterceptor
+from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
+from mindflow_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 
 from .components import (
     initialize_monitoring_components,
-    initialize_resilience_components,
     initialize_performance_components,
+    initialize_resilience_components,
 )
 
 _logger = get_logger(__name__)
@@ -448,7 +448,7 @@ class EnhancedGrpcAgentServer(GrpcServer):
             },
         }
 
-    def get_enhanced_status(self) -> Dict[str, Any]:
+    def get_enhanced_status(self) -> dict[str, Any]:
         """Get comprehensive status of all enhanced components."""
         status = self.get_server_info()
 

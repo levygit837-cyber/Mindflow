@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode

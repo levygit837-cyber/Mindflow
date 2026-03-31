@@ -7,14 +7,13 @@ including connection pooling, load balancing, compression, and caching.
 import asyncio
 import logging
 import time
-from contextlib import asynccontextmanager
 
-from mindflow_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager, PoolConfig
+from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache
+from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor
 from mindflow_backend.grpc.performance.load_balancing.balancer import GrpcLoadBalancer
 from mindflow_backend.grpc.performance.load_balancing.strategies import LoadBalancingStrategyFactory
-from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor
-from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache
 from mindflow_backend.grpc.performance.monitoring.profiler import GrpcProfiler
+from mindflow_backend.grpc.performance.pooling.manager import GrpcConnectionPoolManager, PoolConfig
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -58,7 +57,7 @@ async def example_connection_pooling():
         # Get pool and test connections
         pool = await pool_manager.get_pool(pool_id)
         if pool:
-            print(f"   📊 Pool statistics:")
+            print("   📊 Pool statistics:")
             
             # Simulate connection usage
             connections = []
@@ -87,7 +86,7 @@ async def example_connection_pooling():
             print(f"      Average response time: {stats.average_response_time:.3f}s")
         
         # Test pool optimization
-        print(f"\n   🔧 Testing pool optimization...")
+        print("\n   🔧 Testing pool optimization...")
         optimization_results = await pool_manager.optimize_pools()
         for result in optimization_results:
             print(f"      Pool {result.pool_id}:")
@@ -98,7 +97,7 @@ async def example_connection_pooling():
         
         # Get manager statistics
         manager_stats = await pool_manager.get_manager_statistics()
-        print(f"\n   📊 Manager statistics:")
+        print("\n   📊 Manager statistics:")
         print(f"      Total pools: {manager_stats['total_pools']}")
         print(f"      Total connections: {manager_stats['total_connections']}")
         print(f"      Active connections: {manager_stats['active_connections']}")
@@ -106,7 +105,7 @@ async def example_connection_pooling():
         
         # Cleanup
         await pool_manager.stop()
-        print(f"   ✅ Pool manager stopped")
+        print("   ✅ Pool manager stopped")
         
     except Exception as exc:
         print(f"   ❌ Error: {exc}")
@@ -119,7 +118,10 @@ async def example_load_balancing():
     
     try:
         # Create test endpoints
-        from mindflow_backend.grpc.performance.load_balancing.strategies import Endpoint, EndpointState
+        from mindflow_backend.grpc.performance.load_balancing.strategies import (
+            Endpoint,
+            EndpointState,
+        )
         
         endpoints = [
             Endpoint("endpoint-1", "localhost", 50051, weight=1.0),
@@ -144,7 +146,9 @@ async def example_load_balancing():
                 # Simulate endpoint selection
                 selections = {}
                 for i in range(20):
-                    from mindflow_backend.grpc.performance.load_balancing.strategies import SelectionContext
+                    from mindflow_backend.grpc.performance.load_balancing.strategies import (
+                        SelectionContext,
+                    )
                     context = SelectionContext(
                         available_endpoints=endpoints,
                         user_id=f"user-{i % 5}",
@@ -167,7 +171,7 @@ async def example_load_balancing():
                         print(f"      Selection {i+1}: Failed - {exc}")
                 
                 # Show distribution
-                print(f"      Distribution after 20 selections:")
+                print("      Distribution after 20 selections:")
                 for endpoint_id, count in selections.items():
                     percentage = (count / 20) * 100
                     print(f"         {endpoint_id}: {count} ({percentage:.1f}%)")
@@ -176,7 +180,7 @@ async def example_load_balancing():
                 if hasattr(strategy, 'get_performance_scores'):
                     scores = strategy.get_performance_scores()
                     if scores:
-                        print(f"      Performance scores:")
+                        print("      Performance scores:")
                         for ep_id, score in scores.items():
                             print(f"         {ep_id}: {score:.2f}")
                 
@@ -184,7 +188,7 @@ async def example_load_balancing():
                 print(f"      Strategy failed: {exc}")
         
         # Test sticky session strategy
-        print(f"\n   🧪 Testing sticky session strategy:")
+        print("\n   🧪 Testing sticky session strategy:")
         
         try:
             fallback_strategy = LoadBalancingStrategyFactory.create_strategy("round_robin")
@@ -280,7 +284,7 @@ async def example_compression():
                         if decompressed == message:
                             print(f"         Decompression: ✅ ({decompression_time:.3f}s)")
                         else:
-                            print(f"         Decompression: ❌")
+                            print("         Decompression: ❌")
                     else:
                         print(f"      {algorithm.upper()}: Not compressed (too small)")
                         
@@ -288,7 +292,7 @@ async def example_compression():
                     print(f"      {algorithm.upper()}: Failed - {exc}")
         
         # Test compression negotiation
-        print(f"\n   🤝 Testing compression negotiation:")
+        print("\n   🤝 Testing compression negotiation:")
         
         try:
             client_algorithms = ["gzip", "deflate", "zstd"]
@@ -302,13 +306,13 @@ async def example_compression():
         # Get compression statistics
         try:
             stats = compressor.get_compression_stats()
-            print(f"\n   📊 Compression statistics:")
+            print("\n   📊 Compression statistics:")
             print(f"      Total compressions: {stats['total_compressions']}")
             print(f"      Average compression ratio: {stats['average_compression_ratio']:.3f}")
             print(f"      Average compression time: {stats['average_compression_time']:.3f}s")
             
             if stats['algorithm_stats']:
-                print(f"      Algorithm performance:")
+                print("      Algorithm performance:")
                 for algo, algo_stats in stats['algorithm_stats'].items():
                     print(f"         {algo}: {algo_stats['count']} compressions, "
                           f"{algo_stats['average_ratio']:.3f} ratio")
@@ -348,7 +352,7 @@ async def example_caching():
             ("search:query:python", CachedResponse(b'["result1", "result2", "result3"]', 60)),
         ]
         
-        print(f"   📥 Testing cache operations:")
+        print("   📥 Testing cache operations:")
         
         # Test cache set and get
         for key, response in test_responses:
@@ -368,18 +372,18 @@ async def example_caching():
                 print(f"      {key}: Failed - {exc}")
         
         # Test cache miss
-        print(f"\n   🔍 Testing cache miss:")
+        print("\n   🔍 Testing cache miss:")
         try:
             cached = await cache.get("nonexistent:key")
             if cached is None:
-                print(f"      Cache miss: ✅")
+                print("      Cache miss: ✅")
             else:
-                print(f"      Cache miss: ❌ (Unexpected hit)")
+                print("      Cache miss: ❌ (Unexpected hit)")
         except Exception as exc:
             print(f"      Cache miss failed: {exc}")
         
         # Test cache expiration
-        print(f"\n   ⏰ Testing cache expiration:")
+        print("\n   ⏰ Testing cache expiration:")
         try:
             # Set entry with short TTL
             short_ttl_response = CachedResponse(b'{"temp": "data"}', 1)  # 1 second
@@ -388,7 +392,7 @@ async def example_caching():
             # Should be available immediately
             cached = await cache.get("temp:key")
             if cached:
-                print(f"      Immediate get: ✅")
+                print("      Immediate get: ✅")
             
             # Wait for expiration
             await asyncio.sleep(2)
@@ -396,15 +400,15 @@ async def example_caching():
             # Should be expired
             cached = await cache.get("temp:key")
             if cached is None:
-                print(f"      Expired get: ✅")
+                print("      Expired get: ✅")
             else:
-                print(f"      Expired get: ❌ (Still cached)")
+                print("      Expired get: ❌ (Still cached)")
                 
         except Exception as exc:
             print(f"      Expiration test failed: {exc}")
         
         # Test cache invalidation
-        print(f"\n   🗑️  Testing cache invalidation:")
+        print("\n   🗑️  Testing cache invalidation:")
         try:
             # Invalidate specific key
             result = await cache.invalidate("user:123:profile")
@@ -421,7 +425,7 @@ async def example_caching():
         # Get cache statistics
         try:
             stats = cache.get_statistics()
-            print(f"\n   📊 Cache statistics:")
+            print("\n   📊 Cache statistics:")
             print(f"      Total entries: {stats['total_entries']}")
             print(f"      Cache hits: {stats['cache_hits']}")
             print(f"      Cache misses: {stats['cache_misses']}")
@@ -455,7 +459,7 @@ async def example_performance_monitoring():
             ("HealthCheck", 0.03),
         ]
         
-        print(f"   📊 Simulating gRPC operations:")
+        print("   📊 Simulating gRPC operations:")
         
         for operation, duration in operations:
             try:
@@ -468,14 +472,14 @@ async def example_performance_monitoring():
                 await profiler.record_operation(operation, actual_duration, success=True)
                 print(f"      {operation}: {actual_duration:.3f}s ✅")
                 
-            except Exception as exc:
+            except Exception:
                 await profiler.record_operation(operation, 0.0, success=False)
                 print(f"      {operation}: ❌")
         
         # Get performance report
         try:
             report = await profiler.get_performance_report()
-            print(f"\n   📈 Performance Report:")
+            print("\n   📈 Performance Report:")
             print(f"      Total operations: {report['total_operations']}")
             print(f"      Successful operations: {report['successful_operations']}")
             print(f"      Failed operations: {report['failed_operations']}")
@@ -483,7 +487,7 @@ async def example_performance_monitoring():
             print(f"      Average duration: {report['average_duration']:.3f}s")
             
             if report['operation_stats']:
-                print(f"\n      Operation breakdown:")
+                print("\n      Operation breakdown:")
                 for op, stats in report['operation_stats'].items():
                     print(f"         {op}:")
                     print(f"            Count: {stats['count']}")
@@ -498,12 +502,12 @@ async def example_performance_monitoring():
         # Test performance analysis
         try:
             analysis = await profiler.analyze_performance()
-            print(f"\n   🔍 Performance Analysis:")
+            print("\n   🔍 Performance Analysis:")
             print(f"      Overall health: {analysis['overall_health']}")
             print(f"      Performance score: {analysis['performance_score']:.1f}/100")
             
             if analysis['recommendations']:
-                print(f"      Recommendations:")
+                print("      Recommendations:")
                 for rec in analysis['recommendations']:
                     print(f"         - {rec}")
             
@@ -512,7 +516,7 @@ async def example_performance_monitoring():
         
         # Stop profiler
         await profiler.stop()
-        print(f"\n   ✅ Profiler stopped")
+        print("\n   ✅ Profiler stopped")
         
     except Exception as exc:
         print(f"   ❌ Error: {exc}")
@@ -535,10 +539,10 @@ async def example_integrated_performance():
         
         await profiler.start()
         
-        print(f"   🚀 All performance components initialized")
+        print("   🚀 All performance components initialized")
         
         # Simulate integrated workflow
-        print(f"\n   🔄 Simulating integrated workflow:")
+        print("\n   🔄 Simulating integrated workflow:")
         
         for i in range(5):
             try:
@@ -564,13 +568,18 @@ async def example_integrated_performance():
                 connection = await pool.get_connection()
                 
                 # 3. Select endpoint via load balancer
-                from mindflow_backend.grpc.performance.load_balancing.strategies import Endpoint, EndpointState
+                from mindflow_backend.grpc.performance.load_balancing.strategies import (
+                    Endpoint,
+                    EndpointState,
+                )
                 endpoints = [
                     Endpoint(f"endpoint-{j}", "localhost", 50051 + j, state=EndpointState.HEALTHY)
                     for j in range(3)
                 ]
                 
-                from mindflow_backend.grpc.performance.load_balancing.strategies import SelectionContext
+                from mindflow_backend.grpc.performance.load_balancing.strategies import (
+                    SelectionContext,
+                )
                 context = SelectionContext(available_endpoints=endpoints, user_id=f"user-{i}")
                 endpoint = load_balancer.select_endpoint(endpoints, context)
                 
@@ -599,7 +608,7 @@ async def example_integrated_performance():
                 print(f"      Operation {i+1}: Failed - {exc}")
         
         # Get integrated statistics
-        print(f"\n   📊 Integrated Statistics:")
+        print("\n   📊 Integrated Statistics:")
         
         # Pool manager stats
         manager_stats = await pool_manager.get_manager_statistics()
@@ -629,7 +638,7 @@ async def example_integrated_performance():
         await pool_manager.stop()
         await profiler.stop()
         
-        print(f"\n   ✅ Integrated performance system working!")
+        print("\n   ✅ Integrated performance system working!")
         
     except Exception as exc:
         print(f"   ❌ Error: {exc}")

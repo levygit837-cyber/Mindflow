@@ -6,10 +6,10 @@ validation, and monitoring of component configurations.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any, Union
-from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Protocol, runtime_checkable
 
 
 class ConfigValidationResult(Enum):

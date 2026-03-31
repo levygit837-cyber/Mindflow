@@ -134,48 +134,58 @@ class ExceptionTemplates:
     @staticmethod
     def missing_required_field(field: str, value: Any = None) -> ExceptionBuilder:
         """Template for missing required field."""
-        return ValidationErrorBuilder(f"Missing required field: {field}")
+        return (
+            ValidationErrorBuilder(f"Missing required field: {field}")
             .for_field(field)
             .with_value(value)
             .with_user_message(f"The '{field}' field is required")
             .with_suggestion(f"Please provide a valid {field}")
+        )
     
     @staticmethod
     def invalid_format(field: str, value: Any, expected_format: str) -> ExceptionBuilder:
         """Template for invalid format."""
-        return ValidationErrorBuilder(f"Invalid {field} format")
+        return (
+            ValidationErrorBuilder(f"Invalid {field} format")
             .for_field(field)
             .with_value(value)
             .expecting_format(expected_format)
             .with_user_message(f"The '{field}' must be in {expected_format} format")
             .with_suggestion(f"Please provide {field} in correct format")
+        )
     
     @staticmethod
     def authentication_failed(reason: str, user_identifier: str = None) -> ExceptionBuilder:
         """Template for authentication failure."""
-        return AuthenticationErrorBuilder(f"Authentication failed: {reason}")
+        return (
+            AuthenticationErrorBuilder(f"Authentication failed: {reason}")
             .for_user(user_identifier)
             .with_failure_reason(reason)
             .with_user_message("Authentication failed")
             .with_suggestion("Please check your credentials and try again")
+        )
     
     @staticmethod
     def network_timeout(endpoint: str, timeout: float) -> ExceptionBuilder:
         """Template for network timeout."""
-        return NetworkErrorBuilder(f"Network timeout for {endpoint}")
+        return (
+            NetworkErrorBuilder(f"Network timeout for {endpoint}")
             .for_endpoint(endpoint)
             .with_timeout(timeout)
             .with_user_message(f"Request to {endpoint} timed out")
             .with_suggestion("Please check your connection and try again")
+        )
     
     @staticmethod
     def resource_exhausted(resource: str, current_usage: str = None) -> ExceptionBuilder:
         """Template for resource exhaustion."""
-        return ExceptionBuilder(f"Resource {resource} exhausted")
+        return (
+            ExceptionBuilder(f"Resource {resource} exhausted")
             .with_param("resource_type", resource)
             .with_param("current_usage", current_usage)
             .with_user_message(f"The {resource} is currently unavailable")
             .with_suggestion("Please try again later")
+        )
 
 
 # Import exception classes for builders

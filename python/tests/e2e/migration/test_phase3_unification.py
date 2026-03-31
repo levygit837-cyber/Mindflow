@@ -32,12 +32,12 @@ def test_phase3_unification():
         else:
             print(f"❌ {file_path} missing")
     
-    print(f"\n📊 Phase 3 Unification Summary:")
+    print("\n📊 Phase 3 Unification Summary:")
     print(f"   - Files unified: {len(existing_unified)}/{len(unified_files)}")
-    print(f"   - Status: Ready for Phase 4")
+    print("   - Status: Ready for Phase 4")
     
     # Test imports (basic check)
-    print(f"\n🧪 Testing Unified Imports...")
+    print("\n🧪 Testing Unified Imports...")
     
     # Check if files are syntactically correct
     syntax_errors = []
@@ -45,7 +45,7 @@ def test_phase3_unification():
     for file_path in existing_unified:
         full_path = base_path / file_path
         try:
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 content = f.read()
             
             # Basic syntax check
@@ -58,12 +58,12 @@ def test_phase3_unification():
         except Exception as e:
             print(f"   ⚠️  {file_path} - Other Error: {e}")
     
-    print(f"\n📋 Unified Tools:")
+    print("\n📋 Unified Tools:")
     for file_path in existing_unified:
         print(f"   - {file_path}")
     
     if syntax_errors:
-        print(f"\n⚠️ Syntax Errors Found:")
+        print("\n⚠️ Syntax Errors Found:")
         for file_path in syntax_errors:
             print(f"   - {file_path}")
     

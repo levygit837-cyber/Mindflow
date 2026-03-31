@@ -4,8 +4,6 @@ Handles execution lifecycle, memory dispatch, background message saving,
 and session runtime state synchronization.
 """
 
-import asyncio
-import contextlib
 from datetime import UTC, datetime
 from typing import Any
 
@@ -39,7 +37,11 @@ except Exception as exc:  # pragma: no cover
 
 try:
     from mindflow_backend.infra.database.connection import get_db_session as db_session
-    from mindflow_backend.storage.postgresql.models import AgentMemoryEvent, ChatMessage, ChatSession
+    from mindflow_backend.storage.postgresql.models import (
+        AgentMemoryEvent,
+        ChatMessage,
+        ChatSession,
+    )
 except Exception as exc:  # pragma: no cover
     db_session = None
     AgentMemoryEvent = None
@@ -338,6 +340,7 @@ class MemoryIntegration:
         if AgentMemoryEvent is None:
             return
         from sqlalchemy import select
+
         from mindflow_backend.utils.core import estimate_token_count
 
         token_count = estimate_token_count(content)

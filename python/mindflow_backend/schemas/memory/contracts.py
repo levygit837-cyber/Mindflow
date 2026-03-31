@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
@@ -77,29 +77,29 @@ class MemoryEntry(BaseModel):
     
     id: UUID = Field(description="Unique memory entry identifier")
     session_id: UUID = Field(description="Session identifier")
-    agent_id: Optional[str] = Field(default=None, description="Agent identifier")
+    agent_id: str | None = Field(default=None, description="Agent identifier")
     content: str = Field(min_length=1, description="Memory content")
     memory_type: MemoryType = Field(default=MemoryType.EPISODIC, description="Type of memory")
     status: MemoryStatus = Field(default=MemoryStatus.ACTIVE, description="Memory status")
     
     # Temporal information
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: Optional[datetime] = Field(default=None, description="Last update timestamp")
-    expires_at: Optional[datetime] = Field(default=None, description="Expiration timestamp")
+    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
+    expires_at: datetime | None = Field(default=None, description="Expiration timestamp")
     
     # Token and position information
-    token_start: Optional[int] = Field(default=None, description="Start token position")
-    token_end: Optional[int] = Field(default=None, description="End token position")
+    token_start: int | None = Field(default=None, description="Start token position")
+    token_end: int | None = Field(default=None, description="End token position")
     token_count: int = Field(description="Number of tokens in content")
     
     # Embedding information
-    embedding: Optional[List[float]] = Field(default=None, description="Vector embedding")
-    embedding_model: Optional[str] = Field(default=None, description="Embedding model used")
+    embedding: list[float] | None = Field(default=None, description="Vector embedding")
+    embedding_model: str | None = Field(default=None, description="Embedding model used")
     
     # Metadata and relationships
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
-    parent_id: Optional[UUID] = Field(default=None, description="Parent memory entry")
-    related_ids: List[UUID] = Field(default_factory=list, description="Related memory entries")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    parent_id: UUID | None = Field(default=None, description="Parent memory entry")
+    related_ids: list[UUID] = Field(default_factory=list, description="Related memory entries")
     
     class Config:
         json_encoders = {
@@ -123,13 +123,13 @@ class ContextWindow(BaseModel):
     window_size: int = Field(gt=0, description="Window size in tokens")
     
     # Window content
-    entries: List[MemoryEntry] = Field(description="Memory entries in window")
-    summary: Optional[str] = Field(default=None, description="Window summary")
+    entries: list[MemoryEntry] = Field(description="Memory entries in window")
+    summary: str | None = Field(default=None, description="Window summary")
     
     # Window metadata
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: Optional[datetime] = Field(default=None, description="Last update timestamp")
-    compression_ratio: Optional[float] = Field(default=None, description="Compression ratio")
+    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
+    compression_ratio: float | None = Field(default=None, description="Compression ratio")
     
     class Config:
         json_encoders = {
@@ -149,16 +149,16 @@ class MemoryCursor(BaseModel):
     
     # Cursor position
     position: int = Field(ge=0, description="Current cursor position")
-    anchor_token: Optional[int] = Field(default=None, description="Anchor token position")
+    anchor_token: int | None = Field(default=None, description="Anchor token position")
     
     # Cursor context
-    context_window: Optional[int] = Field(default=1000, description="Context window size")
+    context_window: int | None = Field(default=1000, description="Context window size")
     retrieval_strategy: RetrievalStrategy = Field(default=RetrievalStrategy.TEMPORAL)
     
     # Cursor metadata
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: Optional[datetime] = Field(default=None, description="Last update timestamp")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     
     class Config:
         json_encoders = {
@@ -179,16 +179,16 @@ class MemoryEvent(BaseModel):
     # Event information
     event_type: str = Field(description="Type of event")
     event_name: str = Field(description="Event name")
-    description: Optional[str] = Field(default=None, description="Event description")
+    description: str | None = Field(default=None, description="Event description")
     
     # Event data
-    data: Dict[str, Any] = Field(default_factory=dict, description="Event data")
-    affected_entries: List[UUID] = Field(default_factory=list, description="Affected memory entries")
+    data: dict[str, Any] = Field(default_factory=dict, description="Event data")
+    affected_entries: list[UUID] = Field(default_factory=list, description="Affected memory entries")
     
     # Event metadata
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     severity: str = Field(default="info", description="Event severity")
-    source: Optional[str] = Field(default=None, description="Event source")
+    source: str | None = Field(default=None, description="Event source")
     
     class Config:
         json_encoders = {
@@ -211,14 +211,14 @@ class MemoryFact(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score")
     
     # Fact classification
-    category: Optional[str] = Field(default=None, description="Fact category")
-    tags: List[str] = Field(default_factory=list, description="Fact tags")
+    category: str | None = Field(default=None, description="Fact category")
+    tags: list[str] = Field(default_factory=list, description="Fact tags")
     
     # Fact metadata
-    source: Optional[str] = Field(default=None, description="Fact source")
+    source: str | None = Field(default=None, description="Fact source")
     verified: bool = Field(default=False, description="Whether fact is verified")
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
     
     class Config:
         json_encoders = {
@@ -237,14 +237,14 @@ class MemoryEmbedding(BaseModel):
     memory_id: UUID = Field(description="Associated memory entry")
     
     # Embedding data
-    vector: List[float] = Field(description="Embedding vector")
+    vector: list[float] = Field(description="Embedding vector")
     dimension: int = Field(description="Vector dimension")
     model: str = Field(description="Embedding model used")
     
     # Embedding metadata
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    version: Optional[str] = Field(default=None, description="Model version")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Model parameters")
+    version: str | None = Field(default=None, description="Model version")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Model parameters")
     
     class Config:
         json_encoders = {
@@ -260,8 +260,8 @@ class MemoryRetrievalResult(BaseModel):
     """
 
     context: str = Field(description="Formatted context string ready to prepend to LLM messages")
-    references: List[str] = Field(default_factory=list, description="Source references for the context")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional retrieval metadata")
+    references: list[str] = Field(default_factory=list, description="Source references for the context")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional retrieval metadata")
 
     class Config:
         json_encoders = {
@@ -282,8 +282,8 @@ class MemoryPersistResult(BaseModel):
     without coupling them to internal storage details.
     """
 
-    embedding_id: Optional[str] = Field(default=None, description="ID of the stored embedding, if any")
-    event_id: Optional[int] = Field(default=None, description="ID of the stored AgentMemoryEvent row")
+    embedding_id: str | None = Field(default=None, description="ID of the stored embedding, if any")
+    event_id: int | None = Field(default=None, description="ID of the stored AgentMemoryEvent row")
     stored: bool = Field(default=True, description="True when at least one memory backend accepted the write")
     chat_stored: bool = Field(
         default=False,
@@ -301,7 +301,7 @@ class MemoryPersistResult(BaseModel):
         default=False,
         description="True when a categorical session block was created or updated",
     )
-    degraded_reason: Optional[str] = Field(
+    degraded_reason: str | None = Field(
         default=None,
         description="Operational degradation reason when a non-critical write path was skipped",
     )
@@ -309,7 +309,7 @@ class MemoryPersistResult(BaseModel):
         default=True,
         description="Whether the content was eligible for semantic indexing",
     )
-    skipped_reasons: List[str] = Field(
+    skipped_reasons: list[str] = Field(
         default_factory=list,
         description="Reasons why semantic indexing paths were skipped or degraded",
     )
@@ -322,14 +322,14 @@ class SessionBlockSchema(BaseModel):
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    id: Optional[int] = None
+    id: int | None = None
     session_id: str
     sequence: int
     category: str
     title: str
     summary_md: str
     content_excerpt: str
-    topic_tags: List[str] = Field(default_factory=list)
+    topic_tags: list[str] = Field(default_factory=list)
     message_start_id: int
     message_end_id: int
     token_count: int
@@ -337,12 +337,12 @@ class SessionBlockSchema(BaseModel):
     source: str = "inferred"
     indexable: bool = True
     content_kind: str = "answer"
-    quality_flags: List[str] = Field(default_factory=list)
+    quality_flags: list[str] = Field(default_factory=list)
     source_status: str = "final"
     derived_from_recall: bool = False
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    closed_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    closed_at: datetime | None = None
 
 
 class MemoryRecallHit(BaseModel):
@@ -351,28 +351,28 @@ class MemoryRecallHit(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     source_type: MemorySourceType | str = MemorySourceType.SESSION_MESSAGE
-    source_id: Optional[int] = None
-    session_id: Optional[str] = None
-    agent_id: Optional[str] = None
+    source_id: int | None = None
+    session_id: str | None = None
+    agent_id: str | None = None
     content: str = ""
     score: float = 0.0
     final_score: float = 0.0
-    reference: Optional[str] = None
-    category: Optional[str] = None
-    title: Optional[str] = None
-    summary_md: Optional[str] = None
-    content_excerpt: Optional[str] = None
-    topic_tags: List[str] = Field(default_factory=list)
-    role: Optional[str] = None
+    reference: str | None = None
+    category: str | None = None
+    title: str | None = None
+    summary_md: str | None = None
+    content_excerpt: str | None = None
+    topic_tags: list[str] = Field(default_factory=list)
+    role: str | None = None
     content_kind: str = "query"
-    quality_flags: List[str] = Field(default_factory=list)
+    quality_flags: list[str] = Field(default_factory=list)
     source_status: str = "final"
     derived_from_recall: bool = False
     answer_bearing: bool = False
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _normalize_hit(self) -> "MemoryRecallHit":
+    def _normalize_hit(self) -> MemoryRecallHit:
         if not self.content:
             self.content = self.content_excerpt or self.summary_md or ""
         if self.final_score == 0.0:
@@ -414,7 +414,7 @@ class MemoryRecallRequest(BaseModel):
         default=MemoryRecallScope.CURRENT_THEN_CROSS,
         description="Requested search scope",
     )
-    category_filters: List[str] = Field(
+    category_filters: list[str] = Field(
         default_factory=list,
         description="Optional categorical filters used when recalling session blocks",
     )
@@ -430,7 +430,7 @@ class MemoryRecallRequest(BaseModel):
         le=1.0,
         description="Fallback threshold applied to the best score during adaptive recall",
     )
-    exclude_session_id: Optional[str] = Field(
+    exclude_session_id: str | None = Field(
         default=None,
         description="Optional session to exclude when searching across sessions",
     )
@@ -441,7 +441,7 @@ class MemoryRecallRequest(BaseModel):
         return self.top_k
 
     @model_validator(mode="after")
-    def _sync_limits(self) -> "MemoryRecallRequest":
+    def _sync_limits(self) -> MemoryRecallRequest:
         if self.top_k_messages == 0 and self.include_messages:
             self.top_k_messages = self.top_k
         if self.top_k_blocks == 0 and self.include_blocks:
@@ -465,9 +465,9 @@ class MemoryRecallResponse(BaseModel):
         description="Formatted context ready to inject into an LLM prompt",
         validation_alias=AliasChoices("context", "content"),
     )
-    references: List[str] = Field(default_factory=list, description="Source references (type:id)")
+    references: list[str] = Field(default_factory=list, description="Source references (type:id)")
     hit_count: int = Field(default=0, description="Number of retrieval hits before formatting")
-    hits: List[MemoryRecallHit] = Field(default_factory=list, description="Structured retrieval hits")
+    hits: list[MemoryRecallHit] = Field(default_factory=list, description="Structured retrieval hits")
     best_score: float = Field(default=0.0, description="Highest score among returned hits")
     grounding_recommended: bool = Field(
         default=False,
@@ -482,7 +482,7 @@ class MemoryRecallResponse(BaseModel):
         description="Effective scope used to answer the recall request",
     )
     fallback_used: bool = Field(default=False, description="Whether cross-session fallback was used")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional retrieval metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional retrieval metadata")
 
     @property
     def content(self) -> str:
@@ -490,7 +490,7 @@ class MemoryRecallResponse(BaseModel):
         return self.context
 
     @property
-    def message_hits(self) -> List[MemoryRecallHit]:
+    def message_hits(self) -> list[MemoryRecallHit]:
         allowed = {
             MemorySourceType.SESSION_MESSAGE.value,
             MemorySourceType.SESSION_EMBEDDING.value,
@@ -498,7 +498,7 @@ class MemoryRecallResponse(BaseModel):
         return [hit for hit in self.hits if str(hit.source_type) in allowed]
 
     @property
-    def block_hits(self) -> List[MemoryRecallHit]:
+    def block_hits(self) -> list[MemoryRecallHit]:
         return [
             hit
             for hit in self.hits
@@ -511,7 +511,7 @@ class MemoryRecallResponse(BaseModel):
         return self.fallback_used or self.scope_used == MemoryRecallScope.CROSS_SESSION
 
     @model_validator(mode="after")
-    def _derive_summary_fields(self) -> "MemoryRecallResponse":
+    def _derive_summary_fields(self) -> MemoryRecallResponse:
         if self.hit_count == 0 and self.hits:
             self.hit_count = len(self.hits)
         if self.best_score == 0.0 and self.hits:
@@ -540,8 +540,8 @@ class AgentMemorySnapshot(BaseModel):
     window_count: int = Field(default=0, description="Number of summarised windows")
     total_tokens: int = Field(default=0, description="Cumulative token count (from cursor)")
     context_summary: str = Field(default="", description="Latest extractive window summary, or empty")
-    events: List[Dict[str, Any]] = Field(default_factory=list, description="Raw memory events when requested")
-    windows: List[Dict[str, Any]] = Field(
+    events: list[dict[str, Any]] = Field(default_factory=list, description="Raw memory events when requested")
+    windows: list[dict[str, Any]] = Field(
         default_factory=list,
         description="List of window metadata dicts (window_index, summary_md, key_points)",
     )

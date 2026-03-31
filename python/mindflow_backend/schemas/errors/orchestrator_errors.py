@@ -6,23 +6,21 @@ and dependency management failures.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set
-
 from pydantic import Field
 
-from .base import ErrorSchema, ErrorContext, ErrorSeverity
+from .base import ErrorSchema
 
 
 class OrchestratorErrorSchema(ErrorSchema):
     """Base schema for orchestrator-related errors."""
     
     # Orchestrator information
-    orchestrator_version: Optional[str] = Field(default=None, description="Orchestrator version")
-    workflow_id: Optional[str] = Field(default=None, description="Workflow ID")
-    session_id: Optional[str] = Field(default=None, description="User session ID")
+    orchestrator_version: str | None = Field(default=None, description="Orchestrator version")
+    workflow_id: str | None = Field(default=None, description="Workflow ID")
+    session_id: str | None = Field(default=None, description="User session ID")
     
     # Execution context
-    execution_phase: Optional[str] = Field(
+    execution_phase: str | None = Field(
         default=None, 
         description="Phase of orchestrator execution"
     )
@@ -35,28 +33,28 @@ class RoutingErrorSchema(OrchestratorErrorSchema):
     """Schema for routing and intent analysis failures."""
     
     # Routing details
-    routing_method: Optional[str] = Field(default=None, description="Method used for routing")
-    message_type: Optional[str] = Field(default=None, description="Type of message being routed")
+    routing_method: str | None = Field(default=None, description="Method used for routing")
+    message_type: str | None = Field(default=None, description="Type of message being routed")
     
     # Intent analysis
-    intent_confidence: Optional[float] = Field(
+    intent_confidence: float | None = Field(
         default=None, 
         description="Confidence score of intent analysis"
     )
-    analyzed_intent: Optional[str] = Field(default=None, description="Intent that was analyzed")
+    analyzed_intent: str | None = Field(default=None, description="Intent that was analyzed")
     
     # Agent selection
-    candidate_agents: List[str] = Field(
+    candidate_agents: list[str] = Field(
         default_factory=list, 
         description="Agents that were considered"
     )
-    selection_conflicts: List[str] = Field(
+    selection_conflicts: list[str] = Field(
         default_factory=list, 
         description="Conflicts in agent selection"
     )
     
     # Failure reasons
-    routing_failure_reason: Optional[str] = Field(
+    routing_failure_reason: str | None = Field(
         default=None, 
         description="Specific reason for routing failure"
     )
@@ -70,17 +68,17 @@ class DecompositionErrorSchema(OrchestratorErrorSchema):
     """Schema for task decomposition failures."""
     
     # Task information
-    task_description: Optional[str] = Field(
+    task_description: str | None = Field(
         default=None, 
         description="Description of task being decomposed"
     )
-    task_complexity: Optional[str] = Field(
+    task_complexity: str | None = Field(
         default=None, 
         description="Assessed complexity of task"
     )
     
     # Decomposition details
-    decomposition_method: Optional[str] = Field(
+    decomposition_method: str | None = Field(
         default=None, 
         description="Method used for decomposition"
     )
@@ -88,11 +86,11 @@ class DecompositionErrorSchema(OrchestratorErrorSchema):
     subtasks_created: int = Field(default=0, description="Number of subtasks successfully created")
     
     # LLM information
-    model_used: Optional[str] = Field(default=None, description="Model used for decomposition")
-    prompt_tokens: Optional[int] = Field(default=None, description="Tokens used in decomposition prompt")
+    model_used: str | None = Field(default=None, description="Model used for decomposition")
+    prompt_tokens: int | None = Field(default=None, description="Tokens used in decomposition prompt")
     
     # Failure details
-    decomposition_failure_reason: Optional[str] = Field(
+    decomposition_failure_reason: str | None = Field(
         default=None, 
         description="Reason decomposition failed"
     )
@@ -104,7 +102,7 @@ class SchedulingErrorSchema(OrchestratorErrorSchema):
     """Schema for task scheduling failures."""
     
     # Scheduling details
-    scheduling_algorithm: Optional[str] = Field(
+    scheduling_algorithm: str | None = Field(
         default=None, 
         description="Algorithm used for scheduling"
     )
@@ -113,18 +111,18 @@ class SchedulingErrorSchema(OrchestratorErrorSchema):
     
     # Dependency information
     dependency_count: int = Field(default=0, description="Number of dependencies")
-    circular_dependencies: List[str] = Field(
+    circular_dependencies: list[str] = Field(
         default_factory=list, 
         description="Circular dependencies detected"
     )
     
     # Failure details
-    scheduling_failure_reason: Optional[str] = Field(
+    scheduling_failure_reason: str | None = Field(
         default=None, 
         description="Reason scheduling failed"
     )
     cycle_detected: bool = Field(default=False, description="Whether dependency cycle was detected")
-    orphaned_tasks: List[str] = Field(
+    orphaned_tasks: list[str] = Field(
         default_factory=list, 
         description="Tasks that couldn't be scheduled"
     )
@@ -134,29 +132,29 @@ class DependencyErrorSchema(OrchestratorErrorSchema):
     """Schema for dependency resolution failures."""
     
     # Dependency details
-    dependency_type: Optional[str] = Field(
+    dependency_type: str | None = Field(
         default=None, 
         description="Type of dependency (data, execution, etc.)"
     )
-    dependent_task: Optional[str] = Field(default=None, description="Task that has dependency")
-    required_task: Optional[str] = Field(default=None, description="Task that is required")
+    dependent_task: str | None = Field(default=None, description="Task that has dependency")
+    required_task: str | None = Field(default=None, description="Task that is required")
     
     # Resolution information
-    resolution_method: Optional[str] = Field(
+    resolution_method: str | None = Field(
         default=None, 
         description="Method used for dependency resolution"
     )
-    resolution_timeout: Optional[float] = Field(
+    resolution_timeout: float | None = Field(
         default=None, 
         description="Timeout for dependency resolution"
     )
     
     # Failure details
-    dependency_failure_reason: Optional[str] = Field(
+    dependency_failure_reason: str | None = Field(
         default=None, 
         description="Reason dependency resolution failed"
     )
-    missing_dependencies: List[str] = Field(
+    missing_dependencies: list[str] = Field(
         default_factory=list, 
         description="Dependencies that couldn't be resolved"
     )
@@ -170,27 +168,27 @@ class GraphExecutionErrorSchema(OrchestratorErrorSchema):
     """Schema for graph execution failures."""
     
     # Graph information
-    graph_type: Optional[str] = Field(default=None, description="Type of graph being executed")
+    graph_type: str | None = Field(default=None, description="Type of graph being executed")
     node_count: int = Field(default=0, description="Number of nodes in graph")
     edge_count: int = Field(default=0, description="Number of edges in graph")
     
     # Execution details
-    execution_strategy: Optional[str] = Field(
+    execution_strategy: str | None = Field(
         default=None, 
         description="Strategy used for graph execution"
     )
     completed_nodes: int = Field(default=0, description="Number of completed nodes")
-    failed_nodes: List[str] = Field(
+    failed_nodes: list[str] = Field(
         default_factory=list, 
         description="Nodes that failed execution"
     )
     
     # Failure information
-    execution_failure_reason: Optional[str] = Field(
+    execution_failure_reason: str | None = Field(
         default=None, 
         description="Reason graph execution failed"
     )
-    node_failure: Optional[str] = Field(default=None, description="Specific node that caused failure")
+    node_failure: str | None = Field(default=None, description="Specific node that caused failure")
     deadlock_detected: bool = Field(default=False, description="Whether deadlock was detected")
 
 
@@ -198,23 +196,23 @@ class DelegationErrorSchema(OrchestratorErrorSchema):
     """Schema for agent delegation failures."""
     
     # Delegation details
-    delegation_type: Optional[str] = Field(default=None, description="Type of delegation")
-    source_agent: Optional[str] = Field(default=None, description="Agent making delegation")
-    target_agent: Optional[str] = Field(default=None, description="Agent being delegated to")
+    delegation_type: str | None = Field(default=None, description="Type of delegation")
+    source_agent: str | None = Field(default=None, description="Agent making delegation")
+    target_agent: str | None = Field(default=None, description="Agent being delegated to")
     
     # Task information
-    delegated_task: Optional[str] = Field(default=None, description="Task being delegated")
-    task_context: Optional[str] = Field(default=None, description="Context for delegated task")
+    delegated_task: str | None = Field(default=None, description="Task being delegated")
+    task_context: str | None = Field(default=None, description="Context for delegated task")
     
     # Communication details
-    communication_protocol: Optional[str] = Field(
+    communication_protocol: str | None = Field(
         default=None, 
         description="Protocol used for delegation"
     )
-    message_size: Optional[int] = Field(default=None, description="Size of delegation message")
+    message_size: int | None = Field(default=None, description="Size of delegation message")
     
     # Failure reasons
-    delegation_failure_reason: Optional[str] = Field(
+    delegation_failure_reason: str | None = Field(
         default=None, 
         description="Reason delegation failed"
     )
@@ -226,28 +224,28 @@ class SynthesisErrorSchema(OrchestratorErrorSchema):
     """Schema for result synthesis failures."""
     
     # Synthesis details
-    synthesis_method: Optional[str] = Field(default=None, description="Method used for synthesis")
+    synthesis_method: str | None = Field(default=None, description="Method used for synthesis")
     component_count: int = Field(default=0, description="Number of components to synthesize")
     
     # Component information
-    completed_components: List[str] = Field(
+    completed_components: list[str] = Field(
         default_factory=list, 
         description="Components that completed successfully"
     )
-    failed_components: List[str] = Field(
+    failed_components: list[str] = Field(
         default_factory=list, 
         description="Components that failed"
     )
     
     # LLM information
-    synthesis_model: Optional[str] = Field(default=None, description="Model used for synthesis")
-    synthesis_prompt_size: Optional[int] = Field(
+    synthesis_model: str | None = Field(default=None, description="Model used for synthesis")
+    synthesis_prompt_size: int | None = Field(
         default=None, 
         description="Size of synthesis prompt"
     )
     
     # Failure details
-    synthesis_failure_reason: Optional[str] = Field(
+    synthesis_failure_reason: str | None = Field(
         default=None, 
         description="Reason synthesis failed"
     )

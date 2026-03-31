@@ -7,9 +7,11 @@ Maintains backward compatibility with the original ORCHESTRATOR_SYSTEM_PROMPT.
 from __future__ import annotations
 
 from mindflow_backend.agents.prompts.core.orchestrator import compose_orchestrator_prompt
-from mindflow_backend.agents.prompts.specialized.context_governance import CONTEXT_GOVERNANCE
 from mindflow_backend.agents.prompts.specialized.agent_delegation import AGENT_DELEGATION
-from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import ORCHESTRATOR_REFLECTION
+from mindflow_backend.agents.prompts.specialized.context_governance import CONTEXT_GOVERNANCE
+from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import (
+    ORCHESTRATOR_REFLECTION,
+)
 
 
 def build_full_orchestrator_prompt(*segments: str) -> str:

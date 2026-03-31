@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
 from mindflow_backend.schemas.tools.shell_tabs import (
     SHELL_TAB_CLOSE_SCHEMA,
     SHELL_TAB_EXEC_SCHEMA,
@@ -14,7 +15,6 @@ from mindflow_backend.schemas.tools.shell_tabs import (
     SHELL_TAB_READ_SCHEMA,
     SHELL_TAB_STATUS_SCHEMA,
 )
-from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
 from mindflow_backend.services import get_shell_tab_service
 
 

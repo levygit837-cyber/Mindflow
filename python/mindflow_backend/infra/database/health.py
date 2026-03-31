@@ -6,13 +6,13 @@ and diagnostic capabilities for the database layer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
-from datetime import datetime, UTC, timedelta
 import asyncio
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.database.connection import get_db_manager
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -22,9 +22,9 @@ class HealthCheckResult:
     """Result of a database health check."""
     status: str  # "healthy", "degraded", "unhealthy"
     latency_ms: float
-    error: Optional[str] = None
+    error: str | None = None
     timestamp: datetime = None
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
     
     def __post_init__(self) -> None:
         if self.timestamp is None:
@@ -41,7 +41,7 @@ class DatabaseMetrics:
     connection_errors: int
     avg_query_time_ms: float
     slow_queries_count: int
-    last_error_time: Optional[datetime]
+    last_error_time: datetime | None
     uptime_seconds: float
 
 
@@ -64,9 +64,9 @@ class DatabaseHealthChecker:
             "max_error_rate": 0.05,  # 5% max error rate
             "health_check_interval": 30,  # seconds
         }
-        self._health_history: List[HealthCheckResult] = []
-        self._last_metrics: Optional[DatabaseMetrics] = None
-        self._monitoring_task: Optional[asyncio.Task] = None
+        self._health_history: list[HealthCheckResult] = []
+        self._last_metrics: DatabaseMetrics | None = None
+        self._monitoring_task: asyncio.Task | None = None
         self._is_monitoring = False
         
     async def check_health(self) -> HealthCheckResult:
@@ -130,7 +130,7 @@ class DatabaseHealthChecker:
             
             return result
             
-    def _determine_health_status(self, health_data: Dict[str, Any], latency_ms: float) -> str:
+    def _determine_health_status(self, health_data: dict[str, Any], latency_ms: float) -> str:
         """Determine overall health status from metrics.
         
         Args:
@@ -193,7 +193,7 @@ class DatabaseHealthChecker:
             _logger.error("database_metrics_collection_failed", error=str(e))
             raise
             
-    async def get_diagnostics(self) -> Dict[str, Any]:
+    async def get_diagnostics(self) -> dict[str, Any]:
         """Get comprehensive diagnostic information.
         
         Returns:
@@ -294,7 +294,7 @@ class DatabaseHealthChecker:
         else:
             _logger.warning("database_health_threshold_unknown", key=key)
             
-    def get_health_summary(self) -> Dict[str, Any]:
+    def get_health_summary(self) -> dict[str, Any]:
         """Get summary of recent health checks.
         
         Returns:
@@ -328,7 +328,7 @@ class DatabaseHealthChecker:
 
 
 # Global health checker instance
-_health_checker: Optional[DatabaseHealthChecker] = None
+_health_checker: DatabaseHealthChecker | None = None
 
 
 def get_health_checker() -> DatabaseHealthChecker:

@@ -6,19 +6,8 @@ Provides high-level server functionality with automatic transport selection,
 connection management, and protocol handling.
 """
 
-from .server import (
-    MCPServer,
-    MCPServerConfig,
-    MCPServerState,
-    MCPServerError
-)
-
-from .handler import (
-    MCPServerHandler,
-    BaseMCPHandler,
-    MCPToolHandler,
-    MCPResourceHandler
-)
+from .handler import BaseMCPHandler, MCPResourceHandler, MCPServerHandler, MCPToolHandler
+from .server import MCPServer, MCPServerConfig, MCPServerError, MCPServerState
 
 __all__ = [
     "MCPServer",

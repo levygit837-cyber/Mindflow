@@ -8,18 +8,17 @@ from __future__ import annotations
 
 import asyncio
 import time
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable, Union, AsyncGenerator
-from datetime import datetime, UTC, timedelta
-from enum import Enum
-import json
 import uuid
-import weakref
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.tracing.tracer import get_tracer, SpanKind
 from mindflow_backend.infra.api.gateway import RequestInfo, ResponseInfo
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.tracing.tracer import get_tracer
 
 _logger = get_logger(__name__)
 
@@ -51,15 +50,15 @@ class MiddlewareContext:
     """Middleware execution context."""
     request_id: str
     request_info: RequestInfo
-    response_info: Optional[ResponseInfo] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    response_info: ResponseInfo | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     execution_time_ms: float = 0.0
-    error: Optional[Exception] = None
+    error: Exception | None = None
     completed: bool = False
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "request_id": self.request_id,
@@ -165,7 +164,7 @@ class Middleware(ABC):
             return 0.0
         return self.success_count / self.execution_count
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -217,7 +216,7 @@ class AuthenticationMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -259,12 +258,12 @@ class AuthorizationMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
             
-    def _get_required_permissions(self, request_info: RequestInfo) -> List[str]:
+    def _get_required_permissions(self, request_info: RequestInfo) -> list[str]:
         """Get required permissions for request.
         
         Args:
@@ -296,7 +295,7 @@ class RateLimitingMiddleware(Middleware):
     def __init__(self, name: str = "rate_limiting"):
         """Initialize rate limiting middleware."""
         super().__init__(name, MiddlewareType.RATE_LIMITING, priority=80)
-        self._rate_limits: Dict[str, Dict[str, Any]] = {}
+        self._rate_limits: dict[str, dict[str, Any]] = {}
         
     def set_rate_limit(self, key: str, requests_per_minute: int, burst_size: int = 10) -> None:
         """Set rate limit for key.
@@ -383,7 +382,7 @@ class LoggingMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -407,7 +406,7 @@ class LoggingMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -419,7 +418,7 @@ class MetricsMiddleware(Middleware):
     def __init__(self, name: str = "metrics"):
         """Initialize metrics middleware."""
         super().__init__(name, MiddlewareType.METRICS, priority=5)
-        self._metrics: Dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {}
         
     async def process_request(self, context: MiddlewareContext) -> MiddlewareContext:
         """Collect request metrics."""
@@ -438,7 +437,7 @@ class MetricsMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -472,7 +471,7 @@ class MetricsMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -505,7 +504,7 @@ class TracingMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -524,7 +523,7 @@ class TracingMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -536,7 +535,7 @@ class ErrorHandlingMiddleware(Middleware):
     def __init__(self, name: str = "error_handling"):
         """Initialize error handling middleware."""
         super().__init__(name, MiddlewareType.ERROR_HANDLING, priority=1)
-        self._error_handlers: Dict[type, Callable] = {}
+        self._error_handlers: dict[type, Callable] = {}
         
     def register_error_handler(self, error_type: type, handler: Callable) -> None:
         """Register error handler.
@@ -588,7 +587,7 @@ class ErrorHandlingMiddleware(Middleware):
             
             return context
             
-        except Exception as e:
+        except Exception:
             execution_time_ms = (time.time() - start_time) * 1000
             self.update_metrics(execution_time_ms, False)
             raise
@@ -607,10 +606,10 @@ class MiddlewarePipeline:
     
     def __init__(self):
         """Initialize middleware pipeline."""
-        self._middlewares: List[Middleware] = []
-        self._before_middleware: List[Middleware] = []
-        self._after_middleware: List[Middleware] = []
-        self._error_middleware: List[Middleware] = []
+        self._middlewares: list[Middleware] = []
+        self._before_middleware: list[Middleware] = []
+        self._after_middleware: list[Middleware] = []
+        self._error_middleware: list[Middleware] = []
         self._is_initialized = False
         
         # Pipeline configuration
@@ -711,7 +710,7 @@ class MiddlewarePipeline:
                 
         return False
         
-    def get_middleware_by_name(self, name: str) -> Optional[Middleware]:
+    def get_middleware_by_name(self, name: str) -> Middleware | None:
         """Get middleware by name.
         
         Args:
@@ -859,7 +858,7 @@ class MiddlewarePipeline:
                     
         return context
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get pipeline statistics.
         
         Returns:
@@ -883,7 +882,7 @@ class MiddlewarePipeline:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform pipeline health check.
         
         Returns:
@@ -935,7 +934,7 @@ class MiddlewarePipeline:
 
 
 # Global middleware pipeline instance
-_middleware_pipeline: Optional[MiddlewarePipeline] = None
+_middleware_pipeline: MiddlewarePipeline | None = None
 
 
 def get_middleware_pipeline() -> MiddlewarePipeline:

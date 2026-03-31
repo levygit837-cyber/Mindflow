@@ -11,12 +11,12 @@ from collections import Counter
 from typing import Any
 
 from mindflow_backend.memory.indexing import normalized_lexical_similarity
+from mindflow_backend.memory.storage.models import SessionBlock
 from mindflow_backend.schemas.memory.contracts import (
     MemoryRecallHit,
     MemorySourceType,
     SessionBlockSchema,
 )
-from mindflow_backend.memory.storage.models import SessionBlock
 
 _STOPWORDS = {
     "a", "ao", "as", "como", "com", "da", "das", "de", "do", "dos", "e",

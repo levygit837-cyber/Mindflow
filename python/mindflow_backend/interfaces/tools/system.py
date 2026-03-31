@@ -6,8 +6,7 @@ sandboxed execution, and system monitoring with proper security controls.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any, Dict, List, Optional, Union
-from pathlib import Path
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -17,11 +16,11 @@ class SystemToolInterface(Protocol):
     async def execute_command(
         self,
         command: str,
-        args: List[str],
-        working_dir: Optional[str] = None,
+        args: list[str],
+        working_dir: str | None = None,
         timeout: int = 60,
-        env: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        env: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Execute system command with safety controls.
         
         Args:
@@ -44,11 +43,11 @@ class ProcessManagerTool(Protocol):
     async def start_process(
         self,
         command: str,
-        args: List[str],
-        pid_file: Optional[str] = None,
-        working_dir: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        args: list[str],
+        pid_file: str | None = None,
+        working_dir: str | None = None,
+        env: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Start a background process.
         
         Args:
@@ -68,7 +67,7 @@ class ProcessManagerTool(Protocol):
         pid: int,
         signal: str = "TERM",
         timeout: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Stop a running process.
         
         Args:
@@ -81,7 +80,7 @@ class ProcessManagerTool(Protocol):
         """
         ...
     
-    async def get_process_status(self, pid: int) -> Dict[str, Any]:
+    async def get_process_status(self, pid: int) -> dict[str, Any]:
         """Get status of a process.
         
         Args:
@@ -94,9 +93,9 @@ class ProcessManagerTool(Protocol):
     
     async def list_processes(
         self,
-        filter_name: Optional[str] = None,
-        filter_user: Optional[str] = None
-    ) -> Dict[str, Any]:
+        filter_name: str | None = None,
+        filter_user: str | None = None
+    ) -> dict[str, Any]:
         """List running processes with optional filtering.
         
         Args:
@@ -116,9 +115,9 @@ class SandboxTool(Protocol):
     async def execute_in_sandbox(
         self,
         command: str,
-        args: List[str],
-        sandbox_config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        args: list[str],
+        sandbox_config: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute command in isolated sandbox environment.
         
         Args:
@@ -134,8 +133,8 @@ class SandboxTool(Protocol):
     async def create_sandbox(
         self,
         root_dir: str,
-        config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        config: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Create sandbox environment.
         
         Args:
@@ -147,7 +146,7 @@ class SandboxTool(Protocol):
         """
         ...
     
-    async def cleanup_sandbox(self, sandbox_id: str) -> Dict[str, Any]:
+    async def cleanup_sandbox(self, sandbox_id: str) -> dict[str, Any]:
         """Clean up sandbox environment.
         
         Args:
@@ -163,7 +162,7 @@ class SandboxTool(Protocol):
 class SystemMonitorTool(Protocol):
     """Interface for system monitoring operations."""
     
-    async def get_system_info(self) -> Dict[str, Any]:
+    async def get_system_info(self) -> dict[str, Any]:
         """Get comprehensive system information.
         
         Returns:
@@ -171,7 +170,7 @@ class SystemMonitorTool(Protocol):
         """
         ...
     
-    async def get_resource_usage(self, pid: Optional[int] = None) -> Dict[str, Any]:
+    async def get_resource_usage(self, pid: int | None = None) -> dict[str, Any]:
         """Get resource usage information.
         
         Args:
@@ -182,7 +181,7 @@ class SystemMonitorTool(Protocol):
         """
         ...
     
-    async def get_disk_usage(self, path: str = "/") -> Dict[str, Any]:
+    async def get_disk_usage(self, path: str = "/") -> dict[str, Any]:
         """Get disk usage information.
         
         Args:
@@ -193,7 +192,7 @@ class SystemMonitorTool(Protocol):
         """
         ...
     
-    async def get_memory_usage(self) -> Dict[str, Any]:
+    async def get_memory_usage(self) -> dict[str, Any]:
         """Get memory usage information.
         
         Returns:
@@ -201,7 +200,7 @@ class SystemMonitorTool(Protocol):
         """
         ...
     
-    async def get_network_info(self) -> Dict[str, Any]:
+    async def get_network_info(self) -> dict[str, Any]:
         """Get network information.
         
         Returns:
@@ -214,7 +213,7 @@ class SystemMonitorTool(Protocol):
 class EnvironmentTool(Protocol):
     """Interface for environment management."""
     
-    async def get_environment_variables(self) -> Dict[str, Any]:
+    async def get_environment_variables(self) -> dict[str, Any]:
         """Get all environment variables.
         
         Returns:
@@ -227,7 +226,7 @@ class EnvironmentTool(Protocol):
         name: str,
         value: str,
         scope: str = "session"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Set environment variable.
         
         Args:
@@ -278,7 +277,7 @@ class ShellTabManager(Protocol):
         """Subscribe to shell tab lifecycle events for a session."""
         ...
     
-    async def get_path_info(self) -> Dict[str, Any]:
+    async def get_path_info(self) -> dict[str, Any]:
         """Get PATH environment variable information.
         
         Returns:
@@ -291,7 +290,7 @@ class ShellTabManager(Protocol):
 class PermissionTool(Protocol):
     """Interface for file permission management."""
     
-    async def get_permissions(self, path: str) -> Dict[str, Any]:
+    async def get_permissions(self, path: str) -> dict[str, Any]:
         """Get file/directory permissions.
         
         Args:
@@ -307,7 +306,7 @@ class PermissionTool(Protocol):
         path: str,
         mode: str,
         recursive: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Set file/directory permissions.
         
         Args:
@@ -320,7 +319,7 @@ class PermissionTool(Protocol):
         """
         ...
     
-    async def get_ownership(self, path: str) -> Dict[str, Any]:
+    async def get_ownership(self, path: str) -> dict[str, Any]:
         """Get file/directory ownership.
         
         Args:
@@ -340,7 +339,7 @@ class SystemInfoCollector(Protocol):
         self,
         include_detailed: bool = False,
         include_performance: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Collect comprehensive system information.
         
         Args:
@@ -352,7 +351,7 @@ class SystemInfoCollector(Protocol):
         """
         ...
     
-    async def get_cpu_info(self, detailed: bool = False) -> Dict[str, Any]:
+    async def get_cpu_info(self, detailed: bool = False) -> dict[str, Any]:
         """Get CPU information.
         
         Args:
@@ -363,7 +362,7 @@ class SystemInfoCollector(Protocol):
         """
         ...
     
-    async def get_memory_info(self) -> Dict[str, Any]:
+    async def get_memory_info(self) -> dict[str, Any]:
         """Get memory information.
         
         Returns:
@@ -371,7 +370,7 @@ class SystemInfoCollector(Protocol):
         """
         ...
     
-    async def get_gpu_info(self, detailed: bool = False) -> List[Dict[str, Any]]:
+    async def get_gpu_info(self, detailed: bool = False) -> list[dict[str, Any]]:
         """Get GPU information.
         
         Args:
@@ -384,8 +383,8 @@ class SystemInfoCollector(Protocol):
     
     async def generate_recommendations(
         self,
-        system_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        system_info: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate system recommendations.
         
         Args:
@@ -407,7 +406,7 @@ class ResourceMonitor(Protocol):
         interval_seconds: int = 1,
         include_history: bool = True,
         check_alerts: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Monitor system resources.
         
         Args:
@@ -421,7 +420,7 @@ class ResourceMonitor(Protocol):
         """
         ...
     
-    async def get_current_metrics(self) -> Dict[str, Any]:
+    async def get_current_metrics(self) -> dict[str, Any]:
         """Get current resource metrics.
         
         Returns:
@@ -429,7 +428,7 @@ class ResourceMonitor(Protocol):
         """
         ...
     
-    async def get_alert_thresholds(self) -> Dict[str, float]:
+    async def get_alert_thresholds(self) -> dict[str, float]:
         """Get current alert thresholds.
         
         Returns:
@@ -437,7 +436,7 @@ class ResourceMonitor(Protocol):
         """
         ...
     
-    async def set_alert_thresholds(self, thresholds: Dict[str, float]) -> None:
+    async def set_alert_thresholds(self, thresholds: dict[str, float]) -> None:
         """Set alert thresholds.
         
         Args:
@@ -445,7 +444,7 @@ class ResourceMonitor(Protocol):
         """
         ...
     
-    async def check_alerts(self) -> List[Dict[str, Any]]:
+    async def check_alerts(self) -> list[dict[str, Any]]:
         """Check for alert conditions.
         
         Returns:
@@ -470,7 +469,7 @@ class NetworkTool(Protocol):
         """
         ...
     
-    async def get_network_interfaces(self) -> List[Dict[str, Any]]:
+    async def get_network_interfaces(self) -> list[dict[str, Any]]:
         """Get network interface information.
         
         Returns:
@@ -478,7 +477,7 @@ class NetworkTool(Protocol):
         """
         ...
     
-    async def scan_ports(self, host: str, ports: List[int]) -> Dict[int, bool]:
+    async def scan_ports(self, host: str, ports: list[int]) -> dict[int, bool]:
         """Scan ports on a host.
         
         Args:
@@ -490,7 +489,7 @@ class NetworkTool(Protocol):
         """
         ...
     
-    async def get_bandwidth_usage(self) -> Dict[str, Any]:
+    async def get_bandwidth_usage(self) -> dict[str, Any]:
         """Get current bandwidth usage.
         
         Returns:

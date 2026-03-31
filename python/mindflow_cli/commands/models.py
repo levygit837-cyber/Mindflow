@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import typer
 import httpx
+import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
-from mindflow_cli.client import MindFlowCliClient
 from mindflow_cli.commands.chat import build_client
 from mindflow_cli.commands.settings import get_settings
 from mindflow_cli.render.theme import MINDFLOW_THEME
@@ -135,7 +134,7 @@ def register_models_commands(app: typer.Typer) -> None:
                 orchestrate=False,
             )
             
-            console.print(f"\n[bold green]✅ Model test completed[/]")
+            console.print("\n[bold green]✅ Model test completed[/]")
             response_preview = response[:200] + "..." if len(response) > 200 else response
             console.print(f"[bold]Response:[/] {response_preview}")
             

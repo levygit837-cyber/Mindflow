@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from itertools import cycle
 from time import perf_counter
 from typing import Any
 from urllib.parse import quote_plus
-from datetime import datetime, UTC
 
 from mindflow_backend.agents.tools.specialist.research.analysis.result_synthesizer import (
     get_result_synthesizer,
@@ -25,9 +25,8 @@ from mindflow_backend.schemas.agents.research import (
     BrowserActionResponse,
     ConfidenceLevel,
     IterationType,
-    QuestionType,
     QueryPlan,
-    SourceType,
+    QuestionType,
     ResearchBrowserSelection,
     ResearchConfig,
     ResearchFinding,
@@ -35,13 +34,13 @@ from mindflow_backend.schemas.agents.research import (
     ResearchResponse,
     ResearchResult,
     SourceClassification,
+    SourceType,
 )
 from mindflow_backend.schemas.orchestration.delegation import DelegationTask
 from mindflow_backend.schemas.tools.pinchtab_schemas import (
     BrowserCommandAction,
     BrowserCommandRequest,
     BrowserCommandResponse,
-    BrowserInstanceState,
     CreateBrowserRequest,
     CreateBrowserResponse,
     ListBrowsersRequest,

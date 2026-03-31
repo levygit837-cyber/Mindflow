@@ -7,10 +7,10 @@ templates, access patterns, and resource management operations.
 
 from .resource import (
     MCPResource,
+    MCPResourceAccess,
     MCPResourceDefinition,
     MCPResourceResult,
     MCPResourceTemplate,
-    MCPResourceAccess
 )
 
 __all__ = [

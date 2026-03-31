@@ -5,15 +5,14 @@ Recuperação semântica cross-task para memória de tasks.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.memory.task_memory.models import TaskMemory, TaskChunk
-from mindflow_backend.memory.shared.core.types import MemoryRetrievalResult
+from mindflow_backend.memory.task_memory.models import TaskMemory
+from mindflow_backend.schemas.memory.contracts import MemoryRetrievalResult
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 
 _logger = get_logger(__name__)
@@ -124,7 +123,7 @@ class TaskRetriever(BaseAbstractService):
         db: Session,
         task_id: str,
         max_depth: int = 3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Encontrar tasks relacionadas por dependências."""
         self.log_operation(
             "find_related_tasks",

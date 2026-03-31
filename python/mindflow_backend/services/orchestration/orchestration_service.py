@@ -6,13 +6,15 @@ task decomposition, personality selection, workflow management, and agent coordi
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
-from mindflow_backend.services.interfaces.orchestration_interfaces import OrchestrationServiceInterface
+from mindflow_backend.services.interfaces.orchestration_interfaces import (
+    OrchestrationServiceInterface,
+)
 
 
 class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
@@ -33,8 +35,8 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
         self._memory_service = None
         
         # Workflow registry
-        self._active_workflows: Dict[str, Dict[str, Any]] = {}
-        self._execution_history: List[Dict[str, Any]] = []
+        self._active_workflows: dict[str, dict[str, Any]] = {}
+        self._execution_history: list[dict[str, Any]] = []
     
     def _get_logger(self) -> Any:
         """Get logger instance for this service."""
@@ -71,9 +73,9 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
     async def decompose_task(
         self,
         task_description: str,
-        session_id: Optional[str] = None,
-        complexity_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        session_id: str | None = None,
+        complexity_level: str | None = None
+    ) -> dict[str, Any]:
         """Decompose a complex task into sub-tasks.
         
         Args:
@@ -140,8 +142,8 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
         task_id: str,
         task_description: str,
         task_complexity: str,
-        current_specialist: Optional[str] = None
-    ) -> Dict[str, Any]:
+        current_specialist: str | None = None
+    ) -> dict[str, Any]:
         """Select optimal personality for a task.
         
         Args:
@@ -210,8 +212,8 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
     async def execute_dag(
         self,
         dag_id: str,
-        session_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        session_id: str | None = None
+    ) -> dict[str, Any]:
         """Execute a Directed Acyclic Graph (DAG) of tasks.
         
         Args:
@@ -271,9 +273,9 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
     async def coordinate_agents(
         self,
         task_id: str,
-        agent_sequence: List[str],
-        session_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        agent_sequence: list[str],
+        session_id: str | None = None
+    ) -> dict[str, Any]:
         """Coordinate multiple agents in sequence.
         
         Args:
@@ -330,7 +332,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             self._logger.error(f"Error coordinating agents: {str(exc)}")
             raise
     
-    async def get_execution_status(self, execution_id: str) -> Dict[str, Any]:
+    async def get_execution_status(self, execution_id: str) -> dict[str, Any]:
         """Get execution status for a task or workflow.
         
         Args:
@@ -373,8 +375,8 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
     
     async def create_workflow(
         self,
-        workflow_definition: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        workflow_definition: dict[str, Any]
+    ) -> dict[str, Any]:
         """Create a new workflow from definition.
         
         Args:
@@ -419,9 +421,9 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
     async def execute_workflow(
         self,
         workflow_id: str,
-        input_data: Dict[str, Any],
-        session_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        input_data: dict[str, Any],
+        session_id: str | None = None
+    ) -> dict[str, Any]:
         """Execute a workflow with input data.
         
         Args:
@@ -510,9 +512,9 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
         self,
         task_description: str,
         complexity_level: str,
-        session_id: Optional[str],
+        session_id: str | None,
         main_task_id: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Generate sub-tasks based on complexity."""
         task_service = self._get_task_service()
         sub_tasks = []
@@ -618,7 +620,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
         
         return sub_tasks
     
-    def _estimate_total_duration(self, tasks: List[Dict[str, Any]]) -> str:
+    def _estimate_total_duration(self, tasks: list[dict[str, Any]]) -> str:
         """Estimate total duration for a list of tasks."""
         duration_map = {
             "analysis": "5m",
@@ -652,7 +654,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             minutes = total_minutes % 60
             return f"{hours}h{minutes}m"
     
-    def _extract_dependencies(self, tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_dependencies(self, tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Extract dependency information from tasks."""
         dependencies = []
         for task in tasks:
@@ -665,7 +667,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
                 })
         return dependencies
     
-    async def _get_dag_definition(self, dag_id: str) -> Optional[Dict[str, Any]]:
+    async def _get_dag_definition(self, dag_id: str) -> dict[str, Any] | None:
         """Get DAG definition by ID."""
         # Placeholder implementation - in real system this would fetch from database
         return {
@@ -688,13 +690,13 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             ]
         }
     
-    async def _simulate_task_execution(self, node: Dict[str, Any]) -> None:
+    async def _simulate_task_execution(self, node: dict[str, Any]) -> None:
         """Simulate task execution (placeholder)."""
         # In a real implementation, this would execute the actual task
         # For now, we'll just log it
         self._logger.info(f"Simulating task execution: {node.get('task_id')} - {node.get('description')}")
     
-    def _generate_coordination_plan(self, agent_sequence: List[str]) -> Dict[str, Any]:
+    def _generate_coordination_plan(self, agent_sequence: list[str]) -> dict[str, Any]:
         """Generate coordination plan for agent sequence."""
         plan = {
             "sequence": agent_sequence,
@@ -707,7 +709,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
         
         return plan
     
-    def _setup_communication_channels(self, agent_sequence: List[str]) -> List[Dict[str, Any]]:
+    def _setup_communication_channels(self, agent_sequence: list[str]) -> list[dict[str, Any]]:
         """Set up communication channels between agents."""
         channels = []
         for i in range(len(agent_sequence) - 1):
@@ -719,7 +721,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             })
         return channels
     
-    def _define_data_flow(self, agent_sequence: List[str]) -> List[Dict[str, Any]]:
+    def _define_data_flow(self, agent_sequence: list[str]) -> list[dict[str, Any]]:
         """Define data flow between agents."""
         flow = []
         for i in range(len(agent_sequence) - 1):
@@ -731,7 +733,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
             })
         return flow
     
-    async def _execute_workflow_node(self, node: Dict[str, Any], input_data: Dict[str, Any], session_id: Optional[str]) -> Dict[str, Any]:
+    async def _execute_workflow_node(self, node: dict[str, Any], input_data: dict[str, Any], session_id: str | None) -> dict[str, Any]:
         """Execute a single workflow node."""
         node_type = node.get("type", "task")
         
@@ -751,7 +753,7 @@ class OrchestrationService(BaseAbstractService, OrchestrationServiceInterface):
                 "result": {"input_data": input_data}
             }
     
-    def _calculate_execution_progress(self, execution_record: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_execution_progress(self, execution_record: dict[str, Any]) -> dict[str, Any]:
         """Calculate execution progress from record."""
         total_steps = execution_record.get("total_steps", 1)
         current_step = execution_record.get("current_step", 1)

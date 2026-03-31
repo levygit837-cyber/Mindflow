@@ -6,12 +6,17 @@ components in the MindFlow system.
 """
 
 import os
-from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field
 from pathlib import Path
+from typing import Any
 
-from mindflow_backend.schemas.mcp.base import MCPServerInfo, MCPClientInfo, MCPCapability, MCPVersion
-from mindflow_backend.schemas.mcp.transport import StdioConfig, HTTPConfig, WebSocketConfig
+from pydantic import BaseModel, Field
+
+from mindflow_backend.schemas.mcp.base import (
+    MCPCapability,
+    MCPClientInfo,
+    MCPServerInfo,
+)
+from mindflow_backend.schemas.mcp.transport import HTTPConfig, StdioConfig, WebSocketConfig
 
 
 class MCPSettings(BaseModel):
@@ -42,23 +47,23 @@ class MCPSettings(BaseModel):
     )
     
     # Capabilities
-    capabilities: List[MCPCapability] = Field(
+    capabilities: list[MCPCapability] = Field(
         default_factory=list,
         description="MCP capabilities"
     )
     
     # Transport configurations
-    stdio_configs: List[StdioConfig] = Field(
+    stdio_configs: list[StdioConfig] = Field(
         default_factory=list,
         description="Stdio transport configurations"
     )
     
-    http_configs: List[HTTPConfig] = Field(
+    http_configs: list[HTTPConfig] = Field(
         default_factory=list,
         description="HTTP transport configurations"
     )
     
-    websocket_configs: List[WebSocketConfig] = Field(
+    websocket_configs: list[WebSocketConfig] = Field(
         default_factory=list,
         description="WebSocket transport configurations"
     )
@@ -234,7 +239,7 @@ class MCPEnvironmentConfig:
 class MCPFileConfig:
     """File-based MCP configuration loader."""
     
-    def __init__(self, config_path: Optional[Union[str, Path]] = None):
+    def __init__(self, config_path: str | Path | None = None):
         """
         Initialize file configuration loader.
         
@@ -257,7 +262,7 @@ class MCPFileConfig:
         try:
             import json
             
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path) as f:
                 config_data = json.load(f)
             
             return MCPSettings.model_validate(config_data)
@@ -305,7 +310,7 @@ class MCPConfigManager:
     
     def __init__(
         self,
-        config_path: Optional[Union[str, Path]] = None,
+        config_path: str | Path | None = None,
         env_prefix: str = "MCP_"
     ):
         """
@@ -317,7 +322,7 @@ class MCPConfigManager:
         """
         self.env_config = MCPEnvironmentConfig(env_prefix)
         self.file_config = MCPFileConfig(config_path)
-        self._settings: Optional[MCPSettings] = None
+        self._settings: MCPSettings | None = None
     
     def get_settings(self) -> MCPSettings:
         """
@@ -360,7 +365,7 @@ class MCPConfigManager:
         
         return self._settings
     
-    def save_settings(self, settings: Optional[MCPSettings] = None) -> None:
+    def save_settings(self, settings: MCPSettings | None = None) -> None:
         """
         Save settings to file.
         
@@ -410,11 +415,11 @@ class MCPConfigManager:
 
 
 # Global configuration instance
-_config_manager: Optional[MCPConfigManager] = None
+_config_manager: MCPConfigManager | None = None
 
 
 def get_config_manager(
-    config_path: Optional[Union[str, Path]] = None,
+    config_path: str | Path | None = None,
     env_prefix: str = "MCP_"
 ) -> MCPConfigManager:
     """
@@ -445,7 +450,7 @@ def get_mcp_settings() -> MCPSettings:
     return get_config_manager().get_settings()
 
 
-def save_mcp_settings(settings: Optional[MCPSettings] = None) -> None:
+def save_mcp_settings(settings: MCPSettings | None = None) -> None:
     """
     Save MCP settings to file.
     

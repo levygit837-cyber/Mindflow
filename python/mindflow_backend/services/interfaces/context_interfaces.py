@@ -8,8 +8,8 @@ Use: from mindflow_backend.interfaces.services import RetrievalServiceInterface,
 
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.services.context import (
-    RetrievalServiceInterface,
     EmbeddingServiceInterface,
+    RetrievalServiceInterface,
     VectorStoreInterface,
 )
 

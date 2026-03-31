@@ -1,15 +1,15 @@
 """Lifecycle management interfaces for Skills system."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from abc import abstractmethod
 from datetime import datetime
+from typing import Any
 
 from mindflow_backend.interfaces.core import BaseComponentInterface
 from mindflow_backend.schemas.skills.base import SkillStatus
 from mindflow_backend.schemas.skills.execution import (
     ExecutionContext,
     ExecutionResult,
-    PerformanceMetrics
+    PerformanceMetrics,
 )
 
 
@@ -89,7 +89,7 @@ class SkillManagerInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def list_loaded_skills(self) -> List[str]:
+    async def list_loaded_skills(self) -> list[str]:
         """Get list of currently loaded skills.
         
         Returns:
@@ -98,7 +98,7 @@ class SkillManagerInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_skill_health(self, skill_id: str) -> Dict[str, Any]:
+    async def get_skill_health(self, skill_id: str) -> dict[str, Any]:
         """Get health information for a skill.
         
         Args:
@@ -116,9 +116,9 @@ class SkillOrchestratorInterface(BaseComponentInterface):
     @abstractmethod
     async def orchestrate_execution(
         self, 
-        skills: List[str],
-        execution_plan: Dict[str, Any]
-    ) -> List[ExecutionResult]:
+        skills: list[str],
+        execution_plan: dict[str, Any]
+    ) -> list[ExecutionResult]:
         """Orchestrate execution of multiple skills.
         
         Args:
@@ -134,8 +134,8 @@ class SkillOrchestratorInterface(BaseComponentInterface):
     async def create_execution_plan(
         self, 
         objective: str,
-        available_skills: List[str]
-    ) -> Dict[str, Any]:
+        available_skills: list[str]
+    ) -> dict[str, Any]:
         """Create execution plan for objective.
         
         Args:
@@ -150,9 +150,9 @@ class SkillOrchestratorInterface(BaseComponentInterface):
     @abstractmethod
     async def optimize_execution_order(
         self, 
-        skills: List[str],
-        dependencies: Dict[str, List[str]]
-    ) -> List[str]:
+        skills: list[str],
+        dependencies: dict[str, list[str]]
+    ) -> list[str]:
         """Optimize execution order based on dependencies.
         
         Args:
@@ -170,7 +170,7 @@ class SkillOrchestratorInterface(BaseComponentInterface):
         failed_skill: str,
         context: ExecutionContext,
         error: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Handle execution failures.
         
         Args:
@@ -215,7 +215,7 @@ class SkillMonitoringInterface(BaseComponentInterface):
     async def get_skill_metrics(
         self, 
         skill_id: str,
-        time_range: Optional[Dict[str, datetime]] = None
+        time_range: dict[str, datetime] | None = None
     ) -> PerformanceMetrics:
         """Get performance metrics for a skill.
         
@@ -229,7 +229,7 @@ class SkillMonitoringInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_system_metrics(self) -> Dict[str, Any]:
+    async def get_system_metrics(self) -> dict[str, Any]:
         """Get overall system metrics.
         
         Returns:
@@ -241,7 +241,7 @@ class SkillMonitoringInterface(BaseComponentInterface):
     async def set_alert_thresholds(
         self, 
         skill_id: str,
-        thresholds: Dict[str, Any]
+        thresholds: dict[str, Any]
     ) -> bool:
         """Set alert thresholds for a skill.
         
@@ -257,10 +257,10 @@ class SkillMonitoringInterface(BaseComponentInterface):
     @abstractmethod
     async def get_alerts(
         self, 
-        skill_id: Optional[str] = None,
-        severity: Optional[str] = None,
+        skill_id: str | None = None,
+        severity: str | None = None,
         limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get alerts for skills.
         
         Args:
@@ -278,7 +278,7 @@ class SkillDependencyManagerInterface(BaseComponentInterface):
     """Interface for skill dependency management."""
     
     @abstractmethod
-    async def resolve_dependencies(self, skill_id: str) -> List[str]:
+    async def resolve_dependencies(self, skill_id: str) -> list[str]:
         """Resolve dependencies for a skill.
         
         Args:
@@ -290,7 +290,7 @@ class SkillDependencyManagerInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def check_dependency_conflicts(self, skills: List[str]) -> Dict[str, Any]:
+    async def check_dependency_conflicts(self, skills: list[str]) -> dict[str, Any]:
         """Check for dependency conflicts.
         
         Args:
@@ -302,7 +302,7 @@ class SkillDependencyManagerInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_dependency_graph(self) -> Dict[str, List[str]]:
+    async def get_dependency_graph(self) -> dict[str, list[str]]:
         """Get complete dependency graph.
         
         Returns:
@@ -314,7 +314,7 @@ class SkillDependencyManagerInterface(BaseComponentInterface):
     async def update_dependencies(
         self, 
         skill_id: str,
-        dependencies: List[str]
+        dependencies: list[str]
     ) -> bool:
         """Update dependencies for a skill.
         
@@ -336,7 +336,7 @@ class SkillVersionManagerInterface(BaseComponentInterface):
         self, 
         skill_id: str,
         version: str,
-        changes: List[str]
+        changes: list[str]
     ) -> bool:
         """Create a new version of a skill.
         
@@ -351,7 +351,7 @@ class SkillVersionManagerInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_skill_versions(self, skill_id: str) -> List[Dict[str, Any]]:
+    async def get_skill_versions(self, skill_id: str) -> list[dict[str, Any]]:
         """Get all versions of a skill.
         
         Args:
@@ -385,7 +385,7 @@ class SkillVersionManagerInterface(BaseComponentInterface):
         skill_id: str,
         version1: str,
         version2: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compare two versions of a skill.
         
         Args:

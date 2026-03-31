@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
-from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.controllers.base_controller import BaseController
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -43,7 +44,7 @@ legacy_controller = LegacyController()
 
 
 @router.post("/agent/chat/stream")
-async def legacy_agent_chat_stream(request: Dict[str, Any]):
+async def legacy_agent_chat_stream(request: dict[str, Any]):
     """Legacy agent chat stream endpoint - DEPRECATED.
     
     **DEPRECATED**: This endpoint will be removed on 2025-01-01.

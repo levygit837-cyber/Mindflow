@@ -15,14 +15,14 @@ async def test_filesystem_tools():
     
     try:
         from mindflow_backend.tools.filesystem.enhanced_operations import (
+            EnhancedFileEditTool,
             EnhancedFileReadTool,
             EnhancedFileWriteTool,
-            EnhancedFileEditTool,
         )
         from mindflow_backend.tools.filesystem.enhanced_search import (
-            EnhancedGrepTool,
-            EnhancedGlobTool,
             EnhancedFindTool,
+            EnhancedGlobTool,
+            EnhancedGrepTool,
         )
         
         # Test tool creation and basic structure
@@ -53,8 +53,8 @@ async def test_system_tools():
     
     try:
         from mindflow_backend.tools.system.enhanced_shell import (
-            EnhancedShellExecutor,
             EnhancedProcessManager,
+            EnhancedShellExecutor,
         )
         from mindflow_backend.tools.system.info_collector import SystemInfoCollector
         from mindflow_backend.tools.system.resource_monitor import ResourceMonitor
@@ -84,9 +84,9 @@ async def test_web_tools():
     
     try:
         from mindflow_backend.tools.web.http_client import (
+            ApiClientTool,
             EnhancedHttpClient,
             WebScraperTool,
-            ApiClientTool,
         )
         
         # Test tool creation
@@ -113,8 +113,8 @@ async def test_ai_tools():
     
     try:
         from mindflow_backend.tools.ai.local_models import (
-            LocalModelManager,
             EmbeddingGenerator,
+            LocalModelManager,
         )
         
         # Test tool creation
@@ -140,8 +140,8 @@ async def test_data_tools():
     
     try:
         from mindflow_backend.tools.data.database_operations import (
-            DatabaseManager,
             CSVProcessor,
+            DatabaseManager,
         )
         
         # Test tool creation
@@ -167,8 +167,8 @@ async def test_integration_tools():
     
     try:
         from mindflow_backend.tools.integration.git_docker import (
-            GitManager,
             DockerManager,
+            GitManager,
         )
         
         # Test tool creation
@@ -193,9 +193,9 @@ async def test_core_components():
     print("⚙️ Testing Core Components...")
     
     try:
-        from mindflow_backend.tools.core.registry import EnhancedToolRegistry
         from mindflow_backend.tools.core.executor import ToolExecutor
         from mindflow_backend.tools.core.permissions import PermissionManager
+        from mindflow_backend.tools.core.registry import EnhancedToolRegistry
         
         # Test component creation
         registry = EnhancedToolRegistry()
@@ -220,14 +220,14 @@ async def test_tool_integration():
     print("🔌 Testing Tool Integration...")
     
     try:
+        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+        from mindflow_backend.tools.ai.local_models import LocalModelManager
         from mindflow_backend.tools.core.registry import EnhancedToolRegistry
+        from mindflow_backend.tools.data.database_operations import DatabaseManager
         from mindflow_backend.tools.filesystem.enhanced_operations import EnhancedFileReadTool
+        from mindflow_backend.tools.integration.git_docker import GitManager
         from mindflow_backend.tools.system.enhanced_shell import EnhancedShellExecutor
         from mindflow_backend.tools.web.http_client import EnhancedHttpClient
-        from mindflow_backend.tools.ai.local_models import LocalModelManager
-        from mindflow_backend.tools.data.database_operations import DatabaseManager
-        from mindflow_backend.tools.integration.git_docker import GitManager
-        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
         
         # Create registry
         registry = EnhancedToolRegistry()
@@ -269,12 +269,8 @@ async def test_backward_compatibility():
     try:
         # Test that both enhanced and original tools can be imported
         from mindflow_backend.tools.filesystem import (
-            FileReadTool,
             EnhancedFileReadTool,
-        )
-        from mindflow_backend.tools.system import (
-            SystemInfoCollector,
-            EnhancedShellExecutor,
+            FileReadTool,
         )
         
         # Test that both have required methods
@@ -298,12 +294,12 @@ async def test_no_external_dependencies():
     
     try:
         # Test that tools can be imported and instantiated without external libraries
-        from mindflow_backend.tools.filesystem.enhanced_operations import EnhancedFileReadTool
-        from mindflow_backend.tools.system.enhanced_shell import EnhancedShellExecutor
-        from mindflow_backend.tools.web.http_client import EnhancedHttpClient
         from mindflow_backend.tools.ai.local_models import LocalModelManager
         from mindflow_backend.tools.data.database_operations import DatabaseManager
+        from mindflow_backend.tools.filesystem.enhanced_operations import EnhancedFileReadTool
         from mindflow_backend.tools.integration.git_docker import GitManager
+        from mindflow_backend.tools.system.enhanced_shell import EnhancedShellExecutor
+        from mindflow_backend.tools.web.http_client import EnhancedHttpClient
         
         # Create tools (this should work even without external libraries)
         tools = [

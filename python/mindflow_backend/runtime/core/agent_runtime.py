@@ -6,15 +6,14 @@ split into focused modules for better maintainability.
 """
 
 import asyncio
-import contextlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
+from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 
 _logger = get_logger(__name__)
 
@@ -40,7 +39,7 @@ except Exception:
     pass
 
 try:
-    from mindflow_backend.memory.agent_memory.checkpointer import langgraph_memory
+    pass
 except Exception:
     pass
 
@@ -52,8 +51,7 @@ except Exception:
     pass
 
 try:
-    from mindflow_backend.infra.database.connection import get_db_session as db_session
-    from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
+    pass
 except Exception:
     pass
 
@@ -73,10 +71,10 @@ class AgentRuntime:
         self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
         
         # Import specialized modules
-        from ..routing.runtime_router import RuntimeRouter
         from ..execution.executor import RuntimeExecutor
-        from ..streaming.stream_manager import StreamManager
         from ..memory.memory_integration import MemoryIntegration
+        from ..routing.runtime_router import RuntimeRouter
+        from ..streaming.stream_manager import StreamManager
         
         self._router = RuntimeRouter()
         self._executor = RuntimeExecutor()
@@ -86,6 +84,30 @@ class AgentRuntime:
             execution_memory=self._execution_memory,
             memory_publisher=self._memory_publisher,
         )
+        
+        # Initialize CommunicationBus and register agents
+        asyncio.create_task(self._initialize_communication_bus())
+    
+    async def _initialize_communication_bus(self) -> None:
+        """Register all known agents in the CommunicationBus."""
+        try:
+            from mindflow_backend.agents.specialists.runtime_policy import (
+                list_agent_runtime_policies,
+            )
+            from mindflow_backend.communication.bus import get_communication_bus
+            
+            bus = get_communication_bus()
+            for policy in list_agent_runtime_policies():
+                await bus.register_agent(policy.agent_id)
+            _logger.info(
+                "communication_bus_agents_registered",
+                extra={"count": len(list_agent_runtime_policies())},
+            )
+        except Exception as exc:
+            _logger.warning(
+                "communication_bus_init_failed",
+                extra={"error": str(exc)},
+            )
     
     async def stream_chat(
         self,

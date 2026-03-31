@@ -6,11 +6,11 @@ historical performance data and system characteristics.
 
 from __future__ import annotations
 
-import time
 import statistics
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.grpc.config.config import GrpcConfig
 from mindflow_backend.infra.logging import get_logger
@@ -72,8 +72,8 @@ class OptimizationResult:
     """Result of optimization analysis."""
     
     optimization_type: OptimizationType
-    current_config: Dict[str, Any]
-    recommended_config: Dict[str, Any]
+    current_config: dict[str, Any]
+    recommended_config: dict[str, Any]
     expected_improvement_percent: float
     confidence_score: float  # 0-100
     risk_level: float  # 0-1
@@ -83,9 +83,9 @@ class OptimizationResult:
     
     # Applied information
     applied: bool = False
-    applied_timestamp: Optional[float] = None
-    rollback_timestamp: Optional[float] = None
-    actual_improvement_percent: Optional[float] = None
+    applied_timestamp: float | None = None
+    rollback_timestamp: float | None = None
+    actual_improvement_percent: float | None = None
     
     @property
     def is_safe_to_apply(self) -> bool:
@@ -98,9 +98,9 @@ class OptimizationResult:
 class GrpcOptimizer:
     """gRPC performance optimizer with intelligent tuning."""
     
-    def __init__(self, config: Optional[OptimizationConfig] = None):
+    def __init__(self, config: OptimizationConfig | None = None):
         self.config = config or OptimizationConfig()
-        self._optimization_history: List[OptimizationResult] = []
+        self._optimization_history: list[OptimizationResult] = []
         self._last_optimization_time = 0.0
         self._optimization_count = 0
         
@@ -111,7 +111,7 @@ class GrpcOptimizer:
         )
     
     def analyze_performance(self, current_config: GrpcConfig, 
-                          performance_data: List[Dict[str, Any]]) -> List[OptimizationResult]:
+                          performance_data: list[dict[str, Any]]) -> list[OptimizationResult]:
         """Analyze performance data and generate optimization recommendations."""
         if not self.config.enabled:
             return []
@@ -189,11 +189,11 @@ class GrpcOptimizer:
         
         return rollback_config
     
-    def get_optimization_history(self, limit: int = 50) -> List[OptimizationResult]:
+    def get_optimization_history(self, limit: int = 50) -> list[OptimizationResult]:
         """Get optimization history."""
         return self._optimization_history[-limit:]
     
-    def get_optimization_stats(self) -> Dict[str, Any]:
+    def get_optimization_stats(self) -> dict[str, Any]:
         """Get optimization statistics."""
         if not self._optimization_history:
             return {
@@ -218,7 +218,7 @@ class GrpcOptimizer:
         }
     
     def _analyze_connection_tuning(self, config: GrpcConfig, 
-                                 data: List[Dict[str, Any]]) -> List[OptimizationResult]:
+                                 data: list[dict[str, Any]]) -> list[OptimizationResult]:
         """Analyze connection pool tuning."""
         optimizations = []
         
@@ -263,7 +263,7 @@ class GrpcOptimizer:
         return optimizations
     
     def _analyze_timeout_tuning(self, config: GrpcConfig,
-                               data: List[Dict[str, Any]]) -> List[OptimizationResult]:
+                               data: list[dict[str, Any]]) -> list[OptimizationResult]:
         """Analyze timeout settings."""
         optimizations = []
         
@@ -309,7 +309,7 @@ class GrpcOptimizer:
         return optimizations
     
     def _analyze_retry_tuning(self, config: GrpcConfig,
-                             data: List[Dict[str, Any]]) -> List[OptimizationResult]:
+                             data: list[dict[str, Any]]) -> list[OptimizationResult]:
         """Analyze retry policy tuning."""
         optimizations = []
         
@@ -356,7 +356,7 @@ class GrpcOptimizer:
         return optimizations
     
     def _analyze_buffer_tuning(self, config: GrpcConfig,
-                             data: List[Dict[str, Any]]) -> List[OptimizationResult]:
+                             data: list[dict[str, Any]]) -> list[OptimizationResult]:
         """Analyze buffer size tuning."""
         optimizations = []
         
@@ -418,7 +418,7 @@ class GrpcOptimizer:
         return optimizations
     
     def _analyze_circuit_breaker_tuning(self, config: GrpcConfig,
-                                        data: List[Dict[str, Any]]) -> List[OptimizationResult]:
+                                        data: list[dict[str, Any]]) -> list[OptimizationResult]:
         """Analyze circuit breaker tuning."""
         optimizations = []
         

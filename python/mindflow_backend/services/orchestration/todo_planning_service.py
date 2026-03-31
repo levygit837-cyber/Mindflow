@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.planning import (
@@ -138,7 +138,7 @@ def build_todo_items_from_plan(
 
 
 def build_todo_items_from_subtasks(
-    components: list["SubTaskContract"],
+    components: list[SubTaskContract],
     *,
     overall_complexity: float | None = None,
 ) -> list[TodoItemContract]:

@@ -6,8 +6,8 @@ token window tracking, automatic review triggering, and context optimization.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 from mindflow_backend.infra.logging import get_logger
@@ -27,9 +27,9 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
         super().__init__()
         
         # Review configurations
-        self._session_configs: Dict[str, Dict[str, Any]] = {}
-        self._review_tasks: Dict[str, List[Dict[str, Any]]] = {}
-        self._review_results: Dict[str, List[Dict[str, Any]]] = {}
+        self._session_configs: dict[str, dict[str, Any]] = {}
+        self._review_tasks: dict[str, list[dict[str, Any]]] = {}
+        self._review_results: dict[str, list[dict[str, Any]]] = {}
         
         # Window size configurations
         self._window_sizes = {
@@ -74,9 +74,9 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
         self,
         session_id: str,
         window_size: str = "medium",
-        custom_tokens: Optional[int] = None,
-        trigger_threshold: Optional[int] = None
-    ) -> Dict[str, Any]:
+        custom_tokens: int | None = None,
+        trigger_threshold: int | None = None
+    ) -> dict[str, Any]:
         """Initialize session review configuration.
         
         Args:
@@ -137,7 +137,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
         self,
         session_id: str,
         additional_tokens: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update token count and check if review should be triggered.
         
         Args:
@@ -199,7 +199,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
         self,
         session_id: str,
         review_type: str = "manual"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Trigger a session review.
         
         Args:
@@ -267,7 +267,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
             self._logger.error(f"Error triggering review for {session_id}: {str(exc)}")
             raise
     
-    async def get_review_status(self, session_id: str) -> Dict[str, Any]:
+    async def get_review_status(self, session_id: str) -> dict[str, Any]:
         """Get review status for a session.
         
         Args:
@@ -322,7 +322,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
         self,
         session_id: str,
         limit: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get review results for a session.
         
         Args:
@@ -350,7 +350,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
         self,
         session_id: str,
         optimization_strategy: str = "summary"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Optimize session context based on review results.
         
         Args:
@@ -426,8 +426,8 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
     
     async def get_review_statistics(
         self,
-        time_range: Optional[Tuple[str, str]] = None
-    ) -> Dict[str, Any]:
+        time_range: tuple[str, str] | None = None
+    ) -> dict[str, Any]:
         """Get review statistics for analysis.
         
         Args:
@@ -508,8 +508,8 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
     
     async def create_review_schedule(
         self,
-        schedule_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        schedule_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Create automated review schedule.
         
         Args:
@@ -567,7 +567,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
     
     # Helper methods
     
-    async def _execute_review(self, session_id: str, review_task: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_review(self, session_id: str, review_task: dict[str, Any]) -> dict[str, Any]:
         """Execute a review task."""
         try:
             # Update task status
@@ -620,7 +620,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
             self._logger.error(f"Review execution failed: {str(exc)}")
             raise
     
-    async def _compress_session_context(self, session_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _compress_session_context(self, session_id: str, config: dict[str, Any]) -> dict[str, Any]:
         """Compress session context to save tokens."""
         # Placeholder implementation - would use actual compression algorithms
         return {
@@ -631,7 +631,7 @@ class ReviewService(BaseAbstractService, ReviewServiceInterface):
             "compression_ratio": 0.3
         }
     
-    async def _prune_session_context(self, session_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _prune_session_context(self, session_id: str, config: dict[str, Any]) -> dict[str, Any]:
         """Prune less relevant context from session."""
         # Placeholder implementation - would use relevance scoring
         return {

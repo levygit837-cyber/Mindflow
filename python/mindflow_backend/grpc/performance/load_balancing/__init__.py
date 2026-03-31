@@ -4,7 +4,12 @@ Provides multiple load balancing strategies, service discovery,
 and health checking for optimal request distribution.
 """
 
-from .strategies import LoadBalancingStrategy, RoundRobinStrategy, LeastConnectionsStrategy, WeightedRoundRobinStrategy
+from .strategies import (
+    LeastConnectionsStrategy,
+    LoadBalancingStrategy,
+    RoundRobinStrategy,
+    WeightedRoundRobinStrategy,
+)
 
 __all__ = [
     "LoadBalancingStrategy",

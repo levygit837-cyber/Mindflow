@@ -1,20 +1,20 @@
 """Specialized skill interfaces."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from abc import abstractmethod
+from typing import Any
 
 from mindflow_backend.interfaces.skills.base import SkillInterface
-from mindflow_backend.schemas.skills.base import SkillInput, SkillOutput
+from mindflow_backend.schemas.skills.base import SkillOutput
 from mindflow_backend.schemas.skills.core import (
     AnalysisSkillConfig,
     CodingSkillConfig,
-    ResearchSkillConfig
+    ResearchSkillConfig,
 )
 from mindflow_backend.schemas.skills.specialized import (
-    SecuritySkillConfig,
     ArchitectureSkillConfig,
+    DocumentationSkillConfig,
+    SecuritySkillConfig,
     TestingSkillConfig,
-    DocumentationSkillConfig
 )
 
 
@@ -48,7 +48,7 @@ class AnalysisSkillInterface(CoreSkillInterface):
         self, 
         code: str,
         language: str,
-        options: Optional[Dict[str, Any]] = None
+        options: dict[str, Any] | None = None
     ) -> SkillOutput:
         """Analyze code structure and properties.
         
@@ -83,7 +83,7 @@ class AnalysisSkillInterface(CoreSkillInterface):
     async def analyze_complexity(
         self, 
         code: str,
-        metrics: List[str] = None
+        metrics: list[str] = None
     ) -> SkillOutput:
         """Analyze code complexity.
         
@@ -114,7 +114,7 @@ class CodingSkillInterface(CoreSkillInterface):
         self, 
         specification: str,
         language: str,
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> SkillOutput:
         """Generate code from specification.
         
@@ -132,7 +132,7 @@ class CodingSkillInterface(CoreSkillInterface):
     async def modify_code(
         self, 
         original_code: str,
-        modifications: List[str],
+        modifications: list[str],
         language: str
     ) -> SkillOutput:
         """Modify existing code.
@@ -183,7 +183,7 @@ class ResearchSkillInterface(CoreSkillInterface):
     async def research_topic(
         self, 
         topic: str,
-        sources: List[str] = None,
+        sources: list[str] = None,
         depth: str = "standard"
     ) -> SkillOutput:
         """Research a specific topic.
@@ -202,7 +202,7 @@ class ResearchSkillInterface(CoreSkillInterface):
     async def find_documentation(
         self, 
         query: str,
-        libraries: List[str] = None
+        libraries: list[str] = None
     ) -> SkillOutput:
         """Find relevant documentation.
         
@@ -218,7 +218,7 @@ class ResearchSkillInterface(CoreSkillInterface):
     @abstractmethod
     async def synthesize_information(
         self, 
-        sources: List[Dict[str, Any]],
+        sources: list[dict[str, Any]],
         objective: str
     ) -> SkillOutput:
         """Synthesize information from multiple sources.
@@ -250,7 +250,7 @@ class SecuritySkillInterface(SkillInterface):
         self, 
         code: str,
         language: str,
-        scan_types: List[str] = None
+        scan_types: list[str] = None
     ) -> SkillOutput:
         """Scan for security vulnerabilities.
         
@@ -268,7 +268,7 @@ class SecuritySkillInterface(SkillInterface):
     async def check_compliance(
         self, 
         code: str,
-        standards: List[str] = None
+        standards: list[str] = None
     ) -> SkillOutput:
         """Check compliance with security standards.
         
@@ -329,8 +329,8 @@ class ArchitectureSkillInterface(SkillInterface):
     @abstractmethod
     async def design_architecture(
         self, 
-        requirements: Dict[str, Any],
-        constraints: Optional[Dict[str, Any]] = None
+        requirements: dict[str, Any],
+        constraints: dict[str, Any] | None = None
     ) -> SkillOutput:
         """Design system architecture.
         
@@ -347,7 +347,7 @@ class ArchitectureSkillInterface(SkillInterface):
     async def evaluate_patterns(
         self, 
         code: str,
-        patterns: List[str] = None
+        patterns: list[str] = None
     ) -> SkillOutput:
         """Evaluate design patterns usage.
         
@@ -377,7 +377,7 @@ class TestingSkillInterface(SkillInterface):
     async def generate_tests(
         self, 
         code: str,
-        test_types: List[str] = None,
+        test_types: list[str] = None,
         framework: str = "pytest"
     ) -> SkillOutput:
         """Generate tests for code.
@@ -395,7 +395,7 @@ class TestingSkillInterface(SkillInterface):
     @abstractmethod
     async def analyze_coverage(
         self, 
-        test_results: Dict[str, Any],
+        test_results: dict[str, Any],
         code_path: str
     ) -> SkillOutput:
         """Analyze test coverage.
@@ -443,7 +443,7 @@ class DocumentationSkillInterface(SkillInterface):
     async def generate_documentation(
         self, 
         code: str,
-        doc_types: List[str] = None,
+        doc_types: list[str] = None,
         format: str = "markdown"
     ) -> SkillOutput:
         """Generate documentation for code.
@@ -462,7 +462,7 @@ class DocumentationSkillInterface(SkillInterface):
     async def analyze_documentation(
         self, 
         documentation: str,
-        quality_criteria: List[str] = None
+        quality_criteria: list[str] = None
     ) -> SkillOutput:
         """Analyze documentation quality.
         
@@ -478,7 +478,7 @@ class DocumentationSkillInterface(SkillInterface):
     @abstractmethod
     async def update_documentation(
         self, 
-        code_changes: Dict[str, Any],
+        code_changes: dict[str, Any],
         existing_docs: str
     ) -> SkillOutput:
         """Update documentation based on code changes.

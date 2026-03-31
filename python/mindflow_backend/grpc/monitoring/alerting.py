@@ -7,18 +7,17 @@ and critical events with multiple notification channels.
 from __future__ import annotations
 
 import asyncio
-import time
+import smtplib
 import threading
-from typing import Dict, Any, Optional, List, Callable, Union
+import time
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import deque
-import statistics
-import json
-import smtplib
+from typing import Any
+
 try:
-    from email.mime.text import MimeText
     from email.mime.multipart import MimeMultipart
+    from email.mime.text import MimeText
 except ImportError:
     MimeText = None
     MimeMultipart = None
@@ -103,22 +102,22 @@ class AlertConfig:
     alert_retention_hours: int = 24 * 7  # 1 week
     
     # Notification settings
-    notification_channels: List[NotificationChannel] = field(default_factory=lambda: [NotificationChannel.LOG])
-    webhook_url: Optional[str] = None
+    notification_channels: list[NotificationChannel] = field(default_factory=lambda: [NotificationChannel.LOG])
+    webhook_url: str | None = None
     webhook_timeout_seconds: float = 10.0
     webhook_retry_attempts: int = 3
     
     # Email settings
-    smtp_server: Optional[str] = None
+    smtp_server: str | None = None
     smtp_port: int = 587
-    smtp_username: Optional[str] = None
-    smtp_password: Optional[str] = None
-    email_from: Optional[str] = None
-    email_to: List[str] = field(default_factory=list)
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    email_from: str | None = None
+    email_to: list[str] = field(default_factory=list)
     
     # Slack settings
-    slack_webhook_url: Optional[str] = None
-    slack_channel: Optional[str] = None
+    slack_webhook_url: str | None = None
+    slack_channel: str | None = None
     
     # Rate limiting
     enable_rate_limiting: bool = True
@@ -143,9 +142,9 @@ class Alert:
     message: str
     created_at: float
     updated_at: float
-    resolved_at: Optional[float] = None
-    acknowledged_at: Optional[float] = None
-    notification_sent: Dict[str, float] = field(default_factory=dict)
+    resolved_at: float | None = None
+    acknowledged_at: float | None = None
+    notification_sent: dict[str, float] = field(default_factory=dict)
     
     @property
     def age_seconds(self) -> float:
@@ -168,12 +167,12 @@ class Alert:
 class AlertManager:
     """Manages alert conditions, notifications, and alert lifecycle."""
     
-    def __init__(self, config: Optional[AlertConfig] = None):
+    def __init__(self, config: AlertConfig | None = None):
         self.config = config or AlertConfig()
         
         # Alert management
-        self._conditions: Dict[str, AlertCondition] = {}
-        self._active_alerts: Dict[str, Alert] = {}
+        self._conditions: dict[str, AlertCondition] = {}
+        self._active_alerts: dict[str, Alert] = {}
         self._alert_history: deque = deque(maxlen=self.config.max_active_alerts)
         self._alert_lock = threading.Lock()
         
@@ -206,7 +205,7 @@ class AlertManager:
             del self._conditions[condition_name]
             _logger.info("alert_condition_removed", name=condition_name)
     
-    def evaluate_metric(self, metric_name: str, value: float, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def evaluate_metric(self, metric_name: str, value: float, metadata: dict[str, Any] | None = None) -> None:
         """Evaluate metric against alert conditions."""
         if not self.config.enabled:
             return
@@ -243,7 +242,7 @@ class AlertManager:
         
         return current_time - alert.created_at
     
-    def _trigger_alert(self, condition: AlertCondition, value: float, metadata: Optional[Dict[str, Any]]) -> None:
+    def _trigger_alert(self, condition: AlertCondition, value: float, metadata: dict[str, Any] | None) -> None:
         """Trigger a new alert or update existing one."""
         alert_id = f"{condition.name}_{int(time.time())}"
         
@@ -353,21 +352,21 @@ class AlertManager:
         
         return False
     
-    def _get_condition_from_timestamp(self, timestamp: float) -> Optional[Alert]:
+    def _get_condition_from_timestamp(self, timestamp: float) -> Alert | None:
         """Get alert from timestamp."""
         for alert in reversed(self._alert_history):
             if abs(alert.created_at - timestamp) < 1.0:  # Within 1 second
                 return alert
         return None
     
-    def _get_alert_from_timestamp(self, timestamp: float) -> Optional[Alert]:
+    def _get_alert_from_timestamp(self, timestamp: float) -> Alert | None:
         """Get alert from timestamp (duplicate method name fix)."""
         for alert in reversed(self._alert_history):
             if abs(alert.created_at - timestamp) < 1.0:
                 return alert
         return None
     
-    def _generate_alert_message(self, condition: AlertCondition, value: float, metadata: Optional[Dict[str, Any]]) -> str:
+    def _generate_alert_message(self, condition: AlertCondition, value: float, metadata: dict[str, Any] | None) -> str:
         """Generate alert message."""
         base_message = f"Alert: {condition.name} - {condition.metric_name} is {condition.comparison_operator} {condition.threshold_value} (current: {value})"
         
@@ -377,7 +376,7 @@ class AlertManager:
         
         return base_message
     
-    async def _send_notifications(self, alert: Alert, metadata: Optional[Dict[str, Any]]) -> None:
+    async def _send_notifications(self, alert: Alert, metadata: dict[str, Any] | None) -> None:
         """Send notifications through configured channels."""
         for channel in self.config.notification_channels:
             try:
@@ -403,7 +402,7 @@ class AlertManager:
                              error=str(e))
                 self._metrics['notifications_failed'] += 1
     
-    async def _send_webhook_notification(self, alert: Alert, metadata: Optional[Dict[str, Any]]) -> None:
+    async def _send_webhook_notification(self, alert: Alert, metadata: dict[str, Any] | None) -> None:
         """Send webhook notification."""
         if not self.config.webhook_url:
             return
@@ -443,7 +442,7 @@ class AlertManager:
                                      error=str(e))
                     await asyncio.sleep(2 ** attempt)  # Exponential backoff
     
-    async def _send_email_notification(self, alert: Alert, metadata: Optional[Dict[str, Any]]) -> None:
+    async def _send_email_notification(self, alert: Alert, metadata: dict[str, Any] | None) -> None:
         """Send email notification."""
         if not all([self.config.smtp_server, self.config.email_from, self.config.email_to]):
             return
@@ -468,7 +467,7 @@ Alert Details:
 """
         
         if metadata:
-            body += f"Metadata:\n"
+            body += "Metadata:\n"
             for k, v in metadata.items():
                 body += f"- {k}: {v}\n"
         
@@ -491,7 +490,7 @@ Alert Details:
         except Exception as e:
             _logger.error("email_notification_failed", alert_id=alert.id, error=str(e))
     
-    async def _send_slack_notification(self, alert: Alert, metadata: Optional[Dict[str, Any]]) -> None:
+    async def _send_slack_notification(self, alert: Alert, metadata: dict[str, Any] | None) -> None:
         """Send Slack notification."""
         if not self.config.slack_webhook_url:
             return
@@ -532,7 +531,7 @@ Alert Details:
                                          alert_id=alert.id,
                                          status=response.status)
     
-    def _send_log_notification(self, alert: Alert, metadata: Optional[Dict[str, Any]]) -> None:
+    def _send_log_notification(self, alert: Alert, metadata: dict[str, Any] | None) -> None:
         """Send log notification."""
         log_message = f"ALERT [{alert.severity.value.upper()}] {alert.message}"
         
@@ -545,7 +544,7 @@ Alert Details:
         else:
             _logger.info(log_message)
     
-    async def _send_callback_notification(self, alert: Alert, metadata: Optional[Dict[str, Any]]) -> None:
+    async def _send_callback_notification(self, alert: Alert, metadata: dict[str, Any] | None) -> None:
         """Send callback notification (placeholder for custom implementation)."""
         # This would be implemented based on specific callback requirements
         _logger.info("callback_notification_triggered", alert_id=alert.id)
@@ -572,12 +571,12 @@ Alert Details:
                     return True
         return False
     
-    def get_active_alerts(self) -> List[Alert]:
+    def get_active_alerts(self) -> list[Alert]:
         """Get all active alerts."""
         with self._alert_lock:
             return list(self._active_alerts.values())
     
-    def get_alert_metrics(self) -> Dict[str, Any]:
+    def get_alert_metrics(self) -> dict[str, Any]:
         """Get alerting system metrics."""
         with self._alert_lock:
             return {

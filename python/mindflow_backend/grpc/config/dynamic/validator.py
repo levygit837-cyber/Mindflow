@@ -8,11 +8,11 @@ and security validation for sensitive configurations.
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
-from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
+from mindflow_backend.grpc.config import GrpcClientConfig, GrpcConfig
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -31,9 +31,9 @@ class ValidationError:
 class ValidationResult:
     """Result of configuration validation."""
     is_valid: bool
-    errors: List[ValidationError] = field(default_factory=list)
-    warnings: List[ValidationError] = field(default_factory=list)
-    info: List[ValidationError] = field(default_factory=list)
+    errors: list[ValidationError] = field(default_factory=list)
+    warnings: list[ValidationError] = field(default_factory=list)
+    info: list[ValidationError] = field(default_factory=list)
     
     def add_error(self, field: str, message: str, code: str = "VALIDATION_ERROR"):
         self.errors.append(ValidationError(field, message, "error", code))
@@ -80,7 +80,7 @@ class ConfigValidator:
         
         return result
     
-    async def validate_partial_update(self, updates: Dict[str, Any]) -> ValidationResult:
+    async def validate_partial_update(self, updates: dict[str, Any]) -> ValidationResult:
         """Validate partial configuration updates."""
         result = ValidationResult(is_valid=True)
         
@@ -346,8 +346,8 @@ class ConfigValidator:
     
     def _is_valid_ip_or_hostname(self, host: str) -> bool:
         """Check if host is a valid IP address or hostname."""
-        import re
         import ipaddress
+        import re
         
         # Check if it's a valid IP address
         try:
@@ -360,7 +360,7 @@ class ConfigValidator:
         hostname_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$'
         return bool(re.match(hostname_pattern, host))
     
-    def _setup_validation_rules(self) -> Dict[str, Any]:
+    def _setup_validation_rules(self) -> dict[str, Any]:
         """Setup validation rules and constraints."""
         return {
             "port": {"min": 1, "max": 65535, "type": int},

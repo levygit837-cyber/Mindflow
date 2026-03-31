@@ -1,6 +1,6 @@
 """Vector store operations for memory embeddings."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.vector_manager import get_vector_manager
@@ -19,8 +19,8 @@ class VectorStore:
         session_id: str,
         agent_id: str,
         content: str,
-        embedding: List[float],
-        metadata: Optional[Dict[str, Any]] = None
+        embedding: list[float],
+        metadata: dict[str, Any] | None = None
     ) -> str:
         """Store embedding in vector database."""
         try:
@@ -52,10 +52,10 @@ class VectorStore:
         self,
         session_id: str,
         agent_id: str,
-        query_embedding: List[float],
+        query_embedding: list[float],
         limit: int = 5,
         score_threshold: float = 0.3
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for similar embeddings."""
         try:
             vector_manager = await get_vector_manager()
@@ -77,7 +77,7 @@ class VectorStore:
         self,
         session_id: str,
         agent_id: str,
-        embedding_ids: Optional[List[str]] = None
+        embedding_ids: list[str] | None = None
     ) -> bool:
         """Delete embeddings from vector store."""
         try:

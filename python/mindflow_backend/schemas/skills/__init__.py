@@ -1,47 +1,32 @@
 """Pydantic schemas for MindFlow Skills system."""
 
 from .base import (
-    SkillType,
     SkillCategory,
-    SkillStatus,
-    SkillPriority,
-    SkillMetadata,
     SkillConfiguration,
     SkillInput,
+    SkillMetadata,
     SkillOutput,
-    SkillResult
+    SkillPriority,
+    SkillResult,
+    SkillStatus,
+    SkillType,
 )
-
-from .core import (
-    CoreSkillType,
-    AnalysisSkillConfig,
-    CodingSkillConfig,
-    ResearchSkillConfig
-)
-
-from .specialized import (
-    SpecializedSkillType,
-    SecuritySkillConfig,
-    ArchitectureSkillConfig,
-    TestingSkillConfig,
-    DocumentationSkillConfig
-)
-
-from .registry import (
-    SkillRegistration,
-    SkillDiscovery,
-    SkillRegistryEntry,
-    SkillQuery,
-    SkillFilter
-)
-
+from .core import AnalysisSkillConfig, CodingSkillConfig, CoreSkillType, ResearchSkillConfig
 from .execution import (
     ExecutionContext,
-    ExecutionStatus,
-    ExecutionResult,
-    SkillExecution,
     ExecutionMetrics,
-    PerformanceMetrics
+    ExecutionResult,
+    ExecutionStatus,
+    PerformanceMetrics,
+    SkillExecution,
+)
+from .registry import SkillDiscovery, SkillFilter, SkillQuery, SkillRegistration, SkillRegistryEntry
+from .specialized import (
+    ArchitectureSkillConfig,
+    DocumentationSkillConfig,
+    SecuritySkillConfig,
+    SpecializedSkillType,
+    TestingSkillConfig,
 )
 
 __all__ = [

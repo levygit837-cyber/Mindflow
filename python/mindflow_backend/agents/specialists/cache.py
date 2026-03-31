@@ -6,14 +6,14 @@ performance and consistency across sessions.
 
 from __future__ import annotations
 
-import time
 import threading
-from typing import Any, Dict, Optional
+import time
 from collections import OrderedDict
+from typing import Any
 
 from mindflow_backend.agents.core.interfaces import Cache
-from mindflow_backend.exceptions import AgentCacheError
 from mindflow_backend.config.agents import get_agent_config
+from mindflow_backend.exceptions import AgentCacheError
 
 
 class SpecialistCache:
@@ -41,7 +41,7 @@ class SpecialistCache:
         key = self._generate_key(task_signature)
         self.cache.set(key, decision, ttl)
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get specialist cache statistics."""
         if hasattr(self.cache, 'get_stats'):
             return self.cache.get_stats()
@@ -58,7 +58,7 @@ class LRUSpecialistCache(Cache):
     def __init__(self, max_size: int | None = None, default_ttl: int | None = None):
         self.max_size = max_size or get_agent_config().specialist_cache_size
         self.default_ttl = default_ttl or get_agent_config().cache_ttl_seconds
-        self._cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._lock = threading.RLock()
     
     def get(self, key: str) -> Any | None:
@@ -130,13 +130,13 @@ class LRUSpecialistCache(Cache):
         except Exception as e:
             raise AgentCacheError(f"Failed to clear cache: {e}", operation="clear")
     
-    def _is_expired(self, entry: Dict[str, Any]) -> bool:
+    def _is_expired(self, entry: dict[str, Any]) -> bool:
         """Check if cache entry is expired."""
         if entry["expire_time"] is None:
             return False
         return time.time() > entry["expire_time"]
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         with self._lock:
             total_entries = len(self._cache)

@@ -6,20 +6,20 @@ agent interactions, session management, orchestration, providers, and memory.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
+from typing import Any, Protocol, runtime_checkable
 
-from mindflow_backend.api.schemas.requests import (
+from mindflow_backend.schemas.api.requests import (
     AgentChatRequest,
+    MemorySearchRequest,
+    OrchestrationRequest,
     SessionCreateRequest,
     SessionUpdateRequest,
-    OrchestrationRequest,
-    MemorySearchRequest
 )
-from mindflow_backend.api.schemas.responses import (
+from mindflow_backend.schemas.api.responses import (
     AgentResponse,
-    SessionResponse,
+    MemorySearchResponse,
     OrchestrationResponse,
-    MemorySearchResponse
+    SessionResponse,
 )
 
 

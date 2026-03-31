@@ -6,10 +6,10 @@ Provides peer-to-peer messaging between agents.
 """
 
 import logging
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+from typing import Any
 
-from ..protocols.p2p_protocol import P2PProtocol, P2PMessage, MessageType
+from ..circuit_breaker import circuit_protected
+from ..protocols.p2p_protocol import P2PProtocol
 from .xmpp_service import XMPPService
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class P2PService:
     
     def __init__(self, xmpp_service: XMPPService):
         self.xmpp_service = xmpp_service
-        self.protocols: Dict[str, P2PProtocol] = {}
+        self.protocols: dict[str, P2PProtocol] = {}
         logger.info("P2PService initialized")
     
     def get_or_create_protocol(self, agent_id: str) -> P2PProtocol:
@@ -45,13 +45,20 @@ class P2PService:
             logger.info(f"P2P protocol created for agent {agent_id}")
         return self.protocols[agent_id]
     
+    @circuit_protected(
+        breaker_name="p2p_direct_message",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "P2P circuit open"},
+    )
     async def send_direct_message(
         self,
         from_agent: str,
         to_agent: str,
         content: str,
         urgency: str = "MEDIUM"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a direct message between agents.
         
@@ -73,13 +80,20 @@ class P2PService:
             logger.error(f"Error sending direct message: {e}")
             return {"success": False, "error": str(e)}
     
+    @circuit_protected(
+        breaker_name="p2p_request",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "P2P circuit open"},
+    )
     async def send_request(
         self,
         from_agent: str,
         to_agent: str,
         content: str,
         urgency: str = "HIGH"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a request that requires a response.
         
@@ -101,13 +115,20 @@ class P2PService:
             logger.error(f"Error sending request: {e}")
             return {"success": False, "error": str(e)}
     
+    @circuit_protected(
+        breaker_name="p2p_response",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "P2P circuit open"},
+    )
     async def send_response(
         self,
         from_agent: str,
         to_agent: str,
         original_message_id: str,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a response to a request.
         
@@ -133,12 +154,19 @@ class P2PService:
             logger.error(f"Error sending response: {e}")
             return {"success": False, "error": str(e)}
     
+    @circuit_protected(
+        breaker_name="p2p_urgent_message",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "P2P circuit open"},
+    )
     async def send_urgent_message(
         self,
         from_agent: str,
         to_agent: str,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send an urgent message.
         
@@ -159,12 +187,19 @@ class P2PService:
             logger.error(f"Error sending urgent message: {e}")
             return {"success": False, "error": str(e)}
     
+    @circuit_protected(
+        breaker_name="p2p_notification",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "P2P circuit open"},
+    )
     async def send_notification(
         self,
         from_agent: str,
         to_agent: str,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a notification.
         
@@ -185,7 +220,7 @@ class P2PService:
             logger.error(f"Error sending notification: {e}")
             return {"success": False, "error": str(e)}
     
-    def get_pending_requests(self, agent_id: str) -> List[Dict[str, Any]]:
+    def get_pending_requests(self, agent_id: str) -> list[dict[str, Any]]:
         """Get pending requests for an agent."""
         protocol = self.get_or_create_protocol(agent_id)
         return protocol.get_pending_requests()
@@ -194,7 +229,7 @@ class P2PService:
         self,
         agent_id: str,
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get message history for an agent."""
         protocol = self.get_or_create_protocol(agent_id)
         return protocol.get_message_history(limit)
@@ -203,12 +238,12 @@ class P2PService:
         self,
         agent_id: str,
         other_agent: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get conversation with another agent."""
         protocol = self.get_or_create_protocol(agent_id)
         return protocol.get_conversation_with(other_agent)
     
-    def get_stats(self, agent_id: str) -> Dict[str, Any]:
+    def get_stats(self, agent_id: str) -> dict[str, Any]:
         """Get P2P protocol statistics for an agent."""
         protocol = self.get_or_create_protocol(agent_id)
         return protocol.get_stats()

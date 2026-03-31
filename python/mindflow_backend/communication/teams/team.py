@@ -5,10 +5,10 @@ Adapted from Plexo project for MindFlow architecture.
 """
 
 import uuid
-from enum import Enum
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class TeamStatus(Enum):
@@ -26,7 +26,7 @@ class TeamMember:
     role: str = "member"
     joined_at: datetime = field(default_factory=datetime.now)
     is_active: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -36,11 +36,11 @@ class Team:
     name: str = ""
     description: str = ""
     muc_room_jid: str = ""
-    whiteboard_id: Optional[str] = None
+    whiteboard_id: str | None = None
     status: TeamStatus = TeamStatus.ACTIVE
     created_at: datetime = field(default_factory=datetime.now)
-    members: List[TeamMember] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    members: list[TeamMember] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def add_member(self, agent_jid: str, role: str = "member") -> bool:
         """Add a member to the team."""
@@ -59,14 +59,14 @@ class Team:
                 return True
         return False
     
-    def get_member(self, agent_jid: str) -> Optional[TeamMember]:
+    def get_member(self, agent_jid: str) -> TeamMember | None:
         """Get a member by JID."""
         for member in self.members:
             if member.agent_jid == agent_jid:
                 return member
         return None
     
-    def get_all_members(self) -> List[str]:
+    def get_all_members(self) -> list[str]:
         """Get JIDs of all active members."""
         return [m.agent_jid for m in self.members if m.is_active]
     
@@ -102,7 +102,7 @@ class Team:
             return True
         return False
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "team_id": self.team_id,
@@ -127,7 +127,7 @@ class Team:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Team':
+    def from_dict(cls, data: dict[str, Any]) -> 'Team':
         """Create instance from dictionary."""
         team = cls(
             team_id=data.get("team_id", str(uuid.uuid4())),

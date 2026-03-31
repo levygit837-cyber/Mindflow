@@ -1,8 +1,7 @@
-import pytest
-from pathlib import Path
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
 from mindflow_backend.schemas.orchestrator import AgentType
+
 
 def test_tool_registry_scopes():
     # Setup a mock sandbox

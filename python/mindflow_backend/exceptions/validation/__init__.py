@@ -3,8 +3,8 @@
 All exceptions related to schema validation, input cleaning, and security validation.
 """
 
-from .schema import SchemaError
 from .sanitization import SanitizationError
+from .schema import SchemaError
 from .security import SecurityValidationError
 
 __all__ = [

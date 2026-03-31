@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.streamable import StreamableNode
 from mindflow_backend.schemas.orchestration.orchestrator import (
     OrchestratorDecision,
     SandboxMode,
-    ThinkingMode,
 )
 
 
@@ -29,10 +28,13 @@ class ExecuteNode(StreamableNode, BaseNode):
         self.config.outputs = {"response", "error"}
         self.config.enable_streaming = True
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the agent logic using AgentBridge with Deep Work continuation support."""
         from mindflow_backend.nodes.implementations.integration.agent_bridge import AgentBridge
-        from mindflow_backend.orchestrator.deep_work import should_continue_investigation, build_continuation_context
+        from mindflow_backend.orchestrator.deep_work import (
+            build_continuation_context,
+            should_continue_investigation,
+        )
 
         _logger = get_logger(__name__)
 
@@ -130,9 +132,8 @@ class ExecuteNode(StreamableNode, BaseNode):
             self.set_node_state("error_count", self.get_node_state("error_count", 0) + 1)
             return {"response": accumulated_response or "", "error": str(exc)}
     
-    async def _stream_execution(self, state: Dict[str, Any]) -> Any:
+    async def _stream_execution(self, state: dict[str, Any]) -> Any:
         """Stream execution for LLM responses."""
-        from mindflow_backend.nodes.base.streamable import LLMStreamNode
         
         # For now, fall back to non-streaming
         # In a full implementation, this would use LLM streaming capabilities
@@ -207,8 +208,8 @@ class ExecuteNode(StreamableNode, BaseNode):
     
     def _retrieve_memory_context(self, *, query: str, session_id: str, agent_id: str) -> str:
         """Retrieve memory context for the query."""
-        from mindflow_backend.memory import MemoryRetrievalResult, get_memory_service
         from mindflow_backend.infra.config import get_settings
+        from mindflow_backend.memory import get_memory_service
         
         settings = get_settings()
         if not settings.memory_enabled or not session_id:
@@ -229,20 +230,23 @@ class ExecuteNode(StreamableNode, BaseNode):
     
     async def _run_dt_pipeline(
         self,
-        state: Dict[str, Any],
+        state: dict[str, Any],
         provider: str,
         model: str,
         memory_context: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute the Decomposition Thinking pipeline."""
         from uuid import UUID as _UUID
+
+        from mindflow_backend.infra.logging import get_logger
         from mindflow_backend.orchestrator.decomposition.decomposer_v2 import DecomposerV2
         from mindflow_backend.orchestrator.decomposition.resolver_v2 import ResolverV2
         from mindflow_backend.orchestrator.decomposition.scheduler_v2 import SchedulerV2
         from mindflow_backend.orchestrator.decomposition.scorer_adapter import ComponentScorer
         from mindflow_backend.orchestrator.decomposition.synthesizer_v2 import SynthesizerV2
-        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import ValidatedComponent
-        from mindflow_backend.infra.logging import get_logger
+        from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+            ValidatedComponent,
+        )
         
         _logger = get_logger(__name__)
         
@@ -355,7 +359,7 @@ class ExecuteNode(StreamableNode, BaseNode):
             _logger.error("dt_pipeline_error", error=str(exc))
             return {"response": "", "error": f"DT failed: {exc}"}
     
-    def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate execution inputs."""
         errors = []
         

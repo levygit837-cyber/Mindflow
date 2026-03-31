@@ -6,10 +6,12 @@ and semantic similarity search.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
 from mindflow_backend.infra.logging import get_logger
-from .context_storage import SimpleContextStorage
+
 from ..nlp_embeddings import NLPEmbeddingService
+from .context_storage import SimpleContextStorage
 
 _logger = get_logger(__name__)
 
@@ -37,10 +39,10 @@ class SimpleContextRetriever:
     async def get_by_token_range(
         self,
         session_id: str,
-        token_start: Optional[int] = None,
-        token_end: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        token_start: int | None = None,
+        token_end: int | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Get context by token range.
         
         Args:
@@ -60,9 +62,9 @@ class SimpleContextRetriever:
         self,
         session_id: str,
         query: str,
-        token_range: Optional[Tuple[int, int]] = None,
+        token_range: tuple[int, int] | None = None,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search context by semantic similarity.
         
         Args:
@@ -104,7 +106,7 @@ class SimpleContextRetriever:
         session_id: str,
         token_count: int = 1000,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get recent context by token count.
         
         Args:

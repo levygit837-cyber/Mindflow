@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -23,7 +23,7 @@ class RespondNode(StatefulNode, BaseNode):
         # as it's a pass-through node in the current implementation
         self.config.outputs = {"response", "error", "final_response"}
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute response finalization with memory storage."""
         from mindflow_backend.infra.logging import get_logger
         
@@ -44,7 +44,9 @@ class RespondNode(StatefulNode, BaseNode):
             decision = state.get("decision")
             
             if session_id and message and response:
-                from mindflow_backend.orchestrator.memory_integration import store_orchestrator_interaction
+                from mindflow_backend.orchestrator.memory_integration import (
+                    store_orchestrator_interaction,
+                )
                 
                 # Calculate token positions (simplified)
                 message_tokens = len(message.split())
@@ -100,7 +102,7 @@ class RespondNode(StatefulNode, BaseNode):
         import time
         return time.time()
     
-    def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate respond node inputs."""
         # This node is flexible and doesn't require specific inputs
         # as it handles various states gracefully

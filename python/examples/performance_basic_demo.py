@@ -7,17 +7,18 @@ without complex dependencies.
 """
 
 import asyncio
-import sys
 import os
-import time
-import random
-from typing import Dict, Any
+import sys
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mindflow_backend.grpc.performance.compression import GrpcMessageCompressor, CompressionConfig, CompressionAlgorithm
-from mindflow_backend.grpc.performance.caching import GrpcResponseCache, CacheConfig
+from mindflow_backend.grpc.performance.caching import CacheConfig, GrpcResponseCache
+from mindflow_backend.grpc.performance.compression import (
+    CompressionAlgorithm,
+    CompressionConfig,
+    GrpcMessageCompressor,
+)
 from mindflow_backend.grpc.performance.monitoring import GrpcProfiler, ProfileConfig, ProfileLevel
 from mindflow_backend.infra.logging import get_logger
 
@@ -76,12 +77,12 @@ class BasicPerformanceDemo:
                 # Test decompression
                 decompressed = self.compressor.decompress_message(compressed, result.algorithm)
                 assert decompressed == message, "Decompression failed!"
-                print(f"      ✅ Decompression successful")
+                print("      ✅ Decompression successful")
                 print()
             
             # Get compression statistics
             stats = self.compressor.get_compression_stats()
-            print(f"   📊 Compression Statistics:")
+            print("   📊 Compression Statistics:")
             print(f"      Total compressions: {stats['total_compressions']}")
             print(f"      Success rate: {stats['success_rate']:.1f}%")
             print(f"      Overall compression ratio: {stats['overall_compression_ratio']:.3f}")
@@ -107,7 +108,7 @@ class BasicPerformanceDemo:
             )
             
             self.cache = GrpcResponseCache(config)
-            print(f"   ✅ Cache initialized")
+            print("   ✅ Cache initialized")
             
             # Start background cleanup
             self.cache.start_background_cleanup()
@@ -152,7 +153,7 @@ class BasicPerformanceDemo:
             
             # Cache statistics
             stats = self.cache.get_stats()
-            print(f"   📊 Cache Statistics:")
+            print("   📊 Cache Statistics:")
             print(f"      Entries: {stats['entries']}/{stats['max_entries']}")
             print(f"      Hit rate: {stats['hit_rate_percent']:.1f}%")
             print(f"      Total size: {stats['total_size_mb']:.2f}MB")
@@ -229,7 +230,7 @@ class BasicPerformanceDemo:
             
             # Get performance summary
             summary = self.profiler.get_performance_summary(time_window_seconds=60)
-            print(f"   📊 Performance Summary:")
+            print("   📊 Performance Summary:")
             print(f"      Total requests: {summary['total_requests']}")
             print(f"      Success rate: {summary['success_rate']:.1f}%")
             print(f"      Average duration: {summary['avg_duration_ms']:.1f}ms")
@@ -239,7 +240,7 @@ class BasicPerformanceDemo:
             
             # Profiling statistics
             profiler_stats = self.profiler.get_profiling_stats()
-            print(f"\n   🔧 Profiling Statistics:")
+            print("\n   🔧 Profiling Statistics:")
             print(f"      Total profiles: {profiler_stats['total_profiles']}")
             print(f"      Slow requests: {profiler_stats['slow_requests']}")
             print(f"      Error requests: {profiler_stats['error_requests']}")

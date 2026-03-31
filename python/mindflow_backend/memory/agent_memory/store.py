@@ -36,8 +36,9 @@ def _namespace(fact_type: str, user_id: str) -> tuple[str, ...]:
 @asynccontextmanager
 async def langgraph_store():
     """Context manager providing AsyncPostgresStore for agentic memory."""
-    from mindflow_backend.infra.config import get_settings
     from langgraph.store.postgres import AsyncPostgresStore
+
+    from mindflow_backend.infra.config import get_settings
 
     settings = get_settings()
     async with AsyncPostgresStore.from_conn_string(settings.database.url) as store:

@@ -1,12 +1,12 @@
 """Test configuration for gRPC client and server."""
 
+from unittest.mock import AsyncMock
+
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
 
 from mindflow_backend.grpc.client import GrpcAgentClient
+from mindflow_backend.grpc.config import GrpcClientConfig, GrpcConfig
 from mindflow_backend.grpc.server import GrpcAgentServer
-from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
 from mindflow_backend.infra.config import get_settings
 
 

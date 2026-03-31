@@ -5,8 +5,8 @@ Provides schemas for cache operations and configuration.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -55,7 +55,7 @@ class CacheConfig(BaseModel):
     
     # Persistence
     persist_to_disk: bool = Field(default=False, description="Persist to disk")
-    disk_path: Optional[str] = Field(default=None, description="Disk persistence path")
+    disk_path: str | None = Field(default=None, description="Disk persistence path")
     
     # Monitoring
     metrics_enabled: bool = Field(default=True, description="Enable metrics")
@@ -69,18 +69,18 @@ class CacheEntry(BaseModel):
     value: Any = Field(description="Cache value")
     
     # TTL information
-    ttl: Optional[int] = Field(default=None, description="Time to live in seconds")
-    expires_at: Optional[str] = Field(default=None, description="Expiration timestamp")
-    created_at: Optional[str] = Field(default=None, description="Creation timestamp")
-    accessed_at: Optional[str] = Field(default=None, description="Last access timestamp")
+    ttl: int | None = Field(default=None, description="Time to live in seconds")
+    expires_at: str | None = Field(default=None, description="Expiration timestamp")
+    created_at: str | None = Field(default=None, description="Creation timestamp")
+    accessed_at: str | None = Field(default=None, description="Last access timestamp")
     
     # Size information
-    size_bytes: Optional[int] = Field(default=None, description="Size in bytes")
+    size_bytes: int | None = Field(default=None, description="Size in bytes")
     compressed: bool = Field(default=False, description="Is compressed")
     
     # Metadata
-    tags: List[str] = Field(default_factory=list, description="Entry tags")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Custom metadata")
+    tags: list[str] = Field(default_factory=list, description="Entry tags")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Custom metadata")
 
 
 class CacheStats(BaseModel):
@@ -106,14 +106,14 @@ class CacheStats(BaseModel):
     connection_errors: int = Field(default=0, description="Connection errors")
     
     # Timestamps
-    last_reset: Optional[str] = Field(default=None, description="Last stats reset")
-    last_cleanup: Optional[str] = Field(default=None, description="Last cleanup")
+    last_reset: str | None = Field(default=None, description="Last stats reset")
+    last_cleanup: str | None = Field(default=None, description="Last cleanup")
 
 
 class CacheBatchRequest(BaseModel):
     """Batch cache operation request."""
     
-    operations: List[Dict[str, Any]] = Field(description="Batch operations")
+    operations: list[dict[str, Any]] = Field(description="Batch operations")
     operation_type: str = Field(description="Operation type: get/set/delete")
     
     # Batch options
@@ -129,14 +129,14 @@ class CacheBatchResponse(BaseModel):
     """Batch cache operation response."""
     
     successful_operations: int = Field(description="Successful operations")
-    failed_operations: List[Dict[str, Any]] = Field(description="Failed operations")
+    failed_operations: list[dict[str, Any]] = Field(description="Failed operations")
     
     # Performance info
     processing_time_ms: float = Field(description="Processing time in milliseconds")
     operations_per_sec: float = Field(description="Operations per second")
     
     # Request info
-    request_id: Optional[str] = Field(default=None, description="Request ID")
+    request_id: str | None = Field(default=None, description="Request ID")
 
 
 class CacheHealthCheck(BaseModel):
@@ -170,8 +170,8 @@ class CacheConfigRedis(CacheConfig):
     database: int = Field(default=0, description="Redis database number")
     
     # Authentication
-    password: Optional[str] = Field(default=None, description="Redis password")
-    username: Optional[str] = Field(default=None, description="Redis username")
+    password: str | None = Field(default=None, description="Redis password")
+    username: str | None = Field(default=None, description="Redis username")
     
     # Redis-specific options
     max_connections_per_cpu: int = Field(default=10, description="Max connections per CPU")
@@ -179,13 +179,13 @@ class CacheConfigRedis(CacheConfig):
     socket_timeout: int = Field(default=30, description="Socket timeout")
     
     # Cluster configuration
-    cluster_nodes: Optional[List[str]] = Field(default=None, description="Cluster nodes")
-    cluster_password: Optional[str] = Field(default=None, description="Cluster password")
+    cluster_nodes: list[str] | None = Field(default=None, description="Cluster nodes")
+    cluster_password: str | None = Field(default=None, description="Cluster password")
     
     # Persistence
     save_enabled: bool = Field(default=False, description="Enable RDB saves")
     save_interval_sec: int = Field(default=300, description="Save interval in seconds")
-    rdb_path: Optional[str] = Field(default=None, description="RDB file path")
+    rdb_path: str | None = Field(default=None, description="RDB file path")
 
 
 class CacheConfigMemory(CacheConfig):

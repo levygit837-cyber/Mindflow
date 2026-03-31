@@ -6,12 +6,10 @@ with proper connection management, error handling, and monitoring.
 
 import asyncio
 import logging
-from contextlib import asynccontextmanager
 
 from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient
+from mindflow_backend.grpc.config import GrpcClientConfig, GrpcConfig
 from mindflow_backend.grpc.server import GrpcAgentServer, start_grpc_server, stop_grpc_server
-from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
-from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -97,7 +95,7 @@ async def example_grpc_server_usage():
         # Start server
         await server.start()
         
-        print(f"   ✅ Server started successfully!")
+        print("   ✅ Server started successfully!")
         print(f"   Status: {'Running' if server.is_running() else 'Stopped'}")
         print(f"   Uptime: {server.get_uptime_seconds():.2f} seconds")
         
@@ -245,7 +243,7 @@ async def example_error_handling():
             health = await client.health_check()
             print(f"   Health check completed: {health['status']}")
             
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         print(f"   ✅ Caught timeout error: {exc}")
     except Exception as exc:
         print(f"   Note: {exc}")

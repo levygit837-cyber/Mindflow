@@ -6,29 +6,28 @@ circuit breaker, retry logic, and performance metrics.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import pickle
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union, Callable
-from datetime import datetime, UTC, timedelta
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
-import hashlib
+from typing import Any
 
 import redis.asyncio as redis
 from redis.asyncio import ConnectionPool
 from redis.exceptions import (
-    RedisError,
     ConnectionError,
-    TimeoutError,
+    RedisError,
     ResponseError,
+    TimeoutError,
 )
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.config import get_settings
-from mindflow_backend.infra.resilience import with_retry, RetryConfig
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.resilience import RetryConfig, with_retry
 
 _logger = get_logger(__name__)
 
@@ -52,7 +51,7 @@ class RedisMetrics:
     response_errors: int = 0
     total_response_time_ms: float = 0.0
     avg_response_time_ms: float = 0.0
-    last_operation_time: Optional[datetime] = None
+    last_operation_time: datetime | None = None
     cache_hits: int = 0
     cache_misses: int = 0
     
@@ -67,7 +66,7 @@ class RedisMetrics:
         total_requests = self.cache_hits + self.cache_misses
         return self.cache_hits / max(total_requests, 1)
     
-    def update_operation(self, success: bool, response_time_ms: float, error_type: Optional[str] = None) -> None:
+    def update_operation(self, success: bool, response_time_ms: float, error_type: str | None = None) -> None:
         """Update metrics with operation result."""
         self.total_operations += 1
         self.total_response_time_ms += response_time_ms
@@ -102,16 +101,16 @@ class RedisClient:
     
     def __init__(self) -> None:
         """Initialize Redis client."""
-        self._pool: Optional[ConnectionPool] = None
-        self._client: Optional[redis.Redis] = None
+        self._pool: ConnectionPool | None = None
+        self._client: redis.Redis | None = None
         self._metrics = RedisMetrics()
         self._is_connected = False
-        self._last_health_check: Optional[datetime] = None
+        self._last_health_check: datetime | None = None
         self._serialization_format = RedisSerializationFormat.JSON
         self._compression_enabled = False
         self._circuit_breaker_enabled = True
         self._circuit_breaker_failures = 0
-        self._circuit_breaker_last_failure: Optional[float] = None
+        self._circuit_breaker_last_failure: float | None = None
         self._circuit_breaker_threshold = 5
         self._circuit_breaker_recovery_timeout = 60.0
         
@@ -298,26 +297,26 @@ class RedisClient:
             
             return result
             
-        except ConnectionError as e:
+        except ConnectionError:
             response_time_ms = (time.time() - start_time) * 1000
             self._metrics.update_operation(False, response_time_ms, "ConnectionError")
             self._record_circuit_breaker_failure()
             raise
-        except TimeoutError as e:
+        except TimeoutError:
             response_time_ms = (time.time() - start_time) * 1000
             self._metrics.update_operation(False, response_time_ms, "TimeoutError")
             raise
-        except ResponseError as e:
+        except ResponseError:
             response_time_ms = (time.time() - start_time) * 1000
             self._metrics.update_operation(False, response_time_ms, "ResponseError")
             raise
-        except Exception as e:
+        except Exception:
             response_time_ms = (time.time() - start_time) * 1000
             self._metrics.update_operation(False, response_time_ms)
             raise
             
     # Basic Redis operations
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from Redis.
         
         Args:
@@ -344,7 +343,7 @@ class RedisClient:
         self, 
         key: str, 
         value: Any, 
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
         nx: bool = False,
         xx: bool = False
     ) -> bool:
@@ -446,7 +445,7 @@ class RedisClient:
             raise
             
     # Advanced Redis operations
-    async def mget(self, keys: List[str]) -> List[Optional[Any]]:
+    async def mget(self, keys: list[str]) -> list[Any | None]:
         """Get multiple values from Redis.
         
         Args:
@@ -473,7 +472,7 @@ class RedisClient:
             _logger.error("redis_mget_failed", keys=keys, error=str(e))
             raise
             
-    async def mset(self, mapping: Dict[str, Any]) -> bool:
+    async def mset(self, mapping: dict[str, Any]) -> bool:
         """Set multiple values in Redis.
         
         Args:
@@ -531,7 +530,7 @@ class RedisClient:
             raise
             
     # Hash operations
-    async def hget(self, key: str, field: str) -> Optional[Any]:
+    async def hget(self, key: str, field: str) -> Any | None:
         """Get hash field value.
         
         Args:
@@ -573,7 +572,7 @@ class RedisClient:
             _logger.error("redis_hset_failed", key=key, field=field, error=str(e))
             raise
             
-    async def hgetall(self, key: str) -> Dict[str, Any]:
+    async def hgetall(self, key: str) -> dict[str, Any]:
         """Get all hash fields and values.
         
         Args:
@@ -615,7 +614,7 @@ class RedisClient:
             _logger.error("redis_lpush_failed", key=key, error=str(e))
             raise
             
-    async def rpop(self, key: str) -> Optional[Any]:
+    async def rpop(self, key: str) -> Any | None:
         """Pop value from right of list.
         
         Args:
@@ -636,7 +635,7 @@ class RedisClient:
             _logger.error("redis_rpop_failed", key=key, error=str(e))
             raise
             
-    async def lrange(self, key: str, start: int, end: int) -> List[Any]:
+    async def lrange(self, key: str, start: int, end: int) -> list[Any]:
         """Get range of list elements.
         
         Args:
@@ -676,7 +675,7 @@ class RedisClient:
             raise
             
     # Health check
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform Redis health check.
         
         Returns:
@@ -745,7 +744,7 @@ class RedisClient:
         """
         return self._is_connected
         
-    def get_connection_info(self) -> Dict[str, Any]:
+    def get_connection_info(self) -> dict[str, Any]:
         """Get connection information.
         
         Returns:
@@ -771,7 +770,7 @@ class RedisClient:
 
 
 # Global Redis client instance
-_redis_client: Optional[RedisClient] = None
+_redis_client: RedisClient | None = None
 
 
 def get_redis_client() -> RedisClient:

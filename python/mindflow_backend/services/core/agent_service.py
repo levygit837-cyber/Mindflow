@@ -6,14 +6,13 @@ processing requests, and coordinating with other services.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
+from mindflow_backend.agents.tools.specialist.research.core.enhanced_researcher import (
+    get_enhanced_researcher_agent,
+)
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.interfaces.agents import EnhancedAnalyst
-from mindflow_backend.interfaces.agents import EnhancedCoder
-from mindflow_backend.agents.tools.specialist.research.core.enhanced_researcher import get_enhanced_researcher_agent
-from mindflow_backend.interfaces.agents import EnhancedReviewer
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.interfaces.agents import EnhancedAnalyst, EnhancedCoder, EnhancedReviewer
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.core_interfaces import AgentServiceInterface
 
@@ -68,12 +67,12 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
     async def process_agent_request(
         self,
         message: str,
-        agent_type: Optional[str] = None,
-        provider: Optional[str] = None,
-        model: Optional[str] = None,
-        session_id: Optional[str] = None,
+        agent_type: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+        session_id: str | None = None,
         orchestrate: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process an agent request using real agent implementations.
         
         Args:
@@ -137,10 +136,10 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
         self,
         message: str,
         agent_type: str,
-        provider: Optional[str],
-        model: Optional[str],
-        session_id: Optional[str]
-    ) -> Dict[str, Any]:
+        provider: str | None,
+        model: str | None,
+        session_id: str | None
+    ) -> dict[str, Any]:
         """Process message with specific agent."""
         try:
             # Get context from memory service if session is available
@@ -222,7 +221,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
         else:
             return "analyst"  # Default
     
-    async def get_agent_capabilities(self, agent_type: str) -> Dict[str, Any]:
+    async def get_agent_capabilities(self, agent_type: str) -> dict[str, Any]:
         """Get capabilities for a specific agent type using real agent data.
         
         Args:
@@ -323,7 +322,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
             self._logger.error(f"Error getting agent capabilities: {str(exc)}")
             raise
     
-    async def validate_agent_request(self, request_data: Dict[str, Any]) -> bool:
+    async def validate_agent_request(self, request_data: dict[str, Any]) -> bool:
         """Validate agent request data using comprehensive validation.
         
         Args:
@@ -362,7 +361,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
         
         return True
     
-    async def list_available_agents(self) -> Dict[str, Any]:
+    async def list_available_agents(self) -> dict[str, Any]:
         """List all available agents with their basic info.
         
         Returns:
@@ -396,7 +395,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
             "available_count": len([a for a in agents_info.values() if a.get("status") == "available"])
         }
     
-    async def get_agent_status(self, agent_type: str) -> Dict[str, Any]:
+    async def get_agent_status(self, agent_type: str) -> dict[str, Any]:
         """Get agent status and health information.
         
         Args:
@@ -438,5 +437,5 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
     
     def _get_timestamp(self) -> str:
         """Get current timestamp for logging."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
         return datetime.now(UTC).isoformat()

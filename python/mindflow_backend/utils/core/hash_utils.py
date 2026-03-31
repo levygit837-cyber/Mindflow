@@ -6,14 +6,13 @@ Functions for hashing, checksums, and integrity verification.
 import hashlib
 import hmac
 import os
-from typing import Optional, Union
 
 
 def hash_string(
     data: str,
     algorithm: str = 'sha256',
     encoding: str = 'utf-8',
-    salt: Optional[str] = None,
+    salt: str | None = None,
 ) -> str:
     """Hash string using specified algorithm."""
     if salt:
@@ -45,7 +44,7 @@ def hash_file(
             while chunk := f.read(chunk_size):
                 hash_obj.update(chunk)
         return hash_obj.hexdigest()
-    except (FileNotFoundError, IOError, OSError) as exc:
+    except (FileNotFoundError, OSError):
         return ""
 
 
@@ -73,7 +72,7 @@ def generate_salt(length: int = 32) -> str:
 
 def hash_with_salt(
     data: str,
-    salt: Optional[str] = None,
+    salt: str | None = None,
     algorithm: str = 'sha256',
     encoding: str = 'utf-8',
 ) -> tuple[str, str]:
@@ -126,7 +125,7 @@ def verify_hmac(
 
 def hash_password(
     password: str,
-    salt: Optional[str] = None,
+    salt: str | None = None,
     iterations: int = 100000,
     algorithm: str = 'sha256',
 ) -> tuple[str, str]:
@@ -163,7 +162,7 @@ def verify_password(
         return False
 
 
-def generate_checksum(data: Union[str, bytes], algorithm: str = 'md5') -> str:
+def generate_checksum(data: str | bytes, algorithm: str = 'md5') -> str:
     """Generate checksum for data."""
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -172,7 +171,7 @@ def generate_checksum(data: Union[str, bytes], algorithm: str = 'md5') -> str:
 
 
 def verify_checksum(
-    data: Union[str, bytes],
+    data: str | bytes,
     expected_checksum: str,
     algorithm: str = 'md5',
 ) -> bool:
@@ -212,7 +211,7 @@ def hash_list(data: list, algorithm: str = 'sha256') -> str:
     return hash_string(json_str, algorithm)
 
 
-def murmurhash3(data: Union[str, bytes], seed: int = 0) -> int:
+def murmurhash3(data: str | bytes, seed: int = 0) -> int:
     """Generate MurmurHash3 hash (32-bit)."""
     try:
         import mmh3
@@ -224,7 +223,7 @@ def murmurhash3(data: Union[str, bytes], seed: int = 0) -> int:
         return hash(data)
 
 
-def xxhash(data: Union[str, bytes], seed: int = 0) -> int:
+def xxhash(data: str | bytes, seed: int = 0) -> int:
     """Generate xxHash hash."""
     try:
         import xxhash
@@ -237,10 +236,10 @@ def xxhash(data: Union[str, bytes], seed: int = 0) -> int:
 
 
 def blake2b_hash(
-    data: Union[str, bytes],
+    data: str | bytes,
     digest_size: int = 32,
-    key: Optional[bytes] = None,
-    salt: Optional[bytes] = None,
+    key: bytes | None = None,
+    salt: bytes | None = None,
 ) -> str:
     """Generate BLAKE2b hash."""
     if isinstance(data, str):
@@ -256,10 +255,10 @@ def blake2b_hash(
 
 
 def blake2s_hash(
-    data: Union[str, bytes],
+    data: str | bytes,
     digest_size: int = 32,
-    key: Optional[bytes] = None,
-    salt: Optional[bytes] = None,
+    key: bytes | None = None,
+    salt: bytes | None = None,
 ) -> str:
     """Generate BLAKE2s hash."""
     if isinstance(data, str):
@@ -274,7 +273,7 @@ def blake2s_hash(
     return hash_obj.hexdigest()
 
 
-def sha3_hash(data: Union[str, bytes], variant: int = 256) -> str:
+def sha3_hash(data: str | bytes, variant: int = 256) -> str:
     """Generate SHA-3 hash."""
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -293,7 +292,7 @@ def sha3_hash(data: Union[str, bytes], variant: int = 256) -> str:
 
 
 def shake_hash(
-    data: Union[str, bytes],
+    data: str | bytes,
     digest_size: int = 32,
     variant: int = 128,
 ) -> str:
@@ -373,7 +372,7 @@ def merkle_root(hashes: list[str], algorithm: str = 'sha256') -> str:
 
 
 def generate_hash_id(
-    data: Union[str, bytes],
+    data: str | bytes,
     algorithm: str = 'sha256',
     length: int = 8,
 ) -> str:
@@ -404,9 +403,9 @@ def is_algorithm_available(algorithm: str) -> bool:
 
 
 def benchmark_hash_performance(
-    data: Union[str, bytes],
+    data: str | bytes,
     iterations: int = 1000,
-    algorithms: Optional[list[str]] = None,
+    algorithms: list[str] | None = None,
 ) -> dict[str, float]:
     """Benchmark hash algorithm performance."""
     import time

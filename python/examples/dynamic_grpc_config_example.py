@@ -6,17 +6,13 @@ configuration API endpoints.
 """
 
 import asyncio
-import json
 import logging
-from contextlib import asynccontextmanager
 
-from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager, get_config_manager
-from mindflow_backend.grpc.config.dynamic.storage import create_config_storage
-from mindflow_backend.grpc.config.dynamic.validator import ConfigValidator
-from mindflow_backend.grpc.config.profiles import get_environment_loader
-from mindflow_backend.grpc.config.features import get_feature_toggles, FeatureEvaluationContext
-from mindflow_backend.grpc.config.dynamic.watcher import CombinedConfigWatcher
 from mindflow_backend.grpc.config import GrpcConfig
+from mindflow_backend.grpc.config.dynamic.manager import DynamicConfigManager
+from mindflow_backend.grpc.config.dynamic.storage import create_config_storage
+from mindflow_backend.grpc.config.features import FeatureEvaluationContext, get_feature_toggles
+from mindflow_backend.grpc.config.profiles import get_environment_loader
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -103,7 +99,7 @@ async def example_dynamic_config_manager():
         
         # Get statistics
         stats = await config_manager.get_statistics()
-        print(f"\n   📊 Manager statistics:")
+        print("\n   📊 Manager statistics:")
         print(f"      Current version: {stats['current_version']}")
         print(f"      History size: {stats['history_size']}")
         print(f"      Subscribers: {stats['subscriber_count']}")
@@ -153,10 +149,10 @@ async def example_environment_profiles():
                 print(f"      ✅ Valid for {profile_name}")
         
         # Test profile inheritance
-        print(f"\n   🧪 Testing profile inheritance...")
+        print("\n   🧪 Testing profile inheritance...")
         staging_profile = env_loader.get_profile_info("staging")
         if staging_profile:
-            print(f"      📋 Staging profile:")
+            print("      📋 Staging profile:")
             print(f"         Parent: {staging_profile['parent_profile']}")
             print(f"         Overrides: {len(staging_profile['overrides'])}")
             print(f"         Inherited: {len(staging_profile['inherited_overrides'])}")
@@ -190,7 +186,7 @@ async def example_feature_flags():
             print(f"        {flag.description}")
         
         # Test feature evaluation
-        print(f"\n   🧪 Testing feature evaluation...")
+        print("\n   🧪 Testing feature evaluation...")
         
         test_flags = [
             "grpc_monitoring_enabled",
@@ -210,7 +206,7 @@ async def example_feature_flags():
             print(f"      🚩 {flag_name}: {'✅' if enabled else '❌'}")
         
         # Test percentage rollout
-        print(f"\n   🧪 Testing percentage rollout...")
+        print("\n   🧪 Testing percentage rollout...")
         
         # Set percentage rollout
         success = await feature_toggles.set_percentage_rollout("grpc_compression_enabled", 50.0)
@@ -226,7 +222,7 @@ async def example_feature_flags():
             print(f"      👤 User {i}: {'✅' if enabled else '❌'}")
         
         # Test feature dependencies
-        print(f"\n   🧪 Testing feature dependencies...")
+        print("\n   🧪 Testing feature dependencies...")
         
         # Disable monitoring (should disable circuit breaker)
         success = await feature_toggles.disable_flag("grpc_monitoring_enabled")
@@ -237,14 +233,14 @@ async def example_feature_flags():
         print(f"   ⚡ Circuit breaker enabled: {cb_enabled} (should be False)")
         
         # Get configuration overrides
-        print(f"\n   🔧 Configuration overrides from enabled features:")
+        print("\n   🔧 Configuration overrides from enabled features:")
         overrides = await feature_toggles.get_config_overrides()
         for key, value in overrides.items():
             print(f"      - {key}: {value}")
         
         # Get statistics
         stats = await feature_toggles.get_statistics()
-        print(f"\n   📊 Feature flags statistics:")
+        print("\n   📊 Feature flags statistics:")
         print(f"      Total flags: {stats['total_flags']}")
         print(f"      Enabled: {stats['enabled_flags']}")
         print(f"      Disabled: {stats['disabled_flags']}")
@@ -297,13 +293,13 @@ async def example_config_watcher():
         
         # Get watcher statistics
         stats = await watcher.get_statistics()
-        print(f"   📊 Watcher stats:")
+        print("   📊 Watcher stats:")
         print(f"      Running: {stats['running']}")
         print(f"      Watched files: {stats['watched_files']}")
         print(f"      Check interval: {stats['check_interval']}s")
         
         # Simulate configuration file change
-        print(f"\n   🧪 Simulating configuration file change...")
+        print("\n   🧪 Simulating configuration file change...")
         
         # Create a test config file
         test_config = {
@@ -318,30 +314,30 @@ async def example_config_watcher():
         with open("test_grpc_config.json", "w") as f:
             json.dump(test_config, f, indent=2)
         
-        print(f"   📝 Created test config file")
+        print("   📝 Created test config file")
         
         # Wait for watcher to detect change
-        print(f"   ⏳ Waiting for file change detection...")
+        print("   ⏳ Waiting for file change detection...")
         await asyncio.sleep(3)
         
         # Check if configuration was reloaded
         current_config = await config_manager.get_current_config()
         if current_config and current_config.port == 50053:
-            print(f"   ✅ Configuration reloaded successfully!")
+            print("   ✅ Configuration reloaded successfully!")
             print(f"      New port: {current_config.port}")
             print(f"      New max connections: {current_config.max_connections}")
         else:
-            print(f"   ⚠️  Configuration not reloaded (this is expected in this demo)")
+            print("   ⚠️  Configuration not reloaded (this is expected in this demo)")
         
         # Cleanup
         await watcher.stop()
-        print(f"   🛑 Watcher stopped")
+        print("   🛑 Watcher stopped")
         
         # Remove test file
         import os
         if os.path.exists("test_grpc_config.json"):
             os.remove("test_grpc_config.json")
-            print(f"   🗑️  Test file removed")
+            print("   🗑️  Test file removed")
         
     except Exception as exc:
         print(f"   ❌ Error: {exc}")
@@ -364,7 +360,7 @@ async def example_integrated_dynamic_config():
         feature_toggles = await get_feature_toggles()
         
         # Load dynamic configuration with profile and features
-        print(f"   🔄 Loading dynamic configuration...")
+        print("   🔄 Loading dynamic configuration...")
         
         # Start with base config
         base_config = await config_manager.get_current_config()
@@ -378,7 +374,7 @@ async def example_integrated_dynamic_config():
         feature_overrides = await feature_toggles.get_config_overrides()
         final_config = profile_config.apply_feature_overrides(feature_overrides)
         
-        print(f"   ✅ Dynamic configuration loaded:")
+        print("   ✅ Dynamic configuration loaded:")
         print(f"      Profile: {final_config.profile}")
         print(f"      Host: {final_config.host}:{final_config.port}")
         print(f"      Metrics: {final_config.enable_metrics}")
@@ -386,7 +382,7 @@ async def example_integrated_dynamic_config():
         print(f"      Debug: {final_config.debug_mode}")
         
         # Test configuration validation
-        print(f"\n   🔍 Validating configuration...")
+        print("\n   🔍 Validating configuration...")
         
         validation_result = await config_manager.validator.validate_config(final_config)
         print(f"      Valid: {validation_result.is_valid}")
@@ -397,7 +393,7 @@ async def example_integrated_dynamic_config():
                 print(f"         - {warning.field}: {warning.message}")
         
         # Test configuration update with validation
-        print(f"\n   🧪 Testing validated update...")
+        print("\n   🧪 Testing validated update...")
         
         updates = {
             "port": 50054,
@@ -410,12 +406,12 @@ async def example_integrated_dynamic_config():
         
         if success:
             updated_config = await config_manager.get_current_config()
-            print(f"      New configuration applied:")
+            print("      New configuration applied:")
             print(f"         Port: {updated_config.port}")
             print(f"         Max connections: {updated_config.max_connections}")
         
         # Test feature flag change
-        print(f"\n   🚩 Testing feature flag change...")
+        print("\n   🚩 Testing feature flag change...")
         
         # Enable compression feature
         success = await feature_toggles.enable_flag("grpc_compression_enabled")
@@ -426,10 +422,10 @@ async def example_integrated_dynamic_config():
         print(f"      Updated overrides: {len(new_overrides)}")
         
         # Test profile switch
-        print(f"\n   🌍 Testing profile switch...")
+        print("\n   🌍 Testing profile switch...")
         
         production_config = await env_loader.load_profile_config("production", base_config)
-        print(f"      Production config loaded:")
+        print("      Production config loaded:")
         print(f"         Secure: {production_config.secure}")
         print(f"         Debug: {production_config.debug_mode}")
         print(f"         Max connections: {production_config.max_connections}")
@@ -439,25 +435,25 @@ async def example_integrated_dynamic_config():
         if prod_issues:
             print(f"      Production issues: {len(prod_issues)}")
         else:
-            print(f"      ✅ Production config is valid")
+            print("      ✅ Production config is valid")
         
         # Get comprehensive statistics
-        print(f"\n   📊 System statistics:")
+        print("\n   📊 System statistics:")
         
         config_stats = await config_manager.get_statistics()
         feature_stats = await feature_toggles.get_statistics()
         
-        print(f"      Config manager:")
+        print("      Config manager:")
         print(f"         Version: {config_stats['current_version']}")
         print(f"         History: {config_stats['history_size']} entries")
         print(f"         Subscribers: {config_stats['subscriber_count']}")
         
-        print(f"      Feature flags:")
+        print("      Feature flags:")
         print(f"         Total: {feature_stats['total_flags']}")
         print(f"         Enabled: {feature_stats['enabled_flags']}")
         print(f"         Disabled: {feature_stats['disabled_flags']}")
         
-        print(f"\n   ✅ Integrated dynamic configuration system working!")
+        print("\n   ✅ Integrated dynamic configuration system working!")
         
     except Exception as exc:
         print(f"   ❌ Error: {exc}")

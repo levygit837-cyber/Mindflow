@@ -4,14 +4,14 @@ with proper error handling, authentication, and response processing.
 """
 
 from __future__ import annotations
-import json
-from typing import Any, Dict, Optional, Union
+
+from typing import Any
 from urllib.parse import urlparse
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-from ..base.tool_interface import AsyncToolInterface
 from mindflow_backend.schemas.tools.web_schemas import HTTP_CLIENT_SCHEMA
+
+from ..base.tool_interface import AsyncToolInterface
 
 _logger = get_logger(__name__)
 
@@ -31,7 +31,7 @@ class HttpClientTool(AsyncToolInterface):
 
         self._schema = HTTP_CLIENT_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute HTTP request with comprehensive features.
         Args:
@@ -174,7 +174,7 @@ class HttpClientTool(AsyncToolInterface):
                 error=f"Unexpected error: {str(e)}"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

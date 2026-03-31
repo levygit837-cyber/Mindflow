@@ -4,10 +4,9 @@ import os
 import sys
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
 from PySide6.QtWebEngineCore import QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import QApplication
 
 
 def run_ui() -> None:

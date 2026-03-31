@@ -7,12 +7,14 @@ optimizations and error handling.
 from __future__ import annotations
 
 import time
-from typing import Dict, Any, Optional
-import grpc
+from typing import Any
+
 from grpc.aio import Channel
 
-from .pool import PoolConfig, GrpcConnection
+import grpc
 from mindflow_backend.infra.logging import get_logger
+
+from .pool import GrpcConnection, PoolConfig
 
 _logger = get_logger(__name__)
 
@@ -175,7 +177,7 @@ class GrpcConnectionFactory:
         if self._creation_times:
             self._creation_stats["average_creation_time"] = sum(self._creation_times) / len(self._creation_times)
     
-    def get_creation_statistics(self) -> Dict[str, Any]:
+    def get_creation_statistics(self) -> dict[str, Any]:
         """Get connection creation statistics."""
         total = self._creation_stats["total_created"]
         

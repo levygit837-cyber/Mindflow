@@ -6,6 +6,7 @@ and session review/optimization.
 
 from __future__ import annotations
 
+
 # Factory functions for monitoring services
 def get_health_service():
     """Factory function for HealthService."""

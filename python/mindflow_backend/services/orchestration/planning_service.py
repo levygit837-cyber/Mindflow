@@ -10,7 +10,6 @@ This service manages the lifecycle of plan documents:
 from __future__ import annotations
 
 import asyncio
-import os
 import tempfile
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -24,10 +23,10 @@ from mindflow_backend.schemas.orchestration.planning import (
     PlanConfirmationRequest,
     PlanConfirmationResponse,
     PlanDocument,
-    PlanStatus,
-    PlanTask,
     PlanningRequest,
     PlanningResponse,
+    PlanStatus,
+    PlanTask,
 )
 from mindflow_backend.schemas.tools.planning import TodoItemContract, TodoItemStatus
 from mindflow_backend.services import get_todo_planning_service

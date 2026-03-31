@@ -8,8 +8,8 @@ environments.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 from mindflow_backend.grpc.config import GrpcConfig
 from mindflow_backend.infra.logging import get_logger
@@ -22,8 +22,8 @@ class ProfileConfig:
     """Configuration for an environment profile."""
     name: str
     description: str
-    parent_profile: Optional[str] = None
-    overrides: Dict[str, Any] = None
+    parent_profile: str | None = None
+    overrides: dict[str, Any] = None
     
     def __post_init__(self):
         if self.overrides is None:
@@ -38,11 +38,11 @@ class EnvironmentProfile(ABC):
         self.description = description
     
     @abstractmethod
-    def get_overrides(self) -> Dict[str, Any]:
+    def get_overrides(self) -> dict[str, Any]:
         """Get configuration overrides for this profile."""
         pass
     
-    def get_inherited_overrides(self) -> Dict[str, Any]:
+    def get_inherited_overrides(self) -> dict[str, Any]:
         """Get overrides including inherited from parent profile."""
         overrides = self.get_overrides()
         
@@ -57,7 +57,7 @@ class EnvironmentProfile(ABC):
         
         return overrides
     
-    def get_parent_profile(self) -> Optional[str]:
+    def get_parent_profile(self) -> str | None:
         """Get parent profile name."""
         return getattr(self, 'parent_profile', None)
     
@@ -75,7 +75,7 @@ class DevelopmentProfile(EnvironmentProfile):
             description="Development environment with debugging enabled"
         )
     
-    def get_overrides(self) -> Dict[str, Any]:
+    def get_overrides(self) -> dict[str, Any]:
         return {
             # Server settings
             "debug_mode": True,
@@ -120,7 +120,7 @@ class TestingProfile(EnvironmentProfile):
         )
         self.parent_profile = "development"
     
-    def get_overrides(self) -> Dict[str, Any]:
+    def get_overrides(self) -> dict[str, Any]:
         return {
             # Server settings
             "debug_mode": False,
@@ -164,7 +164,7 @@ class StagingProfile(EnvironmentProfile):
         )
         self.parent_profile = "production"
     
-    def get_overrides(self) -> Dict[str, Any]:
+    def get_overrides(self) -> dict[str, Any]:
         return {
             # Server settings
             "debug_mode": True,  # Keep debugging for staging
@@ -208,7 +208,7 @@ class ProductionProfile(EnvironmentProfile):
             description="Production environment optimized for security and performance"
         )
     
-    def get_overrides(self) -> Dict[str, Any]:
+    def get_overrides(self) -> dict[str, Any]:
         return {
             # Server settings
             "debug_mode": False,
@@ -253,7 +253,7 @@ class LocalProfile(EnvironmentProfile):
         )
         self.parent_profile = "development"
     
-    def get_overrides(self) -> Dict[str, Any]:
+    def get_overrides(self) -> dict[str, Any]:
         return {
             # Server settings
             "host": "127.0.0.1",  # Localhost only
@@ -293,7 +293,7 @@ class LocalProfile(EnvironmentProfile):
 class EnvironmentProfileRegistry:
     """Registry for environment profiles."""
     
-    _profiles: Dict[str, EnvironmentProfile] = {}
+    _profiles: dict[str, EnvironmentProfile] = {}
     
     @classmethod
     def register_profile(cls, profile: EnvironmentProfile) -> None:
@@ -302,12 +302,12 @@ class EnvironmentProfileRegistry:
         _logger.info("environment_profile_registered", name=profile.name)
     
     @classmethod
-    def get_profile(cls, name: str) -> Optional[EnvironmentProfile]:
+    def get_profile(cls, name: str) -> EnvironmentProfile | None:
         """Get environment profile by name."""
         return cls._profiles.get(name)
     
     @classmethod
-    def get_all_profiles(cls) -> Dict[str, EnvironmentProfile]:
+    def get_all_profiles(cls) -> dict[str, EnvironmentProfile]:
         """Get all registered profiles."""
         return cls._profiles.copy()
     
@@ -375,7 +375,7 @@ class EnvironmentLoader:
             _logger.error("profile_config_apply_failed", profile=profile_name, error=str(exc))
             return base_config
     
-    def get_profile_info(self, profile_name: str) -> Optional[Dict[str, Any]]:
+    def get_profile_info(self, profile_name: str) -> dict[str, Any] | None:
         """Get information about a profile."""
         profile = self.registry.get_profile(profile_name)
         if not profile:
@@ -389,7 +389,7 @@ class EnvironmentLoader:
             "inherited_overrides": profile.get_inherited_overrides(),
         }
     
-    def list_profiles(self) -> List[Dict[str, Any]]:
+    def list_profiles(self) -> List[dict[str, Any]]:
         """List all available profiles with information."""
         profiles_info = []
         for profile_name in self.registry.list_profile_names():
@@ -433,7 +433,7 @@ class EnvironmentLoader:
 
 
 # Global environment loader instance
-_environment_loader: Optional[EnvironmentLoader] = None
+_environment_loader: EnvironmentLoader | None = None
 
 
 def get_environment_loader() -> EnvironmentLoader:
@@ -454,17 +454,17 @@ def create_profile_config(profile_name: str, **overrides) -> ProfileConfig:
     )
 
 
-def register_custom_profile(name: str, description: str, overrides: Dict[str, Any], 
-                          parent_profile: Optional[str] = None) -> EnvironmentProfile:
+def register_custom_profile(name: str, description: str, overrides: dict[str, Any], 
+                          parent_profile: str | None = None) -> EnvironmentProfile:
     """Register a custom environment profile."""
     
     class CustomProfile(EnvironmentProfile):
-        def __init__(self, name: str, description: str, overrides: Dict[str, Any], parent: Optional[str] = None):
+        def __init__(self, name: str, description: str, overrides: dict[str, Any], parent: str | None = None):
             super().__init__(name, description)
             self._overrides = overrides
             self.parent_profile = parent
         
-        def get_overrides(self) -> Dict[str, Any]:
+        def get_overrides(self) -> dict[str, Any]:
             return self._overrides
     
     profile = CustomProfile(name, description, overrides, parent_profile)

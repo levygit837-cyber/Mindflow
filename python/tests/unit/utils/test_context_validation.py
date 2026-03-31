@@ -3,13 +3,13 @@
 import pytest
 
 from mindflow_backend.orchestrator.context_validation import (
-    validate_payload_size,
     PayloadTooLargeError,
-    estimate_tokens,
-    check_staleness,
-    check_relevance,
     QualityIssue,
+    check_relevance,
+    check_staleness,
+    estimate_tokens,
     validate_context,
+    validate_payload_size,
 )
 
 

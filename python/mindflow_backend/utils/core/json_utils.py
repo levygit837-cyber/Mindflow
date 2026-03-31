@@ -4,9 +4,9 @@ Advanced JSON serialization, deserialization, and manipulation utilities.
 """
 
 import json
-from datetime import datetime, UTC
+from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -44,10 +44,10 @@ class JSONEncoder(json.JSONEncoder):
 
 def to_json(
     obj: Any,
-    indent: Optional[int] = None,
+    indent: int | None = None,
     sort_keys: bool = False,
     ensure_ascii: bool = False,
-    encoder: Optional[json.JSONEncoder] = None,
+    encoder: json.JSONEncoder | None = None,
 ) -> str:
     """Convert object to JSON string with enhanced encoding."""
     return json.dumps(
@@ -68,7 +68,7 @@ def from_json(
     """Parse JSON string with error handling."""
     try:
         return json.loads(json_str)
-    except (json.JSONDecodeError, TypeError) as exc:
+    except (json.JSONDecodeError, TypeError):
         if raise_on_error:
             raise
         return default
@@ -81,9 +81,9 @@ def from_json_file(
 ) -> Any:
     """Load JSON from file with error handling."""
     try:
-        with open(file_path, 'r', encoding=encoding) as f:
+        with open(file_path, encoding=encoding) as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, IOError) as exc:
+    except (OSError, FileNotFoundError, json.JSONDecodeError):
         return default
 
 
@@ -115,11 +115,11 @@ def to_json_file(
         
         return True
     
-    except (IOError, OSError, TypeError) as exc:
+    except (OSError, TypeError):
         return False
 
 
-def merge_json_objects(*objects: Dict[str, Any]) -> Dict[str, Any]:
+def merge_json_objects(*objects: dict[str, Any]) -> dict[str, Any]:
     """Merge multiple JSON objects (dictionaries)."""
     result = {}
     
@@ -130,9 +130,9 @@ def merge_json_objects(*objects: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def deep_merge_json_objects(*objects: Dict[str, Any]) -> Dict[str, Any]:
+def deep_merge_json_objects(*objects: dict[str, Any]) -> dict[str, Any]:
     """Deep merge multiple JSON objects."""
-    def _deep_merge(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+    def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
         for key, value in update.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                 base[key] = _deep_merge(base[key], value)
@@ -149,7 +149,7 @@ def deep_merge_json_objects(*objects: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def get_json_path(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+def get_json_path(data: dict[str, Any], path: str, default: Any = None) -> Any:
     """Get value from nested JSON using dot notation path."""
     keys = path.split('.')
     current = data
@@ -169,7 +169,7 @@ def get_json_path(data: Dict[str, Any], path: str, default: Any = None) -> Any:
         return default
 
 
-def set_json_path(data: Dict[str, Any], path: str, value: Any) -> Dict[str, Any]:
+def set_json_path(data: dict[str, Any], path: str, value: Any) -> dict[str, Any]:
     """Set value in nested JSON using dot notation path."""
     keys = path.split('.')
     current = data
@@ -183,7 +183,7 @@ def set_json_path(data: Dict[str, Any], path: str, value: Any) -> Dict[str, Any]
     return data
 
 
-def delete_json_path(data: Dict[str, Any], path: str) -> bool:
+def delete_json_path(data: dict[str, Any], path: str) -> bool:
     """Delete value from nested JSON using dot notation path."""
     keys = path.split('.')
     current = data
@@ -202,9 +202,9 @@ def delete_json_path(data: Dict[str, Any], path: str) -> bool:
         return False
 
 
-def flatten_json(data: Dict[str, Any], separator: str = '.') -> Dict[str, Any]:
+def flatten_json(data: dict[str, Any], separator: str = '.') -> dict[str, Any]:
     """Flatten nested JSON object."""
-    def _flatten(obj: Any, parent_key: str = '') -> Dict[str, Any]:
+    def _flatten(obj: Any, parent_key: str = '') -> dict[str, Any]:
         items = []
         
         if isinstance(obj, dict):
@@ -225,7 +225,7 @@ def flatten_json(data: Dict[str, Any], separator: str = '.') -> Dict[str, Any]:
     return _flatten(data)
 
 
-def unflatten_json(data: Dict[str, Any], separator: str = '.') -> Dict[str, Any]:
+def unflatten_json(data: dict[str, Any], separator: str = '.') -> dict[str, Any]:
     """Unflatten JSON object."""
     result = {}
     
@@ -243,7 +243,7 @@ def unflatten_json(data: Dict[str, Any], separator: str = '.') -> Dict[str, Any]
     return result
 
 
-def filter_json_keys(data: Dict[str, Any], keys: List[str], include: bool = True) -> Dict[str, Any]:
+def filter_json_keys(data: dict[str, Any], keys: list[str], include: bool = True) -> dict[str, Any]:
     """Filter JSON object by keys."""
     if include:
         return {k: v for k, v in data.items() if k in keys}
@@ -252,10 +252,10 @@ def filter_json_keys(data: Dict[str, Any], keys: List[str], include: bool = True
 
 
 def filter_json_by_value(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     predicate: callable,
     deep: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Filter JSON object by value predicate."""
     def _filter(obj: Any) -> Any:
         if isinstance(obj, dict):
@@ -271,7 +271,7 @@ def filter_json_by_value(
         return {k: v for k, v in data.items() if predicate(v)}
 
 
-def find_json_values(data: Dict[str, Any], key: str) -> List[Any]:
+def find_json_values(data: dict[str, Any], key: str) -> list[Any]:
     """Find all values for a specific key in nested JSON."""
     values = []
     
@@ -289,7 +289,7 @@ def find_json_values(data: Dict[str, Any], key: str) -> List[Any]:
     return values
 
 
-def find_json_keys_by_value(data: Dict[str, Any], value: Any) -> List[str]:
+def find_json_keys_by_value(data: dict[str, Any], value: Any) -> list[str]:
     """Find all keys that have a specific value in nested JSON."""
     keys = []
     
@@ -311,7 +311,7 @@ def find_json_keys_by_value(data: Dict[str, Any], value: Any) -> List[str]:
     return keys
 
 
-def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> List[str]:
+def validate_json_schema(data: dict[str, Any], schema: dict[str, Any]) -> list[str]:
     """Simple JSON schema validation."""
     errors = []
     
@@ -379,7 +379,7 @@ def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> List[s
     return errors
 
 
-def json_patch(original: Dict[str, Any], patch: List[Dict[str, Any]]) -> Dict[str, Any]:
+def json_patch(original: dict[str, Any], patch: list[dict[str, Any]]) -> dict[str, Any]:
     """Apply JSON Patch (RFC 6902) to object."""
     import copy
     
@@ -415,7 +415,7 @@ def json_patch(original: Dict[str, Any], patch: List[Dict[str, Any]]) -> Dict[st
     return result
 
 
-def json_diff(obj1: Dict[str, Any], obj2: Dict[str, Any]) -> List[Dict[str, Any]]:
+def json_diff(obj1: dict[str, Any], obj2: dict[str, Any]) -> list[dict[str, Any]]:
     """Generate JSON Patch representing differences between two objects."""
     # This is a simplified implementation
     patches = []
@@ -435,7 +435,7 @@ def json_diff(obj1: Dict[str, Any], obj2: Dict[str, Any]) -> List[Dict[str, Any]
     return patches
 
 
-def compress_json(data: Dict[str, Any]) -> str:
+def compress_json(data: dict[str, Any]) -> str:
     """Compress JSON by removing whitespace and using shorter representations."""
     # Remove whitespace
     json_str = to_json(data, indent=None, sort_keys=True)
@@ -459,7 +459,7 @@ def pretty_print_json(obj: Any, indent: int = 2) -> str:
     return to_json(obj, indent=indent, sort_keys=True)
 
 
-def json_to_xml(data: Dict[str, Any], root_name: str = 'root') -> str:
+def json_to_xml(data: dict[str, Any], root_name: str = 'root') -> str:
     """Convert JSON to simple XML format."""
     def _to_xml(obj: Any, name: str, indent: int = 0) -> str:
         spaces = '  ' * indent
@@ -483,7 +483,7 @@ def json_to_xml(data: Dict[str, Any], root_name: str = 'root') -> str:
     return _to_xml(data, root_name)
 
 
-def json_to_yaml(data: Dict[str, Any]) -> str:
+def json_to_yaml(data: dict[str, Any]) -> str:
     """Convert JSON to YAML format (basic implementation)."""
     def _to_yaml(obj: Any, indent: int = 0) -> str:
         spaces = '  ' * indent

@@ -12,8 +12,6 @@ from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.session.contracts import RetrievedContext
-from mindflow_backend.services.vector_manager import get_vector_manager
 from mindflow_backend.memory.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
@@ -22,7 +20,8 @@ from mindflow_backend.memory.storage.models import (
     AgentMemoryWindow,
     SessionEmbedding,
 )
-
+from mindflow_backend.schemas.session.contracts import RetrievedContext
+from mindflow_backend.services.vector_manager import get_vector_manager
 from mindflow_backend.utils.core import estimate_token_count
 
 _logger = get_logger(__name__)

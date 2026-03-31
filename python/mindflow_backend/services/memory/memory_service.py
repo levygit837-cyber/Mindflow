@@ -6,12 +6,12 @@ for efficient context management across sessions.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union
-import sqlite3
-import json
 import asyncio
+import json
+import sqlite3
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 try:
@@ -21,9 +21,10 @@ except ImportError:
     NUMPY_AVAILABLE = False
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.interfaces.services.memory import MemoryServiceInterface
-from ..nlp_embeddings import NLPEmbeddingService, EmbeddingMethod, create_embedding_service
+from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
+
+from ..nlp_embeddings import EmbeddingMethod, NLPEmbeddingService, create_embedding_service
 
 _logger = get_logger(__name__)
 
@@ -67,11 +68,11 @@ class ContextEntry:
         session_id: str,
         agent_id: str,
         content: str,
-        embedding: Optional[List[float]],
+        embedding: list[float] | None,
         token_start: int,
         token_end: int,
         timestamp: datetime,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Initialize context entry.
         
@@ -96,7 +97,7 @@ class ContextEntry:
         self.timestamp = timestamp
         self.metadata = metadata or {}
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
         
         Returns:
@@ -115,7 +116,7 @@ class ContextEntry:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ContextEntry":
+    def from_dict(cls, data: dict[str, Any]) -> ContextEntry:
         """Create from dictionary.
         
         Args:
@@ -148,7 +149,7 @@ class ContextStorage:
         """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection: Optional[sqlite3.Connection] = None
+        self._connection: sqlite3.Connection | None = None
     
     async def initialize(self) -> None:
         """Initialize database and create tables."""
@@ -233,10 +234,10 @@ class ContextStorage:
     async def get_context_by_range(
         self,
         session_id: str,
-        token_start: Optional[int] = None,
-        token_end: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[ContextEntry]:
+        token_start: int | None = None,
+        token_end: int | None = None,
+        limit: int | None = None,
+    ) -> list[ContextEntry]:
         """Get context entries by token range.
         
         Args:
@@ -278,7 +279,7 @@ class ContextStorage:
         
         return await loop.run_in_executor(None, _query)
     
-    async def get_context_by_id(self, context_id: str) -> Optional[ContextEntry]:
+    async def get_context_by_id(self, context_id: str) -> ContextEntry | None:
         """Get context entry by ID.
         
         Args:
@@ -306,10 +307,10 @@ class ContextStorage:
     async def search_context(
         self,
         session_id: str,
-        query_embedding: List[float],
+        query_embedding: list[float],
         limit: int = 10,
         min_similarity: float = 0.3,
-    ) -> List[Tuple[ContextEntry, float]]:
+    ) -> list[tuple[ContextEntry, float]]:
         """Search context by embedding similarity.
         
         Args:
@@ -359,7 +360,7 @@ class ContextStorage:
         
         return await loop.run_in_executor(None, _search)
     
-    async def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_stats(self, session_id: str) -> dict[str, Any]:
         """Get session statistics.
         
         Args:
@@ -455,10 +456,10 @@ class ContextRetriever:
     async def get_context_by_tokens(
         self,
         session_id: str,
-        token_start: Optional[int] = None,
-        token_end: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[ContextEntry]:
+        token_start: int | None = None,
+        token_end: int | None = None,
+        limit: int | None = None,
+    ) -> list[ContextEntry]:
         """Get context by token range.
         
         Args:
@@ -478,9 +479,9 @@ class ContextRetriever:
         self,
         session_id: str,
         query: str,
-        token_range: Optional[Tuple[int, int]] = None,
+        token_range: tuple[int, int] | None = None,
         limit: int = 10,
-    ) -> List[Tuple[ContextEntry, float]]:
+    ) -> list[tuple[ContextEntry, float]]:
         """Search context by semantic similarity.
         
         Args:
@@ -522,7 +523,7 @@ class ContextRetriever:
         session_id: str,
         token_count: int = 1000,
         limit: int = 10,
-    ) -> List[ContextEntry]:
+    ) -> list[ContextEntry]:
         """Get recent context by token count.
         
         Args:
@@ -590,7 +591,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         content: str,
         token_start: int,
         token_end: int,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Store context entry.
         
@@ -636,9 +637,9 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
     async def get_context(
         self,
         session_id: str,
-        token_start: Optional[int] = None,
-        token_end: Optional[int] = None,
-    ) -> List[ContextEntry]:
+        token_start: int | None = None,
+        token_end: int | None = None,
+    ) -> list[ContextEntry]:
         """Get context by token range.
         
         Args:
@@ -660,9 +661,9 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
         self,
         session_id: str,
         query: str,
-        token_range: Optional[Tuple[int, int]] = None,
+        token_range: tuple[int, int] | None = None,
         limit: int = 10,
-    ) -> List[Tuple[ContextEntry, float]]:
+    ) -> list[tuple[ContextEntry, float]]:
         """Search context by semantic similarity.
         
         Args:
@@ -681,7 +682,7 @@ class MemoryService(BaseAbstractService, MemoryServiceInterface):
             session_id, query, token_range, limit
         )
     
-    async def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_stats(self, session_id: str) -> dict[str, Any]:
         """Get session statistics.
         
         Args:

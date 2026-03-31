@@ -7,7 +7,7 @@ and metadata management based on agent.py StreamEvent schemas.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from typing import Protocol, runtime_checkable, Any
+from typing import Any, Protocol, runtime_checkable
 
 from mindflow_backend.schemas.chat.agent import (
     AgentChatRequest,

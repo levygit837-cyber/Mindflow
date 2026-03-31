@@ -1,16 +1,16 @@
 """Registry interfaces for Skills system."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from abc import abstractmethod
+from typing import Any
 
 from mindflow_backend.interfaces.core import BaseComponentInterface
 from mindflow_backend.schemas.skills.registry import (
-    SkillRegistration,
     SkillDiscovery,
-    SkillRegistryEntry,
-    SkillQuery,
     SkillFilter,
-    SkillRecommendation
+    SkillQuery,
+    SkillRecommendation,
+    SkillRegistration,
+    SkillRegistryEntry,
 )
 
 
@@ -45,7 +45,7 @@ class SkillRegistryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_skill(self, skill_id: str) -> Optional[SkillRegistryEntry]:
+    async def get_skill(self, skill_id: str) -> SkillRegistryEntry | None:
         """Get skill by ID.
         
         Args:
@@ -57,7 +57,7 @@ class SkillRegistryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_skill_by_name(self, skill_name: str) -> Optional[SkillRegistryEntry]:
+    async def get_skill_by_name(self, skill_name: str) -> SkillRegistryEntry | None:
         """Get skill by name.
         
         Args:
@@ -71,10 +71,10 @@ class SkillRegistryInterface(BaseComponentInterface):
     @abstractmethod
     async def list_skills(
         self, 
-        filter_params: Optional[SkillFilter] = None,
+        filter_params: SkillFilter | None = None,
         limit: int = 50,
         offset: int = 0
-    ) -> List[SkillRegistryEntry]:
+    ) -> list[SkillRegistryEntry]:
         """List registered skills.
         
         Args:
@@ -105,7 +105,7 @@ class SkillRegistryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_skill_count(self, filter_params: Optional[SkillFilter] = None) -> int:
+    async def get_skill_count(self, filter_params: SkillFilter | None = None) -> int:
         """Get total count of registered skills.
         
         Args:
@@ -121,7 +121,7 @@ class SkillDiscoveryInterface(BaseComponentInterface):
     """Interface for skill discovery."""
     
     @abstractmethod
-    async def discover_skills(self, discovery: SkillDiscovery) -> List[SkillRegistryEntry]:
+    async def discover_skills(self, discovery: SkillDiscovery) -> list[SkillRegistryEntry]:
         """Discover skills based on criteria.
         
         Args:
@@ -133,7 +133,7 @@ class SkillDiscoveryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def search_skills(self, query: str) -> List[SkillRegistryEntry]:
+    async def search_skills(self, query: str) -> list[SkillRegistryEntry]:
         """Search skills by text query.
         
         Args:
@@ -145,7 +145,7 @@ class SkillDiscoveryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_similar_skills(self, skill_id: str) -> List[SkillRegistryEntry]:
+    async def get_similar_skills(self, skill_id: str) -> list[SkillRegistryEntry]:
         """Get skills similar to given skill.
         
         Args:
@@ -157,7 +157,7 @@ class SkillDiscoveryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_popular_skills(self, limit: int = 10) -> List[SkillRegistryEntry]:
+    async def get_popular_skills(self, limit: int = 10) -> list[SkillRegistryEntry]:
         """Get most popular skills.
         
         Args:
@@ -169,7 +169,7 @@ class SkillDiscoveryInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    async def get_recent_skills(self, limit: int = 10) -> List[SkillRegistryEntry]:
+    async def get_recent_skills(self, limit: int = 10) -> list[SkillRegistryEntry]:
         """Get recently registered skills.
         
         Args:
@@ -185,7 +185,7 @@ class SkillRecommendationInterface(BaseComponentInterface):
     """Interface for skill recommendation."""
     
     @abstractmethod
-    async def recommend_skills(self, query: SkillQuery) -> List[SkillRecommendation]:
+    async def recommend_skills(self, query: SkillQuery) -> list[SkillRecommendation]:
         """Recommend skills based on requirements.
         
         Args:
@@ -200,8 +200,8 @@ class SkillRecommendationInterface(BaseComponentInterface):
     async def get_skill_for_task(
         self, 
         task_description: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Optional[SkillRecommendation]:
+        context: dict[str, Any] | None = None
+    ) -> SkillRecommendation | None:
         """Get best skill for a specific task.
         
         Args:
@@ -216,8 +216,8 @@ class SkillRecommendationInterface(BaseComponentInterface):
     @abstractmethod
     async def get_skill_combination(
         self, 
-        requirements: Dict[str, Any]
-    ) -> List[SkillRecommendation]:
+        requirements: dict[str, Any]
+    ) -> list[SkillRecommendation]:
         """Get combination of skills for complex requirements.
         
         Args:
@@ -232,7 +232,7 @@ class SkillRecommendationInterface(BaseComponentInterface):
     async def update_recommendation_model(
         self, 
         skill_id: str,
-        feedback: Dict[str, Any]
+        feedback: dict[str, Any]
     ) -> None:
         """Update recommendation model with feedback.
         
@@ -250,7 +250,7 @@ class SkillValidationInterface(BaseComponentInterface):
     async def validate_skill_registration(
         self, 
         registration: SkillRegistration
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Validate skill registration.
         
         Args:
@@ -265,7 +265,7 @@ class SkillValidationInterface(BaseComponentInterface):
     async def validate_skill_implementation(
         self, 
         skill_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Validate skill implementation.
         
         Args:
@@ -280,8 +280,8 @@ class SkillValidationInterface(BaseComponentInterface):
     async def test_skill_execution(
         self, 
         skill_id: str,
-        test_input: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        test_input: dict[str, Any]
+    ) -> dict[str, Any]:
         """Test skill execution.
         
         Args:

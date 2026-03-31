@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
 from dataclasses import dataclass
 
-from mindflow_backend.agents._base import AgentType, ThinkingLevel, SandboxMode, Priority
-from mindflow_backend.schemas.orchestration.specialists import SpecialistType, TaskComplexity
-from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.agents._base import AgentType, SandboxMode, ThinkingLevel
 from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 _logger = get_logger(__name__)
 
@@ -20,13 +19,13 @@ class SpecialistConfig:
     name: str
     description: str
     base_specialist: SpecialistType
-    prompt_segments: List[str]
-    tools: List[str]
+    prompt_segments: list[str]
+    tools: list[str]
     thinking_level: ThinkingLevel
     sandbox_mode: SandboxMode
     max_iterations: int
-    specializations: List[str]
-    trigger_keywords: List[str]
+    specializations: list[str]
+    trigger_keywords: list[str]
     estimated_efficiency_gain: float
     confidence_boost: float
 
@@ -38,11 +37,11 @@ class SpecialistBase:
         self.config = config
         self._logger = get_logger(f"{__name__}.{config.name.lower()}")
     
-    def get_prompt_segments(self) -> List[str]:
+    def get_prompt_segments(self) -> list[str]:
         """Get prompt segments for this specialist."""
         return self.config.prompt_segments
     
-    def get_tools(self) -> List[str]:
+    def get_tools(self) -> list[str]:
         """Get tools for this specialist."""
         return self.config.tools
     
@@ -58,7 +57,7 @@ class SpecialistBase:
         """Get max iterations for this specialist."""
         return self.config.max_iterations
     
-    def matches_task(self, task_description: str, context: List[str]) -> float:
+    def matches_task(self, task_description: str, context: list[str]) -> float:
         """Calculate match score for this specialist."""
         score = 0.0
         task_lower = task_description.lower()
@@ -194,7 +193,7 @@ class DeepAnalysisSpecialist(SpecialistBase):
 
 
 # Registry of all specialists
-SPECIALISTS: Dict[str, SpecialistBase] = {
+SPECIALISTS: dict[str, SpecialistBase] = {
     "security_guard": SecuritySpecialist(),
     "critic": ReviewSpecialist(),
     "arch_tech": ArchitectureSpecialist(),
@@ -208,14 +207,14 @@ def get_specialist(name: str) -> SpecialistBase | None:
     return SPECIALISTS.get(name)
 
 
-def get_all_specialists() -> List[SpecialistBase]:
+def get_all_specialists() -> list[SpecialistBase]:
     """Get all available specialists."""
     return list(SPECIALISTS.values())
 
 
 def find_best_specialist(
     task_description: str,
-    context: List[str],
+    context: list[str],
     base_specialist: SpecialistType | None = None,
 ) -> SpecialistBase | None:
     """Find the best matching specialist for a task."""

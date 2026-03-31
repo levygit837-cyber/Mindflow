@@ -1,19 +1,20 @@
 """Chains API endpoints for MindFlow."""
 
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, List, Optional, Any
+from typing import Any
 
+from fastapi import APIRouter, HTTPException
+
+from mindflow_backend.api.controllers.base_controller import BaseController
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.chains.factory import get_chain_factory, ChainRequest
-from mindflow_backend.chains.catalog import list_available_chains, get_chain_info, find_chains_for_task
-from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, audit_log
-from mindflow_backend.api.schemas.chain_requests import ChainExecuteRequest, ChainCreateRequest
-from mindflow_backend.api.schemas.chain_responses import (
-    ChainListResponse,
-    ChainInfoResponse,
+from mindflow_backend.chains.catalog import find_chains_for_task, get_chain_info
+from mindflow_backend.chains.factory import ChainRequest, get_chain_factory
+from mindflow_backend.schemas.api.chain_requests import ChainExecuteRequest
+from mindflow_backend.schemas.api.chain_responses import (
     ChainExecuteResponse,
+    ChainInfoResponse,
+    ChainListResponse,
+    ChainRegistryResponse,
     ChainStatsResponse,
-    ChainRegistryResponse
 )
 
 router = APIRouter(prefix="/chains", tags=["chains"], dependencies=protected_route_dependencies)
@@ -26,7 +27,7 @@ class ChainController(BaseController):
         super().__init__()
         self.chain_factory = get_chain_factory()
     
-    def get_chain_metadata(self, chain_id: str) -> Dict[str, Any]:
+    def get_chain_metadata(self, chain_id: str) -> dict[str, Any]:
         """Get metadata for a specific chain."""
         metadata = self.chain_factory.registry.get_metadata(chain_id)
         if not metadata:
@@ -48,7 +49,7 @@ class ChainController(BaseController):
             "retry_attempts": metadata.retry_attempts,
         }
     
-    def format_chain_list(self, chains: List) -> List[Dict[str, Any]]:
+    def format_chain_list(self, chains: list) -> list[dict[str, Any]]:
         """Format chain list for response."""
         return [
             {
@@ -68,8 +69,8 @@ chain_controller = ChainController()
 
 @router.get("/", response_model=ChainListResponse)
 async def list_chains(
-    capability: Optional[str] = None,
-    complexity: Optional[str] = None
+    capability: str | None = None,
+    complexity: str | None = None
 ):
     """List all available chains with optional filtering."""
     try:
@@ -188,8 +189,8 @@ async def get_chain_statistics(chain_id: str):
 @router.post("/find", response_model=ChainListResponse)
 async def find_chains_for_task(
     task_type: str,
-    complexity: Optional[str] = None,
-    required_capabilities: Optional[List[str]] = None
+    complexity: str | None = None,
+    required_capabilities: list[str] | None = None
 ):
     """Find chains suitable for a specific task type."""
     try:

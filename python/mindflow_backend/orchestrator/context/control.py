@@ -6,7 +6,6 @@ token window tracking, and automatic session creation.
 
 from __future__ import annotations
 
-import math
 from uuid import uuid4
 
 from mindflow_backend.infra.config import get_settings

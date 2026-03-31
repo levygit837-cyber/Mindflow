@@ -7,12 +7,10 @@ and configuration based on specialists.py schemas.
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
-from uuid import UUID
 
 from mindflow_backend.schemas.orchestration.specialists import (
     SpecialistConfiguration,
     SpecialistDecisionResult,
-    SpecialistSelection,
     SpecialistSelectionRule,
     SpecialistSwitchContext,
     SpecialistType,

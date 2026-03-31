@@ -6,7 +6,7 @@ and tool operation errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.business import WorkflowError
+from mindflow_backend.exceptions.base.business_new import WorkflowError
 
 
 class ExecutionError(WorkflowError):

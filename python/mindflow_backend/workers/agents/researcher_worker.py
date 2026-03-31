@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
@@ -19,7 +19,7 @@ class ResearcherWorker(BaseWorker):
         """Initialize the Researcher worker."""
         super().__init__(queue_config, worker_name="researcher_worker")
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process research and information gathering tasks.
         
         Supported task types:
@@ -73,7 +73,7 @@ class ResearcherWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
     
-    async def _handle_web_search(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_web_search(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle web search and information gathering."""
         query = message_data.get("query")
         search_depth = message_data.get("search_depth", "standard")
@@ -115,7 +115,7 @@ class ResearcherWorker(BaseWorker):
             },
         )
     
-    async def _handle_source_validation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_source_validation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle source validation and verification."""
         sources = message_data.get("sources", [])
         validation_criteria = message_data.get("validation_criteria", ["reliability", "currency"])
@@ -151,7 +151,7 @@ class ResearcherWorker(BaseWorker):
             },
         )
     
-    async def _handle_content_synthesis(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_content_synthesis(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle synthesis of research findings."""
         research_data = message_data.get("research_data", [])
         synthesis_type = message_data.get("synthesis_type", "summary")
@@ -180,7 +180,7 @@ class ResearcherWorker(BaseWorker):
             },
         )
     
-    async def _handle_fact_checking(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_fact_checking(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle fact-checking and verification tasks."""
         claims = message_data.get("claims", [])
         verification_sources = message_data.get("verification_sources", ["multiple"])
@@ -215,7 +215,7 @@ class ResearcherWorker(BaseWorker):
             },
         )
     
-    async def _handle_literature_review(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_literature_review(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle academic literature review tasks."""
         topic = message_data.get("topic")
         databases = message_data.get("databases", ["arxiv", "pubmed"])

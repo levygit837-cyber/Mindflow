@@ -7,23 +7,18 @@ function profiling, memory profiling, and performance analysis.
 from __future__ import annotations
 
 import asyncio
-import time
-import tracemalloc
 import cProfile
 import pstats
-import io
+import time
+import tracemalloc
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable, Union
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-import json
-import weakref
-import threading
-from collections import defaultdict
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.tracing.tracer import get_tracer, SpanKind
+from mindflow_backend.infra.tracing.tracer import get_tracer
 
 _logger = get_logger(__name__)
 
@@ -44,8 +39,8 @@ class ProfileData:
     name: str
     type: ProfileType
     start_time: datetime
-    end_time: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    end_time: datetime | None = None
+    duration_ms: float | None = None
     call_count: int = 1
     total_time_ms: float = 0.0
     avg_time_ms: float = 0.0
@@ -54,7 +49,7 @@ class ProfileData:
     memory_usage_mb: float = 0.0
     peak_memory_mb: float = 0.0
     cpu_percent: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def update_metrics(self, duration_ms: float) -> None:
         """Update profile metrics.
@@ -68,7 +63,7 @@ class ProfileData:
         self.min_time_ms = min(self.min_time_ms, duration_ms)
         self.max_time_ms = max(self.max_time_ms, duration_ms)
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -93,7 +88,7 @@ class MemoryProfiler:
     
     def __init__(self):
         """Initialize memory profiler."""
-        self._snapshots: List[Dict[str, Any]] = []
+        self._snapshots: list[dict[str, Any]] = []
         self._is_profiling = False
         
     def start_profiling(self) -> None:
@@ -116,7 +111,7 @@ class MemoryProfiler:
         
         _logger.debug("memory_profiling_started")
         
-    def stop_profiling(self) -> Dict[str, Any]:
+    def stop_profiling(self) -> dict[str, Any]:
         """Stop memory profiling and return results.
         
         Returns:
@@ -167,7 +162,7 @@ class MemoryProfiler:
         _logger.debug("memory_profiling_stopped", results=results)
         return results
         
-    def get_current_usage(self) -> Dict[str, Any]:
+    def get_current_usage(self) -> dict[str, Any]:
         """Get current memory usage.
         
         Returns:
@@ -187,8 +182,8 @@ class CPUProfiler:
     
     def __init__(self):
         """Initialize CPU profiler."""
-        self._profiles: Dict[str, ProfileData] = {}
-        self._current_profile: Optional[cProfile.Profile] = None
+        self._profiles: dict[str, ProfileData] = {}
+        self._current_profile: cProfile.Profile | None = None
         
     @contextmanager
     def profile_function(self, name: str) -> Any:
@@ -264,7 +259,7 @@ class AsyncProfiler:
     
     def __init__(self):
         """Initialize async profiler."""
-        self._profiles: Dict[str, ProfileData] = {}
+        self._profiles: dict[str, ProfileData] = {}
         
     @asynccontextmanager
     async def profile_async_function(self, name: str) -> Any:
@@ -319,7 +314,7 @@ class PerformanceProfiler:
     
     def __init__(self):
         """Initialize performance profiler."""
-        self._profiles: Dict[str, ProfileData] = {}
+        self._profiles: dict[str, ProfileData] = {}
         self._memory_profiler = MemoryProfiler()
         self._cpu_profiler = CPUProfiler()
         self._async_profiler = AsyncProfiler()
@@ -487,7 +482,7 @@ class PerformanceProfiler:
             
         self._stats["function_profiles"] += 1
         
-    def _store_memory_profile(self, name: str, results: Dict[str, Any]) -> None:
+    def _store_memory_profile(self, name: str, results: dict[str, Any]) -> None:
         """Store memory profile results.
         
         Args:
@@ -499,7 +494,7 @@ class PerformanceProfiler:
             self._profiles[name].peak_memory_mb = results.get("final_size_mb", 0.0)
             self._profiles[name].metadata["memory_results"] = results
             
-    def get_profile(self, name: str) -> Optional[ProfileData]:
+    def get_profile(self, name: str) -> ProfileData | None:
         """Get profile by name.
         
         Args:
@@ -510,7 +505,7 @@ class PerformanceProfiler:
         """
         return self._profiles.get(name)
         
-    def get_all_profiles(self) -> Dict[str, ProfileData]:
+    def get_all_profiles(self) -> dict[str, ProfileData]:
         """Get all profiles.
         
         Returns:
@@ -518,7 +513,7 @@ class PerformanceProfiler:
         """
         return self._profiles.copy()
         
-    def get_slow_functions(self, threshold_ms: float = 1000.0, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_slow_functions(self, threshold_ms: float = 1000.0, limit: int = 10) -> list[dict[str, Any]]:
         """Get slow functions above threshold.
         
         Args:
@@ -546,7 +541,7 @@ class PerformanceProfiler:
         
         return slow_functions[:limit]
         
-    def get_memory_usage(self) -> Dict[str, Any]:
+    def get_memory_usage(self) -> dict[str, Any]:
         """Get current memory usage.
         
         Returns:
@@ -554,7 +549,7 @@ class PerformanceProfiler:
         """
         return self._memory_profiler.get_current_usage()
         
-    def analyze_performance(self) -> Dict[str, Any]:
+    def analyze_performance(self) -> dict[str, Any]:
         """Analyze performance and provide recommendations.
         
         Returns:
@@ -630,7 +625,7 @@ class PerformanceProfiler:
             
         return len(profiles_to_remove)
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get profiler statistics.
         
         Returns:
@@ -647,7 +642,7 @@ class PerformanceProfiler:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform profiler health check.
         
         Returns:
@@ -687,7 +682,7 @@ class PerformanceProfiler:
 
 
 # Global performance profiler instance
-_performance_profiler: Optional[PerformanceProfiler] = None
+_performance_profiler: PerformanceProfiler | None = None
 
 
 def get_profiler() -> PerformanceProfiler:
@@ -704,7 +699,7 @@ def get_profiler() -> PerformanceProfiler:
 
 # Convenience decorators
 def profile_function(
-    name: Optional[str] = None,
+    name: str | None = None,
     profile_type: ProfileType = ProfileType.FUNCTION,
     include_memory: bool = False,
     include_cpu: bool = False
@@ -735,7 +730,6 @@ def profile_function(
             async with profiler.profile_async_function(profile_name, include_memory):
                 return await func(*args, **kwargs)
                 
-        import asyncio
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:

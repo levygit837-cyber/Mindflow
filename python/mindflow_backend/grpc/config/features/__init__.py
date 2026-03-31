@@ -9,9 +9,9 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 from mindflow_backend.grpc.config.dynamic.storage import ConfigStorage, MemoryConfigStorage
 from mindflow_backend.infra.logging import get_logger
@@ -35,14 +35,14 @@ class FeatureFlag:
     default_state: FeatureState
     current_state: FeatureState
     rollout_percentage: float = 100.0
-    dependencies: List[str] = field(default_factory=list)
-    conditions: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    dependencies: list[str] = field(default_factory=list)
+    conditions: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     requires_restart: bool = False
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert feature flag to dictionary."""
         return {
             "name": self.name,
@@ -62,11 +62,11 @@ class FeatureFlag:
 @dataclass
 class FeatureEvaluationContext:
     """Context for feature flag evaluation."""
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    request_id: Optional[str] = None
+    user_id: str | None = None
+    session_id: str | None = None
+    request_id: str | None = None
     environment: str = "development"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def get_hash_key(self) -> str:
         """Get hash key for percentage-based rollouts."""
@@ -154,7 +154,7 @@ class FeatureRegistry:
     }
     
     def __init__(self):
-        self._flags: Dict[str, FeatureFlag] = {}
+        self._flags: dict[str, FeatureFlag] = {}
         self._lock = asyncio.Lock()
         self._initialize_default_flags()
     
@@ -200,17 +200,17 @@ class FeatureRegistry:
             _logger.info("feature_flag_updated", name=name, updates=list(updates.keys()))
             return True
     
-    async def get_flag(self, name: str) -> Optional[FeatureFlag]:
+    async def get_flag(self, name: str) -> FeatureFlag | None:
         """Get feature flag by name."""
         async with self._lock:
             return self._flags.get(name)
     
-    async def get_all_flags(self) -> Dict[str, FeatureFlag]:
+    async def get_all_flags(self) -> dict[str, FeatureFlag]:
         """Get all feature flags."""
         async with self._lock:
             return self._flags.copy()
     
-    async def list_flag_names(self) -> List[str]:
+    async def list_flag_names(self) -> list[str]:
         """List all feature flag names."""
         async with self._lock:
             return list(self._flags.keys())
@@ -219,13 +219,13 @@ class FeatureRegistry:
 class FeatureToggles:
     """Feature toggle evaluation engine."""
     
-    def __init__(self, storage: Optional[ConfigStorage] = None):
+    def __init__(self, storage: ConfigStorage | None = None):
         self.storage = storage or MemoryConfigStorage()
         self.registry = FeatureRegistry()
         self._lock = asyncio.Lock()
-        self._evaluation_cache: Dict[str, bool] = {}
+        self._evaluation_cache: dict[str, bool] = {}
         self._cache_ttl = 60  # Cache for 60 seconds
-        self._cache_timestamps: Dict[str, float] = {}
+        self._cache_timestamps: dict[str, float] = {}
     
     async def initialize(self) -> bool:
         """Initialize feature toggles from storage."""
@@ -238,7 +238,7 @@ class FeatureToggles:
             _logger.error("feature_toggles_initialization_failed", error=str(exc))
             return False
     
-    async def is_enabled(self, flag_name: str, context: Optional[FeatureEvaluationContext] = None) -> bool:
+    async def is_enabled(self, flag_name: str, context: FeatureEvaluationContext | None = None) -> bool:
         """Check if a feature flag is enabled."""
         # Check cache first
         cache_key = self._get_cache_key(flag_name, context)
@@ -266,11 +266,11 @@ class FeatureToggles:
                 _logger.error("feature_evaluation_failed", flag=flag_name, error=str(exc))
                 return False
     
-    async def enable_flag(self, flag_name: str, context: Optional[FeatureEvaluationContext] = None) -> bool:
+    async def enable_flag(self, flag_name: str, context: FeatureEvaluationContext | None = None) -> bool:
         """Enable a feature flag."""
         return await self._set_flag_state(flag_name, FeatureState.ENABLED, context)
     
-    async def disable_flag(self, flag_name: str, context: Optional[FeatureEvaluationContext] = None) -> bool:
+    async def disable_flag(self, flag_name: str, context: FeatureEvaluationContext | None = None) -> bool:
         """Disable a feature flag."""
         return await self._set_flag_state(flag_name, FeatureState.DISABLED, context)
     
@@ -295,7 +295,7 @@ class FeatureToggles:
         
         return success
     
-    async def get_config_overrides(self) -> Dict[str, Any]:
+    async def get_config_overrides(self) -> dict[str, Any]:
         """Get configuration overrides based on enabled features."""
         overrides = {}
         flags = await self.registry.get_all_flags()
@@ -376,7 +376,7 @@ class FeatureToggles:
         
         return True
     
-    def _get_flag_config_overrides(self, flag: FeatureFlag) -> Dict[str, Any]:
+    def _get_flag_config_overrides(self, flag: FeatureFlag) -> dict[str, Any]:
         """Get configuration overrides for a feature flag."""
         overrides = {}
         
@@ -445,7 +445,7 @@ class FeatureToggles:
         
         return overrides
     
-    async def _set_flag_state(self, flag_name: str, state: FeatureState, context: Optional[FeatureEvaluationContext] = None) -> bool:
+    async def _set_flag_state(self, flag_name: str, state: FeatureState, context: FeatureEvaluationContext | None = None) -> bool:
         """Set feature flag state."""
         success = await self.registry.update_flag(
             flag_name,
@@ -461,7 +461,7 @@ class FeatureToggles:
         
         return success
     
-    def _get_cache_key(self, flag_name: str, context: Optional[FeatureEvaluationContext]) -> str:
+    def _get_cache_key(self, flag_name: str, context: FeatureEvaluationContext | None) -> str:
         """Get cache key for feature evaluation."""
         if context:
             return f"{flag_name}:{context.get_hash_key()}"
@@ -498,7 +498,7 @@ class FeatureToggles:
         except Exception as exc:
             _logger.error("save_flags_to_storage_failed", error=str(exc))
     
-    async def get_statistics(self) -> Dict[str, Any]:
+    async def get_statistics(self) -> dict[str, Any]:
         """Get feature toggle statistics."""
         flags = await self.registry.get_all_flags()
         
@@ -535,7 +535,7 @@ class FeatureToggles:
 
 
 # Global feature toggles instance
-_global_feature_toggles: Optional[FeatureToggles] = None
+_global_feature_toggles: FeatureToggles | None = None
 
 
 async def get_feature_toggles() -> FeatureToggles:

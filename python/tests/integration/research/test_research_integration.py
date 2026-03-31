@@ -10,15 +10,14 @@ Validates the complete research workflow including:
 
 import asyncio
 import sys
-from pathlib import Path
 
 import pytest
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
-from mindflow_backend.agents.research.query_engine import get_research_query_engine
 from mindflow_backend.agents.research.enhanced_researcher import get_enhanced_researcher_agent
+from mindflow_backend.agents.research.query_engine import get_research_query_engine
 from mindflow_backend.agents.specialists.factories import create_researcher_agent
 from mindflow_backend.schemas.orchestrator import ToolScope
 from mindflow_backend.schemas.research import ResearchConfig
@@ -148,10 +147,10 @@ def test_database_schema():
         # Import models to ensure they're properly defined
         from mindflow_backend.storage.postgresql.models import (
             BrowserActionTrail,
-            ResearchSession,
-            ResearchFinding,
-            SourceClassification,
             BrowserInstance,
+            ResearchFinding,
+            ResearchSession,
+            SourceClassification,
         )
         
         print("  ✅ BrowserActionTrail model imported")

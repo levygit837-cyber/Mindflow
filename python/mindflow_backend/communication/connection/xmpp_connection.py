@@ -6,10 +6,10 @@ Manages XMPP connections using aioxmpp library.
 """
 
 import logging
-import asyncio
-from typing import Dict, Any, Optional, List, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
-from dataclasses import dataclass, field
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +39,12 @@ class XMPPConnectionManager:
     
     def __init__(self, config: XMPPConnectionConfig):
         self.config = config
-        self.connections: Dict[str, Any] = {}
-        self.message_handlers: Dict[str, List[Callable]] = {}
+        self.connections: dict[str, Any] = {}
+        self.message_handlers: dict[str, list[Callable]] = {}
         self.is_running: bool = False
-        self._connection_pool: Dict[str, Dict[str, Any]] = {}
+        self._connection_pool: dict[str, dict[str, Any]] = {}
     
-    async def register_agent(self, username: str, password: str) -> Dict[str, Any]:
+    async def register_agent(self, username: str, password: str) -> dict[str, Any]:
         """
         Register a new agent on the XMPP server.
         
@@ -94,8 +94,8 @@ class XMPPConnectionManager:
         self,
         username: str,
         password: str,
-        message_handler: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+        message_handler: Callable | None = None
+    ) -> dict[str, Any]:
         """
         Connect an agent to the XMPP server.
         
@@ -188,7 +188,7 @@ class XMPPConnectionManager:
         to_username: str,
         content: str,
         urgency: str = "MEDIUM"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a message from one agent to another.
         
@@ -307,7 +307,7 @@ class XMPPConnectionManager:
             logger.error(f"Failed to disconnect agent {username}: {e}")
             return False
     
-    def get_connected_agents(self) -> List[str]:
+    def get_connected_agents(self) -> list[str]:
         """Get list of connected agent usernames."""
         return list(self.connections.keys())
     
@@ -315,13 +315,13 @@ class XMPPConnectionManager:
         """Check if an agent is connected."""
         return username in self.connections
     
-    def get_agent_jid(self, username: str) -> Optional[str]:
+    def get_agent_jid(self, username: str) -> str | None:
         """Get JID for a connected agent."""
         if username in self.connections:
             return self.connections[username].get("jid")
         return None
     
-    def get_connection_stats(self) -> Dict[str, Any]:
+    def get_connection_stats(self) -> dict[str, Any]:
         """Get connection statistics."""
         return {
             "total_connections": len(self.connections),

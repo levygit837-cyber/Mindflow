@@ -9,13 +9,12 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.database.health import get_health_checker
-from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -45,12 +44,12 @@ class HealthCheckResult:
     component_type: ComponentType
     status: HealthStatus
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     response_time_ms: float = 0.0
-    error: Optional[Exception] = None
+    error: Exception | None = None
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "component": self.component,
@@ -74,9 +73,9 @@ class SystemHealthSummary:
     unhealthy_components: int
     unknown_components: int
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
-    component_results: List[HealthCheckResult] = field(default_factory=list)
+    component_results: list[HealthCheckResult] = field(default_factory=list)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "status": self.status.value,
@@ -102,7 +101,7 @@ class HealthChecker(ABC):
         """
         self.component = component
         self.component_type = component_type
-        self.last_check: Optional[HealthCheckResult] = None
+        self.last_check: HealthCheckResult | None = None
         self.check_count = 0
         self.failure_count = 0
         
@@ -115,7 +114,7 @@ class HealthChecker(ABC):
         """
         pass
         
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get health check statistics.
         
         Returns:
@@ -395,10 +394,10 @@ class HealthCheckManager:
     
     def __init__(self):
         """Initialize health check manager."""
-        self._checkers: Dict[str, HealthChecker] = {}
-        self._monitoring_task: Optional[asyncio.Task] = None
+        self._checkers: dict[str, HealthChecker] = {}
+        self._monitoring_task: asyncio.Task | None = None
         self._is_monitoring = False
-        self._last_system_check: Optional[SystemHealthSummary] = None
+        self._last_system_check: SystemHealthSummary | None = None
         
         # Register default health checkers
         self._register_default_checkers()
@@ -432,7 +431,7 @@ class HealthCheckManager:
             del self._checkers[component]
             _logger.info("health_checker_unregistered", component=component)
             
-    async def check_component_health(self, component: str) -> Optional[HealthCheckResult]:
+    async def check_component_health(self, component: str) -> HealthCheckResult | None:
         """Check health for a specific component.
         
         Args:
@@ -600,7 +599,7 @@ class HealthCheckManager:
                 _logger.error("health_monitoring_loop_error", error=str(e))
                 await asyncio.sleep(5)  # Brief pause before retry
                 
-    def get_component_statistics(self, component: str) -> Optional[Dict[str, Any]]:
+    def get_component_statistics(self, component: str) -> dict[str, Any] | None:
         """Get statistics for a specific component.
         
         Args:
@@ -612,7 +611,7 @@ class HealthCheckManager:
         checker = self._checkers.get(component)
         return checker.get_statistics() if checker else None
         
-    def get_all_statistics(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_statistics(self) -> dict[str, dict[str, Any]]:
         """Get statistics for all components.
         
         Returns:
@@ -623,7 +622,7 @@ class HealthCheckManager:
             for component, checker in self._checkers.items()
         }
         
-    def get_last_system_check(self) -> Optional[SystemHealthSummary]:
+    def get_last_system_check(self) -> SystemHealthSummary | None:
         """Get the last system health check result.
         
         Returns:
@@ -633,7 +632,7 @@ class HealthCheckManager:
 
 
 # Global health check manager instance
-_health_manager: Optional[HealthCheckManager] = None
+_health_manager: HealthCheckManager | None = None
 
 
 def get_health_manager() -> HealthCheckManager:

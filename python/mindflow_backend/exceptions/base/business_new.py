@@ -1,3 +1,6 @@
+# Business logic exceptions for MindFlow
+# Simplified business exceptions following examples pattern
+
 """Business logic exceptions for MindFlow.
 
 Simplified business exceptions following examples pattern.
@@ -5,31 +8,31 @@ Simplified business exceptions following examples pattern.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .core_new import MindFlowError
 
 
 class BusinessLogicError(MindFlowError):
     """Base exception for business logic errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(message, component="business", **kwargs)
 
 
 class ValidationError(BusinessLogicError):
     """Validation errors for user input and data."""
-    
+
     def __init__(
         self,
         message: str,
         *,
-        field: Optional[str] = None,
+        field: str | None = None,
         value: Any = None,
-        expected_format: Optional[str] = None,
-        validation_rule: Optional[str] = None,
-        user_message: Optional[str] = None,
-        suggestion: Optional[str] = None,
+        expected_format: str | None = None,
+        validation_rule: str | None = None,
+        user_message: str | None = None,
+        suggestion: str | None = None,
         **kwargs
     ):
         super().__init__(message, **kwargs)
@@ -43,16 +46,16 @@ class ValidationError(BusinessLogicError):
 
 class AuthenticationError(BusinessLogicError):
     """Authentication and authorization errors."""
-    
+
     def __init__(
         self,
         message: str,
         *,
-        user_identifier: Optional[str] = None,
-        auth_method: Optional[str] = None,
-        auth_provider: Optional[str] = None,
-        failure_reason: Optional[str] = None,
-        error_code: Optional[str] = None,
+        user_identifier: str | None = None,
+        auth_method: str | None = None,
+        auth_provider: str | None = None,
+        failure_reason: str | None = None,
+        error_code: str | None = None,
         **kwargs
     ):
         super().__init__(message, **kwargs)
@@ -65,13 +68,13 @@ class AuthenticationError(BusinessLogicError):
 
 class AuthorizationError(AuthenticationError):
     """Authorization and permission errors."""
-    
+
     def __init__(
         self,
         message: str,
         *,
-        required_permission: Optional[str] = None,
-        resource: Optional[str] = None,
+        required_permission: str | None = None,
+        resource: str | None = None,
         **kwargs
     ):
         super().__init__(message, **kwargs)
@@ -81,15 +84,28 @@ class AuthorizationError(AuthenticationError):
 
 class NotFoundError(BusinessLogicError):
     """Resource not found errors."""
-    
+
     def __init__(
         self,
         message: str,
         *,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
         **kwargs
     ):
         super().__init__(message, **kwargs)
         self.resource_type = resource_type
         self.resource_id = resource_id
+
+
+class WorkflowError(BusinessLogicError):
+    """Workflow-related business logic errors.
+
+    Used for errors occurring during orchestrated workflow execution,
+    e.g. invalid state transitions, dependency failures, etc.
+    """
+
+    def __init__(self, message: str, *, workflow_id: str | None = None, step: str | None = None, **kwargs):
+        super().__init__(message, **kwargs)
+        self.workflow_id = workflow_id
+        self.step = step

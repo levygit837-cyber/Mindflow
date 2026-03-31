@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
+from mindflow_backend.agents.specialists.runtime_policy import (
+    list_agent_runtime_policies,
+)
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
     ExecutionStrategy,
-)
-from mindflow_backend.schemas.orchestration.specialists import SpecialistType
-from mindflow_backend.agents.specialists.runtime_policy import (
-    list_agent_runtime_policies,
 )
 
 # ---------------------------------------------------------------------------

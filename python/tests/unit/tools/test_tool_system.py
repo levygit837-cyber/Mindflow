@@ -10,14 +10,13 @@ from pathlib import Path
 # Get project root from tests directory
 project_root = Path(__file__).parent.parent.parent.parent
 
-from mindflow_backend.tools.core.registry import EnhancedToolRegistry
+from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.tools.adapters.deepagents_adapter import DeepAgentsFileSystemAdapter
 from mindflow_backend.tools.core.executor import ToolExecutor
 from mindflow_backend.tools.core.permissions import PermissionManager
-from mindflow_backend.tools.filesystem.operations import FileReadTool, DirectoryListTool
-from mindflow_backend.tools.filesystem.search import GrepSearchTool
+from mindflow_backend.tools.core.registry import EnhancedToolRegistry
+from mindflow_backend.tools.filesystem.operations import DirectoryListTool, FileReadTool
 from mindflow_backend.tools.system.info_collector import SystemInfoCollector
-from mindflow_backend.tools.adapters.deepagents_adapter import DeepAgentsFileSystemAdapter
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 
 async def test_tool_registry():

@@ -4,9 +4,9 @@ All exceptions related to task decomposition, scheduling, graph execution, and d
 """
 
 from .decomposition import DecompositionError
-from .scheduling import SchedulingError
-from .graph import GraphExecutionError
 from .dependency import DependencyError
+from .graph import GraphExecutionError
+from .scheduling import SchedulingError
 
 __all__ = [
     "DecompositionError",

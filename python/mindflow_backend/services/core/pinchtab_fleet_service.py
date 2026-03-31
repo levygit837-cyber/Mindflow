@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus
 from uuid import UUID
 
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
 class PinchTabBrowserHandle(PinchTabBrowserHandleInterface):
     """Bound helper for controlling a single browser via the fleet service."""
 
-    def __init__(self, fleet_service: "PinchTabFleetService", session_id: str, browser_id: str) -> None:
+    def __init__(self, fleet_service: PinchTabFleetService, session_id: str, browser_id: str) -> None:
         self._fleet_service = fleet_service
         self._session_id = session_id
         self._browser_id = browser_id
@@ -132,8 +133,8 @@ class PinchTabFleetService:
         container_orchestrator: PinchTabContainerService | None = None,
         browser_service: PinchTabBrowserService | None = None,
         session_factory: Callable[[], Any] | None = None,
-        browser_task_publisher: "BrowserTaskPublisher | None" = None,
-        content_task_publisher: "ContentTaskPublisher | None" = None,
+        browser_task_publisher: BrowserTaskPublisher | None = None,
+        content_task_publisher: ContentTaskPublisher | None = None,
     ) -> None:
         self.settings = get_settings()
         self.container_orchestrator = container_orchestrator or PinchTabContainerService()
@@ -195,7 +196,7 @@ class PinchTabFleetService:
             synthesis_length=synthesis_length,
         )
 
-    async def execute_browser_task(self, payload: "BrowserTaskPayload") -> dict[str, Any]:
+    async def execute_browser_task(self, payload: BrowserTaskPayload) -> dict[str, Any]:
         """Execute a queued browser task using the managed fleet lifecycle."""
         if payload.task_type == "web_search":
             return await self._execute_web_search_task(payload)
@@ -452,7 +453,7 @@ class PinchTabFleetService:
         await self.get_browser(session_id, browser_id)
         return PinchTabBrowserHandle(self, session_id, browser_id)
 
-    async def _execute_web_search_task(self, payload: "BrowserTaskPayload") -> dict[str, Any]:
+    async def _execute_web_search_task(self, payload: BrowserTaskPayload) -> dict[str, Any]:
         """Create a temporary browser, run the search navigation, and extract text."""
         browser_id = await self._provision_browser_for_task(payload)
         target_url = self._build_search_url(payload.search_engine, payload.query)
@@ -495,7 +496,7 @@ class PinchTabFleetService:
             if payload.close_browser_after:
                 await self._close_browser_safely(payload.session_id, browser_id)
 
-    async def _execute_page_scraping_task(self, payload: "BrowserTaskPayload") -> dict[str, Any]:
+    async def _execute_page_scraping_task(self, payload: BrowserTaskPayload) -> dict[str, Any]:
         """Create a temporary browser, navigate to a page, and extract text."""
         browser_id = await self._provision_browser_for_task(payload)
 
@@ -535,7 +536,7 @@ class PinchTabFleetService:
             if payload.close_browser_after:
                 await self._close_browser_safely(payload.session_id, browser_id)
 
-    async def _provision_browser_for_task(self, payload: "BrowserTaskPayload") -> str:
+    async def _provision_browser_for_task(self, payload: BrowserTaskPayload) -> str:
         """Provision a browser dedicated to a queued browser task."""
         response = await self.create_browser(
             CreateBrowserRequest(

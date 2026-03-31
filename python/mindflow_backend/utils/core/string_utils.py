@@ -6,7 +6,6 @@ Functions for formatting, parsing, and manipulating strings.
 import math
 import re
 import unicodedata
-from typing import List, Optional, Union
 
 
 def slugify(text: str) -> str:
@@ -172,22 +171,22 @@ def unescape_html(text: str) -> str:
     return text
 
 
-def is_empty(text: Optional[str]) -> bool:
+def is_empty(text: str | None) -> bool:
     """Check if string is empty or None."""
     return text is None or text.strip() == ""
 
 
-def is_blank(text: Optional[str]) -> bool:
+def is_blank(text: str | None) -> bool:
     """Check if string is blank (empty or only whitespace)."""
     return text is None or text.strip() == ""
 
 
-def default_if_empty(text: Optional[str], default: str = "") -> str:
+def default_if_empty(text: str | None, default: str = "") -> str:
     """Return default value if string is empty."""
     return default if is_empty(text) else text
 
 
-def default_if_blank(text: Optional[str], default: str = "") -> str:
+def default_if_blank(text: str | None, default: str = "") -> str:
     """Return default value if string is blank."""
     return default if is_blank(text) else text
 
@@ -277,24 +276,24 @@ def count_lines(text: str) -> int:
     return len(text.split('\n'))
 
 
-def find_words(text: str, min_length: int = 1) -> List[str]:
+def find_words(text: str, min_length: int = 1) -> list[str]:
     """Find all words in text."""
     return re.findall(r'\b\w+\b', text)
 
 
-def find_emails(text: str) -> List[str]:
+def find_emails(text: str) -> list[str]:
     """Find all email addresses in text."""
     email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     return re.findall(email_pattern, text)
 
 
-def find_urls(text: str) -> List[str]:
+def find_urls(text: str) -> list[str]:
     """Find all URLs in text."""
     url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:\w*))?)?'
     return re.findall(url_pattern, text)
 
 
-def find_phone_numbers(text: str) -> List[str]:
+def find_phone_numbers(text: str) -> list[str]:
     """Find all phone numbers in text."""
     phone_patterns = [
         r'\+?1?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})',  # US format
@@ -418,7 +417,7 @@ def fuzzy_match(text: str, pattern: str, threshold: float = 0.8) -> bool:
     return ratio >= threshold
 
 
-def extract_numbers(text: str) -> List[float]:
+def extract_numbers(text: str) -> list[float]:
     """Extract all numbers from text."""
     numbers = []
     
@@ -437,7 +436,7 @@ def extract_numbers(text: str) -> List[float]:
     return numbers
 
 
-def format_number(number: Union[int, float], decimals: int = 2) -> str:
+def format_number(number: int | float, decimals: int = 2) -> str:
     """Format number with thousands separator and decimals."""
     if isinstance(number, int):
         return f"{number:,}"
@@ -445,7 +444,7 @@ def format_number(number: Union[int, float], decimals: int = 2) -> str:
         return f"{number:,.{decimals}f}"
 
 
-def pluralize(count: int, singular: str, plural: Optional[str] = None) -> str:
+def pluralize(count: int, singular: str, plural: str | None = None) -> str:
     """Return singular or plural form based on count."""
     if count == 1:
         return singular

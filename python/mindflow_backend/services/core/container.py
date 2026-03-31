@@ -6,9 +6,10 @@ and implementing proper dependency injection patterns.
 
 from __future__ import annotations
 
-from typing import Any, Dict, TypeVar, Callable, Optional
-from functools import lru_cache
 import threading
+from collections.abc import Callable
+from functools import lru_cache
+from typing import Any, TypeVar
 
 T = TypeVar('T')
 
@@ -21,9 +22,9 @@ class ServiceContainer:
     """
     
     def __init__(self) -> None:
-        self._services: Dict[str, Any] = {}
-        self._factories: Dict[str, Callable[[], Any]] = {}
-        self._singletons: Dict[str, Any] = {}
+        self._services: dict[str, Any] = {}
+        self._factories: dict[str, Callable[[], Any]] = {}
+        self._singletons: dict[str, Any] = {}
         self._lock = threading.RLock()
     
     def register_factory(
@@ -113,7 +114,7 @@ class ServiceContainer:
         with self._lock:
             # Call shutdown on services that support it
             for service in self._services.values():
-                if hasattr(service, 'shutdown') and callable(getattr(service, 'shutdown')):
+                if hasattr(service, 'shutdown') and callable(service.shutdown):
                     try:
                         await service.shutdown()
                     except Exception:
@@ -123,7 +124,7 @@ class ServiceContainer:
 
 
 # Global container instance
-_container: Optional[ServiceContainer] = None
+_container: ServiceContainer | None = None
 _container_lock = threading.Lock()
 
 
@@ -185,12 +186,12 @@ def service(name: str, singleton: bool = True):
 # Initialize core services
 def initialize_core_services() -> None:
     """Initialize all core services in the container."""
+    from mindflow_backend.memory import get_memory_service
     from mindflow_backend.services.core import (
         get_agent_service,
+        get_provider_service,
         get_session_service,
-        get_provider_service
     )
-    from mindflow_backend.memory import get_memory_service
     
     container = get_container()
     

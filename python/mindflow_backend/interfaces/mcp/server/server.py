@@ -7,25 +7,33 @@ protocol handling, and connection lifecycle management.
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
-import uuid
+from typing import Any
 
-from mindflow_backend.schemas.mcp.base import (
-    MCPMessage, MCPRequest, MCPResponse, MCPError, MCPErrorCode,
-    MCPInitializeParams, MCPInitializeResult, MCPServerInfo, MCPCapability,
-    MCPVersion
-)
-from mindflow_backend.schemas.mcp.transport import (
-    MCPTransportConfig, StdioConfig, HTTPConfig, WebSocketConfig
-)
-from mindflow_backend.schemas.mcp.tools import MCPToolDefinition, MCPToolResult
-from mindflow_backend.schemas.mcp.resources import MCPResourceDefinition, MCPResourceResult
-from mindflow_backend.interfaces.mcp.transport import (
-    MCPTransport, StdioTransport, HTTPTransport, WebSocketTransport,
-    TransportError, ConnectionError
-)
 from mindflow_backend.interfaces.mcp.server.handler import MCPServerHandler
+from mindflow_backend.interfaces.mcp.transport import (
+    HTTPTransport,
+    MCPTransport,
+    StdioTransport,
+    WebSocketTransport,
+)
+from mindflow_backend.schemas.mcp.base import (
+    MCPCapability,
+    MCPError,
+    MCPErrorCode,
+    MCPMessage,
+    MCPResponse,
+    MCPServerInfo,
+)
+from mindflow_backend.schemas.mcp.resources import MCPResourceDefinition, MCPResourceResult
+from mindflow_backend.schemas.mcp.tools import MCPToolDefinition, MCPToolResult
+from mindflow_backend.schemas.mcp.transport import (
+    HTTPConfig,
+    MCPTransportConfig,
+    StdioConfig,
+    WebSocketConfig,
+)
 
 
 class MCPServerState(str, Enum):
@@ -47,9 +55,9 @@ class MCPServerConfig:
     
     def __init__(
         self,
-        transport_configs: List[MCPTransportConfig],
-        server_info: Optional[MCPServerInfo] = None,
-        capabilities: Optional[List[MCPCapability]] = None,
+        transport_configs: list[MCPTransportConfig],
+        server_info: MCPServerInfo | None = None,
+        capabilities: list[MCPCapability] | None = None,
         max_connections: int = 100,
         request_timeout: float = 30.0,
         enable_logging: bool = True,
@@ -96,25 +104,25 @@ class MCPServer:
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
         
         # Transport management
-        self.transports: List[MCPTransport] = []
-        self._transport_tasks: List[asyncio.Task] = []
+        self.transports: list[MCPTransport] = []
+        self._transport_tasks: list[asyncio.Task] = []
         
         # Connection management
-        self._connections: Dict[str, Dict[str, Any]] = {}
-        self._connection_handlers: Dict[str, MCPServerHandler] = {}
+        self._connections: dict[str, dict[str, Any]] = {}
+        self._connection_handlers: dict[str, MCPServerHandler] = {}
         
         # Server handlers
-        self._tool_handler: Optional[Callable[[str, Dict[str, Any]], Awaitable[MCPToolResult]]] = None
-        self._resource_handler: Optional[Callable[[str, Dict[str, Any]], Awaitable[MCPResourceResult]]] = None
+        self._tool_handler: Callable[[str, dict[str, Any]], Awaitable[MCPToolResult]] | None = None
+        self._resource_handler: Callable[[str, dict[str, Any]], Awaitable[MCPResourceResult]] | None = None
         
         # Available tools and resources
-        self._available_tools: List[MCPToolDefinition] = []
-        self._available_resources: List[MCPResourceDefinition] = []
+        self._available_tools: list[MCPToolDefinition] = []
+        self._available_resources: list[MCPResourceDefinition] = []
         
         # Event handlers
-        self._on_client_connected: Optional[Callable[[str], Awaitable[None]]] = None
-        self._on_client_disconnected: Optional[Callable[[str], Awaitable[None]]] = None
-        self._on_error: Optional[Callable[[Exception, Optional[str]], Awaitable[None]]] = None
+        self._on_client_connected: Callable[[str], Awaitable[None]] | None = None
+        self._on_client_disconnected: Callable[[str], Awaitable[None]] | None = None
+        self._on_error: Callable[[Exception, str | None], Awaitable[None]] | None = None
     
     @property
     def is_running(self) -> bool:
@@ -127,16 +135,16 @@ class MCPServer:
         return len(self._connections)
     
     @property
-    def available_tools(self) -> List[MCPToolDefinition]:
+    def available_tools(self) -> list[MCPToolDefinition]:
         """Get list of available tools."""
         return self._available_tools.copy()
     
     @property
-    def available_resources(self) -> List[MCPResourceDefinition]:
+    def available_resources(self) -> list[MCPResourceDefinition]:
         """Get list of available resources."""
         return self._available_resources.copy()
     
-    def register_tools(self, tools: List[MCPToolDefinition]) -> None:
+    def register_tools(self, tools: list[MCPToolDefinition]) -> None:
         """
         Register available tools.
         
@@ -146,7 +154,7 @@ class MCPServer:
         self._available_tools.extend(tools)
         self.logger.info(f"Registered {len(tools)} tools")
     
-    def register_resources(self, resources: List[MCPResourceDefinition]) -> None:
+    def register_resources(self, resources: list[MCPResourceDefinition]) -> None:
         """
         Register available resources.
         
@@ -158,8 +166,8 @@ class MCPServer:
     
     def set_handlers(
         self,
-        tool_handler: Optional[Callable[[str, Dict[str, Any]], Awaitable[MCPToolResult]]] = None,
-        resource_handler: Optional[Callable[[str, Dict[str, Any]], Awaitable[MCPResourceResult]]] = None,
+        tool_handler: Callable[[str, dict[str, Any]], Awaitable[MCPToolResult]] | None = None,
+        resource_handler: Callable[[str, dict[str, Any]], Awaitable[MCPResourceResult]] | None = None,
     ) -> None:
         """
         Set handlers for tools and resources.
@@ -173,9 +181,9 @@ class MCPServer:
     
     def set_event_handlers(
         self,
-        on_client_connected: Optional[Callable[[str], Awaitable[None]]] = None,
-        on_client_disconnected: Optional[Callable[[str], Awaitable[None]]] = None,
-        on_error: Optional[Callable[[Exception, Optional[str]], Awaitable[None]]] = None,
+        on_client_connected: Callable[[str], Awaitable[None]] | None = None,
+        on_client_disconnected: Callable[[str], Awaitable[None]] | None = None,
+        on_error: Callable[[Exception, str | None], Awaitable[None]] | None = None,
     ) -> None:
         """
         Set event handlers for server events.

@@ -174,22 +174,34 @@ def compose_orchestrator_prompt(*segments: str) -> str:
         if seg == "core":
             parts.append(ORCHESTRATOR_CORE)
         elif seg == "governance":
-            from mindflow_backend.agents.prompts.specialized.context_governance import CONTEXT_GOVERNANCE
+            from mindflow_backend.agents.prompts.specialized.context_governance import (
+                CONTEXT_GOVERNANCE,
+            )
             parts.append(CONTEXT_GOVERNANCE)
         elif seg == "delegation":
-            from mindflow_backend.agents.prompts.specialized.agent_delegation import AGENT_DELEGATION
+            from mindflow_backend.agents.prompts.specialized.agent_delegation import (
+                AGENT_DELEGATION,
+            )
             parts.append(AGENT_DELEGATION)
         elif seg == "reflection":
-            from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import ORCHESTRATOR_REFLECTION
+            from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import (
+                ORCHESTRATOR_REFLECTION,
+            )
             parts.append(ORCHESTRATOR_REFLECTION)
         elif seg == "architecture":
-            from mindflow_backend.agents.prompts.specialized.architecture_review import ARCHITECTURE_REVIEW
+            from mindflow_backend.agents.prompts.specialized.architecture_review import (
+                ARCHITECTURE_REVIEW,
+            )
             parts.append(ARCHITECTURE_REVIEW)
         elif seg == "chains":
-            from mindflow_backend.agents.prompts.specialized.orchestrator_chains import ORCHESTRATOR_CHAINS
+            from mindflow_backend.agents.prompts.specialized.orchestrator_chains import (
+                ORCHESTRATOR_CHAINS,
+            )
             parts.append(ORCHESTRATOR_CHAINS)
         elif seg == "planning":
-            from mindflow_backend.agents.prompts.specialized.orchestrator_planning import ORCHESTRATOR_PLANNING
+            from mindflow_backend.agents.prompts.specialized.orchestrator_planning import (
+                ORCHESTRATOR_PLANNING,
+            )
             parts.append(ORCHESTRATOR_PLANNING)
         elif seg == "memory":
             from mindflow_backend.agents.prompts.specialized.memory_protocol import MEMORY_PROTOCOL

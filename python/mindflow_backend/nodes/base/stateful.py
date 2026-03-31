@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from mindflow_backend.nodes.base.node import BaseNode
 
@@ -12,7 +12,7 @@ class StatefulNode:
     
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._node_state: Dict[str, Any] = {}
+        self._node_state: dict[str, Any] = {}
         self._state_persistence_enabled = True
         self._state_key_prefix = f"node_state_{self.node_id}"
     
@@ -24,7 +24,7 @@ class StatefulNode:
         """Set a value in the node's state."""
         self._node_state[key] = value
     
-    def update_node_state(self, updates: Dict[str, Any]) -> None:
+    def update_node_state(self, updates: dict[str, Any]) -> None:
         """Update multiple values in the node's state."""
         self._node_state.update(updates)
     
@@ -32,7 +32,7 @@ class StatefulNode:
         """Clear all node state."""
         self._node_state.clear()
     
-    def get_all_node_state(self) -> Dict[str, Any]:
+    def get_all_node_state(self) -> dict[str, Any]:
         """Get a copy of all node state."""
         return dict(self._node_state)
     
@@ -44,7 +44,7 @@ class StatefulNode:
         """Check if state persistence is enabled."""
         return self._state_persistence_enabled
     
-    async def save_state_to_context(self, state: Dict[str, Any]) -> None:
+    async def save_state_to_context(self, state: dict[str, Any]) -> None:
         """Save node state to the execution context."""
         if not self._state_persistence_enabled:
             return
@@ -54,7 +54,7 @@ class StatefulNode:
         
         state["node_states"][self.node_id] = dict(self._node_state)
     
-    async def load_state_from_context(self, state: Dict[str, Any]) -> None:
+    async def load_state_from_context(self, state: dict[str, Any]) -> None:
         """Load node state from the execution context."""
         if not self._state_persistence_enabled:
             return
@@ -63,7 +63,7 @@ class StatefulNode:
         if self.node_id in node_states:
             self._node_state = dict(node_states[self.node_id])
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute with automatic state management."""
         # Load state before execution
         await self.load_state_from_context(state)
@@ -77,12 +77,12 @@ class StatefulNode:
             
             return result
             
-        except Exception as e:
+        except Exception:
             # Even on error, save state
             await self.save_state_to_context(state)
             raise
     
-    def get_state_info(self) -> Dict[str, Any]:
+    def get_state_info(self) -> dict[str, Any]:
         """Get information about the node's state."""
         return {
             "node_id": self.node_id,
@@ -100,7 +100,7 @@ class CounterStatefulNode(StatefulNode, BaseNode):
         self.set_node_state("execution_count", 0)
         self.set_node_state("total_execution_time", 0.0)
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute with counter tracking."""
         import time
         
@@ -129,7 +129,7 @@ class CounterStatefulNode(StatefulNode, BaseNode):
             
             return result
             
-        except Exception as e:
+        except Exception:
             # Still update execution time on error
             execution_time = time.time() - start_time
             total_time = self.get_node_state("total_execution_time", 0.0) + execution_time
@@ -137,6 +137,6 @@ class CounterStatefulNode(StatefulNode, BaseNode):
             
             raise
     
-    def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate inputs for counter stateful node."""
         return []  # No specific validation required

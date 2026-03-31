@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import threading
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..config import CacheConfig
 from ..entry import CacheEntry
@@ -29,7 +29,7 @@ class CacheStrategy(ABC):
         self._lock = threading.RLock()
 
     @abstractmethod
-    def get(self, key: str) -> Optional[CacheEntry]:
+    def get(self, key: str) -> CacheEntry | None:
         """Get entry from cache.
 
         Args:
@@ -89,7 +89,7 @@ class CacheStrategy(ABC):
         pass
 
     @abstractmethod
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:

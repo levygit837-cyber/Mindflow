@@ -1,6 +1,6 @@
 """XMPP configuration schemas for MindFlow communication."""
 
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -57,11 +57,11 @@ class AgentIdentity(BaseModel):
     password: str = Field(
         description="XMPP password"
     )
-    jid: Optional[str] = Field(
+    jid: str | None = Field(
         default=None,
         description="Full JID (auto-generated if not provided)"
     )
-    resource: Optional[str] = Field(
+    resource: str | None = Field(
         default=None,
         description="XMPP resource identifier"
     )
@@ -101,7 +101,7 @@ class MessageEnvelope(BaseModel):
         default=False,
         description="Whether this message requires a response"
     )
-    in_reply_to: Optional[str] = Field(
+    in_reply_to: str | None = Field(
         default=None,
         description="ID of the message this is replying to"
     )

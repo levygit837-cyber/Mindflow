@@ -11,8 +11,9 @@ Steps:
 
 from __future__ import annotations
 
-import asyncio
-from typing import Any
+# TYPE-ONLY import — actual value is loaded lazily inside _ensure_initialized
+# to avoid pulling sentence_transformers at module load time.
+from typing import TYPE_CHECKING, Any
 
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
@@ -24,9 +25,6 @@ from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import SubTaskContract
 from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
 
-# TYPE-ONLY import — actual value is loaded lazily inside _ensure_initialized
-# to avoid pulling sentence_transformers at module load time.
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from mindflow_backend.orchestrator.semantic_context_manager import ContextMatch
 
@@ -61,7 +59,9 @@ class ContextAwareResolver(TaskResolver):
     async def _ensure_initialized(self) -> None:
         if self._initialized:
             return
-        from mindflow_backend.orchestrator.semantic_context_manager import get_semantic_context_manager  # noqa: PLC0415
+        from mindflow_backend.orchestrator.semantic_context_manager import (
+            get_semantic_context_manager,  # noqa: PLC0415
+        )
         self.context_manager = await get_semantic_context_manager()
         self._initialized = True
         settings = get_settings()

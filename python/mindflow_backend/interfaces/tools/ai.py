@@ -6,8 +6,8 @@ AI operations, and intelligent tool selection.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
 from abc import ABC, abstractmethod
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ class ModelInterface(ABC):
     """Interface for local model management and execution."""
     
     @abstractmethod
-    async def load_model(self, model_config: Dict[str, Any]) -> bool:
+    async def load_model(self, model_config: dict[str, Any]) -> bool:
         """Load a model with specified configuration.
         
         Args:
@@ -33,10 +33,10 @@ class ModelInterface(ABC):
     async def generate_text(
         self,
         prompt: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate text using the loaded model.
         
         Args:
@@ -51,7 +51,7 @@ class ModelInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """Get information about the loaded model.
         
         Returns:
@@ -73,7 +73,7 @@ class LocalModelManager(ModelInterface):
     """Interface for managing local AI models."""
     
     @abstractmethod
-    async def detect_available_models(self) -> List[Dict[str, Any]]:
+    async def detect_available_models(self) -> list[dict[str, Any]]:
         """Detect available local models.
         
         Returns:
@@ -85,8 +85,8 @@ class LocalModelManager(ModelInterface):
     async def recommend_model_for_task(
         self,
         task: str,
-        constraints: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        constraints: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Recommend model for specific task.
         
         Args:
@@ -102,8 +102,8 @@ class LocalModelManager(ModelInterface):
     async def optimize_model_config(
         self,
         model_name: str,
-        system_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        system_info: dict[str, Any]
+    ) -> dict[str, Any]:
         """Optimize model configuration for system.
         
         Args:
@@ -122,9 +122,9 @@ class EmbeddingInterface(ABC):
     @abstractmethod
     async def generate_embeddings(
         self,
-        texts: List[str],
-        model_name: Optional[str] = None
-    ) -> List[List[float]]:
+        texts: list[str],
+        model_name: str | None = None
+    ) -> list[list[float]]:
         """Generate embeddings for texts.
         
         Args:
@@ -137,7 +137,7 @@ class EmbeddingInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_embedding_info(self, model_name: Optional[str] = None) -> Dict[str, Any]:
+    async def get_embedding_info(self, model_name: str | None = None) -> dict[str, Any]:
         """Get embedding model information.
         
         Args:
@@ -157,9 +157,9 @@ class ToolSelectorInterface(ABC):
         self,
         task: str,
         agent_type: AgentType,
-        available_tools: List[str],
-        context: Optional[Dict[str, Any]] = None
-    ) -> List[str]:
+        available_tools: list[str],
+        context: dict[str, Any] | None = None
+    ) -> list[str]:
         """Select appropriate tools for a task.
         
         Args:
@@ -177,9 +177,9 @@ class ToolSelectorInterface(ABC):
     async def rank_tools_by_relevance(
         self,
         task: str,
-        tools: List[str],
+        tools: list[str],
         agent_type: AgentType
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Rank tools by relevance to task.
         
         Args:
@@ -199,9 +199,9 @@ class ModelOptimizerInterface(ABC):
     @abstractmethod
     async def optimize_for_hardware(
         self,
-        model_config: Dict[str, Any],
-        hardware_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        model_config: dict[str, Any],
+        hardware_info: dict[str, Any]
+    ) -> dict[str, Any]:
         """Optimize model configuration for hardware.
         
         Args:
@@ -216,9 +216,9 @@ class ModelOptimizerInterface(ABC):
     @abstractmethod
     async def benchmark_model(
         self,
-        model_config: Dict[str, Any],
-        test_cases: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        model_config: dict[str, Any],
+        test_cases: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Benchmark model performance.
         
         Args:
@@ -236,12 +236,12 @@ class ModelConfig(BaseModel):
     """Configuration for model loading and execution."""
     
     model_name: str
-    model_path: Optional[str] = None
+    model_path: str | None = None
     device: str = "auto"
     precision: str = "fp32"
-    max_memory_gb: Optional[float] = None
+    max_memory_gb: float | None = None
     batch_size: int = 1
-    context_length: Optional[int] = None
+    context_length: int | None = None
     cache_enabled: bool = True
 
 
@@ -249,11 +249,11 @@ class GenerationRequest(BaseModel):
     """Request for text generation."""
     
     prompt: str
-    max_tokens: Optional[int] = None
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
-    top_k: Optional[int] = None
-    stop_sequences: Optional[List[str]] = None
+    max_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    top_k: int | None = None
+    stop_sequences: list[str] | None = None
     stream: bool = False
 
 
@@ -264,7 +264,7 @@ class GenerationResult(BaseModel):
     tokens_generated: int
     generation_time_ms: int
     model_used: str
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class ModelRecommendation(BaseModel):
@@ -273,18 +273,18 @@ class ModelRecommendation(BaseModel):
     model_name: str
     confidence_score: float
     reasoning: str
-    expected_performance: Dict[str, str]
-    resource_requirements: Dict[str, Any]
-    setup_instructions: List[str]
+    expected_performance: dict[str, str]
+    resource_requirements: dict[str, Any]
+    setup_instructions: list[str]
 
 
 class ToolSelection(BaseModel):
     """Tool selection result."""
     
-    selected_tools: List[str]
-    confidence_scores: Dict[str, float]
+    selected_tools: list[str]
+    confidence_scores: dict[str, float]
     reasoning: str
-    alternative_tools: List[str]
+    alternative_tools: list[str]
 
 
 # Abstract base classes for implementation
@@ -295,7 +295,7 @@ class BaseModelInterface(ModelInterface):
         self._current_model = None
         self._model_config = None
     
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """Get information about the loaded model."""
         if not self._current_model:
             return {"status": "no_model_loaded"}
@@ -314,11 +314,11 @@ class BaseLocalModelManager(LocalModelManager):
         self._available_models = []
         self._system_info = {}
     
-    async def get_system_info(self) -> Dict[str, Any]:
+    async def get_system_info(self) -> dict[str, Any]:
         """Get cached system information."""
         return self._system_info
     
-    async def update_system_info(self, system_info: Dict[str, Any]) -> None:
+    async def update_system_info(self, system_info: dict[str, Any]) -> None:
         """Update cached system information."""
         self._system_info = system_info
 
@@ -329,7 +329,7 @@ class BaseEmbeddingInterface(EmbeddingInterface):
     def __init__(self):
         self._loaded_models = {}
     
-    async def list_available_models(self) -> List[str]:
+    async def list_available_models(self) -> list[str]:
         """List available embedding models."""
         return list(self._loaded_models.keys())
 
@@ -341,6 +341,6 @@ class BaseToolSelector(ToolSelectorInterface):
         self._tool_embeddings = {}
         self._task_history = []
     
-    async def update_tool_embeddings(self, tool_descriptions: Dict[str, str]) -> None:
+    async def update_tool_embeddings(self, tool_descriptions: dict[str, str]) -> None:
         """Update tool description embeddings."""
         self._tool_embeddings = tool_descriptions

@@ -11,16 +11,15 @@ This file demonstrates how the Orchestrator has complete control over chains:
 from __future__ import annotations
 
 import asyncio
-from typing import Dict, Any
 
-from mindflow_backend.orchestrator.chain_integration import (
-    get_chain_orchestrator,
-    ChainSelectionCriteria,
-    ChainCapability,
-    ChainComplexity,
-)
 from mindflow_backend.chains.factory import get_available_chains
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.orchestrator.chain_integration import (
+    ChainCapability,
+    ChainComplexity,
+    ChainSelectionCriteria,
+    get_chain_orchestrator,
+)
 
 _logger = get_logger(__name__)
 
@@ -77,7 +76,7 @@ async def demo_orchestrator_chain_control():
         
         # Verify expectation
         assert plan.primary_chain == example["expected"], f"Expected {example['expected']}, got {plan.primary_chain}"
-        print(f"  ✅ Selection correct!")
+        print("  ✅ Selection correct!")
     
     # 3. Advanced chain selection with custom criteria
     print("\n🎛️  Advanced Chain Selection:")
@@ -96,7 +95,7 @@ async def demo_orchestrator_chain_control():
         criteria=custom_criteria,
     )
     
-    print(f"  Task: Complex secure API development")
+    print("  Task: Complex secure API development")
     print(f"  ✅ Selected: {plan.primary_chain}")
     print(f"  🔧 Config: {plan.primary_config}")
     
@@ -117,7 +116,7 @@ async def demo_orchestrator_chain_control():
         execution_id="demo_execution",
     )
     
-    print(f"  📊 Execution Result:")
+    print("  📊 Execution Result:")
     print(f"    Success: {result.get('error') is None}")
     print(f"    Response length: {len(result.get('response', ''))}")
     
@@ -136,7 +135,7 @@ async def demo_orchestrator_chain_control():
     print(f"  Fallback usage: {stats['fallback_usage_rate']:.1%}")
     
     if 'chain_performance' in stats:
-        print(f"  Chain performance:")
+        print("  Chain performance:")
         for chain_id, perf in stats['chain_performance'].items():
             success_rate = perf['successful'] / perf['total'] if perf['total'] > 0 else 0
             print(f"    {chain_id}: {success_rate:.1%} ({perf['successful']}/{perf['total']})")
@@ -183,11 +182,11 @@ async def demo_chain_factory_capabilities():
     print(f"  Cache size: {registry_info['cache_size']}")
     print(f"  Active executions: {registry_info['active_executions']}")
     
-    print(f"  Chains by complexity:")
+    print("  Chains by complexity:")
     for complexity, count in registry_info['chains_by_complexity'].items():
         print(f"    {complexity}: {count}")
     
-    print(f"  Chains by capability:")
+    print("  Chains by capability:")
     for capability, count in registry_info['chains_by_capability'].items():
         if count > 0:
             print(f"    {capability}: {count}")
@@ -234,7 +233,7 @@ async def demo_backward_compatibility():
     print("=" * 35)
     
     # Old-style catalog access
-    from mindflow_backend.chains.catalog import get_chain, list_available_chains
+    from mindflow_backend.chains.catalog import list_available_chains
     
     print("\n📋 Legacy Catalog Access:")
     
@@ -248,7 +247,7 @@ async def demo_backward_compatibility():
     try:
         from mindflow_backend.chains.catalog import get_chain_info
         info = get_chain_info("analysis_task")
-        print(f"\n📊 Chain Info (analysis_task):")
+        print("\n📊 Chain Info (analysis_task):")
         print(f"  Name: {info['name']}")
         print(f"  Capabilities: {info['capabilities']}")
         print(f"  Complexity: {info['complexity']}")

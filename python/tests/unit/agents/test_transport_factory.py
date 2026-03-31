@@ -2,10 +2,8 @@
 
 from unittest.mock import patch
 
-import pytest
-
-from mindflow_backend.grpc.factory import TransportMode, get_runtime_client
 from mindflow_backend.grpc.client import LocalAgentClient
+from mindflow_backend.grpc.factory import TransportMode, get_runtime_client
 
 
 def test_factory_returns_local_client_by_default():

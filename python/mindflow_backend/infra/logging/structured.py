@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import logging
 import sys
-import random
-from typing import TYPE_CHECKING, Optional, Dict, Any
 from contextvars import ContextVar
+from typing import TYPE_CHECKING, Any
 
 import structlog
-from structlog.stdlib import LoggerFactory
 from structlog.processors import JSONRenderer
+from structlog.stdlib import LoggerFactory
 
 # ConsoleRenderer was removed in newer structlog versions
 try:
@@ -23,15 +22,15 @@ except ImportError:
     # Fallback for newer structlog versions
     from structlog.dev import ConsoleRenderer
 
+from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging.correlation import get_correlation_manager
 from mindflow_backend.infra.logging.sampling import get_log_sampler
-from mindflow_backend.infra.config import get_settings
 
 if TYPE_CHECKING:
     pass
 
 # Context variable for correlation ID
-_correlation_id: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
+_correlation_id: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 _configured = False
 
@@ -117,7 +116,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     )
 
 
-def _add_correlation_id(logger, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _add_correlation_id(logger, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Add correlation ID to log event.
     
     Args:
@@ -134,7 +133,7 @@ def _add_correlation_id(logger, method_name: str, event_dict: Dict[str, Any]) ->
     return event_dict
 
 
-def _add_sampling_info(logger, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _add_sampling_info(logger, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Add sampling information to log event.
     
     Args:
@@ -153,7 +152,7 @@ def _add_sampling_info(logger, method_name: str, event_dict: Dict[str, Any]) -> 
     return event_dict
 
 
-def _add_environment_info(logger, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _add_environment_info(logger, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Add environment information to log event.
     
     Args:
@@ -215,7 +214,7 @@ class LoggingContext:
     Provides automatic correlation ID management for request/response cycles.
     """
     
-    def __init__(self, correlation_id: Optional[str] = None, **context: Any):
+    def __init__(self, correlation_id: str | None = None, **context: Any):
         """Initialize logging context.
         
         Args:
@@ -224,10 +223,10 @@ class LoggingContext:
         """
         self.correlation_id = correlation_id
         self.context = context
-        self.token: Optional[Any] = None
+        self.token: Any | None = None
         self.logger = get_logger(__name__)
         
-    def __enter__(self) -> "LoggingContext":
+    def __enter__(self) -> LoggingContext:
         """Enter context and set correlation ID."""
         correlation_manager = get_correlation_manager()
         
@@ -291,7 +290,7 @@ def set_correlation_id(correlation_id: str) -> None:
     _correlation_id.set(correlation_id)
 
 
-def get_correlation_id() -> Optional[str]:
+def get_correlation_id() -> str | None:
     """Get current correlation ID.
     
     Returns:
@@ -335,7 +334,7 @@ def log_request(
 
 def log_error(
     error: Exception,
-    context: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
     **kwargs: Any
 ) -> None:
     """Log error with correlation and context.
@@ -386,8 +385,8 @@ def log_performance(
 
 def log_business_event(
     event_name: str,
-    user_id: Optional[str] = None,
-    session_id: Optional[str] = None,
+    user_id: str | None = None,
+    session_id: str | None = None,
     **kwargs: Any
 ) -> None:
     """Log business event with correlation.

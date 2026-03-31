@@ -7,15 +7,15 @@ dynamic optimization and monitoring capabilities.
 from __future__ import annotations
 
 import asyncio
-import time
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from .pool import GrpcConnectionPool, PoolConfig, PoolStatistics
+from mindflow_backend.infra.logging import get_logger
+
 from .factory import GrpcConnectionFactory
 from .health import PoolHealthChecker
-from mindflow_backend.infra.logging import get_logger
+from .pool import GrpcConnectionPool, PoolConfig, PoolStatistics
 
 _logger = get_logger(__name__)
 
@@ -52,9 +52,9 @@ class PoolCreationRequest:
 class OptimizationResult:
     """Result of pool optimization."""
     pool_id: str
-    optimizations_applied: List[str]
+    optimizations_applied: list[str]
     performance_improvement: float
-    recommendations: List[str]
+    recommendations: list[str]
 
 
 class GrpcConnectionPoolManager:
@@ -65,8 +65,8 @@ class GrpcConnectionPoolManager:
         self.state = PoolManagerState.INITIALIZING
         
         # Pool management
-        self.pools: Dict[str, GrpcConnectionPool] = {}
-        self.pool_configs: Dict[str, PoolConfig] = {}
+        self.pools: dict[str, GrpcConnectionPool] = {}
+        self.pool_configs: dict[str, PoolConfig] = {}
         self._lock = asyncio.Lock()
         
         # Components
@@ -74,12 +74,12 @@ class GrpcConnectionPoolManager:
         self.health_checker = PoolHealthChecker(config.health_check_interval)
         
         # Background tasks
-        self._optimization_task: Optional[asyncio.Task] = None
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._optimization_task: asyncio.Task | None = None
+        self._health_check_task: asyncio.Task | None = None
         
         # Statistics
-        self._creation_requests: List[PoolCreationRequest] = []
-        self._optimization_history: List[OptimizationResult] = []
+        self._creation_requests: list[PoolCreationRequest] = []
+        self._optimization_history: list[OptimizationResult] = []
         
         _logger.info("grpc_connection_pool_manager_created", 
                     max_pools=config.max_pools,
@@ -209,24 +209,24 @@ class GrpcConnectionPoolManager:
             _logger.error("pool_destruction_failed", pool_id=pool_id, error=str(exc))
             return False
     
-    async def get_pool(self, pool_id: str) -> Optional[GrpcConnectionPool]:
+    async def get_pool(self, pool_id: str) -> GrpcConnectionPool | None:
         """Get connection pool by ID."""
         async with self._lock:
             return self.pools.get(pool_id)
     
-    async def list_pools(self) -> List[str]:
+    async def list_pools(self) -> list[str]:
         """List all pool IDs."""
         async with self._lock:
             return list(self.pools.keys())
     
-    async def get_pool_statistics(self, pool_id: str) -> Optional[PoolStatistics]:
+    async def get_pool_statistics(self, pool_id: str) -> PoolStatistics | None:
         """Get statistics for a specific pool."""
         pool = await self.get_pool(pool_id)
         if pool:
             return await pool.get_statistics()
         return None
     
-    async def get_all_statistics(self) -> Dict[str, PoolStatistics]:
+    async def get_all_statistics(self) -> dict[str, PoolStatistics]:
         """Get statistics for all pools."""
         statistics = {}
         
@@ -239,7 +239,7 @@ class GrpcConnectionPoolManager:
         
         return statistics
     
-    async def optimize_pools(self) -> List[OptimizationResult]:
+    async def optimize_pools(self) -> list[OptimizationResult]:
         """Optimize all pools based on performance metrics."""
         results = []
         
@@ -254,7 +254,7 @@ class GrpcConnectionPoolManager:
         
         return results
     
-    async def _optimize_pool(self, pool_id: str, pool: GrpcConnectionPool) -> Optional[OptimizationResult]:
+    async def _optimize_pool(self, pool_id: str, pool: GrpcConnectionPool) -> OptimizationResult | None:
         """Optimize a specific pool."""
         stats = await pool.get_statistics()
         config = self.pool_configs[pool_id]
@@ -374,7 +374,7 @@ class GrpcConnectionPoolManager:
         if unhealthy_pools:
             _logger.warning("unhealthy_pools_detected", pools=unhealthy_pools)
     
-    async def get_manager_statistics(self) -> Dict[str, Any]:
+    async def get_manager_statistics(self) -> dict[str, Any]:
         """Get pool manager statistics."""
         async with self._lock:
             all_stats = await self.get_all_statistics()
@@ -398,7 +398,7 @@ class GrpcConnectionPoolManager:
 
 
 # Global pool manager instance
-_global_pool_manager: Optional[GrpcConnectionPoolManager] = None
+_global_pool_manager: GrpcConnectionPoolManager | None = None
 
 
 async def get_pool_manager() -> GrpcConnectionPoolManager:

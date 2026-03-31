@@ -28,7 +28,7 @@ _logger = get_logger(__name__)
 
 class PlannerAgent:
     """Agent specialized in creating structured implementation plans.
-    
+
     Unlike regular agents, the PlannerAgent:
     - Does NOT execute code or make changes
     - Produces a plan document (.md) for user confirmation
@@ -49,48 +49,48 @@ class PlannerAgent:
         request: PlanningRequest,
     ) -> PlanningResponse:
         """Create a structured plan from the request.
-        
+
         This is the main entry point for planning. The agent:
         1. Uses the gathered context
         2. Applies the PLANNING_PROMPT
         3. Produces a structured plan document
         """
         from mindflow_backend.services.orchestration.planning_service import get_planning_service
-        
+
         settings = get_settings()
         provider = settings.default_provider
         model = settings.default_model
-        
+
         _logger.info(
             "planner_agent_started",
             session_id=request.session_id,
             goal=request.message[:100],
             has_context=bool(request.context),
         )
-        
+
         # Build the planning prompt
         planning_messages = await self._build_planning_messages(request, llm)
-        
+
         try:
             llm = get_model_for_provider(provider, model)
             response = await llm.ainvoke(planning_messages)
             response_text = response.content if hasattr(response, "content") else str(response)
-            
+
             # Parse the plan from the response
             plan_content = self._parse_plan_response(response_text, request)
-            
+
             # Store the plan via PlanningService
             planning_service = get_planning_service()
             result = await planning_service.create_plan(request, plan_content)
-            
+
             _logger.info(
                 "planner_agent_completed",
                 plan_id=result.plan.plan_id,
                 tasks=len(result.plan.tasks),
             )
-            
+
             return result
-            
+
         except Exception as exc:
             _logger.error("planner_agent_failed", error=str(exc))
             # Return a minimal plan on failure
@@ -101,69 +101,51 @@ class PlannerAgent:
         messages = [
             {"role": "system", "content": self.system_prompt},
         ]
-        
+
         # Add gathered context
         if request.context.strip():
             context_text = request.context
             estimated_tokens = len(context_text) // 4
-            
+
             # Semantic summarization if context is too large
             if estimated_tokens > 12000:
                 _logger.warning("planner_context_too_large", estimated_tokens=estimated_tokens)
                 try:
                     summary_prompt = [
                         {"role": "system", "content": "You are a senior analyst. Summarize the following codebase context, keeping all technical details, file paths, and architectural decisions relevant to the user's request. Be highly concise."},
-                        {"role": "user", "content": f"User Request: {request.message}
-
-Context (truncated): {context_text[:40000]}"}
+                        {"role": "user", "content": f"User Request: {request.message}\n\nContext (truncated): {context_text[:40000]}"}
                     ]
                     summary_response = await llm.ainvoke(summary_prompt)
                     context_text = summary_response.content if hasattr(summary_response, "content") else str(summary_response)
                 except Exception as exc:
                     _logger.error("planner_context_summarization_failed", error=str(exc))
-                    context_text = context_text[:32000] + "
+                    context_text = context_text[:32000] + "\n\n...[Context truncated due to size limits]..."
 
-...[Context truncated due to size limits]..."
-                
             messages.append({
                 "role": "system",
-                "content": f"## Gathered Context
-
-{context_text}",
+                "content": f"## Gathered Context\n\n{context_text}",
             })
-        
+
         # Add workspace info
         if request.folder_path:
             messages.append({
                 "role": "system",
-                "content": f"## Workspace Root
-
-The working directory is: {request.folder_path}
-
-Use this path as the base for all file references in the plan.",
+                "content": f"## Workspace Root\n\nThe working directory is: {request.folder_path}\n\nUse this path as the base for all file references in the plan.",
             })
-        
+
         # Add complexity indicator
         complexity_note = ""
         if request.complexity_score >= 0.7:
-            complexity_note = "
-
-**Note**: This is a HIGH complexity task. Consider breaking it into more granular subtasks."
+            complexity_note = "\n\n**Note**: This is a HIGH complexity task. Consider breaking it into more granular subtasks."
         elif request.complexity_score >= 0.5:
-            complexity_note = "
+            complexity_note = "\n\n**Note**: This is a MEDIUM complexity task. Plan accordingly."
 
-**Note**: This is a MEDIUM complexity task. Plan accordingly."
-        
         # Add the planning request
         messages.append({
             "role": "user",
-            "content": f"Create a structured implementation plan for:
-
-**{request.message}**{complexity_note}
-
-Follow the planning protocol strictly. Output the plan in markdown format.",
+            "content": f"Create a structured implementation plan for:\n\n**{request.message}**{complexity_note}\n\nFollow the planning protocol strictly. Output the plan in markdown format.",
         })
-        
+
         return messages
 
     def _parse_plan_response(self, response_text: str, request: PlanningRequest) -> dict[str, Any]:
@@ -176,37 +158,37 @@ Follow the planning protocol strictly. Output the plan in markdown format.",
             "risks": [],
             "open_questions": [],
         }
-        
+
         # Extract goal/intent
         import re
-        
+
         # Look for goal in headers
         goal_match = re.search(r"# Plan:\s*(.+?)(?:\n|$)", response_text)
         if goal_match:
             plan_content["goal"] = goal_match.group(1).strip()
-        
+
         # Look for work type
         type_match = re.search(r"\*\*Type\*\*:\s*(.+?)(?:\n|$)", response_text)
         if type_match:
             plan_content["work_type"] = type_match.group(1).strip().lower().replace(" ", "_")
-        
+
         # Look for scope
         scope_match = re.search(r"\*\*Scope\*\*:\s*(.+?)(?:\n|$)", response_text)
         if scope_match:
             plan_content["scope"] = scope_match.group(1).strip()
-        
+
         # Extract tasks from markdown
         tasks = []
         task_pattern = r"### Task\s+(\d+):\s*(.+?)(?=\n###|\n##|$)"
         for match in re.finditer(task_pattern, response_text, re.DOTALL):
             task_num = match.group(1)
             task_content = match.group(2)
-            
+
             # Extract task fields
             def get_field(name: str, text: str) -> str:
                 m = re.search(rf"\*\*{name}\*\*:\s*(.+?)(?:\n|$)", text)
                 return m.group(1).strip() if m else ""
-            
+
             title = task_content.split("\n")[0].strip()
             description = get_field("Description", task_content)
             if not description:
@@ -214,14 +196,14 @@ Follow the planning protocol strictly. Output the plan in markdown format.",
                 desc_match = re.search(r"\n(.+?)(?:\n\*\*|\n###|\Z)", task_content, re.DOTALL)
                 if desc_match:
                     description = desc_match.group(1).strip()[:200]
-            
+
             task = {
                 "task_id": f"task-{task_num}",
                 "title": title,
                 "description": description,
-                "depends_on": [d.strip() for d in get_field("Depends on", task_content).split(",") 
+                "depends_on": [d.strip() for d in get_field("Depends on", task_content).split(",")
                               if d.strip() and d.strip().lower() != "none"],
-                "files": [f.strip() for f in get_field("Files", task_content).split(",") 
+                "files": [f.strip() for f in get_field("Files", task_content).split(",")
                          if f.strip() and f.strip().lower() != "n/a"],
                 "action": get_field("Action", task_content) or "EDIT",
                 "agent": get_field("Agent", task_content) or "analyst",
@@ -229,9 +211,9 @@ Follow the planning protocol strictly. Output the plan in markdown format.",
                 "verification": get_field("Verification", task_content),
             }
             tasks.append(task)
-        
+
         plan_content["tasks"] = tasks
-        
+
         # Extract file impact matrix
         matrix_pattern = r"\| (.+?) \| (.+?) \| (.+?) \|"
         matrix_entries = []
@@ -244,17 +226,16 @@ Follow the planning protocol strictly. Output the plan in markdown format.",
                     "description": desc.strip(),
                 })
         plan_content["file_impact_matrix"] = matrix_entries
-        
+
         # Extract risks
         risks_section = re.search(r"## Risks.*?\n(.+?)(?:\n##|\Z)", response_text, re.DOTALL)
         if risks_section:
-            risks_text = risks_section.group(1)
             plan_content["risks"] = [
                 r.strip().lstrip("- ").lstrip("**Risk**: ")
                 for r in risks_section.group(1).split("\n")
                 if r.strip().startswith("-")
             ]
-        
+
         # Extract open questions
         questions_section = re.search(r"## Open Questions.*?\n(.+?)(?:\n##|\Z)", response_text, re.DOTALL)
         if questions_section:
@@ -263,13 +244,13 @@ Follow the planning protocol strictly. Output the plan in markdown format.",
                 for q in questions_section.group(1).split("\n")
                 if q.strip().startswith("-")
             ]
-        
+
         return plan_content
 
     async def _create_fallback_plan(self, request: PlanningRequest, error: str) -> PlanningResponse:
         """Create a minimal fallback plan when planning fails."""
         from mindflow_backend.services.orchestration.planning_service import get_planning_service
-        
+
         plan_content = {
             "goal": request.message,
             "work_type": "new_feature",
@@ -290,7 +271,7 @@ Follow the planning protocol strictly. Output the plan in markdown format.",
             "risks": [f"Planning failed: {error}"],
             "open_questions": ["Review and refine the plan before proceeding"],
         }
-        
+
         planning_service = get_planning_service()
         return await planning_service.create_plan(request, plan_content)
 

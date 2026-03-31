@@ -6,8 +6,7 @@ Manages teams, members, and team chats.
 """
 
 import uuid
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import Any
 
 from .team import Team, TeamStatus
 from .team_chat import TeamChat
@@ -21,15 +20,15 @@ class TeamManager:
     """
     
     def __init__(self):
-        self.teams: Dict[str, Team] = {}
-        self.team_chats: Dict[str, TeamChat] = {}
+        self.teams: dict[str, Team] = {}
+        self.team_chats: dict[str, TeamChat] = {}
     
     def create_team(
         self,
         name: str,
         description: str = "",
-        muc_room_jid: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        muc_room_jid: str | None = None,
+        metadata: dict[str, Any] | None = None
     ) -> Team:
         """
         Create a new team.
@@ -55,22 +54,22 @@ class TeamManager:
         
         return team
     
-    def get_team(self, team_id: str) -> Optional[Team]:
+    def get_team(self, team_id: str) -> Team | None:
         """Get team by ID."""
         return self.teams.get(team_id)
     
-    def get_team_by_name(self, name: str) -> Optional[Team]:
+    def get_team_by_name(self, name: str) -> Team | None:
         """Get team by name."""
         for team in self.teams.values():
             if team.name == name:
                 return team
         return None
     
-    def get_all_teams(self) -> List[Team]:
+    def get_all_teams(self) -> list[Team]:
         """Get all teams."""
         return list(self.teams.values())
     
-    def get_active_teams(self) -> List[Team]:
+    def get_active_teams(self) -> list[Team]:
         """Get active teams."""
         return [t for t in self.teams.values() if t.status == TeamStatus.ACTIVE]
     
@@ -86,11 +85,11 @@ class TeamManager:
     def update_team(
         self,
         team_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        status: Optional[TeamStatus] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Optional[Team]:
+        name: str | None = None,
+        description: str | None = None,
+        status: TeamStatus | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> Team | None:
         """Update a team."""
         team = self.get_team(team_id)
         if not team:
@@ -121,11 +120,11 @@ class TeamManager:
             return team.remove_member(agent_jid)
         return False
     
-    def get_member_teams(self, agent_jid: str) -> List[Team]:
+    def get_member_teams(self, agent_jid: str) -> list[Team]:
         """Get teams that an agent is a member of."""
         return [t for t in self.teams.values() if t.has_member(agent_jid)]
     
-    def get_team_chat(self, team_id: str) -> Optional[TeamChat]:
+    def get_team_chat(self, team_id: str) -> TeamChat | None:
         """Get team chat."""
         return self.team_chats.get(team_id)
     
@@ -134,8 +133,8 @@ class TeamManager:
         team_id: str,
         sender_jid: str,
         content: str,
-        reference_message_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        reference_message_id: str | None = None
+    ) -> dict[str, Any] | None:
         """
         Send a message to a team.
         
@@ -162,7 +161,7 @@ class TeamManager:
         self,
         team_id: str,
         limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get messages from a team."""
         chat = self.get_team_chat(team_id)
         if chat:
@@ -173,14 +172,14 @@ class TeamManager:
         self,
         team_id: str,
         query: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search messages in a team."""
         chat = self.get_team_chat(team_id)
         if chat:
             return [m.to_dict() for m in chat.search_messages(query)]
         return []
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get manager statistics."""
         total_members = sum(t.get_member_count() for t in self.teams.values())
         active_teams = len(self.get_active_teams())

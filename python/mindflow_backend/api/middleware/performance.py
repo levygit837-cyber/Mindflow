@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import time
-from typing import Any, Dict, Optional, Union
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -35,8 +35,8 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         self.compression_threshold = compression_threshold
         
         # Simple in-memory cache (in production, use Redis or similar)
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._cache_access_times: Dict[str, float] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
+        self._cache_access_times: dict[str, float] = {}
         
         # Performance metrics
         self._request_count = 0
@@ -90,7 +90,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         # Log slow requests
         if response_time > 1.0:  # Log requests taking more than 1 second
             _logger.warning(
-                f"Slow request detected",
+                "Slow request detected",
                 path=request.url.path,
                 method=request.method,
                 response_time=response_time,
@@ -138,7 +138,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         
         return any(content_type.startswith(ct) for ct in cacheable_types)
     
-    def _get_from_cache(self, cache_key: str) -> Optional[Response]:
+    def _get_from_cache(self, cache_key: str) -> Response | None:
         """Get response from cache if valid."""
         if cache_key not in self._cache:
             return None
@@ -231,7 +231,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         
         return response
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache performance statistics."""
         total_requests = self._cache_hits + self._cache_misses
         hit_rate = (self._cache_hits / total_requests * 100) if total_requests > 0 else 0
@@ -302,7 +302,7 @@ class DatabaseConnectionPoolMiddleware(BaseHTTPMiddleware):
         finally:
             self._active_connections -= 1
     
-    def get_connection_stats(self) -> Dict[str, Any]:
+    def get_connection_stats(self) -> dict[str, Any]:
         """Get database connection statistics."""
         return {
             "active_connections": self._active_connections,

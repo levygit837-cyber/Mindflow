@@ -7,9 +7,8 @@ from pathlib import Path
 # Get project root from tests directory
 project_root = Path(__file__).parent.parent.parent.parent
 
-from mindflow_backend.workers.infrastructure.worker_factory import WorkerFactory
-from mindflow_backend.workers.infrastructure.queue_manager import QueueManager
 from mindflow_backend.workers.config.settings import get_worker_settings
+from mindflow_backend.workers.infrastructure.worker_factory import WorkerFactory
 
 
 async def test_worker_factory():
@@ -52,10 +51,18 @@ async def test_worker_imports():
     
     try:
         from mindflow_backend.workers import (
-            CoderWorker, AnalystWorker, ResearcherWorker, OrchestratorWorker,
-            VectorWorker, MemoryWorker, HealthWorker,
-            BrowserWorker, ContentWorker,
-            QueueManager, WorkerFactory, WorkerMonitor
+            AnalystWorker,
+            BrowserWorker,
+            CoderWorker,
+            ContentWorker,
+            HealthWorker,
+            MemoryWorker,
+            OrchestratorWorker,
+            QueueManager,
+            ResearcherWorker,
+            VectorWorker,
+            WorkerFactory,
+            WorkerMonitor,
         )
         print("✓ All worker classes imported successfully")
         return True
@@ -83,7 +90,7 @@ async def main():
             print(f"✗ Test {test.__name__} failed with exception: {e}")
             results.append(False)
     
-    print(f"\n=== Results ===")
+    print("\n=== Results ===")
     passed = sum(results)
     total = len(results)
     print(f"Passed: {passed}/{total}")

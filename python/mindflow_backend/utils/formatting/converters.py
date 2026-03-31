@@ -8,10 +8,10 @@ import hashlib
 import json
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
-def to_json(data: Any, indent: Optional[int] = None, ensure_ascii: bool = False) -> str:
+def to_json(data: Any, indent: int | None = None, ensure_ascii: bool = False) -> str:
     """Convert data to JSON string."""
     return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii, default=str)
 
@@ -48,9 +48,7 @@ def to_bool(value: Any) -> bool:
 def to_int(value: Any, default: int = 0) -> int:
     """Convert value to integer."""
     try:
-        if isinstance(value, bool):
-            return int(value)
-        elif isinstance(value, (int, float)):
+        if isinstance(value, bool) or isinstance(value, (int, float)):
             return int(value)
         elif isinstance(value, str):
             # Handle common string formats
@@ -70,9 +68,7 @@ def to_int(value: Any, default: int = 0) -> int:
 def to_float(value: Any, default: float = 0.0) -> float:
     """Convert value to float."""
     try:
-        if isinstance(value, bool):
-            return float(value)
-        elif isinstance(value, (int, float)):
+        if isinstance(value, bool) or isinstance(value, (int, float)):
             return float(value)
         elif isinstance(value, str):
             value = value.strip()
@@ -102,7 +98,7 @@ def to_str(value: Any, default: str = "") -> str:
     return str(value)
 
 
-def to_list(value: Any) -> List[Any]:
+def to_list(value: Any) -> list[Any]:
     """Convert value to list."""
     if value is None:
         return []
@@ -122,7 +118,7 @@ def to_list(value: Any) -> List[Any]:
     return [value]
 
 
-def to_dict(value: Any) -> Dict[str, Any]:
+def to_dict(value: Any) -> dict[str, Any]:
     """Convert value to dictionary."""
     if value is None:
         return {}
@@ -146,7 +142,7 @@ def to_dict(value: Any) -> Dict[str, Any]:
     return {}
 
 
-def to_uuid(value: Any, default: Optional[str] = None) -> Optional[str]:
+def to_uuid(value: Any, default: str | None = None) -> str | None:
     """Convert value to UUID string."""
     if value is None:
         return default
@@ -167,7 +163,7 @@ def to_uuid(value: Any, default: Optional[str] = None) -> Optional[str]:
     return str(uuid.uuid4())
 
 
-def to_datetime(value: Any, default: Optional[datetime] = None) -> Optional[datetime]:
+def to_datetime(value: Any, default: datetime | None = None) -> datetime | None:
     """Convert value to datetime."""
     if value is None:
         return default
@@ -208,7 +204,7 @@ def to_datetime(value: Any, default: Optional[datetime] = None) -> Optional[date
     return default
 
 
-def to_base64(data: Union[str, bytes]) -> str:
+def to_base64(data: str | bytes) -> str:
     """Convert data to base64 string."""
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -221,7 +217,7 @@ def from_base64(base64_str: str) -> bytes:
     return base64.b64decode(base64_str)
 
 
-def to_hash(data: Union[str, bytes], algorithm: str = "sha256") -> str:
+def to_hash(data: str | bytes, algorithm: str = "sha256") -> str:
     """Convert data to hash string."""
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -255,7 +251,6 @@ def to_snake_case(text: str) -> str:
 
 def to_camel_case(text: str) -> str:
     """Convert text to camelCase."""
-    import re
     
     # Convert to snake_case first
     snake = to_snake_case(text)
@@ -322,7 +317,7 @@ def bytes_to_human(bytes_count: int) -> str:
     return f"{bytes_count:.1f} {units[unit_index]}"
 
 
-def human_to_bytes(human_str: str) -> Optional[int]:
+def human_to_bytes(human_str: str) -> int | None:
     """Convert human readable size to bytes."""
     import re
     

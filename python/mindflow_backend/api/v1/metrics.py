@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
-from fastapi import APIRouter, Depends, Request
+from typing import Any
 
-from mindflow_backend.api.dependencies import protected_route_dependencies
+from fastapi import APIRouter, Request
+
 from mindflow_backend.api.controllers.base_controller import BaseController
-from mindflow_backend.api.middleware.performance import PerformanceMiddleware
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.middleware.caching import AdvancedCacheMiddleware
+from mindflow_backend.api.middleware.performance import PerformanceMiddleware
 from mindflow_backend.infra.logging import get_logger
 
 router = APIRouter(prefix="/metrics", tags=["metrics"], dependencies=protected_route_dependencies)
@@ -21,7 +22,7 @@ class MetricsController(BaseController):
     def __init__(self):
         super().__init__()
     
-    async def get_performance_metrics(self, request: Request) -> Dict[str, Any]:
+    async def get_performance_metrics(self, request: Request) -> dict[str, Any]:
         """Get performance metrics from middleware."""
         try:
             # Get performance middleware stats
@@ -55,7 +56,7 @@ class MetricsController(BaseController):
                 "timestamp": self._get_current_timestamp()
             }
     
-    async def get_health_metrics(self, request: Request) -> Dict[str, Any]:
+    async def get_health_metrics(self, request: Request) -> dict[str, Any]:
         """Get comprehensive health metrics."""
         try:
             health_metrics = {
@@ -91,7 +92,7 @@ class MetricsController(BaseController):
                 "timestamp": self._get_current_timestamp()
             }
     
-    async def get_api_metrics(self, request: Request) -> Dict[str, Any]:
+    async def get_api_metrics(self, request: Request) -> dict[str, Any]:
         """Get API-specific metrics."""
         try:
             # This would collect API-specific metrics
@@ -142,7 +143,7 @@ class MetricsController(BaseController):
     
     def _get_current_timestamp(self) -> str:
         """Get current timestamp in ISO format."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
         return datetime.now(UTC).isoformat()
     
     def _get_uptime(self) -> str:
@@ -151,7 +152,7 @@ class MetricsController(BaseController):
         # For now, return placeholder
         return "0h 0m 0s"
     
-    async def _check_database_health(self) -> Dict[str, Any]:
+    async def _check_database_health(self) -> dict[str, Any]:
         """Check database health."""
         try:
             # This would perform actual database health check
@@ -167,7 +168,7 @@ class MetricsController(BaseController):
                 "error": str(e)
             }
     
-    async def _check_cache_health(self) -> Dict[str, Any]:
+    async def _check_cache_health(self) -> dict[str, Any]:
         """Check cache health."""
         try:
             # This would perform actual cache health check
@@ -182,7 +183,7 @@ class MetricsController(BaseController):
                 "error": str(e)
             }
     
-    async def _check_memory_health(self) -> Dict[str, Any]:
+    async def _check_memory_health(self) -> dict[str, Any]:
         """Check memory usage."""
         try:
             import psutil
@@ -206,7 +207,7 @@ class MetricsController(BaseController):
                 "error": str(e)
             }
     
-    async def _check_api_health(self) -> Dict[str, Any]:
+    async def _check_api_health(self) -> dict[str, Any]:
         """Check API health."""
         try:
             # This would check if API endpoints are responding

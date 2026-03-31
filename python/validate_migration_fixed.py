@@ -2,8 +2,8 @@
 """Script to validate the migration of interfaces and schemas."""
 
 import sys
-import os
 from pathlib import Path
+
 
 def check_imports():
     """Test if all new imports work correctly."""
@@ -129,7 +129,7 @@ def check_old_files():
     for file_path in old_files:
         full_path = base_path / file_path
         if full_path.exists():
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 content = f.read()
                 if "DEPRECATED" in content or "forward compatibility" in content:
                     aliases.append(str(file_path))

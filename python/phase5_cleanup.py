@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Phase 5: Final cleanup and validation."""
 
-import os
 import shutil
 from pathlib import Path
+
 
 def remove_old_tools_directory():
     """Remove the old /tools directory."""
@@ -69,7 +69,7 @@ def validate_final_structure():
         except Exception as e:
             print(f"   ❌ {tool} - {e}")
     
-    print(f"\n📊 Validation Results:")
+    print("\n📊 Validation Results:")
     print(f"   - Categories: {categories_ok}/{len(expected_categories)}")
     print(f"   - Key tools: {tools_ok}/{len(key_tools)}")
     

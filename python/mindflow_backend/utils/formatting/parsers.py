@@ -6,7 +6,7 @@ Functions for parsing different data formats.
 import json
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 def extract_json_from_response(content: str) -> str:
@@ -18,7 +18,7 @@ def extract_json_from_response(content: str) -> str:
     return content.strip()
 
 
-def parse_csv(value: str) -> List[str]:
+def parse_csv(value: str) -> list[str]:
     """Parse CSV string into list of values."""
     return [part.strip() for part in value.split(",") if part.strip()]
 
@@ -31,7 +31,7 @@ def parse_json_safe(content: str, default: Any = None) -> Any:
         return default
 
 
-def parse_datetime_iso(dt_str: str) -> Optional[datetime]:
+def parse_datetime_iso(dt_str: str) -> datetime | None:
     """Parse ISO datetime string."""
     try:
         return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
@@ -39,7 +39,7 @@ def parse_datetime_iso(dt_str: str) -> Optional[datetime]:
         return None
 
 
-def parse_date_string(date_str: str) -> Optional[datetime]:
+def parse_date_string(date_str: str) -> datetime | None:
     """Parse various date string formats."""
     formats = [
         "%Y-%m-%d",
@@ -60,7 +60,7 @@ def parse_date_string(date_str: str) -> Optional[datetime]:
     return None
 
 
-def parse_url(url: str) -> Dict[str, str]:
+def parse_url(url: str) -> dict[str, str]:
     """Parse URL into components."""
     import urllib.parse
     
@@ -75,14 +75,14 @@ def parse_url(url: str) -> Dict[str, str]:
     }
 
 
-def parse_query_string(query: str) -> Dict[str, List[str]]:
+def parse_query_string(query: str) -> dict[str, list[str]]:
     """Parse query string into dictionary."""
     import urllib.parse
     
     return urllib.parse.parse_qs(query)
 
 
-def parse_phone_number(phone: str) -> Dict[str, str]:
+def parse_phone_number(phone: str) -> dict[str, str]:
     """Parse phone number into components."""
     # Remove all non-digit characters
     digits = re.sub(r'\D', '', phone)
@@ -106,7 +106,7 @@ def parse_phone_number(phone: str) -> Dict[str, str]:
     return result
 
 
-def parse_markdown_links(text: str) -> List[Dict[str, str]]:
+def parse_markdown_links(text: str) -> list[dict[str, str]]:
     """Parse markdown links from text."""
     pattern = r'\[([^\]]+)\]\(([^)]+)\)'
     matches = re.findall(pattern, text)
@@ -117,17 +117,17 @@ def parse_markdown_links(text: str) -> List[Dict[str, str]]:
     ]
 
 
-def parse_hashtags(text: str) -> List[str]:
+def parse_hashtags(text: str) -> list[str]:
     """Parse hashtags from text."""
     return re.findall(r'#\w+', text)
 
 
-def parse_mentions(text: str) -> List[str]:
+def parse_mentions(text: str) -> list[str]:
     """Parse mentions (@username) from text."""
     return re.findall(r'@\w+', text)
 
 
-def parse_file_size(size_str: str) -> Optional[int]:
+def parse_file_size(size_str: str) -> int | None:
     """Parse file size string (e.g., "10MB", "1.5GB") into bytes."""
     size_str = size_str.upper().strip()
     
@@ -155,7 +155,7 @@ def parse_file_size(size_str: str) -> Optional[int]:
     return int(number * multiplier)
 
 
-def parse_duration(duration_str: str) -> Optional[float]:
+def parse_duration(duration_str: str) -> float | None:
     """Parse duration string (e.g., "1h 30m", "45s", "2.5h") into seconds."""
     if not duration_str:
         return None
@@ -182,12 +182,12 @@ def parse_duration(duration_str: str) -> Optional[float]:
     return total_seconds if total_seconds > 0 else None
 
 
-def parse_version(version_str: str) -> List[int]:
+def parse_version(version_str: str) -> list[int]:
     """Parse version string (e.g., "1.2.3") into list of integers."""
     return [int(part) for part in version_str.split('.') if part.isdigit()]
 
 
-def parse_ip_address(ip_str: str) -> Optional[Dict[str, Any]]:
+def parse_ip_address(ip_str: str) -> dict[str, Any] | None:
     """Parse IP address and return information about it."""
     import ipaddress
     
@@ -205,7 +205,7 @@ def parse_ip_address(ip_str: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def parse_user_agent(user_agent: str) -> Dict[str, str]:
+def parse_user_agent(user_agent: str) -> dict[str, str]:
     """Parse user agent string."""
     # Simple parsing - in production would use proper UA parser
     result = {"raw": user_agent}
@@ -234,7 +234,7 @@ def parse_user_agent(user_agent: str) -> Dict[str, str]:
     return result
 
 
-def parse_boolean(value: Union[str, int, bool]) -> bool:
+def parse_boolean(value: str | int | bool) -> bool:
     """Parse various boolean representations."""
     if isinstance(value, bool):
         return value

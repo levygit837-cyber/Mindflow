@@ -1,5 +1,7 @@
 import pytest
+
 from mindflow_backend.orchestrator.complexity import ComplexityScorer
+
 
 def test_heuristic_scoring():
     scorer = ComplexityScorer()

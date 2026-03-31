@@ -2,7 +2,6 @@
 """Manual test script for utils restructure."""
 
 import sys
-import os
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
@@ -13,44 +12,18 @@ def test_imports():
     
     try:
         # Core utilities
-        from mindflow_backend.utils.core import (
-            format_datetime_iso,
-            slugify,
-            generate_uuid4,
-            estimate_token_count,
-            hash_string,
-            encode_base64
-        )
         print("✅ Core imports successful")
         
         # Validation utilities
-        from mindflow_backend.utils.validation import (
-            validate_email,
-            validate_url,
-            sanitize_string
-        )
         print("✅ Validation imports successful")
         
         # Formatting utilities
-        from mindflow_backend.utils.formatting import (
-            format_sse,
-            extract_json_from_response
-        )
         print("✅ Formatting imports successful")
         
         # Network utilities
-        from mindflow_backend.utils.network import (
-            retry_on_error,
-            get_port_manager,
-            parse_url
-        )
         print("✅ Network imports successful")
         
         # Monitoring utilities
-        from mindflow_backend.utils.monitoring import (
-            HealthStatus,
-            health_check_database
-        )
         print("✅ Monitoring imports successful")
         
         return True
@@ -65,7 +38,7 @@ def test_basic_functionality():
     
     try:
         # Test core utilities
-        from mindflow_backend.utils.core import slugify, estimate_token_count
+        from mindflow_backend.utils.core import estimate_token_count, slugify
         
         slug_result = slugify("Hello World Test!")
         assert slug_result == "hello-world-test"

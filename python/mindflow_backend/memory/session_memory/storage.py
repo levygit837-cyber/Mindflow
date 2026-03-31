@@ -1,19 +1,15 @@
 """Memory database operations."""
 
-from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.storage import db_session
 from mindflow_backend.memory.storage.models import (
     AgentMemoryCursor,
     AgentMemoryEmbedding,
     AgentMemoryEvent,
-    AgentMemoryFact,
     AgentMemoryWindow,
-    SessionEmbedding,
 )
 
 _logger = get_logger(__name__)
@@ -57,8 +53,8 @@ class MemoryDatabase:
         db: Session,
         session_id: str,
         agent_id: str,
-        limit: Optional[int] = None
-    ) -> List[AgentMemoryEvent]:
+        limit: int | None = None
+    ) -> list[AgentMemoryEvent]:
         """Get memory events for agent session."""
         query = select(AgentMemoryEvent).where(
             AgentMemoryEvent.session_id == session_id,
@@ -75,7 +71,7 @@ class MemoryDatabase:
         db: Session,
         session_id: str,
         agent_id: str
-    ) -> List[AgentMemoryWindow]:
+    ) -> list[AgentMemoryWindow]:
         """Get memory windows for agent session."""
         query = select(AgentMemoryWindow).where(
             AgentMemoryWindow.session_id == session_id,
@@ -90,7 +86,7 @@ class MemoryDatabase:
         session_id: str,
         agent_id: str,
         limit: int = 512
-    ) -> List[AgentMemoryEmbedding]:
+    ) -> list[AgentMemoryEmbedding]:
         """Get memory embeddings for agent session."""
         query = select(AgentMemoryEmbedding).where(
             AgentMemoryEmbedding.session_id == session_id,
@@ -107,7 +103,7 @@ class MemoryDatabase:
         role: str,
         content: str,
         token_count: int,
-        source_message_id: Optional[int] = None
+        source_message_id: int | None = None
     ) -> AgentMemoryEvent:
         """Create a new memory event."""
         event = AgentMemoryEvent(
@@ -130,7 +126,7 @@ class MemoryDatabase:
         source_type: str,
         source_id: int,
         content_excerpt: str,
-        vector: List[float]
+        vector: list[float]
     ) -> AgentMemoryEmbedding:
         """Create a new memory embedding."""
         embedding = AgentMemoryEmbedding(
@@ -156,7 +152,7 @@ class MemoryDatabase:
         event_start_id: int,
         event_end_id: int,
         summary_md: str,
-        key_points: List[str],
+        key_points: list[str],
         checksum: str
     ) -> AgentMemoryWindow:
         """Create a new memory window."""

@@ -4,11 +4,10 @@ Provides comprehensive health monitoring endpoints for all system components
 using the new infrastructure health check system.
 """
 
-from typing import Dict, Any, Optional, List
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.infra.logging import get_logger
@@ -28,7 +27,7 @@ class HealthResponse(BaseModel):
     degraded_components: int = Field(description="Number of degraded components")
     unhealthy_components: int = Field(description="Number of unhealthy components")
     unknown_components: int = Field(description="Number of components with unknown status")
-    components: List[Dict[str, Any]] = Field(description="Individual component health results")
+    components: list[dict[str, Any]] = Field(description="Individual component health results")
 
 
 class ComponentHealthResponse(BaseModel):
@@ -39,8 +38,8 @@ class ComponentHealthResponse(BaseModel):
     message: str = Field(description="Health status message")
     timestamp: datetime = Field(description="Health check timestamp")
     response_time_ms: float = Field(description="Response time in milliseconds")
-    details: Dict[str, Any] = Field(default_factory=dict, description="Additional health details")
-    error: Optional[str] = Field(default=None, description="Error if health check failed")
+    details: dict[str, Any] = Field(default_factory=dict, description="Additional health details")
+    error: str | None = Field(default=None, description="Error if health check failed")
 
 
 class HealthStatisticsResponse(BaseModel):
@@ -50,14 +49,14 @@ class HealthStatisticsResponse(BaseModel):
     check_count: int = Field(description="Total number of health checks performed")
     failure_count: int = Field(description="Number of failed health checks")
     success_rate: float = Field(description="Success rate percentage")
-    last_check: Optional[datetime] = Field(default=None, description="Last health check timestamp")
-    last_status: Optional[str] = Field(default=None, description="Last health check status")
+    last_check: datetime | None = Field(default=None, description="Last health check timestamp")
+    last_status: str | None = Field(default=None, description="Last health check status")
 
 
 @router.get("/", response_model=HealthResponse)
 async def get_system_health(
     detailed: bool = Query(default=False, description="Include detailed component information"),
-    components: Optional[List[str]] = Query(default=None, description="Specific components to check")
+    components: list[str] | None = Query(default=None, description="Specific components to check")
 ) -> HealthResponse:
     """Get overall system health status.
     
@@ -197,7 +196,7 @@ async def get_component_health(component: str) -> ComponentHealthResponse:
 
 
 @router.get("/components")
-async def list_components() -> Dict[str, Any]:
+async def list_components() -> dict[str, Any]:
     """List all available health check components.
     
     Returns:
@@ -232,8 +231,8 @@ async def list_components() -> Dict[str, Any]:
 
 @router.get("/statistics")
 async def get_health_statistics(
-    component: Optional[str] = Query(default=None, description="Specific component statistics")
-) -> Dict[str, Any]:
+    component: str | None = Query(default=None, description="Specific component statistics")
+) -> dict[str, Any]:
     """Get health check statistics.
     
     Args:
@@ -262,7 +261,7 @@ async def get_health_statistics(
 
 
 @router.get("/live")
-async def liveness_probe() -> Dict[str, Any]:
+async def liveness_probe() -> dict[str, Any]:
     """Kubernetes liveness probe endpoint.
     
     Returns basic liveness status without performing extensive checks.
@@ -284,7 +283,7 @@ async def liveness_probe() -> Dict[str, Any]:
 
 
 @router.get("/ready")
-async def readiness_probe() -> Dict[str, Any]:
+async def readiness_probe() -> dict[str, Any]:
     """Kubernetes readiness probe endpoint.
     
     Checks if the service is ready to accept traffic.
@@ -325,7 +324,7 @@ async def readiness_probe() -> Dict[str, Any]:
 
 
 @router.get("/startup")
-async def startup_probe() -> Dict[str, Any]:
+async def startup_probe() -> dict[str, Any]:
     """Kubernetes startup probe endpoint.
     
     Checks if the service has completed startup.
@@ -364,8 +363,8 @@ async def startup_probe() -> Dict[str, Any]:
 
 @router.post("/check")
 async def trigger_health_check(
-    components: Optional[List[str]] = Query(default=None, description="Components to check")
-) -> Dict[str, Any]:
+    components: list[str] | None = Query(default=None, description="Components to check")
+) -> dict[str, Any]:
     """Trigger an immediate health check.
     
     Args:
@@ -406,7 +405,7 @@ async def trigger_health_check(
 
 
 @router.get("/metrics")
-async def get_health_metrics() -> Dict[str, Any]:
+async def get_health_metrics() -> dict[str, Any]:
     """Get health-related metrics.
     
     Returns:

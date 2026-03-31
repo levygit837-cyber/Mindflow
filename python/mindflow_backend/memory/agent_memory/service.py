@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.memory.shared.embeddings.factory import HashFallbackProvider, get_embedding_provider
+from mindflow_backend.memory.shared.embeddings.factory import (
+    HashFallbackProvider,
+    get_embedding_provider,
+)
 from mindflow_backend.memory.shared.retrieval.semantic import SemanticRetriever
 from mindflow_backend.memory.storage.models import (
     AgentMemoryCursor,

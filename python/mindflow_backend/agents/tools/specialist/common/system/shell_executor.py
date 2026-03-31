@@ -7,20 +7,13 @@ capabilities with security controls and performance optimizations.
 from __future__ import annotations
 
 import os
-import sys
-import time
-import signal
-import uuid
-import asyncio
 import subprocess
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+import time
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.system_schemas import SHELL_EXECUTOR_SCHEMA
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
 
@@ -28,7 +21,7 @@ _logger = get_logger(__name__)
 class ShellExecutorTool(AsyncToolInterface):
     """Shell execution tool with security controls."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the shell executor tool.
         
         Args:
@@ -43,7 +36,7 @@ class ShellExecutorTool(AsyncToolInterface):
         
         self._schema = SHELL_EXECUTOR_SCHEMA
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute shell command.
         
         Args:
@@ -127,6 +120,6 @@ class ShellExecutorTool(AsyncToolInterface):
                 error=f"Shell execution failed: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()

@@ -4,12 +4,13 @@ collecting system information including hardware, software, network, and environ
 """
 
 from __future__ import annotations
+
 import os
 import socket
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.system_schemas import SYSTEM_INFO_SCHEMA
 
 _logger = get_logger(__name__)
@@ -27,7 +28,7 @@ class SystemInfoTool(AsyncToolInterface):
 
         self._schema = SYSTEM_INFO_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Collect system information.
         Args:
@@ -65,7 +66,7 @@ class SystemInfoTool(AsyncToolInterface):
                 error=f"System information collection error: {str(e)}"
             )
 
-    async def _get_hardware_info(self) -> Dict[str, Any]:
+    async def _get_hardware_info(self) -> dict[str, Any]:
         """
         Get hardware information.
         Returns:
@@ -149,7 +150,7 @@ class SystemInfoTool(AsyncToolInterface):
 
         return hardware_info
 
-    async def _get_software_info(self) -> Dict[str, Any]:
+    async def _get_software_info(self) -> dict[str, Any]:
         """
         Get software information.
         Returns:
@@ -187,7 +188,7 @@ class SystemInfoTool(AsyncToolInterface):
 
         return software_info
 
-    async def _get_network_info(self) -> Dict[str, Any]:
+    async def _get_network_info(self) -> dict[str, Any]:
         """
         Get network information.
         Returns:
@@ -252,7 +253,7 @@ class SystemInfoTool(AsyncToolInterface):
 
         return network_info
 
-    async def _get_environment_info(self, include_sensitive: bool) -> Dict[str, Any]:
+    async def _get_environment_info(self, include_sensitive: bool) -> dict[str, Any]:
         """
         Get environment information.
         Args:
@@ -301,7 +302,7 @@ class SystemInfoTool(AsyncToolInterface):
 
         return env_info
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

@@ -3,9 +3,8 @@
 Utilities for migrating data between different database systems.
 """
 
-import asyncio
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -15,8 +14,8 @@ _logger = get_logger(__name__)
 async def migrate_postgres_to_duckdb(
     postgres_connection_string: str,
     duckdb_path: str,
-    tables: Optional[List[str]] = None,
-) -> Dict[str, int]:
+    tables: list[str] | None = None,
+) -> dict[str, int]:
     """Migrate data from PostgreSQL to DuckDB.
     
     Args:
@@ -108,7 +107,7 @@ async def migrate_postgres_to_duckdb(
     return results
 
 
-def _generate_duckdb_create_table(table: str, columns: List[str]) -> str:
+def _generate_duckdb_create_table(table: str, columns: list[str]) -> str:
     """Generate DuckDB CREATE TABLE statement."""
     # Simplified column type mapping
     type_mapping = {
@@ -152,7 +151,7 @@ def _generate_duckdb_create_table(table: str, columns: List[str]) -> str:
     return f"CREATE TABLE {table} ({', '.join(column_defs)})"
 
 
-def _generate_duckdb_insert(table: str, columns: List[str]) -> str:
+def _generate_duckdb_insert(table: str, columns: list[str]) -> str:
     """Generate DuckDB INSERT statement."""
     placeholders = ", ".join(["?" for _ in columns])
     return f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
@@ -161,8 +160,8 @@ def _generate_duckdb_insert(table: str, columns: List[str]) -> str:
 async def backup_postgres_data(
     connection_string: str,
     output_dir: str,
-    tables: Optional[List[str]] = None,
-) -> Dict[str, str]:
+    tables: list[str] | None = None,
+) -> dict[str, str]:
     """Backup PostgreSQL data to JSON files.
     
     Args:
@@ -173,8 +172,9 @@ async def backup_postgres_data(
     Returns:
         Dictionary with table names and backup file paths
     """
-    import psycopg
     from pathlib import Path
+
+    import psycopg
     
     if tables is None:
         tables = [
@@ -229,8 +229,8 @@ async def backup_postgres_data(
 async def restore_postgres_data(
     connection_string: str,
     backup_dir: str,
-    tables: Optional[List[str]] = None,
-) -> Dict[str, int]:
+    tables: list[str] | None = None,
+) -> dict[str, int]:
     """Restore PostgreSQL data from JSON files.
     
     Args:
@@ -241,8 +241,9 @@ async def restore_postgres_data(
     Returns:
         Dictionary with table names and row counts restored
     """
-    import psycopg
     from pathlib import Path
+
+    import psycopg
     
     backup_path = Path(backup_dir)
     
@@ -265,7 +266,7 @@ async def restore_postgres_data(
             _logger.info(f"Restoring table: {table}")
             
             # Load data from file
-            with open(backup_file, "r", encoding="utf-8") as f:
+            with open(backup_file, encoding="utf-8") as f:
                 data = json.load(f)
             
             if not data:
@@ -307,8 +308,8 @@ async def restore_postgres_data(
 def validate_migration_integrity(
     source_connection_string: str,
     target_connection_string: str,
-    tables: List[str],
-) -> Dict[str, Dict[str, Any]]:
+    tables: list[str],
+) -> dict[str, dict[str, Any]]:
     """Validate migration integrity between source and target databases.
     
     Args:

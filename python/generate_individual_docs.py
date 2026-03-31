@@ -4,17 +4,15 @@ Gerador de documentação individual para cada diretório.
 Cria arquivos separados para cada diretório no formato solicitado.
 """
 
-import os
-from pathlib import Path
-from typing import Dict, List, Set
 import argparse
+from pathlib import Path
 
 
 class IndividualDocumentationGenerator:
     def __init__(self, base_path: str):
         self.base_path = Path(base_path)
-        self.directories: Set[str] = set()
-        self.python_files: Dict[str, List[str]] = {}
+        self.directories: set[str] = set()
+        self.python_files: dict[str, list[str]] = {}
         self.stats = {
             'total_directories': 0,
             'total_python_files': 0,
@@ -75,7 +73,7 @@ class IndividualDocumentationGenerator:
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(f"# Documentação do Diretório: {directory}\n")
                 f.write("=" * 50 + "\n\n")
-                f.write(f"## Caminho\n")
+                f.write("## Caminho\n")
                 f.write(f"@python/{directory}\n\n")
                 
                 # Adicionar arquivos Python deste diretório se houver
@@ -84,7 +82,7 @@ class IndividualDocumentationGenerator:
                     for file in sorted(self.python_files[directory]):
                         f.write(f"@python/{directory}/{file}\n")
                 else:
-                    f.write(f"## Arquivos Python\n\n")
+                    f.write("## Arquivos Python\n\n")
                     f.write("*Nenhum arquivo Python encontrado neste diretório*\n")
                 
                 # Adicionar subdiretórios
@@ -106,7 +104,7 @@ class IndividualDocumentationGenerator:
         with open(index_file, 'w', encoding='utf-8') as f:
             f.write("# Índice de Documentação Individual\n")
             f.write("=" * 40 + "\n\n")
-            f.write(f"## Resumo\n\n")
+            f.write("## Resumo\n\n")
             f.write(f"- **Total de Diretórios**: {self.stats['total_directories']}\n")
             f.write(f"- **Total de Arquivos Python**: {self.stats['total_python_files']}\n")
             f.write(f"- **Total de Arquivos**: {self.stats['total_files']}\n\n")
@@ -150,7 +148,7 @@ class IndividualDocumentationGenerator:
                                 subsubfilename = f"{subsubdir.replace('/', '_')}.md"
                                 f.write(f"    - [{subsubdir}]({subsubfilename})\n")
         
-        print(f"✅ Criado índice: INDEX.md")
+        print("✅ Criado índice: INDEX.md")
 
     def create_python_files_list(self, output_dir: str = "docs_individual") -> None:
         """
@@ -173,7 +171,7 @@ class IndividualDocumentationGenerator:
                         f.write(f"@python/{directory}/{file}\n")
                 f.write("\n")
         
-        print(f"✅ Criada lista completa: PYTHON_FILES_COMPLETE.md")
+        print("✅ Criada lista completa: PYTHON_FILES_COMPLETE.md")
 
 
 def main():
@@ -207,7 +205,7 @@ def main():
     generator.create_python_files_list(args.output_dir)
     
     print("\n✅ Documentação individual gerada com sucesso!")
-    print(f"📊 Resumo:")
+    print("📊 Resumo:")
     print(f"   - Diretórios: {generator.stats['total_directories']}")
     print(f"   - Arquivos Python: {generator.stats['total_python_files']}")
     print(f"   - Total de Arquivos: {generator.stats['total_files']}")

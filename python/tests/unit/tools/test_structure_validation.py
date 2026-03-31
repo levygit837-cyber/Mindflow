@@ -46,7 +46,7 @@ def test_class_definitions():
     
     try:
         # Test filesystem operations
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_operations.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_operations.py") as f:
             content = f.read()
         
         required_classes = ["EnhancedFileReadTool", "EnhancedFileWriteTool", "EnhancedFileEditTool"]
@@ -56,7 +56,7 @@ def test_class_definitions():
                 return False
         
         # Test filesystem search
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_search.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_search.py") as f:
             content = f.read()
         
         required_classes = ["EnhancedGrepTool", "EnhancedGlobTool", "EnhancedFindTool"]
@@ -66,7 +66,7 @@ def test_class_definitions():
                 return False
         
         # Test system tools
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "system" / "enhanced_shell.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "system" / "enhanced_shell.py") as f:
             content = f.read()
         
         required_classes = ["EnhancedShellExecutor", "EnhancedProcessManager"]
@@ -89,7 +89,7 @@ def test_method_definitions():
     
     try:
         # Check enhanced operations
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_operations.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_operations.py") as f:
             content = f.read()
         
         required_methods = ["execute", "get_schema"]
@@ -99,7 +99,7 @@ def test_method_definitions():
                 return False
         
         # Check enhanced search
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_search.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "enhanced_search.py") as f:
             content = f.read()
         
         for method in required_methods:
@@ -108,7 +108,7 @@ def test_method_definitions():
                 return False
         
         # Check enhanced shell
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "system" / "enhanced_shell.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "system" / "enhanced_shell.py") as f:
             content = f.read()
         
         for method in required_methods:
@@ -130,7 +130,7 @@ def test_import_structure():
     
     try:
         # Check filesystem __init__
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "__init__.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "filesystem" / "__init__.py") as f:
             content = f.read()
         
         required_imports = [
@@ -148,7 +148,7 @@ def test_import_structure():
                 return False
         
         # Check system __init__
-        with open(project_root / "python" / "mindflow_backend" / "tools" / "system" / "__init__.py", 'r') as f:
+        with open(project_root / "python" / "mindflow_backend" / "tools" / "system" / "__init__.py") as f:
             content = f.read()
         
         required_imports = [
@@ -184,7 +184,7 @@ def test_no_deepagents_dependencies():
         
         for file_path in enhanced_files:
             full_path = base_path / file_path
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 content = f.read()
             
             # Check for DeepAgents imports

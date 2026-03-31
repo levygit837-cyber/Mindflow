@@ -6,12 +6,12 @@ and bidirectional streams with buffering and backpressure handling.
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
-import asyncio
-from collections import deque
 import time
+from collections import deque
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -30,14 +30,14 @@ class StreamNode(StatefulNode, BaseNode):
         self,
         node_id: str = "stream",
         stream_type: str = "passthrough",  # passthrough, buffer, transform, filter, split, merge
-        input_stream: Optional[AsyncIterator] = None,
-        output_stream: Optional[Callable[[Any], None]] = None,
-        transform_function: Optional[Callable[[Any], Any]] = None,
-        filter_condition: Optional[Callable[[Any], bool]] = None,
+        input_stream: AsyncIterator | None = None,
+        output_stream: Callable[[Any], None] | None = None,
+        transform_function: Callable[[Any], Any] | None = None,
+        filter_condition: Callable[[Any], bool] | None = None,
         buffer_size: int = 1000,
         flush_interval: float = 1.0,
-        batch_size: Optional[int] = None,
-        backpressure_limit: Optional[int] = None,
+        batch_size: int | None = None,
+        backpressure_limit: int | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -79,7 +79,7 @@ class StreamNode(StatefulNode, BaseNode):
         await super().initialize()
         self._stream_stats["start_time"] = time.time()
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the stream operation based on configured type."""
         input_stream = state.get("input_stream", self.input_stream)
         
@@ -173,7 +173,7 @@ class StreamNode(StatefulNode, BaseNode):
                     transformed_item = self.transform_function(item)
                     yield transformed_item
                     await self._output_to_stream(transformed_item)
-                except Exception as e:
+                except Exception:
                     # Log transformation error but continue
                     self._stream_stats["items_filtered"] += 1
                     continue
@@ -200,7 +200,7 @@ class StreamNode(StatefulNode, BaseNode):
                     else:
                         self._stream_stats["items_filtered"] += 1
                         continue
-                except Exception as e:
+                except Exception:
                     # Log filter error but continue
                     self._stream_stats["items_filtered"] += 1
                     continue
@@ -271,7 +271,7 @@ class StreamNode(StatefulNode, BaseNode):
         """Resume the stream processing."""
         self._paused = False
     
-    def get_stream_stats(self) -> Dict[str, Any]:
+    def get_stream_stats(self) -> dict[str, Any]:
         """Get current stream statistics."""
         current_time = time.time()
         runtime = current_time - self._stream_stats.get("start_time", current_time)
@@ -341,7 +341,7 @@ class BatchStreamNode(StreamNode):
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute batched stream processing with timeout."""
         input_stream = state.get("input_stream", self.input_stream)
         
@@ -374,8 +374,8 @@ class SplitStreamNode(StreamNode):
     
     def __init__(
         self,
-        split_function: Callable[[Any], List[Any]],
-        output_streams: List[Callable[[Any], None]],
+        split_function: Callable[[Any], list[Any]],
+        output_streams: list[Callable[[Any], None]],
         node_id: str = "split_stream",
         description: str = "Split stream processing"
     ) -> None:
@@ -388,7 +388,7 @@ class SplitStreamNode(StreamNode):
         self.split_function = split_function
         self.output_streams = output_streams
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute split stream processing."""
         input_stream = state.get("input_stream", self.input_stream)
         
@@ -407,7 +407,7 @@ class SplitStreamNode(StreamNode):
                         if i < len(self.output_streams):
                             await self.output_streams[i](split_item)
                 
-                except Exception as e:
+                except Exception:
                     # Log split error but continue
                     self._stream_stats["items_filtered"] += 1
                     continue

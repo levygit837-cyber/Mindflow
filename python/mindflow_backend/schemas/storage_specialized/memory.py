@@ -6,18 +6,14 @@ and data structures.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 # Import global schemas to extend
 from mindflow_backend.schemas.memory.contracts import (
-    MemoryEntry,
     ContextWindow,
-    MemoryType,
-    MemoryStatus,
-    RetrievalStrategy,
+    MemoryEntry,
 )
 
 
@@ -26,23 +22,23 @@ class StorageMemoryEntry(MemoryEntry):
     
     # Storage-specific fields
     storage_backend: str = Field(description="Storage backend used")
-    storage_location: Optional[str] = Field(default=None, description="Storage location identifier")
+    storage_location: str | None = Field(default=None, description="Storage location identifier")
     
     # Persistence metadata
     is_persistent: bool = Field(default=True, description="Is persistent storage")
     backup_count: int = Field(default=0, description="Number of backups")
-    last_backup: Optional[str] = Field(default=None, description="Last backup timestamp")
+    last_backup: str | None = Field(default=None, description="Last backup timestamp")
     
     # Compression and optimization
     is_compressed: bool = Field(default=False, description="Is compressed")
-    compression_algorithm: Optional[str] = Field(default=None, description="Compression algorithm")
+    compression_algorithm: str | None = Field(default=None, description="Compression algorithm")
     is_encrypted: bool = Field(default=False, description="Is encrypted")
-    encryption_key_id: Optional[str] = Field(default=None, description="Encryption key identifier")
+    encryption_key_id: str | None = Field(default=None, description="Encryption key identifier")
     
     # Versioning
     version: int = Field(default=1, description="Entry version")
-    parent_version: Optional[int] = Field(default=None, description="Parent version")
-    change_log: List[Dict[str, Any]] = Field(default_factory=list, description="Change log")
+    parent_version: int | None = Field(default=None, description="Parent version")
+    change_log: list[dict[str, Any]] = Field(default_factory=list, description="Change log")
 
 
 class StorageMemoryWindow(ContextWindow):
@@ -50,22 +46,22 @@ class StorageMemoryWindow(ContextWindow):
     
     # Storage-specific fields
     storage_backend: str = Field(description="Storage backend used")
-    storage_path: Optional[str] = Field(default=None, description="Storage path")
+    storage_path: str | None = Field(default=None, description="Storage path")
     
     # Window optimization
     is_optimized: bool = Field(default=False, description="Is optimized")
     optimization_score: float = Field(default=0.0, description="Optimization score")
-    compression_ratio: Optional[float] = Field(default=None, description="Compression ratio")
+    compression_ratio: float | None = Field(default=None, description="Compression ratio")
     
     # Persistence
     is_persistent: bool = Field(default=True, description="Is persistent")
     auto_refresh: bool = Field(default=False, description="Auto-refresh enabled")
-    refresh_interval: Optional[int] = Field(default=None, description="Refresh interval in seconds")
+    refresh_interval: int | None = Field(default=None, description="Refresh interval in seconds")
     
     # Index information
     is_indexed: bool = Field(default=False, description="Is indexed")
-    index_type: Optional[str] = Field(default=None, description="Index type")
-    index_size: Optional[int] = Field(default=None, description="Index size")
+    index_type: str | None = Field(default=None, description="Index type")
+    index_size: int | None = Field(default=None, description="Index size")
 
 
 class StorageMemoryStats(BaseModel):
@@ -86,21 +82,21 @@ class StorageMemoryStats(BaseModel):
     operations_per_sec: float = Field(default=0.0, description="Operations per second")
     
     # Type distribution
-    entries_by_type: Dict[str, int] = Field(default_factory=dict, description="Entries by type")
-    entries_by_status: Dict[str, int] = Field(default_factory=dict, description="Entries by status")
+    entries_by_type: dict[str, int] = Field(default_factory=dict, description="Entries by type")
+    entries_by_status: dict[str, int] = Field(default_factory=dict, description="Entries by status")
     
     # Session distribution
     active_sessions: int = Field(default=0, description="Active sessions")
     total_sessions: int = Field(default=0, description="Total sessions")
     
     # Storage backend info
-    backends_in_use: List[str] = Field(default_factory=list, description="Storage backends in use")
+    backends_in_use: list[str] = Field(default_factory=list, description="Storage backends in use")
     primary_backend: str = Field(description="Primary storage backend")
     
     # Timestamps
-    last_cleanup: Optional[str] = Field(default=None, description="Last cleanup")
-    last_optimization: Optional[str] = Field(default=None, description="Last optimization")
-    last_backup: Optional[str] = Field(default=None, description="Last backup")
+    last_cleanup: str | None = Field(default=None, description="Last cleanup")
+    last_optimization: str | None = Field(default=None, description="Last optimization")
+    last_backup: str | None = Field(default=None, description="Last backup")
 
 
 class MemoryStorageConfig(BaseModel):
@@ -108,7 +104,7 @@ class MemoryStorageConfig(BaseModel):
     
     # Storage backends
     primary_backend: str = Field(description="Primary storage backend")
-    fallback_backends: List[str] = Field(default_factory=list, description="Fallback backends")
+    fallback_backends: list[str] = Field(default_factory=list, description="Fallback backends")
     
     # Performance configuration
     cache_enabled: bool = Field(default=True, description="Enable caching")
@@ -144,9 +140,9 @@ class MemoryMigrationRequest(BaseModel):
     target_backend: str = Field(description="Target storage backend")
     
     # Scope
-    session_ids: Optional[List[str]] = Field(default=None, description="Specific session IDs")
-    date_range: Optional[Dict[str, str]] = Field(default=None, description="Date range filter")
-    memory_types: Optional[List[str]] = Field(default=None, description="Memory types to migrate")
+    session_ids: list[str] | None = Field(default=None, description="Specific session IDs")
+    date_range: dict[str, str] | None = Field(default=None, description="Date range filter")
+    memory_types: list[str] | None = Field(default=None, description="Memory types to migrate")
     
     # Migration options
     dry_run: bool = Field(default=False, description="Dry run mode")
@@ -181,11 +177,11 @@ class MemoryMigrationResponse(BaseModel):
     count_matched: bool = Field(default=True, description="Count verification passed")
     
     # Error information
-    errors: List[Dict[str, Any]] = Field(default_factory=list, description="Migration errors")
-    warnings: List[Dict[str, Any]] = Field(default_factory=list, description="Migration warnings")
+    errors: list[dict[str, Any]] = Field(default_factory=list, description="Migration errors")
+    warnings: list[dict[str, Any]] = Field(default_factory=list, description="Migration warnings")
     
     # Request info
-    migration_id: Optional[str] = Field(default=None, description="Migration ID")
+    migration_id: str | None = Field(default=None, description="Migration ID")
     source_backend: str = Field(description="Source backend")
     target_backend: str = Field(description="Target backend")
 
@@ -195,12 +191,12 @@ class MemoryCleanupRequest(BaseModel):
     
     # Cleanup scope
     cleanup_type: str = Field(description="Cleanup type: expired/duplicates/orphaned")
-    target_backends: Optional[List[str]] = Field(default=None, description="Target backends")
+    target_backends: list[str] | None = Field(default=None, description="Target backends")
     
     # Filtering
-    older_than_days: Optional[int] = Field(default=None, description="Older than N days")
-    memory_types: Optional[List[str]] = Field(default=None, description="Memory types")
-    session_ids: Optional[List[str]] = Field(default=None, description="Specific sessions")
+    older_than_days: int | None = Field(default=None, description="Older than N days")
+    memory_types: list[str] | None = Field(default=None, description="Memory types")
+    session_ids: list[str] | None = Field(default=None, description="Specific sessions")
     
     # Cleanup options
     dry_run: bool = Field(default=False, description="Dry run mode")
@@ -223,7 +219,7 @@ class MemoryCleanupResponse(BaseModel):
     
     # Space recovered
     space_recovered_mb: float = Field(default=0.0, description="Space recovered in MB")
-    compression_ratio: Optional[float] = Field(default=None, description="Achieved compression ratio")
+    compression_ratio: float | None = Field(default=None, description="Achieved compression ratio")
     
     # Performance info
     cleanup_time_seconds: float = Field(description="Cleanup time in seconds")
@@ -231,8 +227,8 @@ class MemoryCleanupResponse(BaseModel):
     
     # Safety info
     backup_created: bool = Field(default=False, description="Backup created")
-    backup_location: Optional[str] = Field(default=None, description="Backup location")
+    backup_location: str | None = Field(default=None, description="Backup location")
     
     # Request info
-    cleanup_id: Optional[str] = Field(default=None, description="Cleanup ID")
-    warnings: List[Dict[str, Any]] = Field(default_factory=list, description="Cleanup warnings")
+    cleanup_id: str | None = Field(default=None, description="Cleanup ID")
+    warnings: list[dict[str, Any]] = Field(default_factory=list, description="Cleanup warnings")

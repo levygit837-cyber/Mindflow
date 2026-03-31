@@ -15,19 +15,24 @@ from mindflow_backend.agents.prompts.specialized.code_review import CODE_REVIEW_
 from mindflow_backend.agents.prompts.specialized.context_governance import CONTEXT_GOVERNANCE_PROMPT
 from mindflow_backend.agents.prompts.specialized.deep_analysis import DEEP_ANALYSIS_PROMPT
 from mindflow_backend.agents.prompts.specialized.memory_protocol import MEMORY_PROTOCOL_PROMPT
-from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import (
-    ORCHESTRATOR_REFLECTION_PROMPT,
-)
 from mindflow_backend.agents.prompts.specialized.orchestrator_chains import (
     ORCHESTRATOR_CHAINS_PROMPT,
 )
 from mindflow_backend.agents.prompts.specialized.orchestrator_planning import (
     ORCHESTRATOR_PLANNING_PROMPT,
 )
+from mindflow_backend.agents.prompts.specialized.orchestrator_reflection import (
+    ORCHESTRATOR_REFLECTION_PROMPT,
+)
 from mindflow_backend.agents.prompts.specialized.planning import PLANNING_PROMPT
 
 # Specialized functions
 from mindflow_backend.agents.prompts.specialized.security_analysis import SECURITY_ANALYSIS_PROMPT
+from mindflow_backend.agents.prompts.specialized.codebase_exploration import (
+    CODEBASE_EXPLORATION_SYSTEM_PROMPT,
+    EXPLORATION_MODE_DETECTION,
+    build_codebase_exploration_prompt,
+)
 
 __all__ = [
     "SECURITY_ANALYSIS_PROMPT",

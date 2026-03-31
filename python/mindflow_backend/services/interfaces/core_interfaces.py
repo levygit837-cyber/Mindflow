@@ -8,11 +8,11 @@ Use: from mindflow_backend.interfaces.services import CoreServiceInterface, Agen
 
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.services.core import (
-    CoreServiceInterface,
     AgentServiceInterface,
-    SessionServiceInterface,
+    CoreServiceInterface,
     MemoryServiceInterface,
     ProviderServiceInterface,
+    SessionServiceInterface,
 )
 
 # Maintain backward compatibility

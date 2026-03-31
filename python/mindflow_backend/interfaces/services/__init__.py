@@ -4,18 +4,42 @@ Provides contracts and protocols for all service layer components including
 communication, monitoring, orchestration, storage, and core services.
 """
 
-from .base import BaseServiceInterface, ServiceLifecycleInterface, CacheableServiceInterface, ConfigurableServiceInterface, BaseAbstractService
-from .communication import CommunicationServiceInterface, GrpcServiceInterface, StreamingServiceInterface
-from .core import CoreServiceInterface, AgentServiceInterface, SessionServiceInterface, MemoryServiceInterface, ProviderServiceInterface
-from .memory import MemoryServiceInterface as MemoryServiceInterfaceNew, ContextMemoryInterface, VectorMemoryInterface
-from .monitoring import MonitoringServiceInterface, HealthServiceInterface, MetricsServiceInterface, ReviewServiceInterface
+from .base import (
+    BaseAbstractService,
+    BaseServiceInterface,
+    CacheableServiceInterface,
+    ConfigurableServiceInterface,
+    ServiceLifecycleInterface,
+)
+from .communication import (
+    CommunicationServiceInterface,
+    GrpcServiceInterface,
+    StreamingServiceInterface,
+)
+from .context import EmbeddingServiceInterface as ContextEmbeddingServiceInterface
+from .context import RetrievalServiceInterface as ContextRetrievalServiceInterface
+from .context import VectorStoreInterface as ContextVectorServiceInterface
+from .core import (
+    AgentServiceInterface,
+    CoreServiceInterface,
+    MemoryServiceInterface,
+    ProviderServiceInterface,
+    SessionServiceInterface,
+)
+from .memory import ContextMemoryInterface, VectorMemoryInterface
+from .memory import MemoryServiceInterface as MemoryServiceInterfaceNew
+from .monitoring import (
+    HealthServiceInterface,
+    MetricsServiceInterface,
+    MonitoringServiceInterface,
+    ReviewServiceInterface,
+)
 from .orchestration import (
     OrchestrationServiceInterface,
-    TaskServiceInterface,
     RoutingServiceInterface,
+    TaskServiceInterface,
     TodoPlanningServiceInterface,
 )
-from .context import RetrievalServiceInterface as ContextRetrievalServiceInterface, EmbeddingServiceInterface as ContextEmbeddingServiceInterface, VectorStoreInterface as ContextVectorServiceInterface
 from .pinchtab import (
     PinchTabBrowserServiceInterface,
     PinchTabContainerOrchestratorInterface,

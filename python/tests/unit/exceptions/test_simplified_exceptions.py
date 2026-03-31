@@ -7,20 +7,15 @@ compatibility with existing schemas and functionality.
 from __future__ import annotations
 
 import pytest
-import uuid
-from datetime import datetime
 
 from mindflow_backend.exceptions.base.core_new import (
-    MindFlowError,
-    SystemError,
-    NetworkError,
-    TimeoutError,
-    ResourceError,
-    ValidationError,
     AuthenticationError,
-    AuthorizationError,
-    NotFoundError,
     ErrorFactory,
+    MindFlowError,
+    NetworkError,
+    ResourceError,
+    TimeoutError,
+    ValidationError,
 )
 from mindflow_backend.exceptions.base.patterns_new import (
     ExceptionTemplates,
@@ -254,8 +249,10 @@ class TestBackwardCompatibility:
     def test_legacy_imports_available(self):
         """Test that legacy exceptions are still available."""
         try:
+            from mindflow_backend.exceptions.base.business import (
+                BusinessLogicError as LegacyBusinessLogicError,
+            )
             from mindflow_backend.exceptions.base.core import MindFlowError as LegacyMindFlowError
-            from mindflow_backend.exceptions.base.business import BusinessLogicError as LegacyBusinessLogicError
             
             # Should be able to create legacy exceptions
             legacy_error = LegacyMindFlowError("Legacy test")
@@ -269,8 +266,8 @@ class TestBackwardCompatibility:
     
     def test_new_vs_legacy_compatibility(self):
         """Test that new and legacy exceptions can work together."""
-        from mindflow_backend.exceptions.base.core_new import MindFlowError as NewMindFlowError
         from mindflow_backend.exceptions.base.core import MindFlowError as OldMindFlowError
+        from mindflow_backend.exceptions.base.core_new import MindFlowError as NewMindFlowError
         
         # Both should be MindFlowError instances
         new_error = NewMindFlowError("New error")
@@ -338,7 +335,7 @@ def run_all_tests():
             except Exception as e:
                 print(f"  ❌ {test_class.__name__}.{test_method.__name__} failed: {e}")
     
-    print(f"\n🎉 All tests completed!")
+    print("\n🎉 All tests completed!")
     print("\n📊 Test Summary:")
     print(f"  Ran {len(test_classes)} test classes")
     print("  All core functionality validated")

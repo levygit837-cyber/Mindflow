@@ -8,8 +8,8 @@ A comprehensive skill management system for agents with support for:
 - Lifecycle management
 """
 
-from .base.skill import BaseSkill
 from .base.executor import SkillExecutor
+from .base.skill import BaseSkill
 from .core.analysis import AnalysisSkill
 from .core.coding import CodingSkill
 from .core.research import ResearchSkill

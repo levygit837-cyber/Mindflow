@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Awaitable, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from mindflow_backend.schemas.session.review import SessionReviewResult
 from mindflow_backend.workers.system.schemas.session_review_tasks import (

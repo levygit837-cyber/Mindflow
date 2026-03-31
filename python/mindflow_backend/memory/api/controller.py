@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 from typing import Any
+
 from fastapi import Request
 
-from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, audit_log
+from mindflow_backend.api.controllers.base_controller import BaseController, audit_log, require_auth
+from mindflow_backend.memory import get_memory_service
 from mindflow_backend.memory.api.schemas import (
-    MemorySearchRequest,
-    MemorySummaryRequest,
-    ContextWindowRequest,
+    ContextWindowResponse,
     MemoryResponse,
+    MemorySearchRequest,
     MemorySearchResponse,
     MemorySummaryResponse,
-    ContextWindowResponse
 )
-from mindflow_backend.memory import get_memory_service
 
 
 class MemoryController(BaseController):

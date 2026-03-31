@@ -15,14 +15,14 @@ async def test_enhanced_filesystem_tools():
     
     try:
         from mindflow_backend.tools.filesystem.enhanced_operations import (
+            EnhancedFileEditTool,
             EnhancedFileReadTool,
             EnhancedFileWriteTool,
-            EnhancedFileEditTool,
         )
         from mindflow_backend.tools.filesystem.enhanced_search import (
-            EnhancedGrepTool,
-            EnhancedGlobTool,
             EnhancedFindTool,
+            EnhancedGlobTool,
+            EnhancedGrepTool,
         )
         
         # Test Enhanced File Read
@@ -117,8 +117,8 @@ async def test_enhanced_system_tools():
     
     try:
         from mindflow_backend.tools.system.enhanced_shell import (
-            EnhancedShellExecutor,
             EnhancedProcessManager,
+            EnhancedShellExecutor,
         )
         
         # Test Enhanced Shell Executor
@@ -155,10 +155,10 @@ async def test_tool_integration():
     print("🔗 Testing Tool Integration...")
     
     try:
+        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
         from mindflow_backend.tools.core.registry import EnhancedToolRegistry
         from mindflow_backend.tools.filesystem.enhanced_operations import EnhancedFileReadTool
         from mindflow_backend.tools.system.enhanced_shell import EnhancedShellExecutor
-        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
         
         # Create registry
         registry = EnhancedToolRegistry()
@@ -204,11 +204,10 @@ async def test_backward_compatibility():
     
     try:
         from mindflow_backend.tools.filesystem import (
-            FileReadTool,
-            FileWriteTool,
-            GrepSearchTool,
             EnhancedFileReadTool,
             EnhancedGrepTool,
+            FileReadTool,
+            GrepSearchTool,
         )
         
         # Test that original tools still work

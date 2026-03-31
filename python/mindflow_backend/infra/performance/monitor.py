@@ -7,19 +7,19 @@ real-time metrics, anomaly detection, and alerting.
 from __future__ import annotations
 
 import asyncio
-import time
-import psutil
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable
-from datetime import datetime, UTC, timedelta
-from enum import Enum
-import json
 import statistics
-from collections import deque, defaultdict
+import time
+from collections import defaultdict, deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from enum import Enum
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
+import psutil
+
 from mindflow_backend.infra.cache.redis_client import get_redis_client
-from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -47,10 +47,10 @@ class MetricPoint:
     name: str
     value: float
     timestamp: datetime
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
     metric_type: MetricType = MetricType.GAUGE
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -75,9 +75,9 @@ class MetricAggregation:
     p95: float
     p99: float
     timestamp: datetime
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -107,10 +107,10 @@ class Alert:
     current_value: float
     timestamp: datetime
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    resolved_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -139,7 +139,7 @@ class AnomalyDetector:
         """
         self.window_size = window_size
         self.threshold = threshold
-        self._data_windows: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))
+        self._data_windows: dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))
         
     def add_point(self, metric_name: str, value: float) -> bool:
         """Add data point and check for anomaly.
@@ -169,7 +169,7 @@ class AnomalyDetector:
         
         return z_score > self.threshold
         
-    def get_statistics(self, metric_name: str) -> Dict[str, float]:
+    def get_statistics(self, metric_name: str) -> dict[str, float]:
         """Get statistics for metric.
         
         Args:
@@ -211,25 +211,25 @@ class PerformanceMonitor:
         self._is_initialized = False
         
         # Metric storage
-        self._metrics: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self._aggregations: Dict[str, MetricAggregation] = {}
-        self._alerts: Dict[str, Alert] = {}
+        self._metrics: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self._aggregations: dict[str, MetricAggregation] = {}
+        self._alerts: dict[str, Alert] = {}
         
         # Monitoring configuration
         self._collection_interval = 30  # seconds
         self._aggregation_window = 300  # 5 minutes
-        self._alert_thresholds: Dict[str, Dict[str, Any]] = {}
+        self._alert_thresholds: dict[str, dict[str, Any]] = {}
         
         # Anomaly detection
         self._anomaly_detector = AnomalyDetector()
         
         # System monitoring
         self._system_metrics_enabled = True
-        self._custom_metrics: Dict[str, Callable] = {}
+        self._custom_metrics: dict[str, Callable] = {}
         
         # Background tasks
-        self._collection_task: Optional[asyncio.Task] = None
-        self._aggregation_task: Optional[asyncio.Task] = None
+        self._collection_task: asyncio.Task | None = None
+        self._aggregation_task: asyncio.Task | None = None
         self._is_collecting = False
         
         # Statistics
@@ -421,7 +421,7 @@ class PerformanceMonitor:
             except Exception as e:
                 _logger.error("custom_metric_collection_failed", name=name, error=str(e))
                 
-    async def _record_metric(self, name: str, value: float, timestamp: datetime, tags: Optional[Dict[str, str]] = None) -> None:
+    async def _record_metric(self, name: str, value: float, timestamp: datetime, tags: dict[str, str] | None = None) -> None:
         """Record a metric point.
         
         Args:
@@ -498,7 +498,7 @@ class PerformanceMonitor:
                 except Exception as e:
                     _logger.error("aggregation_storage_failed", name=name, error=str(e))
                     
-    def _percentile(self, values: List[float], percentile: int) -> float:
+    def _percentile(self, values: list[float], percentile: int) -> float:
         """Calculate percentile of values.
         
         Args:
@@ -697,7 +697,7 @@ class PerformanceMonitor:
             return True
         return False
         
-    def get_metric_history(self, name: str, hours: int = 1) -> List[MetricPoint]:
+    def get_metric_history(self, name: str, hours: int = 1) -> list[MetricPoint]:
         """Get metric history.
         
         Args:
@@ -714,7 +714,7 @@ class PerformanceMonitor:
             if point.timestamp >= cutoff_time
         ]
         
-    def get_metric_aggregation(self, name: str) -> Optional[MetricAggregation]:
+    def get_metric_aggregation(self, name: str) -> MetricAggregation | None:
         """Get latest metric aggregation.
         
         Args:
@@ -725,7 +725,7 @@ class PerformanceMonitor:
         """
         return self._aggregations.get(name)
         
-    def get_active_alerts(self) -> List[Alert]:
+    def get_active_alerts(self) -> list[Alert]:
         """Get active (unresolved) alerts.
         
         Returns:
@@ -733,7 +733,7 @@ class PerformanceMonitor:
         """
         return [alert for alert in self._alerts.values() if not alert.resolved]
         
-    def get_all_alerts(self) -> List[Alert]:
+    def get_all_alerts(self) -> list[Alert]:
         """Get all alerts.
         
         Returns:
@@ -741,7 +741,7 @@ class PerformanceMonitor:
         """
         return list(self._alerts.values())
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get monitor statistics.
         
         Returns:
@@ -767,7 +767,7 @@ class PerformanceMonitor:
             
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform monitor health check.
         
         Returns:
@@ -814,7 +814,7 @@ class PerformanceMonitor:
 
 
 # Global performance monitor instance
-_performance_monitor: Optional[PerformanceMonitor] = None
+_performance_monitor: PerformanceMonitor | None = None
 
 
 def get_performance_monitor() -> PerformanceMonitor:

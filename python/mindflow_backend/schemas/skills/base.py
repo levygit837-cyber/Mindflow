@@ -1,9 +1,10 @@
 """Base schemas for Skills system."""
 
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field, validator
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field, validator
 
 
 class SkillType(str, Enum):
@@ -48,10 +49,10 @@ class SkillMetadata(BaseModel):
     name: str = Field(..., description="Skill name")
     description: str = Field(..., description="Skill description")
     version: str = Field(default="1.0.0", description="Skill version")
-    author: Optional[str] = Field(None, description="Skill author")
-    tags: List[str] = Field(default_factory=list, description="Skill tags")
+    author: str | None = Field(None, description="Skill author")
+    tags: list[str] = Field(default_factory=list, description="Skill tags")
     created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    updated_at: datetime | None = Field(None, description="Last update timestamp")
     
     class Config:
         json_encoders = {
@@ -65,7 +66,7 @@ class SkillConfiguration(BaseModel):
     priority: SkillPriority = Field(default=SkillPriority.MEDIUM, description="Execution priority")
     timeout_seconds: int = Field(default=300, description="Execution timeout in seconds")
     max_retries: int = Field(default=3, description="Maximum retry attempts")
-    custom_settings: Dict[str, Any] = Field(default_factory=dict, description="Custom settings")
+    custom_settings: dict[str, Any] = Field(default_factory=dict, description="Custom settings")
     
     @validator('timeout_seconds')
     def validate_timeout(cls, v):
@@ -76,19 +77,19 @@ class SkillConfiguration(BaseModel):
 
 class SkillInput(BaseModel):
     """Input data for skill execution."""
-    data: Dict[str, Any] = Field(..., description="Input data")
-    context: Optional[Dict[str, Any]] = Field(None, description="Execution context")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Skill parameters")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Input metadata")
+    data: dict[str, Any] = Field(..., description="Input data")
+    context: dict[str, Any] | None = Field(None, description="Execution context")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Skill parameters")
+    metadata: dict[str, Any] | None = Field(None, description="Input metadata")
 
 
 class SkillOutput(BaseModel):
     """Output data from skill execution."""
     success: bool = Field(..., description="Whether execution was successful")
-    data: Optional[Dict[str, Any]] = Field(None, description="Output data")
-    error: Optional[str] = Field(None, description="Error message if failed")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Output metadata")
-    execution_time_ms: Optional[int] = Field(None, description="Execution time in milliseconds")
+    data: dict[str, Any] | None = Field(None, description="Output data")
+    error: str | None = Field(None, description="Error message if failed")
+    metadata: dict[str, Any] | None = Field(None, description="Output metadata")
+    execution_time_ms: int | None = Field(None, description="Execution time in milliseconds")
 
 
 class SkillResult(BaseModel):

@@ -7,31 +7,24 @@ builder patterns, and auto-conversion capabilities.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 
-from mindflow_backend.exceptions.base.core import (
-    MindFlowError,
-    SystemError,
-    NetworkError,
-    TimeoutError,
-    ConfigurationError,
-)
-from mindflow_backend.exceptions.base.business import (
-    BusinessLogicError,
-    ValidationError,
+from mindflow_backend.exceptions.base.business_new import (
     AuthenticationError,
     AuthorizationError,
     NotFoundError,
+    ValidationError,
+)
+from mindflow_backend.exceptions.base.core import (
+    MindFlowError,
+    NetworkError,
+    TimeoutError,
 )
 from mindflow_backend.exceptions.base.patterns import (
-    ExceptionTemplates,
     ErrorContext,
+    ExceptionTemplates,
 )
 from mindflow_backend.schemas.errors import (
-    ValidationErrorSchema,
     AuthenticationErrorSchema,
-    ErrorCategory,
-    ErrorSeverity,
 )
 
 
@@ -47,7 +40,7 @@ def demo_fluent_interfaces():
              .with_user_context("user123", "session456")
              .with_tags("database", "critical"))
     
-    print(f"✅ Created error with fluent interface:")
+    print("✅ Created error with fluent interface:")
     print(f"   Error ID: {error.error_id}")
     print(f"   Component: {error.component}")
     print(f"   Context: {error.context}")
@@ -62,7 +55,7 @@ def demo_fluent_interfaces():
                        .with_user_message("Please provide a valid email address")
                        .with_suggestion("Use format: user@example.com"))
     
-    print(f"\n✅ Validation error with fluent interface:")
+    print("\n✅ Validation error with fluent interface:")
     print(f"   Field: {validation_error.field}")
     print(f"   Value: {validation_error.value}")
     print(f"   Expected format: {validation_error.expected_format}")
@@ -87,7 +80,7 @@ def demo_builder_patterns():
                  .with_tags("authentication", "oauth", "google")
                  .build())
     
-    print(f"✅ Built authentication error:")
+    print("✅ Built authentication error:")
     print(f"   Message: {auth_error.message}")
     print(f"   Auth method: {auth_error.auth_method}")
     print(f"   User: {auth_error.user_identifier}")
@@ -105,7 +98,7 @@ def demo_builder_patterns():
                      .set_recoverable(True)
                      .build())
     
-    print(f"\n✅ Built network error:")
+    print("\n✅ Built network error:")
     print(f"   Endpoint: {network_error.endpoint}")
     print(f"   Timeout: {network_error.timeout}")
     print(f"   Retry count: {network_error.retry_count}")
@@ -123,7 +116,7 @@ def demo_templates():
         value=None
     ).build()
     
-    print(f"✅ Missing field template:")
+    print("✅ Missing field template:")
     print(f"   Field: {missing_field_error.field}")
     print(f"   User message: {missing_field_error.user_message}")
     print(f"   Suggestion: {missing_field_error.suggestion}")
@@ -135,7 +128,7 @@ def demo_templates():
         "phone_number"
     ).build()
     
-    print(f"\n✅ Invalid format template:")
+    print("\n✅ Invalid format template:")
     print(f"   Field: {invalid_format_error.field}")
     print(f"   Value: {invalid_format_error.value}")
     print(f"   Expected format: {invalid_format_error.expected_format}")
@@ -147,7 +140,7 @@ def demo_templates():
         user_identifier="john.doe"
     ).build()
     
-    print(f"\n✅ Authentication failed template:")
+    print("\n✅ Authentication failed template:")
     print(f"   Error code: {auth_failed_error.error_code}")
     print(f"   User message: {auth_failed_error.user_message}")
     print(f"   Suggestion: {auth_failed_error.suggestion}")
@@ -170,7 +163,7 @@ def demo_schema_conversion():
     # Convert to schema
     schema = validation_error.to_schema()
     
-    print(f"✅ Converted exception to schema:")
+    print("✅ Converted exception to schema:")
     print(f"   Schema type: {type(schema).__name__}")
     print(f"   Error ID: {schema.error_id}")
     print(f"   Error type: {schema.error_type}")
@@ -189,7 +182,7 @@ def demo_schema_conversion():
     
     auth_schema = auth_error.to_schema()
     
-    print(f"\n✅ Authentication error with associated schema:")
+    print("\n✅ Authentication error with associated schema:")
     print(f"   Schema type: {type(auth_schema).__name__}")
     print(f"   Auth method: {auth_schema.auth_method}")
     print(f"   User identifier: {auth_schema.user_identifier}")
@@ -265,7 +258,7 @@ async def demo_error_context():
             print(f"✅ Operation result: {result}")
             
     except Exception as exc:
-        print(f"✅ Caught enhanced exception:")
+        print("✅ Caught enhanced exception:")
         print(f"   Error type: {type(exc).__name__}")
         print(f"   Error ID: {getattr(exc, 'error_id', None)}")
         print(f"   Context: {getattr(exc, 'context', {})}")
@@ -309,7 +302,7 @@ def demo_create_method():
         operation="test_operation"
     )
     
-    print(f"✅ Created error with create method:")
+    print("✅ Created error with create method:")
     print(f"   Message: {simple_error.message}")
     print(f"   Component: {simple_error.component}")
     print(f"   User ID: {simple_error.user_id}")

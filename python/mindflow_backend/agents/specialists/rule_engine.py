@@ -6,14 +6,18 @@ for dynamic specialist switching.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
 from dataclasses import dataclass
+from typing import Any
 
 from mindflow_backend.agents.core.interfaces import RuleEngine
+from mindflow_backend.config.specialist_rules import RuleConfig, get_specialist_rules
 from mindflow_backend.exceptions import RuleEngineError
-from mindflow_backend.schemas.orchestration.specialists import SpecialistType, TaskComplexity, SpecializationRequirement
-from mindflow_backend.config.specialist_rules import get_specialist_rules, RuleConfig
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.orchestration.specialists import (
+    SpecialistType,
+    SpecializationRequirement,
+    TaskComplexity,
+)
 
 _logger = get_logger(__name__)
 
@@ -36,14 +40,14 @@ class SpecialistRuleEngine(RuleEngine):
     
     def __init__(self, rules_config: RuleConfig | None = None):
         self.rules_config = rules_config or get_specialist_rules()
-        self.custom_rules: List[RuleConfig] = []
+        self.custom_rules: list[RuleConfig] = []
     
     def evaluate(
         self,
         task_description: str,
         task_complexity: TaskComplexity,
         specialization: SpecializationRequirement | None,
-    ) -> List[SpecialistCandidate]:
+    ) -> list[SpecialistCandidate]:
         """Evaluate rules and return specialist candidates."""
         try:
             _logger.debug(
@@ -93,7 +97,7 @@ class SpecialistRuleEngine(RuleEngine):
                 rule_name="evaluation"
             )
     
-    def add_rule(self, rule: Dict[str, Any]) -> None:
+    def add_rule(self, rule: dict[str, Any]) -> None:
         """Add new rule to engine."""
         try:
             rule_config = RuleConfig(
@@ -208,7 +212,7 @@ class SpecialistRuleEngine(RuleEngine):
         
         # Complexity match
         if rule.condition_complexity:
-            reasons.append(f"matches complexity requirement")
+            reasons.append("matches complexity requirement")
         
         # Specialization match
         if rule.required_specialization:
@@ -216,7 +220,7 @@ class SpecialistRuleEngine(RuleEngine):
         
         return rule.description + " (" + "; ".join(reasons) + ")"
     
-    def get_rule_stats(self) -> Dict[str, Any]:
+    def get_rule_stats(self) -> dict[str, Any]:
         """Get statistics about loaded rules."""
         default_rules = self.rules_config.get_all_rules()
         all_rules = default_rules + self.custom_rules

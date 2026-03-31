@@ -8,8 +8,8 @@ Provides fundamental research agent components:
 
 from __future__ import annotations
 
-from .enhanced_researcher import *
 from .enhanced_query_planner import *
+from .enhanced_researcher import *
 from .query_engine import *
 
 __all__ = [

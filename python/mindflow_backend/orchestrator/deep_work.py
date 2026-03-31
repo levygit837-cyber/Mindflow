@@ -10,7 +10,7 @@ Key Concepts:
 - Orchestrator manages the continuation flow
 """
 
-from typing import Any, TypedDict
+from typing import TypedDict
 
 
 class ContinuationSignal(TypedDict, total=False):

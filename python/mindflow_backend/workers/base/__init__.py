@@ -1,9 +1,9 @@
 """Base worker module."""
 
 from .exceptions import (
-    WorkerError,
     WorkerConfigurationError,
     WorkerConnectionError,
+    WorkerError,
     WorkerProcessingError,
 )
 from .worker import BaseWorker, WorkerResult, WorkerStatus

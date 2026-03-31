@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union, Callable
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.infra.config import get_settings
 
 _logger = get_logger(__name__)
 
@@ -31,11 +30,11 @@ class MetricType(Enum):
 @dataclass
 class MetricValue:
     """Single metric value with timestamp."""
-    value: Union[int, float]
+    value: int | float
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "value": self.value,
@@ -51,13 +50,13 @@ class MetricSummary:
     metric_type: MetricType
     count: int = 0
     sum_value: float = 0.0
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
+    min_value: float | None = None
+    max_value: float | None = None
     avg_value: float = 0.0
-    last_value: Optional[float] = None
-    last_updated: Optional[datetime] = None
+    last_value: float | None = None
+    last_updated: datetime | None = None
     
-    def update(self, value: Union[int, float]) -> None:
+    def update(self, value: int | float) -> None:
         """Update summary with new value."""
         self.count += 1
         self.sum_value += float(value)
@@ -72,7 +71,7 @@ class MetricSummary:
             
         self.avg_value = self.sum_value / self.count
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "metric_name": self.metric_name,
@@ -102,7 +101,7 @@ class Metric:
         self.metric_type = metric_type
         self.description = description
         self.created_at = datetime.now(UTC)
-        self.labels: Dict[str, str] = {}
+        self.labels: dict[str, str] = {}
         
     def add_label(self, key: str, value: str) -> None:
         """Add a label to the metric.
@@ -113,7 +112,7 @@ class Metric:
         """
         self.labels[key] = value
         
-    def with_labels(self, **labels: str) -> "Metric":
+    def with_labels(self, **labels: str) -> Metric:
         """Create a new metric instance with additional labels.
         
         Args:
@@ -176,7 +175,7 @@ class Gauge(Metric):
         super().__init__(name, MetricType.GAUGE, description)
         self._value = 0
         
-    def set(self, value: Union[int, float]) -> None:
+    def set(self, value: int | float) -> None:
         """Set gauge value.
         
         Args:
@@ -184,7 +183,7 @@ class Gauge(Metric):
         """
         self._value = float(value)
         
-    def inc(self, amount: Union[int, float] = 1) -> None:
+    def inc(self, amount: int | float = 1) -> None:
         """Increment gauge by specified amount.
         
         Args:
@@ -192,7 +191,7 @@ class Gauge(Metric):
         """
         self._value += float(amount)
         
-    def dec(self, amount: Union[int, float] = 1) -> None:
+    def dec(self, amount: int | float = 1) -> None:
         """Decrement gauge by specified amount.
         
         Args:
@@ -212,7 +211,7 @@ class Gauge(Metric):
 class Histogram(Metric):
     """Histogram metric that tracks value distributions."""
     
-    def __init__(self, name: str, buckets: List[float] = None, description: str = ""):
+    def __init__(self, name: str, buckets: list[float] = None, description: str = ""):
         """Initialize histogram.
         
         Args:
@@ -226,7 +225,7 @@ class Histogram(Metric):
         self._count = 0
         self._sum = 0.0
         
-    def observe(self, value: Union[int, float]) -> None:
+    def observe(self, value: int | float) -> None:
         """Observe a value for the histogram.
         
         Args:
@@ -241,7 +240,7 @@ class Histogram(Metric):
             if value_float <= bucket:
                 self._bucket_counts[bucket] += 1
                 
-    def get_bucket_counts(self) -> Dict[float, int]:
+    def get_bucket_counts(self) -> dict[float, int]:
         """Get bucket counts.
         
         Returns:
@@ -287,7 +286,7 @@ class Timer(Metric):
         self._count = 0
         self._sum = 0.0
         
-    def time(self) -> "TimerContext":
+    def time(self) -> TimerContext:
         """Create a timer context manager.
         
         Returns:
@@ -295,7 +294,7 @@ class Timer(Metric):
         """
         return TimerContext(self)
         
-    def observe(self, duration_ms: Union[int, float]) -> None:
+    def observe(self, duration_ms: int | float) -> None:
         """Observe a duration value.
         
         Args:
@@ -330,7 +329,7 @@ class Timer(Metric):
         """
         return self._sum / max(self._count, 1)
         
-    def get_min(self) -> Optional[float]:
+    def get_min(self) -> float | None:
         """Get minimum observed duration.
         
         Returns:
@@ -338,7 +337,7 @@ class Timer(Metric):
         """
         return min(self._values) if self._values else None
         
-    def get_max(self) -> Optional[float]:
+    def get_max(self) -> float | None:
         """Get maximum observed duration.
         
         Returns:
@@ -363,9 +362,9 @@ class TimerContext:
             timer: Timer instance to use
         """
         self.timer = timer
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
         
-    def __enter__(self) -> "TimerContext":
+    def __enter__(self) -> TimerContext:
         """Enter context and start timing."""
         self.start_time = time.time()
         return self
@@ -390,9 +389,9 @@ class MetricsCollector:
     
     def __init__(self):
         """Initialize metrics collector."""
-        self._metrics: Dict[str, Metric] = {}
-        self._summaries: Dict[str, MetricSummary] = {}
-        self._collection_task: Optional[asyncio.Task] = None
+        self._metrics: dict[str, Metric] = {}
+        self._summaries: dict[str, MetricSummary] = {}
+        self._collection_task: asyncio.Task | None = None
         self._is_collecting = False
         self._retention_hours = 24
         
@@ -461,7 +460,7 @@ class MetricsCollector:
         _logger.debug("gauge_registered", name=name, description=description)
         return gauge
         
-    def register_histogram(self, name: str, buckets: List[float] = None, description: str = "") -> Histogram:
+    def register_histogram(self, name: str, buckets: list[float] = None, description: str = "") -> Histogram:
         """Register a histogram metric.
         
         Args:
@@ -502,7 +501,7 @@ class MetricsCollector:
         _logger.debug("timer_registered", name=name, description=description)
         return timer
         
-    def get_metric(self, name: str) -> Optional[Metric]:
+    def get_metric(self, name: str) -> Metric | None:
         """Get a registered metric.
         
         Args:
@@ -513,7 +512,7 @@ class MetricsCollector:
         """
         return self._metrics.get(name)
         
-    def get_all_metrics(self) -> Dict[str, Metric]:
+    def get_all_metrics(self) -> dict[str, Metric]:
         """Get all registered metrics.
         
         Returns:
@@ -521,7 +520,7 @@ class MetricsCollector:
         """
         return self._metrics.copy()
         
-    def get_metric_summary(self, name: str) -> Optional[MetricSummary]:
+    def get_metric_summary(self, name: str) -> MetricSummary | None:
         """Get summary for a specific metric.
         
         Args:
@@ -532,7 +531,7 @@ class MetricsCollector:
         """
         return self._summaries.get(name)
         
-    def get_all_summaries(self) -> Dict[str, MetricSummary]:
+    def get_all_summaries(self) -> dict[str, MetricSummary]:
         """Get summaries for all metrics.
         
         Returns:
@@ -545,9 +544,7 @@ class MetricsCollector:
         for name, metric in self._metrics.items():
             summary = self._summaries[name]
             
-            if isinstance(metric, Counter):
-                summary.update(metric.get_value())
-            elif isinstance(metric, Gauge):
+            if isinstance(metric, Counter) or isinstance(metric, Gauge):
                 summary.update(metric.get_value())
             elif isinstance(metric, Histogram):
                 summary.update(metric.get_sum())
@@ -566,7 +563,7 @@ class MetricsCollector:
                 count_summary.update(metric.get_count())
                 self._summaries[f"{name}_count"] = count_summary
                 
-    async def collect_metrics(self) -> Dict[str, Any]:
+    async def collect_metrics(self) -> dict[str, Any]:
         """Collect all current metrics.
         
         Returns:
@@ -693,9 +690,7 @@ class MetricsCollector:
             lines.append(f"# HELP {name} {metric.description}")
             lines.append(f"# TYPE {name} {metric.metric_type.value}")
             
-            if isinstance(metric, Counter):
-                lines.append(f"{name} {metric.get_value()}")
-            elif isinstance(metric, Gauge):
+            if isinstance(metric, Counter) or isinstance(metric, Gauge):
                 lines.append(f"{name} {metric.get_value()}")
             elif isinstance(metric, Histogram):
                 # Export histogram buckets
@@ -715,7 +710,7 @@ class MetricsCollector:
 
 
 # Global metrics collector instance
-_metrics_collector: Optional[MetricsCollector] = None
+_metrics_collector: MetricsCollector | None = None
 
 
 def get_metrics_collector() -> MetricsCollector:

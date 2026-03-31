@@ -14,6 +14,8 @@ Public API:
 """
 
 # Core agent system
+# Modular subsystems
+from mindflow_backend.agents import context, specialists
 from mindflow_backend.agents._base import AgentPersonality, BaseAgent
 from mindflow_backend.agents._registry import (
     AgentRegistry,
@@ -21,10 +23,6 @@ from mindflow_backend.agents._registry import (
     get_registry,
     register_all_specialists,
 )
-
-# Modular subsystems
-from mindflow_backend.agents import context
-from mindflow_backend.agents import specialists
 
 # Legacy compatibility (deprecated - use subsystems above)
 from mindflow_backend.agents.context import get_agent_context_retriever

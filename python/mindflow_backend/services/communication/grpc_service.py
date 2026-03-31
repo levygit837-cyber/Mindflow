@@ -6,10 +6,11 @@ server management, connection handling, and streaming operations.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, AsyncGenerator
-from datetime import datetime, UTC
 import asyncio
 import uuid
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
@@ -34,7 +35,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
         self._is_running = False
         
         # Connection management
-        self._active_connections: Dict[str, Dict[str, Any]] = {}
+        self._active_connections: dict[str, dict[str, Any]] = {}
         self._connection_metrics = {
             "total_connections": 0,
             "active_connections": 0,
@@ -42,8 +43,8 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
         }
         
         # Service registry
-        self._registered_services: Dict[str, Any] = {}
-        self._interceptors: List[Any] = []
+        self._registered_services: dict[str, Any] = {}
+        self._interceptors: list[Any] = []
         
         # Performance metrics
         self._request_metrics = {
@@ -57,7 +58,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
         """Get logger instance for this service."""
         return get_logger(__name__)
     
-    async def start_server(self, host: str = "localhost", port: int = 50051) -> Dict[str, Any]:
+    async def start_server(self, host: str = "localhost", port: int = 50051) -> dict[str, Any]:
         """Start gRPC server.
         
         Args:
@@ -112,7 +113,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
                 "error_type": type(exc).__name__
             }
     
-    async def stop_server(self) -> Dict[str, Any]:
+    async def stop_server(self) -> dict[str, Any]:
         """Stop gRPC server.
         
         Returns:
@@ -157,8 +158,8 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
     
     async def handle_stream_chat(
         self,
-        request: Dict[str, Any]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        request: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Handle streaming chat requests.
         
         Args:
@@ -228,7 +229,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
                 "error_type": type(exc).__name__
             }
     
-    async def get_server_status(self) -> Dict[str, Any]:
+    async def get_server_status(self) -> dict[str, Any]:
         """Get gRPC server status.
         
         Returns:
@@ -269,7 +270,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
         self,
         service_name: str,
         service_implementation: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Register a gRPC service.
         
         Args:
@@ -314,7 +315,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
                 "error_type": type(exc).__name__
             }
     
-    async def get_connection_metrics(self) -> Dict[str, Any]:
+    async def get_connection_metrics(self) -> dict[str, Any]:
         """Get connection metrics and statistics.
         
         Returns:
@@ -369,8 +370,8 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
     
     async def configure_interceptors(
         self,
-        interceptors: List[Any]
-    ) -> Dict[str, Any]:
+        interceptors: list[Any]
+    ) -> dict[str, Any]:
         """Configure gRPC interceptors.
         
         Args:
@@ -410,7 +411,7 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
                 "error_type": type(exc).__name__
             }
     
-    async def test_connection(self, endpoint: str) -> Dict[str, Any]:
+    async def test_connection(self, endpoint: str) -> dict[str, Any]:
         """Test gRPC connection to an endpoint.
         
         Args:
@@ -490,12 +491,12 @@ class GrpcService(BaseAbstractService, GrpcServiceInterface):
         if self._server and hasattr(self._server, 'add_service'):
             await self._server.add_service(service_name, service_implementation)
     
-    async def _apply_interceptors_to_server(self, interceptors: List[Any]) -> None:
+    async def _apply_interceptors_to_server(self, interceptors: list[Any]) -> None:
         """Apply interceptors to running server."""
         if self._server and hasattr(self._server, 'add_interceptors'):
             await self._server.add_interceptors(interceptors)
     
-    async def _process_chat_request(self, request: Dict[str, Any], connection_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _process_chat_request(self, request: dict[str, Any], connection_id: str) -> AsyncGenerator[dict[str, Any], None]:
         """Process chat request and yield response events."""
         try:
             # Update request metrics

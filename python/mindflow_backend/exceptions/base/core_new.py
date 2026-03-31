@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..schemas.errors import ErrorSchema
@@ -26,9 +26,9 @@ class MindFlowError(Exception):
         self,
         message: str,
         *,
-        component: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        component: str | None = None,
+        context: dict[str, Any] | None = None,
+        cause: Exception | None = None,
     ):
         super().__init__(message)
         self.error_id = str(uuid.uuid4())
@@ -40,7 +40,7 @@ class MindFlowError(Exception):
     def __str__(self) -> str:
         return f"[{self.error_id}] {super().__str__()}"
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for logging/serialization."""
         return {
             "error_id": self.error_id,
@@ -63,10 +63,10 @@ class MindFlowError(Exception):
         self.cause = cause
         return self
     
-    def to_schema(self) -> Optional[ErrorSchema]:
+    def to_schema(self) -> ErrorSchema | None:
         """Convert to corresponding Pydantic schema."""
         if TYPE_CHECKING:
-            from ..schemas.errors import ErrorSchema, ErrorCategory, ErrorSeverity
+            from ..schemas.errors import ErrorSchema
             return ErrorSchema.from_exception(
                 self,
                 category=self._determine_category(),
@@ -100,11 +100,7 @@ class MindFlowError(Exception):
         # Simplified severity mapping
         if 'Validation' in self.__class__.__name__:
             return 'low'
-        elif 'Authentication' in self.__class__.__name__:
-            return 'medium'
-        elif 'Network' in self.__class__.__name__:
-            return 'medium'
-        elif 'Timeout' in self.__class__.__name__:
+        elif 'Authentication' in self.__class__.__name__ or 'Network' in self.__class__.__name__ or 'Timeout' in self.__class__.__name__:
             return 'medium'
         elif 'Resource' in self.__class__.__name__:
             return 'high'
@@ -125,7 +121,7 @@ class SystemError(MindFlowError):
 class BusinessLogicError(MindFlowError):
     """Business logic validation and rule violations."""
     
-    def __init__(self, message: str, *, domain: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, *, domain: str | None = None, **kwargs):
         super().__init__(message, component="business", **kwargs)
         self.domain = domain
 
@@ -133,7 +129,7 @@ class BusinessLogicError(MindFlowError):
 class InfrastructureError(SystemError):
     """Infrastructure-related errors (network, database, etc.)."""
     
-    def __init__(self, message: str, *, service: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, *, service: str | None = None, **kwargs):
         super().__init__(message, **kwargs)
         self.service = service
 
@@ -141,7 +137,7 @@ class InfrastructureError(SystemError):
 class NetworkError(InfrastructureError):
     """Network connectivity errors."""
     
-    def __init__(self, message: str, *, endpoint: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, *, endpoint: str | None = None, **kwargs):
         super().__init__(message, service="network", **kwargs)
         self.endpoint = endpoint
 
@@ -149,7 +145,7 @@ class NetworkError(InfrastructureError):
 class TimeoutError(SystemError):
     """Operation timeout errors."""
     
-    def __init__(self, message: str, *, timeout_seconds: Optional[float] = None, **kwargs):
+    def __init__(self, message: str, *, timeout_seconds: float | None = None, **kwargs):
         super().__init__(message, **kwargs)
         self.timeout_seconds = timeout_seconds
 
@@ -157,7 +153,7 @@ class TimeoutError(SystemError):
 class ResourceError(SystemError):
     """Resource exhaustion or unavailability errors."""
     
-    def __init__(self, message: str, *, resource_type: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, *, resource_type: str | None = None, **kwargs):
         super().__init__(message, **kwargs)
         self.resource_type = resource_type
 

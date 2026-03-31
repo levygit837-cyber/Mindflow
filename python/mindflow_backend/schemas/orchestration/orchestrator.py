@@ -86,6 +86,7 @@ class ExecutionStrategy(StrEnum):
     DELEGATE = "delegate"  # Delegate to one or more agents (LLM decides quantity)
     CHAIN = "chain"
     GRAPH = "graph"
+    TEAM_SESSION = "team_session"  # Create team of agents for collaborative missions (Phase 3A)
 
 
 class ChainType(StrEnum):
@@ -134,7 +135,7 @@ class MemoryRecallConfig(BaseModel):
         return self.max_results
 
     @model_validator(mode="after")
-    def _sync_compat_thresholds(self) -> "MemoryRecallConfig":
+    def _sync_compat_thresholds(self) -> MemoryRecallConfig:
         self.cross_session_min_score = self.fallback_score_threshold
         return self
 
@@ -178,7 +179,7 @@ class OrchestratorDecision(BaseModel):
     memory_recall: MemoryRecallConfig = Field(default_factory=MemoryRecallConfig)
 
     @model_validator(mode="after")
-    def _normalize_identity(self) -> "OrchestratorDecision":
+    def _normalize_identity(self) -> OrchestratorDecision:
         """Keep legacy ``agent`` and canonical ``agent_role`` aligned."""
         if self.agent_role is None:
             self.agent_role = self.agent

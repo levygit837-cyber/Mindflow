@@ -5,10 +5,10 @@ Functions for formatting different types of data.
 
 import re
 from datetime import datetime, timedelta
-from typing import Any, Union
+from typing import Any
 
 
-def format_sse(data: Any, event_id: Union[str, int, None] = None) -> str:
+def format_sse(data: Any, event_id: str | int | None = None) -> str:
     """Format data for Server-Sent Events."""
     import json
     
@@ -72,7 +72,7 @@ def format_percentage(value: float, decimal_places: int = 1) -> str:
     return f"{value:.{decimal_places}f}%"
 
 
-def format_number(value: Union[int, float], decimal_places: int = 0) -> str:
+def format_number(value: int | float, decimal_places: int = 0) -> str:
     """Format number with thousands separator."""
     if isinstance(value, int) or decimal_places == 0:
         return f"{int(value):,}"

@@ -21,7 +21,6 @@ from mindflow_backend.memory.shared.retrieval.semantic import (
     SemanticRetriever,
 )
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------

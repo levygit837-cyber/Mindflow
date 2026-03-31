@@ -3,9 +3,9 @@
 All exceptions related to database operations, vector stores, caching, and migrations.
 """
 
-from .database import DatabaseError, ConnectionError, MigrationError
-from .vector import VectorStoreError
 from .cache import CacheError
+from .database import ConnectionError, DatabaseError, MigrationError
+from .vector import VectorStoreError
 
 __all__ = [
     "DatabaseError",

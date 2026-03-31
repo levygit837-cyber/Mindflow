@@ -1,12 +1,13 @@
 """Integration tests for gRPC client and server."""
 
-import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from mindflow_backend.grpc.client import GrpcAgentClient
+from mindflow_backend.grpc.config import GrpcClientConfig, GrpcConfig
 from mindflow_backend.grpc.server import GrpcAgentServer, start_grpc_server, stop_grpc_server
-from mindflow_backend.grpc.config import GrpcConfig, GrpcClientConfig
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
 

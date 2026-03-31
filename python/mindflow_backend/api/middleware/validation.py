@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -31,9 +31,9 @@ class ValidationMiddleware(BaseHTTPMiddleware):
         self.max_request_size = max_request_size
         self.enable_in_memory_rate_limit = enable_in_memory_rate_limit
         self.blocked_patterns = self._init_blocked_patterns()
-        self.rate_limit_store: Dict[str, Dict] = {}
+        self.rate_limit_store: dict[str, dict] = {}
     
-    def _init_blocked_patterns(self) -> List[str]:
+    def _init_blocked_patterns(self) -> list[str]:
         """Initialize blocked patterns for security."""
         return [
             # SQL injection patterns

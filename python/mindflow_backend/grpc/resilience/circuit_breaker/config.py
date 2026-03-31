@@ -6,9 +6,9 @@ for the circuit breaker with dynamic tuning capabilities.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, List
 
 from mindflow_backend.grpc.resilience.circuit_breaker import CircuitBreakerConfig
 
@@ -54,4 +54,4 @@ class EnhancedCircuitBreakerConfig(CircuitBreakerConfig):
 
     # Event handling
     enable_event_callbacks: bool = True
-    state_change_callbacks: List[Callable] = field(default_factory=list)
+    state_change_callbacks: list[Callable] = field(default_factory=list)

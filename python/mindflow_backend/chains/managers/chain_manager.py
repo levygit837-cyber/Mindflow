@@ -6,26 +6,26 @@ chains of different types with proper lifecycle management.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Type, Union
-from datetime import datetime
 import asyncio
+from datetime import datetime
+from typing import Any
 
-from mindflow_backend.chains.base.chain import BaseChain, ChainType, ChainStatus
-from mindflow_backend.chains.builders.sequential_builder import SequentialChainBuilder
+from mindflow_backend.chains.base.chain import BaseChain, ChainStatus, ChainType
+from mindflow_backend.chains.base.types import ChainConfig
 from mindflow_backend.chains.builders.conditional_builder import ConditionalChainBuilder
-from mindflow_backend.chains.templates.research_chain import ResearchChain
+from mindflow_backend.chains.builders.sequential_builder import SequentialChainBuilder
 from mindflow_backend.chains.templates.coding_chain import CodingChain
-from mindflow_backend.chains.base.types import ChainConfig, ExecutionContext
+from mindflow_backend.chains.templates.research_chain import ResearchChain
 
 
 class ChainManager:
     """Central manager for chain instances and lifecycle."""
     
     def __init__(self) -> None:
-        self._chains: Dict[str, BaseChain] = {}
-        self._chain_templates: Dict[str, Type] = {}
-        self._chain_history: List[Dict[str, Any]] = []
-        self._execution_stats: Dict[str, Dict[str, Any]] = {}
+        self._chains: dict[str, BaseChain] = {}
+        self._chain_templates: dict[str, type] = {}
+        self._chain_history: list[dict[str, Any]] = []
+        self._execution_stats: dict[str, dict[str, Any]] = {}
         
         # Register built-in templates
         self._register_builtin_templates()
@@ -41,7 +41,7 @@ class ChainManager:
         self,
         chain_id: str,
         chain_type: ChainType,
-        config: Optional[ChainConfig] = None,
+        config: ChainConfig | None = None,
         **kwargs
     ) -> BaseChain:
         """Create a new chain instance.
@@ -148,7 +148,7 @@ class ChainManager:
         
         return chain
     
-    def get_chain(self, chain_id: str) -> Optional[BaseChain]:
+    def get_chain(self, chain_id: str) -> BaseChain | None:
         """Get a chain instance by ID.
         
         Args:
@@ -159,7 +159,7 @@ class ChainManager:
         """
         return self._chains.get(chain_id)
     
-    def list_chains(self) -> List[Dict[str, Any]]:
+    def list_chains(self) -> list[dict[str, Any]]:
         """List all registered chains with their metadata.
         
         Returns:
@@ -186,9 +186,9 @@ class ChainManager:
     async def execute_chain(
         self,
         chain_id: str,
-        initial_context: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None
-    ) -> Dict[str, Any]:
+        initial_context: dict[str, Any] | None = None,
+        timeout: float | None = None
+    ) -> dict[str, Any]:
         """Execute a chain by ID.
         
         Args:
@@ -236,7 +236,7 @@ class ChainManager:
             
             return result
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             execution_time = (datetime.now() - start_time).total_seconds()
             
             # Update failure stats
@@ -279,7 +279,7 @@ class ChainManager:
         
         return False
     
-    def get_chain_history(self, chain_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_chain_history(self, chain_id: str, limit: int = 50) -> list[dict[str, Any]]:
         """Get execution history for a specific chain.
         
         Args:
@@ -296,7 +296,7 @@ class ChainManager:
         
         return chain_history[-limit:] if len(chain_history) > limit else chain_history
     
-    def get_execution_stats(self, chain_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_execution_stats(self, chain_id: str | None = None) -> dict[str, Any]:
         """Get execution statistics.
         
         Args:
@@ -327,7 +327,7 @@ class ChainManager:
             "chain_stats": dict(self._execution_stats)
         }
     
-    def register_template(self, template_name: str, template_class: Type) -> None:
+    def register_template(self, template_name: str, template_class: type) -> None:
         """Register a custom chain template.
         
         Args:
@@ -336,7 +336,7 @@ class ChainManager:
         """
         self._chain_templates[template_name] = template_class
     
-    def list_templates(self) -> List[Dict[str, Any]]:
+    def list_templates(self) -> list[dict[str, Any]]:
         """List all available templates.
         
         Returns:
@@ -354,7 +354,7 @@ class ChainManager:
         
         return templates_info
     
-    def validate_chain(self, chain_id: str) -> List[str]:
+    def validate_chain(self, chain_id: str) -> list[str]:
         """Validate a chain configuration.
         
         Args:
@@ -385,7 +385,7 @@ class ChainManager:
         
         return cleaned_count
     
-    def _calculate_success_rate(self, stats: Dict[str, Any]) -> float:
+    def _calculate_success_rate(self, stats: dict[str, Any]) -> float:
         """Calculate success rate for a chain."""
         executions = stats.get("executions", 0)
         successes = stats.get("successes", 0)
@@ -416,7 +416,7 @@ class ChainManager:
         chain_id: str,
         success: bool,
         execution_time: float,
-        result: Dict[str, Any]
+        result: dict[str, Any]
     ) -> None:
         """Record execution in history."""
         history_entry = {
@@ -438,7 +438,7 @@ class ChainManager:
 
 
 # Global chain manager instance
-_chain_manager: Optional[ChainManager] = None
+_chain_manager: ChainManager | None = None
 
 
 def get_chain_manager() -> ChainManager:

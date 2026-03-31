@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -33,18 +33,18 @@ class HealthCheck:
     message: str
     duration_ms: float
     timestamp: float
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class HealthReport:
     """Comprehensive health report."""
     status: HealthStatus
-    checks: List[HealthCheck]
+    checks: list[HealthCheck]
     uptime_seconds: float
     version: str
     timestamp: float
-    dependencies: Dict[str, HealthStatus] = field(default_factory=dict)
+    dependencies: dict[str, HealthStatus] = field(default_factory=dict)
 
 
 class HealthChecker:
@@ -71,7 +71,7 @@ class HealthChecker:
                 details=result.get('details', {})
             )
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration_ms = (time.time() - start_time) * 1000
             return HealthCheck(
                 name=self.name,
@@ -91,7 +91,7 @@ class HealthChecker:
                 details={'error': str(exc)}
             )
     
-    async def _check_implementation(self) -> Dict[str, Any]:
+    async def _check_implementation(self) -> dict[str, Any]:
         """Implementation-specific health check logic."""
         raise NotImplementedError
 
@@ -104,7 +104,7 @@ class GrpcServiceHealthChecker(HealthChecker):
         self.host = host
         self.port = port
     
-    async def _check_implementation(self) -> Dict[str, Any]:
+    async def _check_implementation(self) -> dict[str, Any]:
         """Check gRPC service health."""
         import grpc
         
@@ -133,7 +133,7 @@ class DatabaseHealthChecker(HealthChecker):
         super().__init__("database", **kwargs)
         self.database_url = database_url
     
-    async def _check_implementation(self) -> Dict[str, Any]:
+    async def _check_implementation(self) -> dict[str, Any]:
         """Check database connectivity."""
         try:
             from mindflow_backend.storage import engine
@@ -160,7 +160,7 @@ class VectorStoreHealthChecker(HealthChecker):
         super().__init__("vector_store", **kwargs)
         self.vector_db_url = vector_db_url
     
-    async def _check_implementation(self) -> Dict[str, Any]:
+    async def _check_implementation(self) -> dict[str, Any]:
         """Check vector store connectivity."""
         try:
             # Try to connect to vector store
@@ -189,7 +189,7 @@ class SystemHealthChecker(HealthChecker):
         self.cpu_threshold = cpu_threshold
         self.memory_threshold = memory_threshold
     
-    async def _check_implementation(self) -> Dict[str, Any]:
+    async def _check_implementation(self) -> dict[str, Any]:
         """Check system resource health."""
         try:
             import psutil
@@ -250,7 +250,7 @@ class CustomHealthChecker(HealthChecker):
         super().__init__(name, **kwargs)
         self.check_function = check_function
     
-    async def _check_implementation(self) -> Dict[str, Any]:
+    async def _check_implementation(self) -> dict[str, Any]:
         """Execute custom health check function."""
         if asyncio.iscoroutinefunction(self.check_function):
             result = await self.check_function()
@@ -268,7 +268,7 @@ class AdvancedHealthChecker:
     
     def __init__(self, start_time: float | None = None):
         self.start_time = start_time or time.time()
-        self.checkers: List[HealthChecker] = []
+        self.checkers: list[HealthChecker] = []
         self._last_report: HealthReport | None = None
         self._check_interval = 30.0  # Check every 30 seconds
         self._background_task: asyncio.Task | None = None

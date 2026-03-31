@@ -8,16 +8,16 @@ Use: from mindflow_backend.schemas.memory.api import MemorySearchRequest, Memory
 
 # Forward compatibility aliases - import from new location
 from mindflow_backend.schemas.memory.api import (
-    MemorySearchRequest,
-    MemorySummaryRequest,
-    ContextWindowRequest,
-    MemoryEventRequest,
-    MemoryCursorRequest,
-    MemoryResponse,
-    MemorySearchResponse,
-    MemorySummaryResponse,
-    ContextWindowResponse,
     BaseResponse,
+    ContextWindowRequest,
+    ContextWindowResponse,
+    MemoryCursorRequest,
+    MemoryEventRequest,
+    MemoryResponse,
+    MemorySearchRequest,
+    MemorySearchResponse,
+    MemorySummaryRequest,
+    MemorySummaryResponse,
 )
 
 # Maintain backward compatibility

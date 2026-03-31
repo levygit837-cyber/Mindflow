@@ -10,9 +10,9 @@ from __future__ import annotations
 import random
 import time
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -73,7 +73,7 @@ class Endpoint:
     port: int
     weight: float = 1.0
     state: EndpointState = EndpointState.UNKNOWN
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     metrics: EndpointMetrics = field(default_factory=EndpointMetrics)
     created_at: float = field(default_factory=time.time)
     last_health_check: float = 0.0
@@ -109,18 +109,18 @@ class Endpoint:
 class SelectionContext:
     """Context for endpoint selection."""
     request: Any = None
-    available_endpoints: List[Endpoint] = field(default_factory=list)
+    available_endpoints: list[Endpoint] = field(default_factory=list)
     timestamp: float = field(default_factory=time.time)
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    user_id: str | None = None
+    session_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class LoadBalancingStrategy(ABC):
     """Abstract base class for load balancing strategies."""
     
     @abstractmethod
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select the best endpoint for the request."""
         pass
     
@@ -141,7 +141,7 @@ class RoundRobinStrategy(LoadBalancingStrategy):
         self._current_index = 0
         self._lock = None  # Will be set when used in async context
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select endpoint using round-robin algorithm."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -166,7 +166,7 @@ class RoundRobinStrategy(LoadBalancingStrategy):
 class LeastConnectionsStrategy(LoadBalancingStrategy):
     """Load balancing strategy that selects endpoint with least active connections."""
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select endpoint with least active connections."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -197,11 +197,11 @@ class WeightedRoundRobinStrategy(LoadBalancingStrategy):
     """Weighted round-robin strategy based on endpoint performance."""
     
     def __init__(self):
-        self._weights: Dict[str, float] = {}
-        self._current_weights: Dict[str, float] = {}
+        self._weights: dict[str, float] = {}
+        self._current_weights: dict[str, float] = {}
         self._lock = None
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select endpoint using weighted round-robin."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -220,7 +220,7 @@ class WeightedRoundRobinStrategy(LoadBalancingStrategy):
         
         return selected_endpoint
     
-    def _update_weights(self, endpoints: List[Endpoint]):
+    def _update_weights(self, endpoints: list[Endpoint]):
         """Update weights based on endpoint performance."""
         for endpoint in endpoints:
             performance = endpoint.get_performance_metrics()
@@ -244,7 +244,7 @@ class WeightedRoundRobinStrategy(LoadBalancingStrategy):
             if endpoint.id not in self._current_weights:
                 self._current_weights[endpoint.id] = 0.0
     
-    def _select_weighted_endpoint(self, endpoints: List[Endpoint]) -> Endpoint:
+    def _select_weighted_endpoint(self, endpoints: list[Endpoint]) -> Endpoint:
         """Select endpoint using weighted round-robin algorithm."""
         total_weight = sum(self._weights.get(ep.id, 1.0) for ep in endpoints)
         
@@ -276,7 +276,7 @@ class WeightedRoundRobinStrategy(LoadBalancingStrategy):
 class RandomStrategy(LoadBalancingStrategy):
     """Random load balancing strategy."""
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select random endpoint."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -303,9 +303,9 @@ class PerformanceBasedStrategy(LoadBalancingStrategy):
     def __init__(self, response_time_weight: float = 0.6, success_rate_weight: float = 0.4):
         self.response_time_weight = response_time_weight
         self.success_rate_weight = success_rate_weight
-        self._performance_scores: Dict[str, float] = {}
+        self._performance_scores: dict[str, float] = {}
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select endpoint with best performance score."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -357,7 +357,7 @@ class PerformanceBasedStrategy(LoadBalancingStrategy):
         """Performance scores are calculated on-demand."""
         pass
     
-    def get_performance_scores(self) -> Dict[str, float]:
+    def get_performance_scores(self) -> dict[str, float]:
         """Get current performance scores for all endpoints."""
         return self._performance_scores.copy()
 
@@ -367,9 +367,9 @@ class StickySessionStrategy(LoadBalancingStrategy):
     
     def __init__(self, fallback_strategy: LoadBalancingStrategy):
         self.fallback_strategy = fallback_strategy
-        self._session_mappings: Dict[str, str] = {}  # session_id -> endpoint_id
+        self._session_mappings: dict[str, str] = {}  # session_id -> endpoint_id
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select endpoint based on session affinity."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -402,7 +402,7 @@ class StickySessionStrategy(LoadBalancingStrategy):
         """Clear session mapping."""
         self._session_mappings.pop(session_id, None)
     
-    def get_session_mappings(self) -> Dict[str, str]:
+    def get_session_mappings(self) -> dict[str, str]:
         """Get current session mappings."""
         return self._session_mappings.copy()
 
@@ -412,11 +412,11 @@ class ConsistentHashStrategy(LoadBalancingStrategy):
     
     def __init__(self, virtual_nodes: int = 150):
         self.virtual_nodes = virtual_nodes
-        self._hash_ring: List[int] = []
-        self._hash_to_endpoint: Dict[int, str] = {}
-        self._endpoints: Dict[str, Endpoint] = {}
+        self._hash_ring: list[int] = []
+        self._hash_to_endpoint: dict[int, str] = {}
+        self._endpoints: dict[str, Endpoint] = {}
     
-    def select_endpoint(self, endpoints: List[Endpoint], context: SelectionContext) -> Endpoint:
+    def select_endpoint(self, endpoints: list[Endpoint], context: SelectionContext) -> Endpoint:
         """Select endpoint using consistent hashing."""
         if not endpoints:
             raise ValueError("No endpoints available")
@@ -459,7 +459,7 @@ class ConsistentHashStrategy(LoadBalancingStrategy):
         else:
             return f"timestamp:{context.timestamp}"
     
-    def _update_hash_ring(self, endpoints: List[Endpoint]):
+    def _update_hash_ring(self, endpoints: list[Endpoint]):
         """Update consistent hash ring."""
         current_endpoints = {ep.id: ep for ep in endpoints}
         
@@ -483,7 +483,7 @@ class ConsistentHashStrategy(LoadBalancingStrategy):
         # Sort hash ring
         self._hash_ring.sort()
     
-    def _find_endpoint_on_ring(self, hash_key: str) -> Optional[str]:
+    def _find_endpoint_on_ring(self, hash_key: str) -> str | None:
         """Find endpoint for hash key on ring."""
         if not self._hash_ring:
             return None
@@ -533,7 +533,7 @@ class LoadBalancingStrategyFactory:
         return strategy_class(**kwargs)
     
     @classmethod
-    def list_strategies(cls) -> List[str]:
+    def list_strategies(cls) -> list[str]:
         """List available strategy names."""
         return list(cls._strategies.keys())
     

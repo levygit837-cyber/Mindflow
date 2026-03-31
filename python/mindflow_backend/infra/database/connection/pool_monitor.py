@@ -6,7 +6,7 @@ Provides advanced monitoring and alerting for database connection pools.
 from __future__ import annotations
 
 import asyncio
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -23,14 +23,14 @@ class ConnectionPoolMonitor:
     with configurable alert thresholds.
     """
 
-    def __init__(self, database_manager: "DatabaseManager"):
+    def __init__(self, database_manager: DatabaseManager):
         """Initialize pool monitor.
 
         Args:
             database_manager: Database manager instance
         """
         self.db_manager = database_manager
-        self._monitoring_task: Optional[asyncio.Task] = None
+        self._monitoring_task: asyncio.Task | None = None
         self._is_monitoring = False
         self._monitoring_interval = 30  # seconds
         self._alert_thresholds = {

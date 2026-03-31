@@ -7,10 +7,7 @@ and AI-powered text processing capabilities.
 from __future__ import annotations
 
 import asyncio
-import json
-import hashlib
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 try:
     import torch
@@ -23,10 +20,9 @@ except ImportError:
     transformers = None
     SentenceTransformer = None
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -34,7 +30,7 @@ _logger = get_logger(__name__)
 class LocalModelTool(AsyncToolInterface):
     """Local model manager with multiple model support."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the local model manager.
         
         Args:
@@ -50,7 +46,7 @@ class LocalModelTool(AsyncToolInterface):
         
         self._schema = LOCAL_MODEL_SCHEMA
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute model operation.
         
         Args:
@@ -115,7 +111,7 @@ class LocalModelTool(AsyncToolInterface):
                 error=f"Model operation failed: {str(e)}"
             )
     
-    async def _list_models(self) -> Dict[str, Any]:
+    async def _list_models(self) -> dict[str, Any]:
         """List loaded models."""
         try:
             models = []
@@ -142,7 +138,7 @@ class LocalModelTool(AsyncToolInterface):
                 error=f"Failed to list models: {str(e)}"
             )
     
-    async def _get_system_info(self) -> Dict[str, Any]:
+    async def _get_system_info(self) -> dict[str, Any]:
         """Get system information for AI models."""
         try:
             if not self._system_info:
@@ -169,7 +165,7 @@ class LocalModelTool(AsyncToolInterface):
                 error=f"Failed to get system info: {str(e)}"
             )
     
-    async def _load_model(self, model_name: str, model_type: str) -> Dict[str, Any]:
+    async def _load_model(self, model_name: str, model_type: str) -> dict[str, Any]:
         """Load a model."""
         try:
             if model_name in self._loaded_models:
@@ -201,7 +197,7 @@ class LocalModelTool(AsyncToolInterface):
                 error=f"Failed to load model: {str(e)}"
             )
     
-    async def _unload_model(self, model_name: str) -> Dict[str, Any]:
+    async def _unload_model(self, model_name: str) -> dict[str, Any]:
         """Unload a model."""
         try:
             if model_name not in self._loaded_models:
@@ -227,7 +223,7 @@ class LocalModelTool(AsyncToolInterface):
                 error=f"Failed to unload model: {str(e)}"
             )
     
-    async def _generate_text(self, model_name: str, prompt: str, max_tokens: int, temperature: float) -> Dict[str, Any]:
+    async def _generate_text(self, model_name: str, prompt: str, max_tokens: int, temperature: float) -> dict[str, Any]:
         """Generate text using a model."""
         try:
             if model_name not in self._loaded_models:
@@ -257,7 +253,7 @@ class LocalModelTool(AsyncToolInterface):
                 error=f"Failed to generate text: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()
 
@@ -265,7 +261,7 @@ class LocalModelTool(AsyncToolInterface):
 class EmbeddingTool(AsyncToolInterface):
     """Embedding generation tool."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the embedding tool.
         
         Args:
@@ -319,7 +315,7 @@ class EmbeddingTool(AsyncToolInterface):
             }
         )
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute embedding operation.
         
         Args:
@@ -371,7 +367,7 @@ class EmbeddingTool(AsyncToolInterface):
                 error=f"Embedding operation failed: {str(e)}"
             )
     
-    async def _generate_embeddings(self, text: Optional[str], texts: List[str], model_name: str) -> Dict[str, Any]:
+    async def _generate_embeddings(self, text: str | None, texts: list[str], model_name: str) -> dict[str, Any]:
         """Generate embeddings."""
         try:
             # Combine single text and texts array
@@ -410,7 +406,7 @@ class EmbeddingTool(AsyncToolInterface):
                 error=f"Failed to generate embeddings: {str(e)}"
             )
     
-    async def _list_models(self) -> Dict[str, Any]:
+    async def _list_models(self) -> dict[str, Any]:
         """List available embedding models."""
         try:
             models = [
@@ -442,7 +438,7 @@ class EmbeddingTool(AsyncToolInterface):
                 error=f"Failed to list models: {str(e)}"
             )
     
-    async def _load_model(self, model_name: str) -> Dict[str, Any]:
+    async def _load_model(self, model_name: str) -> dict[str, Any]:
         """Load an embedding model."""
         try:
             # Simulate model loading
@@ -466,6 +462,6 @@ class EmbeddingTool(AsyncToolInterface):
                 error=f"Failed to load model: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()

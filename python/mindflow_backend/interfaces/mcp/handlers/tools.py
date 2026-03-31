@@ -7,12 +7,15 @@ tool discovery, execution, and result management.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+from collections.abc import Callable
+from typing import Any, Optional
 
-from mindflow_backend.schemas.mcp.tools import (
-    MCPToolDefinition, MCPToolResult, MCPToolCall, MCPToolParameter
-)
 from mindflow_backend.interfaces.mcp.handlers.message import RequestHandler
+from mindflow_backend.schemas.mcp.tools import (
+    MCPToolDefinition,
+    MCPToolParameter,
+    MCPToolResult,
+)
 
 
 class ToolExecutor:
@@ -27,7 +30,7 @@ class ToolExecutor:
         """Initialize the tool executor."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
     
-    async def execute(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def execute(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """
         Execute a tool with the given arguments.
         
@@ -69,7 +72,7 @@ class ToolExecutor:
                 error_code="EXECUTION_ERROR"
             )
     
-    async def validate_arguments(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def validate_arguments(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """
         Validate tool arguments against tool definition.
         
@@ -189,7 +192,7 @@ class ToolExecutor:
         
         return MCPToolResult.success_result(True)
     
-    async def get_tool_definition(self, tool_name: str) -> Optional[MCPToolDefinition]:
+    async def get_tool_definition(self, tool_name: str) -> MCPToolDefinition | None:
         """
         Get the definition for a tool.
         
@@ -231,7 +234,7 @@ class MCPToolHandler(RequestHandler):
         Returns:
             Optional[MCPResponse]: Response message
         """
-        from mindflow_backend.schemas.mcp.base import MCPResponse, MCPError, MCPErrorCode
+        from mindflow_backend.schemas.mcp.base import MCPError, MCPErrorCode, MCPResponse
         
         if message.method == "tools/list":
             return await self._handle_list_tools(message)
@@ -288,7 +291,7 @@ class MCPToolHandler(RequestHandler):
         Returns:
             MCPResponse: Tool execution response
         """
-        from mindflow_backend.schemas.mcp.base import MCPResponse, MCPError, MCPErrorCode
+        from mindflow_backend.schemas.mcp.base import MCPError, MCPErrorCode, MCPResponse
         
         try:
             params = message.params or {}
@@ -334,7 +337,7 @@ class MCPToolHandler(RequestHandler):
                 )
             )
     
-    async def _get_available_tools(self) -> List[MCPToolDefinition]:
+    async def _get_available_tools(self) -> list[MCPToolDefinition]:
         """
         Get list of available tools.
         
@@ -354,7 +357,7 @@ class SimpleToolExecutor(ToolExecutor):
     with custom tool implementations.
     """
     
-    def __init__(self, tools: Optional[Dict[str, Callable]] = None):
+    def __init__(self, tools: dict[str, Callable] | None = None):
         """
         Initialize simple tool executor.
         
@@ -363,7 +366,7 @@ class SimpleToolExecutor(ToolExecutor):
         """
         super().__init__()
         self.tools = tools or {}
-        self._tool_definitions: Dict[str, MCPToolDefinition] = {}
+        self._tool_definitions: dict[str, MCPToolDefinition] = {}
     
     def register_tool(self, name: str, func: Callable, definition: MCPToolDefinition) -> None:
         """
@@ -378,7 +381,7 @@ class SimpleToolExecutor(ToolExecutor):
         self._tool_definitions[name] = definition
         self.logger.info(f"Registered tool: {name}")
     
-    async def execute(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def execute(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """
         Execute a tool with the given arguments.
         
@@ -426,7 +429,7 @@ class SimpleToolExecutor(ToolExecutor):
                 error_code="EXECUTION_ERROR"
             )
     
-    async def get_tool_definition(self, tool_name: str) -> Optional[MCPToolDefinition]:
+    async def get_tool_definition(self, tool_name: str) -> MCPToolDefinition | None:
         """
         Get the definition for a tool.
         

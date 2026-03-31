@@ -13,8 +13,8 @@ from __future__ import annotations
 from .ai import *
 from .data import *
 from .integration import *
-from .web import *
 from .system import *
+from .web import *
 
 __all__ = [
     # Common tool categories

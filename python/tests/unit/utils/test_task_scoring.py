@@ -7,9 +7,9 @@ from mindflow_backend.orchestrator.decomposition.scoring import (
     is_validated,
 )
 from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+    SubTaskState,
     TaskEvidence,
     TaskStatus,
-    SubTaskState,
 )
 
 

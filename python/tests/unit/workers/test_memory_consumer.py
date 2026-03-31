@@ -17,7 +17,6 @@ import pytest
 
 from mindflow_backend.schemas.memory.contracts import MemoryPersistResult
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

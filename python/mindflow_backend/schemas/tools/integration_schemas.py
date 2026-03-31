@@ -6,11 +6,7 @@ Git operations, Docker management, and cloud services.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-
 from mindflow_backend.schemas.tools.tool_config import ToolParameter, ToolSchema
-
 
 # Predefined schemas for Integration tools
 GIT_SCHEMA = ToolSchema(

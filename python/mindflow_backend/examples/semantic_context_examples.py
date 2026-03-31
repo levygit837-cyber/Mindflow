@@ -9,18 +9,17 @@ from __future__ import annotations
 import asyncio
 from uuid import uuid4
 
-from mindflow_backend.orchestrator.semantic_context_manager import (
-    get_semantic_context_manager,
-    ContextMatch,
-)
-from mindflow_backend.services.multilingual_embeddings import (
-    get_multilingual_embedding_service,
-)
 from mindflow_backend.orchestrator.decomposition.context_aware_resolver import (
     ContextAwareResolver,
 )
 from mindflow_backend.orchestrator.decomposition.tasker_v2 import (
     TaskerV2,
+)
+from mindflow_backend.orchestrator.semantic_context_manager import (
+    get_semantic_context_manager,
+)
+from mindflow_backend.services.multilingual_embeddings import (
+    get_multilingual_embedding_service,
 )
 
 
@@ -187,11 +186,12 @@ async def example_context_aware_resolution():
     """Example: Context-aware task resolution."""
     print("=== Context-Aware Resolution Example ===")
     
-    from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
-        SubTaskContract,
-        ComponentOwner,
-    )
     from uuid import UUID
+
+    from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+        ComponentOwner,
+        SubTaskContract,
+    )
     
     resolver = ContextAwareResolver()
     session_id = str(uuid4())

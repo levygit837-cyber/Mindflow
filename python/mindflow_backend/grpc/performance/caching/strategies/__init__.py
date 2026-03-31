@@ -6,8 +6,8 @@ different access patterns, content types, and performance requirements.
 
 from .base import CacheStrategy
 from .lru import LRUCacheStrategy
-from .ttl import TTLCacheStrategy
 from .size_based import SizeBasedCacheStrategy
+from .ttl import TTLCacheStrategy
 
 __all__ = [
     "CacheStrategy",

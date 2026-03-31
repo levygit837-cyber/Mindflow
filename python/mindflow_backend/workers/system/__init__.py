@@ -1,9 +1,9 @@
 """System workers module."""
 
+from .health_worker import HealthWorker
+from .memory_worker import MemoryWorker
 from .session_review_worker import SessionReviewWorker
 from .vector_worker import VectorWorker
-from .memory_worker import MemoryWorker
-from .health_worker import HealthWorker
 
 __all__ = [
     "SessionReviewWorker",

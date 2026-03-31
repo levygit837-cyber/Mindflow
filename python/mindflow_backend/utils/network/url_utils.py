@@ -4,19 +4,18 @@ Functions for working with URLs and URIs.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
 from urllib.parse import (
     parse_qs,
-    urlparse,
-    urljoin,
-    urlunparse,
-    urlencode,
     quote,
     unquote,
+    urlencode,
+    urljoin,
+    urlparse,
+    urlunparse,
 )
 
 
-def parse_url(url: str) -> Dict[str, str]:
+def parse_url(url: str) -> dict[str, str]:
     """Parse URL into components."""
     parsed = urlparse(url)
     return {
@@ -76,7 +75,7 @@ def normalize_url(url: str) -> str:
     ))
 
 
-def add_query_params(url: str, params: Dict[str, str]) -> str:
+def add_query_params(url: str, params: dict[str, str]) -> str:
     """Add query parameters to URL."""
     parsed = urlparse(url)
     
@@ -100,7 +99,7 @@ def add_query_params(url: str, params: Dict[str, str]) -> str:
     ))
 
 
-def remove_query_params(url: str, param_names: List[str]) -> str:
+def remove_query_params(url: str, param_names: list[str]) -> str:
     """Remove specific query parameters from URL."""
     parsed = urlparse(url)
     
@@ -124,7 +123,7 @@ def remove_query_params(url: str, param_names: List[str]) -> str:
     ))
 
 
-def get_query_param(url: str, param_name: str, default: Optional[str] = None) -> Optional[str]:
+def get_query_param(url: str, param_name: str, default: str | None = None) -> str | None:
     """Get specific query parameter from URL."""
     parsed = urlparse(url)
     params = parse_qs(parsed.query)
@@ -133,13 +132,13 @@ def get_query_param(url: str, param_name: str, default: Optional[str] = None) ->
     return values[0] if values else default
 
 
-def get_domain(url: str) -> Optional[str]:
+def get_domain(url: str) -> str | None:
     """Extract domain from URL."""
     parsed = urlparse(url)
     return parsed.hostname
 
 
-def get_subdomain(url: str) -> Optional[str]:
+def get_subdomain(url: str) -> str | None:
     """Extract subdomain from URL."""
     domain = get_domain(url)
     if not domain:
@@ -165,7 +164,7 @@ def is_secure_url(url: str) -> bool:
     return urlparse(url).scheme == "https"
 
 
-def get_url_extension(url: str) -> Optional[str]:
+def get_url_extension(url: str) -> str | None:
     """Get file extension from URL."""
     path = urlparse(url).path
     if '.' in path:
@@ -180,7 +179,7 @@ def is_same_domain(url1: str, url2: str) -> bool:
     return domain1 and domain2 and domain1.lower() == domain2.lower()
 
 
-def get_relative_url(base_url: str, target_url: str) -> Optional[str]:
+def get_relative_url(base_url: str, target_url: str) -> str | None:
     """Get relative URL from base to target."""
     try:
         from urllib.parse import urljoin
@@ -202,7 +201,7 @@ def sanitize_url(url: str) -> str:
     return url
 
 
-def extract_urls(text: str) -> List[str]:
+def extract_urls(text: str) -> list[str]:
     """Extract all URLs from text."""
     # URL regex pattern
     url_pattern = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:\w*))?)?'
@@ -210,7 +209,7 @@ def extract_urls(text: str) -> List[str]:
     return re.findall(url_pattern, text)
 
 
-def extract_emails(text: str) -> List[str]:
+def extract_emails(text: str) -> list[str]:
     """Extract all email addresses from text."""
     email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     return re.findall(email_pattern, text)
@@ -226,7 +225,7 @@ def decode_url_component(component: str) -> str:
     return unquote(component)
 
 
-def build_api_url(base_url: str, endpoint: str, params: Optional[Dict[str, str]] = None) -> str:
+def build_api_url(base_url: str, endpoint: str, params: dict[str, str] | None = None) -> str:
     """Build API URL with endpoint and parameters."""
     url = urljoin(base_url.rstrip('/') + '/', endpoint.lstrip('/'))
     
@@ -236,7 +235,7 @@ def build_api_url(base_url: str, endpoint: str, params: Optional[Dict[str, str]]
     return url
 
 
-def get_path_segments(url: str) -> List[str]:
+def get_path_segments(url: str) -> list[str]:
     """Get path segments from URL."""
     path = urlparse(url).path
     segments = [segment for segment in path.split('/') if segment]
@@ -302,7 +301,7 @@ def is_internal_url(url: str, base_domain: str) -> bool:
     return url_domain == base_domain or url_domain.endswith('.' + base_domain)
 
 
-def get_social_media_domain(url: str) -> Optional[str]:
+def get_social_media_domain(url: str) -> str | None:
     """Get social media platform from URL."""
     domain = get_domain(url)
     if not domain:

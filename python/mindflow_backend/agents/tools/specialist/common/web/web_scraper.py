@@ -4,11 +4,10 @@ with advanced features and security controls.
 """
 
 from __future__ import annotations
-import asyncio
+
 import json
 import urllib.parse
-from typing import Any, Dict, List, Optional, Union
-from pathlib import Path
+from typing import Any
 
 try:
     import aiohttp
@@ -28,9 +27,13 @@ except ImportError:
     requests = None
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.tools.web_schemas import (
+    API_CLIENT_SCHEMA,
+    HTTP_CLIENT_SCHEMA,
+    WEB_SCRAPER_SCHEMA,
+)
+
 from ..base.tool_interface import AsyncToolInterface
-from mindflow_backend.schemas.tools.web_schemas import HTTP_CLIENT_SCHEMA, WEB_SCRAPER_SCHEMA, API_CLIENT_SCHEMA
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 
 _logger = get_logger(__name__)
 
@@ -40,7 +43,7 @@ class HttpClientTool(AsyncToolInterface):
     HTTP client with advanced features.
     """
 
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """
         Initialize the HTTP client tool.
         Args:
@@ -55,7 +58,7 @@ class HttpClientTool(AsyncToolInterface):
         
         self._schema = HTTP_CLIENT_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute HTTP request with features.
         Args:
@@ -118,15 +121,15 @@ class HttpClientTool(AsyncToolInterface):
         self,
         method: str,
         url: str,
-        headers: Dict,
-        params: Dict,
-        data: Optional[Dict],
-        form_data: Optional[Dict],
+        headers: dict,
+        params: dict,
+        data: dict | None,
+        form_data: dict | None,
         timeout: int,
         verify_ssl: bool,
         follow_redirects: bool,
         max_redirects: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute request using aiohttp.
         """
@@ -147,51 +150,50 @@ class HttpClientTool(AsyncToolInterface):
         elif form_data:
             request_data = aiohttp.FormData(form_data)
 
-        async with aiohttp.ClientSession(timeout=timeout_obj) as session:
-            async with session.request(
-                method=method,
-                url=url,
-                headers=headers,
-                params=params,
-                data=request_data,
-                ssl=ssl,
-                allow_redirects=follow_redirects,
-                max_redirects=max_redirects
-            ) as response:
-                # Read response with size limit
-                content = await response.text()
-                if len(content.encode('utf-8')) > self.max_response_size:
-                    content = content[:self.max_response_size]
-                    content += "\n... Response truncated due to size limit."
+        async with aiohttp.ClientSession(timeout=timeout_obj) as session, session.request(
+            method=method,
+            url=url,
+            headers=headers,
+            params=params,
+            data=request_data,
+            ssl=ssl,
+            allow_redirects=follow_redirects,
+            max_redirects=max_redirects
+        ) as response:
+            # Read response with size limit
+            content = await response.text()
+            if len(content.encode('utf-8')) > self.max_response_size:
+                content = content[:self.max_response_size]
+                content += "\n... Response truncated due to size limit."
 
-                elapsed = time.time() - start_time
+            elapsed = time.time() - start_time
 
-                return self._format_result(
-                    success=True,
-                    result={
-                        "status_code": response.status,
-                        "headers": dict(response.headers),
-                        "body": content,
-                        "url": str(response.url),
-                        "elapsed": elapsed,
-                        "content_type": response.headers.get("content-type"),
-                        "content_length": len(content)
-                    }
-                )
+            return self._format_result(
+                success=True,
+                result={
+                    "status_code": response.status,
+                    "headers": dict(response.headers),
+                    "body": content,
+                    "url": str(response.url),
+                    "elapsed": elapsed,
+                    "content_type": response.headers.get("content-type"),
+                    "content_length": len(content)
+                }
+            )
 
     async def _execute_requests(
         self,
         method: str,
         url: str,
-        headers: Dict,
-        params: Dict,
-        data: Optional[Dict],
-        form_data: Optional[Dict],
+        headers: dict,
+        params: dict,
+        data: dict | None,
+        form_data: dict | None,
         timeout: int,
         verify_ssl: bool,
         follow_redirects: bool,
         max_redirects: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute request using requests (synchronous).
         """
@@ -256,7 +258,7 @@ class HttpClientTool(AsyncToolInterface):
         finally:
             session.close()
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """
@@ -268,7 +270,7 @@ class WebScraperTool(AsyncToolInterface):
     Web scraping tool.
     """
 
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """
         Initialize the web scraper tool.
         Args:
@@ -289,7 +291,7 @@ class WebScraperTool(AsyncToolInterface):
 
         self._schema = WEB_SCRAPER_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Scrape web page content.
         Args:
@@ -426,7 +428,7 @@ class WebScraperTool(AsyncToolInterface):
                 error=f"Web scraping failed: {str(e)}"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """
@@ -438,7 +440,7 @@ class ApiClientTool(AsyncToolInterface):
     API client for REST APIs.
     """
 
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """
         Initialize the API client tool.
         Args:
@@ -451,7 +453,7 @@ class ApiClientTool(AsyncToolInterface):
 
         self._schema = API_CLIENT_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute API request with authentication.
         Args:
@@ -538,7 +540,7 @@ class ApiClientTool(AsyncToolInterface):
                 error=f"API request failed: {str(e)}"
             )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

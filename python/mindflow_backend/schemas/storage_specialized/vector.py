@@ -6,8 +6,8 @@ with global memory and embedding schemas.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -33,15 +33,15 @@ class VectorIndex(StrEnum):
 class VectorMetadata(BaseModel):
     """Metadata for vector entries."""
     
-    document_id: Optional[str] = Field(default=None, description="Document identifier")
-    session_id: Optional[str] = Field(default=None, description="Session identifier")
-    agent_id: Optional[str] = Field(default=None, description="Agent identifier")
-    content_type: Optional[str] = Field(default=None, description="Content type")
-    source_type: Optional[str] = Field(default=None, description="Source type")
-    timestamp: Optional[str] = Field(default=None, description="Creation timestamp")
+    document_id: str | None = Field(default=None, description="Document identifier")
+    session_id: str | None = Field(default=None, description="Session identifier")
+    agent_id: str | None = Field(default=None, description="Agent identifier")
+    content_type: str | None = Field(default=None, description="Content type")
+    source_type: str | None = Field(default=None, description="Source type")
+    timestamp: str | None = Field(default=None, description="Creation timestamp")
     
     # Custom metadata
-    custom: Dict[str, Any] = Field(default_factory=dict, description="Custom metadata")
+    custom: dict[str, Any] = Field(default_factory=dict, description="Custom metadata")
 
 
 class VectorConfig(BaseModel):
@@ -82,46 +82,46 @@ class VectorCollection(BaseModel):
     distance_metric: VectorDistance = Field(description="Distance metric")
     
     # Configuration
-    ef_construction: Optional[int] = Field(default=None, description="HNSW ef construction")
-    ef_search: Optional[int] = Field(default=None, description="HNSW ef search")
+    ef_construction: int | None = Field(default=None, description="HNSW ef construction")
+    ef_search: int | None = Field(default=None, description="HNSW ef search")
     
     # Timestamps
-    created_at: Optional[str] = Field(default=None, description="Creation timestamp")
-    updated_at: Optional[str] = Field(default=None, description="Last update timestamp")
+    created_at: str | None = Field(default=None, description="Creation timestamp")
+    updated_at: str | None = Field(default=None, description="Last update timestamp")
 
 
 class VectorEntry(BaseModel):
     """Single vector entry."""
     
     id: str = Field(description="Vector ID")
-    vector: List[float] = Field(description="Vector values")
+    vector: list[float] = Field(description="Vector values")
     metadata: VectorMetadata = Field(description="Vector metadata")
     
     # Optional content
-    content: Optional[str] = Field(default=None, description="Original content")
-    content_hash: Optional[str] = Field(default=None, description="Content hash")
+    content: str | None = Field(default=None, description="Original content")
+    content_hash: str | None = Field(default=None, description="Content hash")
     
     # Timestamps
-    created_at: Optional[str] = Field(default=None, description="Creation timestamp")
-    updated_at: Optional[str] = Field(default=None, description="Last update timestamp")
+    created_at: str | None = Field(default=None, description="Creation timestamp")
+    updated_at: str | None = Field(default=None, description="Last update timestamp")
 
 
 class VectorSearchRequest(BaseModel):
     """Vector search request."""
     
     collection_name: str = Field(description="Target collection")
-    query_vector: List[float] = Field(description="Query vector")
+    query_vector: list[float] = Field(description="Query vector")
     
     # Search parameters
     limit: int = Field(default=10, description="Maximum results")
     score_threshold: float = Field(default=0.0, description="Minimum similarity score")
     
     # Filtering
-    filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters")
+    filters: dict[str, Any] | None = Field(default=None, description="Metadata filters")
     include_metadata: bool = Field(default=True, description="Include metadata in results")
     
     # Search options
-    search_params: Optional[Dict[str, Any]] = Field(default=None, description="Search parameters")
+    search_params: dict[str, Any] | None = Field(default=None, description="Search parameters")
     exact_search: bool = Field(default=False, description="Exact match search")
 
 
@@ -133,9 +133,9 @@ class VectorSearchResult(BaseModel):
     distance: float = Field(description="Distance value")
     
     # Vector data
-    vector: Optional[List[float]] = Field(default=None, description="Vector values")
-    metadata: Optional[VectorMetadata] = Field(default=None, description="Vector metadata")
-    content: Optional[str] = Field(default=None, description="Original content")
+    vector: list[float] | None = Field(default=None, description="Vector values")
+    metadata: VectorMetadata | None = Field(default=None, description="Vector metadata")
+    content: str | None = Field(default=None, description="Original content")
     
     # Additional info
     rank: int = Field(description="Result rank")
@@ -145,21 +145,21 @@ class VectorSearchResult(BaseModel):
 class VectorSearchResponse(BaseModel):
     """Vector search response."""
     
-    results: List[VectorSearchResult] = Field(description="Search results")
+    results: list[VectorSearchResult] = Field(description="Search results")
     total_found: int = Field(description="Total results found")
     search_time_ms: float = Field(description="Search time in milliseconds")
     
     # Request info
-    request_id: Optional[str] = Field(default=None, description="Request ID")
+    request_id: str | None = Field(default=None, description="Request ID")
     collection: str = Field(description="Collection name")
-    query_vector_hash: Optional[str] = Field(default=None, description="Query vector hash")
+    query_vector_hash: str | None = Field(default=None, description="Query vector hash")
 
 
 class VectorBatchRequest(BaseModel):
     """Batch vector operation request."""
     
     collection_name: str = Field(description="Target collection")
-    vectors: List[VectorEntry] = Field(description="Vectors to insert")
+    vectors: list[VectorEntry] = Field(description="Vectors to insert")
     
     # Batch options
     batch_size: int = Field(default=1000, description="Batch size")
@@ -174,8 +174,8 @@ class VectorBatchRequest(BaseModel):
 class VectorBatchResponse(BaseModel):
     """Batch vector operation response."""
     
-    successful_ids: List[str] = Field(description="Successfully inserted IDs")
-    failed_entries: List[Dict[str, Any]] = Field(description="Failed entries")
+    successful_ids: list[str] = Field(description="Successfully inserted IDs")
+    failed_entries: list[dict[str, Any]] = Field(description="Failed entries")
     duplicates_skipped: int = Field(default=0, description="Duplicates skipped")
     
     # Performance info
@@ -183,7 +183,7 @@ class VectorBatchResponse(BaseModel):
     throughput_vectors_per_sec: float = Field(description="Processing throughput")
     
     # Request info
-    request_id: Optional[str] = Field(default=None, description="Request ID")
+    request_id: str | None = Field(default=None, description="Request ID")
     collection: str = Field(description="Collection name")
 
 
@@ -197,7 +197,7 @@ class VectorStats(BaseModel):
     # Index stats
     index_type: VectorIndex = Field(description="Index type")
     index_size_mb: float = Field(description="Index size in MB")
-    index_build_time: Optional[str] = Field(default=None, description="Index build time")
+    index_build_time: str | None = Field(default=None, description="Index build time")
     
     # Performance stats
     avg_search_time_ms: float = Field(description="Average search time")
@@ -205,8 +205,8 @@ class VectorStats(BaseModel):
     
     # Storage stats
     storage_size_mb: float = Field(description="Storage size in MB")
-    compression_ratio: Optional[float] = Field(default=None, description="Compression ratio")
+    compression_ratio: float | None = Field(default=None, description="Compression ratio")
     
     # Timestamps
-    last_optimized: Optional[str] = Field(default=None, description="Last optimization")
-    last_compacted: Optional[str] = Field(default=None, description="Last compaction")
+    last_optimized: str | None = Field(default=None, description="Last optimization")
+    last_compacted: str | None = Field(default=None, description="Last compaction")

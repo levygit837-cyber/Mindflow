@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import Field, create_model
 
@@ -28,8 +28,8 @@ _JSON_TYPE_MAP: dict[str, type] = {
     "integer": int,
     "number": float,
     "boolean": bool,
-    "array": List[str],  # type: ignore[valid-type]
-    "object": Dict[str, Any],  # type: ignore[valid-type]
+    "array": list[str],  # type: ignore[valid-type]
+    "object": dict[str, Any],  # type: ignore[valid-type]
 }
 
 

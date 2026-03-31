@@ -18,9 +18,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
         OrchestratorState as OrchestratorState,
+    )
+    from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
         build_simple_orchestrator_flow as build_simple_orchestrator_flow,
     )
-    from mindflow_backend.orchestrator.router import route_message as route_message
+    from mindflow_backend.orchestrator.routing.intelligent_router import (
+        route_message_intelligently as route_message,
+    )
 
 __all__ = [
     "OrchestratorState",
@@ -39,7 +43,9 @@ def __getattr__(name: str) -> object:
         )
         return {"OrchestratorState": OrchestratorState, "build_simple_orchestrator_flow": build_simple_orchestrator_flow}[name]
     if name == "route_message":
-        from mindflow_backend.orchestrator.router import route_message
+        from mindflow_backend.orchestrator.routing.intelligent_router import (
+            route_message_intelligently as route_message,
+        )
         return route_message
     if name == "context_validation":
         from mindflow_backend.orchestrator import context_validation

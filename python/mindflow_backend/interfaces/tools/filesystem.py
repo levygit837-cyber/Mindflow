@@ -7,8 +7,7 @@ and security controls.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any, Dict, List, Optional
-from pathlib import Path
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -20,8 +19,8 @@ class FileReadTool(Protocol):
         file_path: str,
         encoding: str = "utf-8",
         offset: int = 0,
-        limit: Optional[int] = None
-    ) -> Dict[str, Any]:
+        limit: int | None = None
+    ) -> dict[str, Any]:
         """Read file contents with optional offset and limit.
         
         Args:
@@ -47,7 +46,7 @@ class FileWriteTool(Protocol):
         encoding: str = "utf-8",
         create_dirs: bool = True,
         backup: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Write content to file with optional directory creation.
         
         Args:
@@ -74,7 +73,7 @@ class FileEditTool(Protocol):
         new_content: str,
         encoding: str = "utf-8",
         backup: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Edit file by replacing specific content.
         
         Args:
@@ -99,8 +98,8 @@ class DirectoryListTool(Protocol):
         directory_path: str,
         recursive: bool = False,
         show_hidden: bool = False,
-        pattern: Optional[str] = None
-    ) -> Dict[str, Any]:
+        pattern: str | None = None
+    ) -> dict[str, Any]:
         """List directory contents with filtering options.
         
         Args:
@@ -125,7 +124,7 @@ class FileDeleteTool(Protocol):
         recursive: bool = False,
         force: bool = False,
         backup: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Delete file or directory with safety options.
         
         Args:
@@ -149,7 +148,7 @@ class DirectoryCreateTool(Protocol):
         directory_path: str,
         parents: bool = True,
         exist_ok: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create directory with parent creation options.
         
         Args:
@@ -176,7 +175,7 @@ class GrepSearchTool(Protocol):
         regex: bool = True,
         max_results: int = 100,
         context_lines: int = 2
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Search for text patterns in files.
         
         Args:
@@ -204,7 +203,7 @@ class GlobSearchTool(Protocol):
         search_path: str = ".",
         recursive: bool = True,
         max_results: int = 100
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Search files using glob patterns.
         
         Args:
@@ -226,15 +225,15 @@ class FindFilesTool(Protocol):
     async def find_files(
         self,
         search_path: str = ".",
-        name_pattern: Optional[str] = None,
-        size_min: Optional[int] = None,
-        size_max: Optional[int] = None,
-        modified_after: Optional[str] = None,
-        modified_before: Optional[str] = None,
-        file_type: Optional[str] = None,
-        max_depth: Optional[int] = None,
+        name_pattern: str | None = None,
+        size_min: int | None = None,
+        size_max: int | None = None,
+        modified_after: str | None = None,
+        modified_before: str | None = None,
+        file_type: str | None = None,
+        max_depth: int | None = None,
         max_results: int = 100
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Find files with advanced filtering criteria.
         
         Args:

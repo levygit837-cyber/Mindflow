@@ -6,13 +6,17 @@ and semantic analysis capabilities.
 
 from __future__ import annotations
 
-# Core context retrieval
-from mindflow_backend.agents.context.retriever import AgentContextRetriever, get_agent_context_retriever
+from mindflow_backend.agents.context.analyzer import SessionContentAnalyzer, get_content_analyzer
 
 # Context components
-from mindflow_backend.agents.context.cache import get_context_cache, ContextCache
-from mindflow_backend.agents.context.vector_store import get_vector_store, InMemoryVectorStore
-from mindflow_backend.agents.context.analyzer import get_content_analyzer, SessionContentAnalyzer
+from mindflow_backend.agents.context.cache import ContextCache, get_context_cache
+
+# Core context retrieval
+from mindflow_backend.agents.context.retriever import (
+    AgentContextRetriever,
+    get_agent_context_retriever,
+)
+from mindflow_backend.agents.context.vector_store import InMemoryVectorStore, get_vector_store
 
 __all__ = [
     "AgentContextRetriever",

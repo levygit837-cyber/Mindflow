@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 _NOISY_KIND_PREFIXES = (
     "file_",
     "shell_",

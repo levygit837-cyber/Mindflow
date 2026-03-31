@@ -1,13 +1,12 @@
 """Test gRPC client functionality."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient, EnhancedGrpcAgentClient
+import pytest
+
+from mindflow_backend.grpc.client import GrpcAgentClient, LocalAgentClient
 from mindflow_backend.grpc.config.config import GrpcClientConfig
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
-from mindflow_backend.schemas.core.common import LLMProvider
-
 
 # ── Task 1: public compatibility surface ──────────────────────────────────────
 

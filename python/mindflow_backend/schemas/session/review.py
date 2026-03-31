@@ -82,7 +82,7 @@ class TokenWindowTracker(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")
-    def populate_threshold(self) -> "TokenWindowTracker":
+    def populate_threshold(self) -> TokenWindowTracker:
         if self.next_review_threshold is None:
             self.next_review_threshold = self.window_size
         return self
@@ -207,7 +207,7 @@ class SessionReviewResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def populate_review_data(self) -> "SessionReviewResult":
+    def populate_review_data(self) -> SessionReviewResult:
         if not self.review_data:
             self.review_data = {
                 "summary_text": self.summary_text,

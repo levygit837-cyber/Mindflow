@@ -2,24 +2,24 @@
 
 import asyncio
 import uuid
-from typing import Any, Dict, List, Optional, AsyncGenerator
+from collections.abc import AsyncGenerator
 from datetime import datetime
+from typing import Any
 
 from mindflow_backend.interfaces.skills.executor import (
-    SkillExecutorInterface,
     AsyncSkillExecutorInterface,
     BatchSkillExecutorInterface,
-    SkillExecutionManagerInterface
+    SkillExecutionManagerInterface,
+    SkillExecutorInterface,
 )
 from mindflow_backend.interfaces.skills.registry import SkillRegistryInterface
-from mindflow_backend.schemas.skills.base import SkillInput, SkillOutput
+from mindflow_backend.schemas.skills.base import SkillInput
 from mindflow_backend.schemas.skills.execution import (
     ExecutionContext,
-    ExecutionResult,
+    ExecutionMetrics,
     ExecutionRequest,
-    BatchExecutionRequest,
+    ExecutionResult,
     ExecutionStatus,
-    ExecutionMetrics
 )
 
 
@@ -28,8 +28,8 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
     
     def __init__(self, registry: SkillRegistryInterface):
         self._registry = registry
-        self._running_executions: Dict[str, asyncio.Task] = {}
-        self._execution_results: Dict[str, ExecutionResult] = {}
+        self._running_executions: dict[str, asyncio.Task] = {}
+        self._execution_results: dict[str, ExecutionResult] = {}
         self._initialized = False
     
     async def initialize(self):
@@ -118,7 +118,7 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
         # For now, assume we can execute any registered skill
         return True
     
-    def get_supported_skills(self) -> List[str]:
+    def get_supported_skills(self) -> list[str]:
         """Get list of supported skills."""
         # This would typically query the registry
         return []
@@ -137,7 +137,7 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
                 return True
         return False
     
-    async def execute_stream(self, context: ExecutionContext) -> AsyncGenerator[Dict[str, Any], None]:
+    async def execute_stream(self, context: ExecutionContext) -> AsyncGenerator[dict[str, Any], None]:
         """Execute skill with streaming output."""
         # For now, implement as regular execution with single result
         result = await self.execute(context)
@@ -166,7 +166,7 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
                 self.execute(context),
                 timeout=timeout_seconds
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Create timeout result
             start_time = datetime.now()
             metrics = ExecutionMetrics(start_time=start_time)
@@ -220,7 +220,7 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
             logs=[f"Failed after {max_retries + 1} attempts"]
         )
     
-    async def execute_batch(self, requests: List[ExecutionRequest]) -> List[ExecutionResult]:
+    async def execute_batch(self, requests: list[ExecutionRequest]) -> list[ExecutionResult]:
         """Execute multiple skills in batch."""
         results = []
         
@@ -242,9 +242,9 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
     
     async def execute_parallel(
         self, 
-        requests: List[ExecutionRequest],
-        max_concurrent: Optional[int] = None
-    ) -> List[ExecutionResult]:
+        requests: list[ExecutionRequest],
+        max_concurrent: int | None = None
+    ) -> list[ExecutionResult]:
         """Execute multiple skills in parallel."""
         if max_concurrent is None:
             max_concurrent = len(requests)
@@ -269,9 +269,9 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
     
     async def execute_sequential(
         self, 
-        requests: List[ExecutionRequest],
+        requests: list[ExecutionRequest],
         fail_fast: bool = False
-    ) -> List[ExecutionResult]:
+    ) -> list[ExecutionResult]:
         """Execute multiple skills sequentially."""
         results = []
         
@@ -362,18 +362,18 @@ class SkillExecutionManager(SkillExecutionManagerInterface):
         # This would typically check the execution store
         return ExecutionStatus.PENDING
     
-    async def get_execution_result(self, execution_id: str) -> Optional[ExecutionResult]:
+    async def get_execution_result(self, execution_id: str) -> ExecutionResult | None:
         """Get result of an execution."""
         # This would typically check the execution store
         return None
     
     async def list_executions(
         self,
-        skill_name: Optional[str] = None,
-        status: Optional[ExecutionStatus] = None,
+        skill_name: str | None = None,
+        status: ExecutionStatus | None = None,
         limit: int = 50,
         offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List executions with optional filtering."""
         # This would typically query the execution store
         return []

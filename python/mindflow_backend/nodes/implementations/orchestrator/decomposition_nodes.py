@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 
 
 class DecompositionNode(BaseNode):
@@ -18,5 +18,5 @@ class DecompositionNode(BaseNode):
             description=description,
         )
 
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         return {"result": None, "metadata": {"node_id": self.node_id}}

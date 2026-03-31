@@ -8,8 +8,8 @@ from __future__ import annotations
 
 # Database and data processing
 from .data_tools import (
-    DatabaseTool,
     CSVProcessorTool,
+    DatabaseTool,
 )
 
 __all__ = [

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
@@ -22,8 +22,8 @@ class AgentTask:
     session_id: str
     agent_type: str
     priority: str = "medium"
-    task_data: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    task_data: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self) -> None:
         """Generate task ID if not provided."""
@@ -35,7 +35,7 @@ class AgentTask:
         """Get task ID."""
         return self.metadata["task_id"]
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert task to dictionary for queue publishing."""
         envelope = QueueMessageEnvelope(
             schema_version="1.0",
@@ -44,7 +44,7 @@ class AgentTask:
             session_id=self.session_id,
             correlation_id=self.task_id,
             idempotency_key=self.task_id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             metadata={
                 **self.metadata,
                 "agent_type": self.agent_type,
@@ -136,7 +136,7 @@ class AgentTaskDefinitions:
         session_id: str,
         prompt: str,
         language: str = "python",
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         priority: str = "medium",
     ) -> AgentTask:
         """Create a code generation task."""
@@ -234,7 +234,7 @@ class AgentTaskDefinitions:
     def create_report_generation_task(
         session_id: str,
         report_type: str,
-        data_sources: List[str],
+        data_sources: list[str],
         format_type: str = "json",
         priority: str = "medium",
     ) -> AgentTask:
@@ -261,7 +261,7 @@ class AgentTaskDefinitions:
         session_id: str,
         query: str,
         search_depth: str = "standard",
-        sources: List[str] = None,
+        sources: list[str] = None,
         max_results: int = 10,
         priority: str = "medium",
     ) -> AgentTask:
@@ -286,8 +286,8 @@ class AgentTaskDefinitions:
     @staticmethod
     def create_source_validation_task(
         session_id: str,
-        sources: List[str],
-        validation_criteria: List[str],
+        sources: list[str],
+        validation_criteria: list[str],
         strict_mode: bool = False,
         priority: str = "medium",
     ) -> AgentTask:
@@ -311,7 +311,7 @@ class AgentTaskDefinitions:
     @staticmethod
     def create_content_synthesis_task(
         session_id: str,
-        research_data: List[Dict[str, Any]],
+        research_data: list[dict[str, Any]],
         synthesis_type: str = "summary",
         target_audience: str = "technical",
         priority: str = "medium",
@@ -339,7 +339,7 @@ class AgentTaskDefinitions:
         session_id: str,
         complex_task: str,
         complexity_level: str = "medium",
-        target_agents: List[str] = None,
+        target_agents: list[str] = None,
         priority: str = "high",
     ) -> AgentTask:
         """Create a task decomposition task."""
@@ -363,8 +363,8 @@ class AgentTaskDefinitions:
     def create_workflow_execution_task(
         session_id: str,
         workflow_id: str,
-        workflow_definition: Dict[str, Any],
-        execution_context: Dict[str, Any] = None,
+        workflow_definition: dict[str, Any],
+        execution_context: dict[str, Any] = None,
         priority: str = "high",
     ) -> AgentTask:
         """Create a workflow execution task."""
@@ -387,8 +387,8 @@ class AgentTaskDefinitions:
     @staticmethod
     def create_resource_allocation_task(
         session_id: str,
-        tasks: List[Dict[str, Any]],
-        available_resources: Dict[str, Any],
+        tasks: list[dict[str, Any]],
+        available_resources: dict[str, Any],
         allocation_strategy: str = "balanced",
         priority: str = "medium",
     ) -> AgentTask:
@@ -487,7 +487,7 @@ class AgentTaskPublisher:
         
         return priority_mapping.get(task_priority, 5)
     
-    async def publish_multiple_tasks(self, tasks: List[AgentTask]) -> Dict[str, bool]:
+    async def publish_multiple_tasks(self, tasks: list[AgentTask]) -> dict[str, bool]:
         """Publish multiple tasks to queues.
         
         Args:
@@ -505,7 +505,7 @@ class AgentTaskPublisher:
 
 
 # Global task publisher instance
-_task_publisher: Optional[AgentTaskPublisher] = None
+_task_publisher: AgentTaskPublisher | None = None
 
 
 def get_agent_task_publisher() -> AgentTaskPublisher:

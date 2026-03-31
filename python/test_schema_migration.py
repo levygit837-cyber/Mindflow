@@ -4,7 +4,6 @@ Test script to verify schema migration is working correctly.
 """
 
 import sys
-import os
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
@@ -18,7 +17,12 @@ def test_web_schemas():
         print(f"✅ WEB_SCHEMAS loaded: {list(WEB_SCHEMAS.keys())}")
         
         # Test individual schemas
-        from mindflow_backend.schemas.tools.web_schemas import API_CLIENT_SCHEMA, HTTP_CLIENT_SCHEMA, WEB_SCRAPER_SCHEMA, BROWSER_SEARCH_SCHEMA
+        from mindflow_backend.schemas.tools.web_schemas import (
+            API_CLIENT_SCHEMA,
+            BROWSER_SEARCH_SCHEMA,
+            HTTP_CLIENT_SCHEMA,
+            WEB_SCRAPER_SCHEMA,
+        )
         
         print(f"✅ API_CLIENT_SCHEMA: {API_CLIENT_SCHEMA.name}")
         print(f"✅ HTTP_CLIENT_SCHEMA: {HTTP_CLIENT_SCHEMA.name}")
@@ -40,7 +44,13 @@ def test_system_schemas():
         print(f"✅ SYSTEM_SCHEMAS loaded: {list(SYSTEM_SCHEMAS.keys())}")
         
         # Test individual schemas
-        from mindflow_backend.schemas.tools.system_schemas import PROCESS_MANAGER_SCHEMA, RESOURCE_MONITOR_SCHEMA, SANDBOX_SCHEMA, SHELL_EXECUTOR_SCHEMA, SYSTEM_INFO_SCHEMA
+        from mindflow_backend.schemas.tools.system_schemas import (
+            PROCESS_MANAGER_SCHEMA,
+            RESOURCE_MONITOR_SCHEMA,
+            SANDBOX_SCHEMA,
+            SHELL_EXECUTOR_SCHEMA,
+            SYSTEM_INFO_SCHEMA,
+        )
         
         print(f"✅ PROCESS_MANAGER_SCHEMA: {PROCESS_MANAGER_SCHEMA.name}")
         print(f"✅ RESOURCE_MONITOR_SCHEMA: {RESOURCE_MONITOR_SCHEMA.name}")
@@ -63,7 +73,16 @@ def test_filesystem_schemas():
         print(f"✅ FILESYSTEM_SCHEMAS loaded: {list(FILESYSTEM_SCHEMAS.keys())}")
         
         # Test individual schemas
-        from mindflow_backend.schemas.tools.filesystem_schemas import READ_FILE_SCHEMA, WRITE_FILE_SCHEMA, EDIT_FILE_SCHEMA, DELETE_FILE_SCHEMA, LIST_DIRECTORY_SCHEMA, GREP_SEARCH_SCHEMA, GLOB_SEARCH_SCHEMA, FILE_FINDER_SCHEMA
+        from mindflow_backend.schemas.tools.filesystem_schemas import (
+            DELETE_FILE_SCHEMA,
+            EDIT_FILE_SCHEMA,
+            FILE_FINDER_SCHEMA,
+            GLOB_SEARCH_SCHEMA,
+            GREP_SEARCH_SCHEMA,
+            LIST_DIRECTORY_SCHEMA,
+            READ_FILE_SCHEMA,
+            WRITE_FILE_SCHEMA,
+        )
         
         print(f"✅ READ_FILE_SCHEMA: {READ_FILE_SCHEMA.name}")
         print(f"✅ WRITE_FILE_SCHEMA: {WRITE_FILE_SCHEMA.name}")
@@ -89,7 +108,7 @@ def test_integration_schemas():
         print(f"✅ INTEGRATION_SCHEMAS loaded: {list(INTEGRATION_SCHEMAS.keys())}")
         
         # Test individual schemas
-        from mindflow_backend.schemas.tools.integration_schemas import GIT_SCHEMA, DOCKER_SCHEMA
+        from mindflow_backend.schemas.tools.integration_schemas import DOCKER_SCHEMA, GIT_SCHEMA
         
         print(f"✅ GIT_SCHEMA: {GIT_SCHEMA.name}")
         print(f"✅ DOCKER_SCHEMA: {DOCKER_SCHEMA.name}")
@@ -109,7 +128,10 @@ def test_data_schemas():
         print(f"✅ DATA_SCHEMAS loaded: {list(DATA_SCHEMAS.keys())}")
         
         # Test individual schemas
-        from mindflow_backend.schemas.tools.data_schemas import DATABASE_SCHEMA, CSV_PROCESSOR_SCHEMA
+        from mindflow_backend.schemas.tools.data_schemas import (
+            CSV_PROCESSOR_SCHEMA,
+            DATABASE_SCHEMA,
+        )
         
         print(f"✅ DATABASE_SCHEMA: {DATABASE_SCHEMA.name}")
         print(f"✅ CSV_PROCESSOR_SCHEMA: {CSV_PROCESSOR_SCHEMA.name}")
@@ -139,7 +161,7 @@ def test_tool_imports():
         print(f"✅ BrowserSearchTool schema: {browser_search._schema.name}")
         
         # Test data tools
-        from mindflow_backend.agents.tools.data.data_tools import DatabaseTool, CSVProcessorTool
+        from mindflow_backend.agents.tools.data.data_tools import CSVProcessorTool, DatabaseTool
         db_tool = DatabaseTool()
         print(f"✅ DatabaseTool schema: {db_tool._schema.name}")
         

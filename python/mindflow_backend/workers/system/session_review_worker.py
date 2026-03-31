@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -26,7 +26,7 @@ class SessionReviewWorker(BaseWorker):
         super().__init__(queue_config, worker_name="session_review_worker")
         self._session_review_consumer = SessionReviewTaskConsumer()
     
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process session review tasks.
         
         Supported task types:
@@ -96,7 +96,7 @@ class SessionReviewWorker(BaseWorker):
                 processing_time=time.time() - start_time,
             )
 
-    async def _handle_review_requested(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_review_requested(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle the real queued session review path."""
         result = await self._session_review_consumer.consume_requested_review(message_data)
         return WorkerResult(
@@ -105,7 +105,7 @@ class SessionReviewWorker(BaseWorker):
             data=result,
         )
     
-    async def _handle_window_review(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_window_review(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle session window review when token limits reached."""
         session_id = message_data.get("session_id")
         window_index = message_data.get("window_index", 0)
@@ -150,7 +150,7 @@ class SessionReviewWorker(BaseWorker):
             },
         )
     
-    async def _handle_context_summarization(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_context_summarization(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle context summarization for long sessions."""
         session_id = message_data.get("session_id")
         context_range = message_data.get("context_range", "full_session")
@@ -181,7 +181,7 @@ class SessionReviewWorker(BaseWorker):
             },
         )
     
-    async def _handle_memory_consolidation(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_memory_consolidation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle memory consolidation for session data."""
         session_id = message_data.get("session_id")
         consolidation_type = message_data.get("consolidation_type", "incremental")
@@ -212,7 +212,7 @@ class SessionReviewWorker(BaseWorker):
             },
         )
     
-    async def _handle_token_management(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_token_management(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle token window management and budget enforcement."""
         session_id = message_data.get("session_id")
         action = message_data.get("action", "reset_window")
@@ -244,7 +244,7 @@ class SessionReviewWorker(BaseWorker):
             },
         )
     
-    async def _handle_session_cleanup(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def _handle_session_cleanup(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle cleanup of old or inactive session data."""
         cleanup_criteria = message_data.get("cleanup_criteria", "inactive_7d")
         dry_run = message_data.get("dry_run", True)

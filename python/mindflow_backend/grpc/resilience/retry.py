@@ -10,9 +10,10 @@ import asyncio
 import random
 import time
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
 import grpc
 from mindflow_backend.infra.logging import get_logger
@@ -48,17 +49,17 @@ class RetryConfig:
     strategy: RetryStrategy = RetryStrategy.EXPONENTIAL_BACKOFF
     
     # Selective retry settings
-    retryable_exceptions: List[Type[Exception]] = field(default_factory=lambda: [
+    retryable_exceptions: list[type[Exception]] = field(default_factory=lambda: [
         ConnectionError,
         TimeoutError,
         grpc.RpcError,
     ])
-    non_retryable_exceptions: List[Type[Exception]] = field(default_factory=lambda: [
+    non_retryable_exceptions: list[type[Exception]] = field(default_factory=lambda: [
         ValueError,
         KeyError,
         PermissionError,
     ])
-    retryable_grpc_codes: List[grpc.StatusCode] = field(default_factory=lambda: [
+    retryable_grpc_codes: list[grpc.StatusCode] = field(default_factory=lambda: [
         grpc.StatusCode.UNAVAILABLE,
         grpc.StatusCode.DEADLINE_EXCEEDED,
         grpc.StatusCode.RESOURCE_EXHAUSTED,
@@ -66,9 +67,9 @@ class RetryConfig:
     ])
     
     # Advanced settings
-    retry_on_specific_errors: List[str] = field(default_factory=list)
-    stop_on_specific_errors: List[str] = field(default_factory=list)
-    custom_retry_condition: Optional[Callable[[Exception, int], bool]] = None
+    retry_on_specific_errors: list[str] = field(default_factory=list)
+    stop_on_specific_errors: list[str] = field(default_factory=list)
+    custom_retry_condition: Callable[[Exception, int], bool] | None = None
 
 
 class RetryableError(Exception):
@@ -113,7 +114,7 @@ class AdvancedRetryPolicy(RetryPolicy):
     
     def __init__(self, config: RetryConfig | None = None):
         self.config = config or RetryConfig()
-        self._attempt_history: List[Dict[str, Any]] = []
+        self._attempt_history: list[dict[str, Any]] = []
     
     async def execute_with_retry(self, operation: Callable, *args, **kwargs) -> Any:
         """Execute operation with advanced retry logic."""
@@ -269,7 +270,7 @@ class AdvancedRetryPolicy(RetryPolicy):
             'timestamp': time.time()
         })
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get retry statistics."""
         if not self._attempt_history:
             return {
@@ -312,12 +313,12 @@ class ConditionalRetryPolicy(AdvancedRetryPolicy):
     """Retry policy with conditional logic based on operation context."""
     
     def __init__(self, config: RetryConfig | None = None, 
-                 condition: Callable[[str, Dict[str, Any]], bool] | None = None):
+                 condition: Callable[[str, dict[str, Any]], bool] | None = None):
         super().__init__(config)
         self.condition = condition
     
     async def execute_with_retry(self, operation: Callable, operation_name: str = "unknown", 
-                               context: Dict[str, Any] | None = None, *args, **kwargs) -> Any:
+                               context: dict[str, Any] | None = None, *args, **kwargs) -> Any:
         """Execute operation with conditional retry."""
         context = context or {}
         
@@ -340,7 +341,7 @@ class RateLimitedRetryPolicy(AdvancedRetryPolicy):
     def __init__(self, config: RetryConfig | None = None, max_retries_per_second: float = 1.0):
         super().__init__(config)
         self.max_retries_per_second = max_retries_per_second
-        self._retry_times: List[float] = []
+        self._retry_times: list[float] = []
     
     async def execute_with_retry(self, operation: Callable, *args, **kwargs) -> Any:
         """Execute operation with rate-limited retry."""

@@ -10,11 +10,10 @@ This module only defines the runtime container for those contracts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
-    Priority,
     SandboxMode,
     ThinkingLevel,
     ToolScope,
@@ -45,7 +44,7 @@ class AgentPersonality(Protocol):
     def thinking_level(self) -> ThinkingLevel: ...
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class BaseAgent:
     """Immutable agent configuration produced by specialist factories.
 
@@ -67,6 +66,9 @@ class BaseAgent:
     # agent's system prompt is augmented with a "your working directory is …"
     # instruction so the LLM knows where to work.
     root_dir: str | None = None
+    # Communication mixin — injected by DelegationEngine when bus is available.
+    # Type: AgentCommunicationMixin | None (avoiding circular import)
+    comm: Any = None
 
     @property
     def agent_type(self) -> AgentType:
@@ -79,3 +81,8 @@ class BaseAgent:
         if self.specialist is None:
             return self.agent_role.value
         return f"{self.agent_role.value}:{self.specialist.value}"
+
+    @property
+    def has_p2p(self) -> bool:
+        """True se o agente tem capacidade de comunicação P2P ativa."""
+        return self.comm is not None and self.comm._bus.is_available

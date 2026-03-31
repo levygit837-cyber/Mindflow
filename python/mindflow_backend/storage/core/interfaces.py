@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import builtins
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, AsyncGenerator, Union
+from collections.abc import AsyncGenerator
+from typing import Any
 from uuid import UUID
-from datetime import datetime
 
 
 class StorageInterface(ABC):
@@ -17,7 +18,7 @@ class StorageInterface(ABC):
         pass
     
     @abstractmethod
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform health check."""
         pass
     
@@ -36,7 +37,7 @@ class DatabaseInterface(StorageInterface):
         pass
     
     @abstractmethod
-    async def execute_query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
+    async def execute_query(self, query: str, params: dict | None = None) -> list[dict]:
         """Execute raw query."""
         pass
     
@@ -68,8 +69,8 @@ class VectorDatabaseInterface(StorageInterface):
     async def insert_vectors(
         self,
         collection_name: str,
-        vectors: List[Dict[str, Any]]
-    ) -> List[str]:
+        vectors: list[dict[str, Any]]
+    ) -> list[str]:
         """Insert vectors into collection."""
         pass
     
@@ -77,11 +78,11 @@ class VectorDatabaseInterface(StorageInterface):
     async def search_vectors(
         self,
         collection_name: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.0,
-        filter_dict: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        filter_dict: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors."""
         pass
     
@@ -89,7 +90,7 @@ class VectorDatabaseInterface(StorageInterface):
     async def delete_vectors(
         self,
         collection_name: str,
-        vector_ids: List[str]
+        vector_ids: list[str]
     ) -> None:
         """Delete vectors by ID."""
         pass
@@ -99,7 +100,7 @@ class VectorDatabaseInterface(StorageInterface):
         self,
         collection_name: str,
         vector_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get specific vector by ID."""
         pass
     
@@ -108,8 +109,8 @@ class VectorDatabaseInterface(StorageInterface):
         self,
         collection_name: str,
         vector_id: str,
-        vector: List[float],
-        metadata: Optional[Dict[str, Any]] = None
+        vector: list[float],
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """Update vector and metadata."""
         pass
@@ -119,12 +120,12 @@ class CacheInterface(StorageInterface):
     """Interface for cache operations."""
     
     @abstractmethod
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value by key."""
         pass
     
     @abstractmethod
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value with optional TTL."""
         pass
     
@@ -148,27 +149,27 @@ class RepositoryInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_by_id(self, entity_id: Union[str, UUID, int]) -> Optional[Any]:
+    async def get_by_id(self, entity_id: str | UUID | int) -> Any | None:
         """Get entity by ID."""
         pass
     
     @abstractmethod
-    async def update(self, entity_id: Union[str, UUID, int], **kwargs) -> Optional[Any]:
+    async def update(self, entity_id: str | UUID | int, **kwargs) -> Any | None:
         """Update entity."""
         pass
     
     @abstractmethod
-    async def delete(self, entity_id: Union[str, UUID, int]) -> bool:
+    async def delete(self, entity_id: str | UUID | int) -> bool:
         """Delete entity."""
         pass
     
     @abstractmethod
     async def list(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None
-    ) -> List[Any]:
+        filters: dict[str, Any] | None = None,
+        limit: int | None = None,
+        offset: int | None = None
+    ) -> builtins.list[Any]:
         """List entities with optional filters."""
         pass
 
@@ -187,7 +188,7 @@ class ConnectionPoolInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_pool_stats(self) -> Dict[str, Any]:
+    async def get_pool_stats(self) -> dict[str, Any]:
         """Get pool statistics."""
         pass
     
@@ -201,7 +202,7 @@ class MigrationInterface(ABC):
     """Interface for database migrations."""
     
     @abstractmethod
-    async def migrate_up(self, target_version: Optional[str] = None) -> None:
+    async def migrate_up(self, target_version: str | None = None) -> None:
         """Run migrations up to target version."""
         pass
     
@@ -216,6 +217,6 @@ class MigrationInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_pending_migrations(self) -> List[str]:
+    async def get_pending_migrations(self) -> list[str]:
         """Get list of pending migrations."""
         pass

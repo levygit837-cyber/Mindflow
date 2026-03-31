@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Phase 3: Unify overlapping tools between agents and backend."""
 
-import os
 import shutil
 from pathlib import Path
+
 
 def copy_best_implementation(source_file: Path, target_file: Path) -> bool:
     """Copy the best implementation from backend to agents."""
@@ -57,9 +57,9 @@ def phase3_unification():
     else:
         print(f"⚠️  Target path invalid: {target_file}")
     
-    print(f"\n📊 Phase 3 Unification Summary:")
+    print("\n📊 Phase 3 Unification Summary:")
     print(f"   - Files unified: {unified_count}")
-    print(f"   - Status: Ready for Phase 4")
+    print("   - Status: Ready for Phase 4")
     
     return unified_count > 0
 

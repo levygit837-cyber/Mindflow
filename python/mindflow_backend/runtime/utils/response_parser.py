@@ -4,10 +4,10 @@ Handles extraction and separation of thinking/text content from different LLM pr
 particularly Vertex AI which returns structured AIMessage objects.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
-def extract_ai_message_content(ai_message: Any, include_thinking: bool = False) -> Dict[str, str]:
+def extract_ai_message_content(ai_message: Any, include_thinking: bool = False) -> dict[str, str]:
     """Extract and separate thinking/text content from AIMessage objects.
     
     Args:

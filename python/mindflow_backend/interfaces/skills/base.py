@@ -1,16 +1,15 @@
 """Base interfaces for Skills system."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel
+from typing import Any
 
 from mindflow_backend.interfaces.core import BaseComponentInterface
 from mindflow_backend.schemas.skills.base import (
-    SkillInput,
-    SkillOutput,
     SkillConfiguration,
+    SkillInput,
     SkillMetadata,
-    SkillStatus
+    SkillOutput,
+    SkillStatus,
 )
 
 
@@ -72,7 +71,7 @@ class SkillInterface(BaseComponentInterface):
         pass
     
     @abstractmethod
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """Get list of skill capabilities.
         
         Returns:
@@ -143,7 +142,7 @@ class SkillConfigurableInterface(ABC):
         pass
     
     @abstractmethod
-    def get_configuration_schema(self) -> Dict[str, Any]:
+    def get_configuration_schema(self) -> dict[str, Any]:
         """Get JSON schema for configuration.
         
         Returns:
@@ -156,7 +155,7 @@ class SkillValidatableInterface(ABC):
     """Interface for skill validation."""
     
     @abstractmethod
-    def validate_execution_context(self, context: Dict[str, Any]) -> bool:
+    def validate_execution_context(self, context: dict[str, Any]) -> bool:
         """Validate execution context.
         
         Args:
@@ -168,7 +167,7 @@ class SkillValidatableInterface(ABC):
         pass
     
     @abstractmethod
-    def validate_permissions(self, permissions: List[str]) -> bool:
+    def validate_permissions(self, permissions: list[str]) -> bool:
         """Validate required permissions.
         
         Args:
@@ -180,7 +179,7 @@ class SkillValidatableInterface(ABC):
         pass
     
     @abstractmethod
-    def get_requirements(self) -> Dict[str, Any]:
+    def get_requirements(self) -> dict[str, Any]:
         """Get skill requirements.
         
         Returns:
@@ -193,7 +192,7 @@ class ComposableSkillInterface(SkillInterface, SkillLifecycleInterface, SkillCon
     """Composable interface combining basic skill interfaces."""
     
     @abstractmethod
-    async def compose(self, skills: List['ComposableSkillInterface']) -> 'ComposableSkillInterface':
+    async def compose(self, skills: list['ComposableSkillInterface']) -> 'ComposableSkillInterface':
         """Compose multiple skills into a composite skill.
         
         Args:

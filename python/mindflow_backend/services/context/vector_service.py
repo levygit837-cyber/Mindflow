@@ -6,11 +6,11 @@ with automatic fallback, migration support, and comprehensive vector management.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
-from uuid import UUID, uuid4
 import asyncio
-from datetime import datetime, UTC
+from abc import ABC, abstractmethod
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
@@ -35,8 +35,8 @@ class VectorDatabase(ABC):
     async def insert_vectors(
         self,
         collection_name: str,
-        vectors: List[Dict[str, Any]],
-    ) -> List[str]:
+        vectors: list[dict[str, Any]],
+    ) -> list[str]:
         """Insert vectors into a collection."""
         pass
     
@@ -44,11 +44,11 @@ class VectorDatabase(ABC):
     async def search_vectors(
         self,
         collection_name: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.0,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors."""
         pass
     
@@ -56,7 +56,7 @@ class VectorDatabase(ABC):
     async def delete_vectors(
         self,
         collection_name: str,
-        vector_ids: List[str],
+        vector_ids: list[str],
     ) -> None:
         """Delete vectors by ID."""
         pass
@@ -66,7 +66,7 @@ class VectorDatabase(ABC):
         self,
         collection_name: str,
         vector_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get a specific vector by ID."""
         pass
     
@@ -75,19 +75,19 @@ class VectorDatabase(ABC):
         self,
         collection_name: str,
         vector_id: str,
-        vector: List[float],
-        metadata: Optional[Dict[str, Any]] = None,
+        vector: list[float],
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update a vector and its metadata."""
         pass
     
     @abstractmethod
-    async def list_collections(self) -> List[Dict[str, Any]]:
+    async def list_collections(self) -> list[dict[str, Any]]:
         """List all collections."""
         pass
     
     @abstractmethod
-    async def get_collection_stats(self, collection_name: str) -> Dict[str, Any]:
+    async def get_collection_stats(self, collection_name: str) -> dict[str, Any]:
         """Get collection statistics."""
         pass
     
@@ -102,7 +102,7 @@ class InMemoryVectorDatabase(VectorDatabase):
     
     def __init__(self) -> None:
         """Initialize in-memory vector database."""
-        self.collections: Dict[str, Dict[str, Any]] = {}
+        self.collections: dict[str, dict[str, Any]] = {}
         self._initialized = False
     
     async def initialize(self) -> None:
@@ -126,8 +126,8 @@ class InMemoryVectorDatabase(VectorDatabase):
     async def insert_vectors(
         self,
         collection_name: str,
-        vectors: List[Dict[str, Any]],
-    ) -> List[str]:
+        vectors: list[dict[str, Any]],
+    ) -> list[str]:
         """Insert vectors into collection."""
         collection = self.collections.get(collection_name)
         if not collection:
@@ -155,18 +155,18 @@ class InMemoryVectorDatabase(VectorDatabase):
     async def search_vectors(
         self,
         collection_name: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.0,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors using cosine similarity."""
         collection = self.collections.get(collection_name)
         if not collection:
             raise ValueError(f"Collection {collection_name} not found")
         
         if len(query_vector) != collection["dimension"]:
-            raise ValueError(f"Query vector dimension mismatch")
+            raise ValueError("Query vector dimension mismatch")
         
         results = []
         
@@ -195,7 +195,7 @@ class InMemoryVectorDatabase(VectorDatabase):
     async def delete_vectors(
         self,
         collection_name: str,
-        vector_ids: List[str],
+        vector_ids: list[str],
     ) -> None:
         """Delete vectors by ID."""
         collection = self.collections.get(collection_name)
@@ -209,7 +209,7 @@ class InMemoryVectorDatabase(VectorDatabase):
         self,
         collection_name: str,
         vector_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get a specific vector by ID."""
         collection = self.collections.get(collection_name)
         if not collection:
@@ -229,8 +229,8 @@ class InMemoryVectorDatabase(VectorDatabase):
         self,
         collection_name: str,
         vector_id: str,
-        vector: List[float],
-        metadata: Optional[Dict[str, Any]] = None,
+        vector: list[float],
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update a vector and its metadata."""
         collection = self.collections.get(collection_name)
@@ -241,7 +241,7 @@ class InMemoryVectorDatabase(VectorDatabase):
             raise ValueError(f"Vector {vector_id} not found")
         
         if len(vector) != collection["dimension"]:
-            raise ValueError(f"Vector dimension mismatch")
+            raise ValueError("Vector dimension mismatch")
         
         vector_data = collection["vectors"][vector_id]
         vector_data["vector"] = vector
@@ -249,7 +249,7 @@ class InMemoryVectorDatabase(VectorDatabase):
             vector_data["metadata"].update(metadata)
         vector_data["updated_at"] = datetime.now(UTC)
     
-    async def list_collections(self) -> List[Dict[str, Any]]:
+    async def list_collections(self) -> list[dict[str, Any]]:
         """List all collections."""
         return [
             {
@@ -262,7 +262,7 @@ class InMemoryVectorDatabase(VectorDatabase):
             for collection in self.collections.values()
         ]
     
-    async def get_collection_stats(self, collection_name: str) -> Dict[str, Any]:
+    async def get_collection_stats(self, collection_name: str) -> dict[str, Any]:
         """Get collection statistics."""
         collection = self.collections.get(collection_name)
         if not collection:
@@ -284,7 +284,7 @@ class InMemoryVectorDatabase(VectorDatabase):
         self.collections.clear()
         self._initialized = False
     
-    def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
+    def _cosine_similarity(self, a: list[float], b: list[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         if not a or not b or len(a) != len(b):
             return 0.0
@@ -310,7 +310,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
         """Initialize vector service with database backend."""
         super().__init__()
         self.settings = get_settings()
-        self._database: Optional[VectorDatabase] = None
+        self._database: VectorDatabase | None = None
         self._connection_attempts = 0
         self._max_connection_attempts = 3
     
@@ -346,10 +346,10 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
                 self._database = InMemoryVectorDatabase()
             
             await self._database.initialize()
-            self._logger.info(f"vector_database_initialized", backend=backend_type)
+            self._logger.info("vector_database_initialized", backend=backend_type)
             
         except Exception as exc:
-            self._logger.warning(f"vector_database_backend_failed", backend=backend_type, error=str(exc))
+            self._logger.warning("vector_database_backend_failed", backend=backend_type, error=str(exc))
             
             # Fallback to in-memory database
             if self._connection_attempts < self._max_connection_attempts:
@@ -379,7 +379,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
         collection_name: str,
         dimension: int,
         distance_metric: str = "cosine"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new vector collection.
         
         Args:
@@ -411,8 +411,8 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
     async def insert_vectors(
         self,
         collection_name: str,
-        vectors: List[Dict[str, Any]]
-    ) -> List[str]:
+        vectors: list[dict[str, Any]]
+    ) -> list[str]:
         """Insert vectors into a collection.
         
         Args:
@@ -428,7 +428,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
             database = await self._get_database()
             vector_ids = await database.insert_vectors(collection_name, vectors)
             
-            self._logger.info(f"vectors_inserted", collection=collection_name, count=len(vector_ids))
+            self._logger.info("vectors_inserted", collection=collection_name, count=len(vector_ids))
             
             return vector_ids
             
@@ -439,11 +439,11 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
     async def search_vectors(
         self,
         collection_name: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.0,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors.
         
         Args:
@@ -469,7 +469,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
                 collection_name, query_vector, limit, score_threshold, filters
             )
             
-            self._logger.info(f"vector_search_completed", collection=collection_name, results=len(results))
+            self._logger.info("vector_search_completed", collection=collection_name, results=len(results))
             
             return results
             
@@ -480,8 +480,8 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
     async def delete_vectors(
         self,
         collection_name: str,
-        vector_ids: List[str]
-    ) -> Dict[str, Any]:
+        vector_ids: list[str]
+    ) -> dict[str, Any]:
         """Delete vectors by ID.
         
         Args:
@@ -512,7 +512,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
         self,
         collection_name: str,
         vector_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get a specific vector by ID.
         
         Args:
@@ -536,9 +536,9 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
         self,
         collection_name: str,
         vector_id: str,
-        vector: List[float],
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        vector: list[float],
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Update a vector and its metadata.
         
         Args:
@@ -567,7 +567,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
             self._logger.error(f"Error updating vector {vector_id} in {collection_name}: {str(exc)}")
             raise
     
-    async def list_collections(self) -> List[Dict[str, Any]]:
+    async def list_collections(self) -> list[dict[str, Any]]:
         """List all collections.
         
         Returns:
@@ -583,7 +583,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
             self._logger.error(f"Error listing collections: {str(exc)}")
             raise
     
-    async def get_collection_stats(self, collection_name: str) -> Dict[str, Any]:
+    async def get_collection_stats(self, collection_name: str) -> dict[str, Any]:
         """Get collection statistics.
         
         Args:
@@ -602,7 +602,7 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
             self._logger.error(f"Error getting stats for {collection_name}: {str(exc)}")
             raise
     
-    async def optimize_index(self, collection_name: str) -> Dict[str, Any]:
+    async def optimize_index(self, collection_name: str) -> dict[str, Any]:
         """Optimize vector index for performance.
         
         Args:
@@ -654,9 +654,9 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
     async def batch_insert_vectors(
         self,
         collection_name: str,
-        vectors: List[Dict[str, Any]],
+        vectors: list[dict[str, Any]],
         batch_size: int = 100
-    ) -> List[str]:
+    ) -> list[str]:
         """Insert vectors in batches for better performance.
         
         Args:
@@ -685,10 +685,10 @@ class VectorService(BaseAbstractService, VectorServiceInterface):
     async def batch_search_vectors(
         self,
         collection_name: str,
-        query_vectors: List[List[float]],
+        query_vectors: list[list[float]],
         limit: int = 10,
         score_threshold: float = 0.0
-    ) -> List[List[Dict[str, Any]]]:
+    ) -> list[list[dict[str, Any]]]:
         """Search multiple query vectors in parallel.
         
         Args:

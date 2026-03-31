@@ -6,7 +6,6 @@ structured error responses and proper logging.
 
 from __future__ import annotations
 
-import traceback
 from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
@@ -18,9 +17,9 @@ from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.errors import (
     ErrorCategory,
     ErrorContext,
+    ErrorResponse,
     ErrorSchema,
     ErrorSeverity,
-    ErrorResponse,
 )
 
 _logger = get_logger(__name__)
@@ -99,9 +98,16 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         # Import our exceptions for classification
         from mindflow_backend.exceptions import (
-            ValidationError, AuthenticationError, AuthorizationError,
-            NetworkError, TimeoutError, ResourceError,
-            AgentConfigurationError, InfraConfigurationError, DatabaseError, ProviderError
+            AgentConfigurationError,
+            AuthenticationError,
+            AuthorizationError,
+            DatabaseError,
+            InfraConfigurationError,
+            NetworkError,
+            ProviderError,
+            ResourceError,
+            TimeoutError,
+            ValidationError,
         )
         
         # Business logic errors

@@ -5,12 +5,13 @@ Abstract base class and common utilities for all MCP transport implementations.
 Provides the foundation for stdio, HTTP, and WebSocket transports.
 """
 
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Dict, Optional, Callable, Awaitable
 import asyncio
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 from mindflow_backend.schemas.mcp.base import MCPMessage
 from mindflow_backend.schemas.mcp.transport import MCPTransportConfig
@@ -63,10 +64,10 @@ class MCPTransport(ABC):
         self.config = config
         self.state = TransportState.DISCONNECTED
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
-        self._message_handler: Optional[Callable[[MCPMessage], Awaitable[None]]] = None
-        self._error_handler: Optional[Callable[[Exception], Awaitable[None]]] = None
-        self._connection_info: Dict[str, Any] = {}
-        self._metrics: Dict[str, Any] = {
+        self._message_handler: Callable[[MCPMessage], Awaitable[None]] | None = None
+        self._error_handler: Callable[[Exception], Awaitable[None]] | None = None
+        self._connection_info: dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {
             "messages_sent": 0,
             "messages_received": 0,
             "bytes_sent": 0,
@@ -88,12 +89,12 @@ class MCPTransport(ABC):
         return self.state == TransportState.DISCONNECTED
     
     @property
-    def connection_info(self) -> Dict[str, Any]:
+    def connection_info(self) -> dict[str, Any]:
         """Get connection information."""
         return self._connection_info.copy()
     
     @property
-    def metrics(self) -> Dict[str, Any]:
+    def metrics(self) -> dict[str, Any]:
         """Get transport metrics."""
         metrics = self._metrics.copy()
         if metrics["connected_at"]:
@@ -150,7 +151,7 @@ class MCPTransport(ABC):
         pass
     
     @abstractmethod
-    async def receive_message(self) -> Optional[MCPMessage]:
+    async def receive_message(self) -> MCPMessage | None:
         """
         Receive a message from the transport.
         
@@ -162,7 +163,7 @@ class MCPTransport(ABC):
         """
         pass
     
-    async def send_and_wait(self, message: MCPMessage, timeout: Optional[float] = None) -> MCPMessage:
+    async def send_and_wait(self, message: MCPMessage, timeout: float | None = None) -> MCPMessage:
         """
         Send a message and wait for response.
         

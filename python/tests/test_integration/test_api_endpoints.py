@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
@@ -409,7 +410,7 @@ class TestAPIWorkflowIntegration:
             assert specialist_data["selected_specialist"] == "analyst"
             
             # 3. Check execution status
-            response = client.get(f"/v1/orchestration/execution/test-exec")
+            response = client.get("/v1/orchestration/execution/test-exec")
             assert response.status_code == 200
             status_data = response.json()
             assert status_data["status"] == "completed"

@@ -2,7 +2,6 @@
 
 import hashlib
 import re
-from typing import Any, Dict, List
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.storage.models import AgentMemoryEvent, AgentMemoryFact
@@ -16,22 +15,22 @@ class MemorySummary:
     def __init__(self):
         self.logger = _logger
     
-    def build_structured_summary(self, events: List[AgentMemoryEvent]) -> tuple[str, List[str]]:
+    def build_structured_summary(self, events: list[AgentMemoryEvent]) -> tuple[str, list[str]]:
         """Build structured summary from events."""
-        timeline: List[str] = []
+        timeline: list[str] = []
         for event in events[:18]:
             compact = re.sub(r"\s+", " ", event.content).strip()
             compact = compact[:280]
             timeline.append(f"- [{event.role}] {compact}")
         
-        candidate_sentences: List[str] = []
+        candidate_sentences: list[str] = []
         for event in events:
             for sentence in re.split(r"[\n\.;:!?]", event.content):
                 compact = re.sub(r"\s+", " ", sentence).strip()
                 if len(compact) >= 24:
                     candidate_sentences.append(compact)
         
-        key_points: List[str] = []
+        key_points: list[str] = []
         seen: set[str] = set()
         for sentence in candidate_sentences:
             key = sentence.lower()
@@ -59,9 +58,9 @@ class MemorySummary:
     
     def extract_key_facts(
         self,
-        events: List[AgentMemoryEvent],
+        events: list[AgentMemoryEvent],
         max_facts: int = 8
-    ) -> List[AgentMemoryFact]:
+    ) -> list[AgentMemoryFact]:
         """Extract key facts from events."""
         facts = []
         
@@ -94,14 +93,14 @@ class MemorySummary:
         
         return facts
     
-    def generate_summary_checksum(self, events: List[AgentMemoryEvent]) -> str:
+    def generate_summary_checksum(self, events: list[AgentMemoryEvent]) -> str:
         """Generate checksum for events to detect duplicates."""
         checksum_input = "\n".join(f"{e.id}:{e.content}" for e in events).encode("utf-8")
         return hashlib.sha256(checksum_input).hexdigest()
     
     def calculate_coverage_ratio(
         self,
-        events: List[AgentMemoryEvent],
+        events: list[AgentMemoryEvent],
         summary: str
     ) -> float:
         """Calculate how well the summary covers the original content."""

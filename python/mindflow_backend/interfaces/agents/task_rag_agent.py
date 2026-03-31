@@ -6,21 +6,19 @@ enabling semantic context sharing and intelligent dependency resolution.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
+from typing import Any, Protocol, runtime_checkable
 
 from mindflow_backend.interfaces.agents.core_personality import (
     CorePersonalityContract,
 )
-
+from mindflow_backend.schemas.agents.research import (
+    ResearchResult,
+)
 from mindflow_backend.schemas.memory.api import (
-    MemorySearchRequest,
-    MemorySearchResponse,
     ContextWindowRequest,
     ContextWindowResponse,
-)
-from mindflow_backend.schemas.agents.research import (
-    QueryPlan,
-    ResearchResult,
+    MemorySearchRequest,
+    MemorySearchResponse,
 )
 
 

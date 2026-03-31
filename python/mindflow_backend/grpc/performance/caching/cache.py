@@ -7,7 +7,7 @@ latency and server load for frequently accessed data.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -16,8 +16,8 @@ from .entry import CacheEntry
 from .strategies import (
     CacheStrategy,
     LRUCacheStrategy,
-    TTLCacheStrategy,
     SizeBasedCacheStrategy,
+    TTLCacheStrategy,
 )
 
 _logger = get_logger(__name__)
@@ -30,7 +30,7 @@ class GrpcResponseCache:
     multiple eviction strategies (LRU, TTL, SizeBased).
     """
 
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(self, config: CacheConfig | None = None):
         """Initialize gRPC response cache.
 
         Args:
@@ -63,7 +63,7 @@ class GrpcResponseCache:
         else:
             raise ValueError(f"Unsupported eviction policy: {self.config.eviction_policy}")
 
-    def get(self, key: str) -> Optional[bytes]:
+    def get(self, key: str) -> bytes | None:
         """Get cached response.
 
         Args:
@@ -82,8 +82,8 @@ class GrpcResponseCache:
         self,
         key: str,
         value: bytes,
-        ttl_seconds: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Cache a response.
 
@@ -132,7 +132,7 @@ class GrpcResponseCache:
         self._strategy.clear()
         _logger.info("grpc_cache_cleared")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:

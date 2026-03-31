@@ -6,12 +6,11 @@ isolating dependencies and maintaining separation of concerns.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 from mindflow_backend.schemas.orchestration.orchestrator import (
-    OrchestratorDecision,
     SandboxMode,
 )
 
@@ -27,7 +26,7 @@ class AgentBridge(StatefulNode, BaseNode):
     def __init__(
         self, 
         node_id: str = "agent_bridge",
-        agent_type: Optional[str] = None,
+        agent_type: str | None = None,
         sandbox_mode: SandboxMode = SandboxMode.FULL
     ) -> None:
         super().__init__(
@@ -90,7 +89,7 @@ class AgentBridge(StatefulNode, BaseNode):
             self._logger.error("agent_bridge_initialization_failed", error=str(e))
             raise
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute agent logic through the bridge interface."""
         if not self._agent_instance and self.agent_type:
             raise RuntimeError("Agent bridge not properly initialized")
@@ -142,8 +141,8 @@ class AgentBridge(StatefulNode, BaseNode):
         self, 
         message: str, 
         session_id: str, 
-        context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute agent within sandbox environment."""
         if not self._sandbox:
             raise RuntimeError("Sandbox not initialized")
@@ -165,7 +164,7 @@ class AgentBridge(StatefulNode, BaseNode):
         
         return result
     
-    async def _agent_execution_func(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _agent_execution_func(self, context: dict[str, Any]) -> dict[str, Any]:
         """Actual agent execution function to run in sandbox."""
         agent = context["agent"]
         message = context["message"]
@@ -223,12 +222,12 @@ class AgentBridge(StatefulNode, BaseNode):
         memory_context: str
     ) -> Any:
         """Execute agent using the proper architecture with LLM and tools."""
-        from mindflow_backend.infra.logging import get_logger
-        from mindflow_backend.infra.config import get_settings
-        from mindflow_backend.runtime import get_model_for_provider
+        from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
         from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
         from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
-        from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
+        from mindflow_backend.infra.config import get_settings
+        from mindflow_backend.infra.logging import get_logger
+        from mindflow_backend.runtime import get_model_for_provider
 
         _logger = get_logger(__name__)
         settings = get_settings()
@@ -321,7 +320,7 @@ class AgentBridge(StatefulNode, BaseNode):
             
             return AgentResponse(f"Error executing agent: {str(exc)}")
     
-    def get_agent_capabilities(self) -> Dict[str, Any]:
+    def get_agent_capabilities(self) -> dict[str, Any]:
         """Get capabilities of the current agent."""
         if not self._agent_instance:
             return {"capabilities": [], "personality": None}

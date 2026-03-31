@@ -7,8 +7,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.api.schemas.task_requests import TaskCancelRequest, TaskRetryRequest
-from mindflow_backend.api.schemas.task_responses import (
+from mindflow_backend.schemas.api.task_requests import TaskCancelRequest, TaskRetryRequest
+from mindflow_backend.schemas.api.task_responses import (
     TaskCancelResponse,
     TaskInfoResponse,
     TaskListResponse,

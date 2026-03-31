@@ -1,13 +1,12 @@
 """Review Repository for session review storage and retrieval."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mindflow_backend.schemas.session.review import SessionReviewResult, ReviewPriority
+from mindflow_backend.schemas.session.review import ReviewPriority
 from mindflow_backend.storage import SessionReview
 
 
@@ -22,9 +21,9 @@ class ReviewRepository:
         review_id: str,
         session_id: str,
         window_range: tuple[int, int],
-        review_data: Dict[str, Any],
+        review_data: dict[str, Any],
         priority: ReviewPriority,
-        created_at: Optional[datetime] = None
+        created_at: datetime | None = None
     ) -> SessionReview:
         """Create a new session review record."""
         review = SessionReview(
@@ -45,7 +44,7 @@ class ReviewRepository:
         self,
         session_id: str,
         limit: int = 10
-    ) -> List[SessionReview]:
+    ) -> list[SessionReview]:
         """Get reviews for a specific session."""
         stmt = (
             select(SessionReview)
@@ -58,8 +57,8 @@ class ReviewRepository:
     async def get_recent_reviews(
         self,
         limit: int = 50,
-        priority: Optional[ReviewPriority] = None
-    ) -> List[SessionReview]:
+        priority: ReviewPriority | None = None
+    ) -> list[SessionReview]:
         """Get recent reviews, optionally filtered by priority."""
         stmt = select(SessionReview).order_by(SessionReview.created_at.desc()).limit(limit)
         
@@ -68,13 +67,12 @@ class ReviewRepository:
         
         return list(self.db.scalars(stmt).all())
     
-    async def get_review_by_id(self, review_id: str) -> Optional[SessionReview]:
+    async def get_review_by_id(self, review_id: str) -> SessionReview | None:
         """Get a specific review by ID."""
         return self.db.get(SessionReview, review_id)
     
     async def delete_old_reviews(self, days: int = 30) -> int:
         """Delete reviews older than specified days."""
-        from sqlalchemy import func
         
         cutoff_date = datetime.utcnow() - datetime.timedelta(days=days)
         stmt = (

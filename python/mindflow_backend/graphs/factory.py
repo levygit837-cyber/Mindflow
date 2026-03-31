@@ -7,12 +7,14 @@ cleanup removes or formalizes them.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from mindflow_backend.graphs.base.graph import BaseGraph
 from mindflow_backend.graphs.base.types import GraphConfig, GraphType
 from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
     SimpleOrchestratorGraph,
+)
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
     build_simple_orchestrator_flow as _build_simple_orchestrator_flow,
 )
 from mindflow_backend.infra.logging import get_logger
@@ -22,9 +24,9 @@ class GraphFactory:
     """Factory for creating graph instances."""
     
     def __init__(self) -> None:
-        self._graph_classes: Dict[GraphType, Type[BaseGraph]] = {}
-        self._graph_instances: Dict[str, BaseGraph] = {}
-        self._default_configs: Dict[GraphType, GraphConfig] = {}
+        self._graph_classes: dict[GraphType, type[BaseGraph]] = {}
+        self._graph_instances: dict[str, BaseGraph] = {}
+        self._default_configs: dict[GraphType, GraphConfig] = {}
         self._logger = get_logger(__name__)
         
         # Register built-in graph types
@@ -33,12 +35,12 @@ class GraphFactory:
     def register_graph_class(
         self,
         graph_type: GraphType,
-        graph_class: Type[BaseGraph],
-        default_config: Optional[GraphConfig] = None
+        graph_class: type[BaseGraph],
+        default_config: GraphConfig | None = None
     ) -> None:
         """Register a graph class for a specific type."""
         if not issubclass(graph_class, BaseGraph):
-            raise ValueError(f"Graph class must inherit from BaseGraph")
+            raise ValueError("Graph class must inherit from BaseGraph")
         
         self._graph_classes[graph_type] = graph_class
         if default_config:
@@ -52,7 +54,7 @@ class GraphFactory:
         self,
         graph_type: GraphType,
         graph_id: str,
-        config: Optional[GraphConfig] = None,
+        config: GraphConfig | None = None,
         **kwargs
     ) -> BaseGraph:
         """Create a registered graph instance.
@@ -79,7 +81,7 @@ class GraphFactory:
         
         return graph
     
-    def get_graph(self, graph_id: str) -> Optional[BaseGraph]:
+    def get_graph(self, graph_id: str) -> BaseGraph | None:
         """Get an existing graph instance."""
         return self._graph_instances.get(graph_id)
     
@@ -91,15 +93,15 @@ class GraphFactory:
             return True
         return False
     
-    def list_graphs(self) -> List[str]:
+    def list_graphs(self) -> list[str]:
         """List all graph instance IDs."""
         return list(self._graph_instances.keys())
     
-    def get_available_types(self) -> List[GraphType]:
+    def get_available_types(self) -> list[GraphType]:
         """Get all available graph types."""
         return list(self._graph_classes.keys())
     
-    def validate_graph_type(self, graph_type: GraphType) -> List[str]:
+    def validate_graph_type(self, graph_type: GraphType) -> list[str]:
         """Validate a registered graph type."""
         if graph_type not in self._graph_classes:
             return [f"Graph type {graph_type} is not registered"]
@@ -113,7 +115,7 @@ class GraphFactory:
         except Exception as e:
             return [f"Failed to create graph instance: {e}"]
     
-    def get_graph_info(self, graph_id: str) -> Optional[Dict[str, Any]]:
+    def get_graph_info(self, graph_id: str) -> dict[str, Any] | None:
         """Get information about a graph instance."""
         graph = self._graph_instances.get(graph_id)
         if not graph:
@@ -121,7 +123,7 @@ class GraphFactory:
         
         return graph.get_graph_info()
     
-    def get_factory_stats(self) -> Dict[str, Any]:
+    def get_factory_stats(self) -> dict[str, Any]:
         """Get factory statistics."""
         return {
             "registered_types": {
@@ -148,11 +150,116 @@ class GraphFactory:
                 timeout_per_node=30.0,
             )
         )
+
+        # === Fase 2A: Analysis graphs ===
+        from mindflow_backend.graphs.implementations.analysis import (
+            AnalysisGraph,
+            CodeReviewGraph,
+            DeepInvestigationGraph,
+            SecurityAuditGraph,
+        )
+
+        self.register_graph_class(
+            graph_type=GraphType.ANALYSIS,
+            graph_class=AnalysisGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.ANALYSIS,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+        self.register_graph_class(
+            graph_type=GraphType.DEEP_INVESTIGATION,
+            graph_class=DeepInvestigationGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.DEEP_INVESTIGATION,
+                enable_streaming=True,
+                timeout_per_node=120.0,
+            ),
+        )
+        self.register_graph_class(
+            graph_type=GraphType.SECURITY_AUDIT,
+            graph_class=SecurityAuditGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.SECURITY_AUDIT,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+        self.register_graph_class(
+            graph_type=GraphType.CODE_REVIEW,
+            graph_class=CodeReviewGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.CODE_REVIEW,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+
+        # === Fase 2A: Coding graphs ===
+        from mindflow_backend.graphs.implementations.coding import (
+            BugFixGraph,
+            CodingGraph,
+            RefactorGraph,
+        )
+
+        self.register_graph_class(
+            graph_type=GraphType.CODING_TASK,
+            graph_class=CodingGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.CODING_TASK,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+        self.register_graph_class(
+            graph_type=GraphType.BUG_FIX,
+            graph_class=BugFixGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.BUG_FIX,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+        self.register_graph_class(
+            graph_type=GraphType.REFACTOR,
+            graph_class=RefactorGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.REFACTOR,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+
+        # === Fase 2A: Research graphs ===
+        from mindflow_backend.graphs.implementations.research import (
+            ComparisonGraph,
+            ResearchGraph,
+        )
+
+        self.register_graph_class(
+            graph_type=GraphType.WEB_RESEARCH,
+            graph_class=ResearchGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.WEB_RESEARCH,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
+        self.register_graph_class(
+            graph_type=GraphType.COMPARISON,
+            graph_class=ComparisonGraph,
+            default_config=GraphConfig(
+                graph_type=GraphType.COMPARISON,
+                enable_streaming=True,
+                timeout_per_node=60.0,
+            ),
+        )
     
     def create_orchestrator_graph(
         self,
         graph_id: str = "orchestrator",
-        config: Optional[GraphConfig] = None
+        config: GraphConfig | None = None
     ) -> SimpleOrchestratorGraph:
         """Create the standard orchestrator graph."""
         return self.create_graph(
@@ -164,8 +271,8 @@ class GraphFactory:
     def create_custom_graph(
         self,
         graph_id: str,
-        graph_class: Type[BaseGraph],
-        config: Optional[GraphConfig] = None,
+        graph_class: type[BaseGraph],
+        config: GraphConfig | None = None,
         **kwargs
     ) -> BaseGraph:
         """Create a custom graph instance.
@@ -184,7 +291,7 @@ class GraphFactory:
 
 
 # Global factory instance
-_global_factory: Optional[GraphFactory] = None
+_global_factory: GraphFactory | None = None
 
 
 def get_graph_factory() -> GraphFactory:
@@ -198,7 +305,7 @@ def get_graph_factory() -> GraphFactory:
 # Convenience functions
 def create_orchestrator_graph(
     graph_id: str = "orchestrator",
-    config: Optional[GraphConfig] = None
+    config: GraphConfig | None = None
 ) -> SimpleOrchestratorGraph:
     """Create the standard orchestrator graph."""
     factory = get_graph_factory()

@@ -4,7 +4,6 @@ Functions for generating, validating, and manipulating UUIDs.
 """
 
 import uuid
-from typing import Optional, Union
 
 
 def generate_uuid(version: int = 4) -> str:
@@ -21,7 +20,7 @@ def generate_uuid(version: int = 4) -> str:
         raise ValueError(f"Unsupported UUID version: {version}")
 
 
-def generate_uuid1(node: Optional[int] = None, clock_seq: Optional[int] = None) -> str:
+def generate_uuid1(node: int | None = None, clock_seq: int | None = None) -> str:
     """Generate a UUID1 (timestamp-based)."""
     return str(uuid.uuid1(node, clock_seq))
 
@@ -48,7 +47,7 @@ def generate_uuid_from_string(text: str, version: int = 5) -> str:
     elif version == 5:
         return str(uuid.uuid5(uuid.NAMESPACE_DNS, text))
     else:
-        raise ValueError(f"Only versions 3 and 5 support string-based generation")
+        raise ValueError("Only versions 3 and 5 support string-based generation")
 
 
 def is_valid_uuid(uuid_str: str) -> bool:
@@ -68,7 +67,7 @@ def normalize_uuid(uuid_str: str) -> str:
         return uuid_str
 
 
-def get_uuid_version(uuid_str: str) -> Optional[int]:
+def get_uuid_version(uuid_str: str) -> int | None:
     """Get UUID version."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -77,7 +76,7 @@ def get_uuid_version(uuid_str: str) -> Optional[int]:
         return None
 
 
-def get_uuid_variant(uuid_str: str) -> Optional[str]:
+def get_uuid_variant(uuid_str: str) -> str | None:
     """Get UUID variant."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -86,7 +85,7 @@ def get_uuid_variant(uuid_str: str) -> Optional[str]:
         return None
 
 
-def get_uuid_fields(uuid_str: str) -> Optional[dict]:
+def get_uuid_fields(uuid_str: str) -> dict | None:
     """Get UUID fields (for UUID1)."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -108,7 +107,7 @@ def get_uuid_fields(uuid_str: str) -> Optional[dict]:
         return None
 
 
-def get_uuid_time(uuid_str: str) -> Optional[float]:
+def get_uuid_time(uuid_str: str) -> float | None:
     """Get timestamp from UUID1."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -135,7 +134,7 @@ def compare_uuids(uuid1: str, uuid2: str) -> int:
         return 0
 
 
-def uuid_to_bytes(uuid_str: str) -> Optional[bytes]:
+def uuid_to_bytes(uuid_str: str) -> bytes | None:
     """Convert UUID to bytes."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -153,7 +152,7 @@ def uuid_from_bytes(uuid_bytes: bytes) -> str:
         return ""
 
 
-def uuid_to_int(uuid_str: str) -> Optional[int]:
+def uuid_to_int(uuid_str: str) -> int | None:
     """Convert UUID to integer."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -171,7 +170,7 @@ def uuid_from_int(uuid_int: int) -> str:
         return ""
 
 
-def get_short_uuid(uuid_str: Optional[str] = None, length: int = 8) -> str:
+def get_short_uuid(uuid_str: str | None = None, length: int = 8) -> str:
     """Get short UUID."""
     if uuid_str is None:
         uuid_str = generate_uuid4()
@@ -183,7 +182,7 @@ def get_short_uuid(uuid_str: Optional[str] = None, length: int = 8) -> str:
         return uuid_str[:length]
 
 
-def encode_uuid(uuid_str: str, encoding: str = 'base64') -> Optional[str]:
+def encode_uuid(uuid_str: str, encoding: str = 'base64') -> str | None:
     """Encode UUID using specified encoding."""
     try:
         uuid_obj = uuid.UUID(uuid_str)
@@ -203,7 +202,7 @@ def encode_uuid(uuid_str: str, encoding: str = 'base64') -> Optional[str]:
         return None
 
 
-def decode_uuid(encoded_uuid: str, encoding: str = 'base64') -> Optional[str]:
+def decode_uuid(encoded_uuid: str, encoding: str = 'base64') -> str | None:
     """Decode encoded UUID."""
     try:
         if encoding == 'base64':
@@ -228,7 +227,7 @@ def generate_uuid_namespace(name: str) -> uuid.UUID:
     return uuid.uuid5(uuid.NAMESPACE_DNS, name)
 
 
-def generate_time_based_uuid(name: Optional[str] = None) -> str:
+def generate_time_based_uuid(name: str | None = None) -> str:
     """Generate time-based UUID with optional name."""
     if name:
         return str(uuid.uuid5(uuid.NAMESPACE_URL, f"{name}:{uuid.uuid1().time}"))

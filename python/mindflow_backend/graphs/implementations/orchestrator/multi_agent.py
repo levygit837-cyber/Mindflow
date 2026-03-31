@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.graphs.base.graph import SimpleGraph
 from mindflow_backend.graphs.base.types import GraphConfig, GraphType
@@ -15,5 +15,5 @@ class MultiAgentGraph(SimpleGraph):
         config = GraphConfig(graph_type=GraphType.SIMPLE, enable_streaming=True)
         super().__init__(graph_id, config)
 
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         return {"result": None, "metadata": {"graph_id": self.graph_id}}

@@ -1,9 +1,9 @@
 """Result ranking algorithms for memory retrieval."""
 
-from typing import Any, Dict, List, Optional
+import math
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-import math
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -25,9 +25,9 @@ class ResultRanker:
     
     def rank_by_relevance(
         self,
-        results: List[Dict[str, Any]],
-        query_embedding: Optional[List[float]] = None
-    ) -> List[Dict[str, Any]]:
+        results: list[dict[str, Any]],
+        query_embedding: list[float] | None = None
+    ) -> list[dict[str, Any]]:
         """Rank results by relevance score."""
         try:
             # Sort by existing score if available
@@ -47,9 +47,9 @@ class ResultRanker:
     
     def rank_by_semantic_similarity(
         self,
-        results: List[Dict[str, Any]],
-        query_embedding: List[float]
-    ) -> List[Dict[str, Any]]:
+        results: list[dict[str, Any]],
+        query_embedding: list[float]
+    ) -> list[dict[str, Any]]:
         """Rank results by semantic similarity to query."""
         ranked_results = []
         
@@ -72,8 +72,8 @@ class ResultRanker:
     
     def rank_by_recency(
         self,
-        results: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        results: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Rank results by recency (most recent first)."""
         return sorted(
             results,
@@ -83,9 +83,9 @@ class ResultRanker:
     
     def rank_by_token_count(
         self,
-        results: List[Dict[str, Any]],
+        results: list[dict[str, Any]],
         ascending: bool = False
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Rank results by token count."""
         return sorted(
             results,
@@ -95,10 +95,10 @@ class ResultRanker:
     
     def diversify_results(
         self,
-        results: List[Dict[str, Any]],
+        results: list[dict[str, Any]],
         diversity_threshold: float = 0.8,
         max_results: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Diversify results to avoid redundancy."""
         if not results:
             return []
@@ -123,8 +123,8 @@ class ResultRanker:
     
     def _calculate_result_similarity(
         self,
-        result1: Dict[str, Any],
-        result2: Dict[str, Any]
+        result1: dict[str, Any],
+        result2: dict[str, Any]
     ) -> float:
         """Calculate similarity between two results."""
         # Simple similarity based on content overlap
@@ -145,9 +145,9 @@ class ResultRanker:
     
     def apply_boosting(
         self,
-        results: List[Dict[str, Any]],
-        boost_factors: Dict[str, float]
-    ) -> List[Dict[str, Any]]:
+        results: list[dict[str, Any]],
+        boost_factors: dict[str, float]
+    ) -> list[dict[str, Any]]:
         """Apply boosting factors to results."""
         boosted_results = []
         

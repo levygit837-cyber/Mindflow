@@ -1,46 +1,45 @@
 """Agent memory services for long-context compression and retrieval."""
 
 # Session Memory - Memória Semântica de Sessões
-from .session_memory import (
-    SessionMemoryService,
-    MemoryDatabase,
-)
-
-# Task Memory - Memória Semântica de Tasks
-from .task_memory import (
-    TaskMemoryService,
-    TaskRetriever,
-    TaskDecomposer,
-    TaskIntegration,
-)
+# Utils
+from mindflow_backend.utils.core import estimate_token_count
 
 # Agent Memory - Memória Agêntica (LangGraph)
 from .agent_memory import (
     AgentMemoryService,
-    langgraph_checkpointer,
     RollingWindow,
+    langgraph_checkpointer,
+)
+
+# Agentic store (LangGraph Store)
+from .agent_memory.store import AgenticMemoryStore
+from .session_memory import (
+    MemoryDatabase,
+    SessionMemoryService,
 )
 
 # Shared Components - Componentes Compartilhados
 from .shared import (
-    SemanticRetriever,
     ContextRetriever,
-    ResultRanker,
-    MemoryServiceInterface,
     MemoryRetrievalResult,
+    MemoryServiceInterface,
+    ResultRanker,
+    SemanticRetriever,
 )
 
 # Embedding factory
-from .shared.embeddings.factory import get_embedding_provider, IEmbeddingProvider, EmbeddingBackend
+from .shared.embeddings.factory import EmbeddingBackend, IEmbeddingProvider, get_embedding_provider
 
-# Agentic store (LangGraph Store)
-from .agent_memory.store import AgenticMemoryStore
+# Task Memory - Memória Semântica de Tasks
+from .task_memory import (
+    TaskDecomposer,
+    TaskIntegration,
+    TaskMemoryService,
+    TaskRetriever,
+)
 
 # Cross-task API
 from .task_memory.api import CrossTaskContextAPI, get_cross_task_api
-
-# Utils
-from mindflow_backend.utils.core import estimate_token_count
 
 _memory_facade = None
 

@@ -4,7 +4,7 @@ Functions to clean and sanitize user input and data.
 """
 
 import re
-from typing import Any, Dict, List, Union
+from typing import Any
 
 
 def sanitize_input(text: str) -> str:
@@ -62,7 +62,7 @@ def sanitize_filename(filename: str) -> str:
     return filename.strip()
 
 
-def sanitize_json_data(data: Any, path: str = "") -> List[str]:
+def sanitize_json_data(data: Any, path: str = "") -> list[str]:
     """Recursively sanitize JSON data and return list of issues found."""
     issues = []
     

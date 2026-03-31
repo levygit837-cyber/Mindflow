@@ -3,10 +3,10 @@
 All exceptions related to circuit breakers, configuration, monitoring, and middleware.
 """
 
-from .resilience import CircuitOpenError
 from .configuration import ConfigurationError
-from .monitoring import MonitoringError
 from .middleware import MiddlewareError
+from .monitoring import MonitoringError
+from .resilience import CircuitOpenError
 
 __all__ = [
     "CircuitOpenError",

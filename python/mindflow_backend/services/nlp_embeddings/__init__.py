@@ -7,8 +7,8 @@ efficient context storage and retrieval.
 
 from __future__ import annotations
 
-from .nlp_embedding_service import NLPEmbeddingService, EmbeddingMethod, create_embedding_service
 from .hybrid_embeddings import HybridEmbeddingService
+from .nlp_embedding_service import EmbeddingMethod, NLPEmbeddingService, create_embedding_service
 
 __all__ = [
     "NLPEmbeddingService",

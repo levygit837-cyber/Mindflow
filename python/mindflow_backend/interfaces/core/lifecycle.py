@@ -6,10 +6,10 @@ including initialization, shutdown, health checks, and status monitoring.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
-from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Protocol, runtime_checkable
 
 
 class ComponentStatus(Enum):

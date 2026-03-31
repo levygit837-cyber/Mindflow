@@ -6,11 +6,11 @@ for consistent component behavior across the entire system.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
 from enum import Enum
+from typing import Any, Protocol, runtime_checkable
 
-from .lifecycle import LifecycleInterface
 from .config import ConfigurableInterface
+from .lifecycle import LifecycleInterface
 from .logging import LoggableInterface
 
 

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, AsyncGenerator, Dict, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from mindflow_backend.nodes.base.node import BaseNode
 
@@ -31,8 +32,8 @@ class StreamableNode:
     
     async def stream_execute(
         self, 
-        state: Dict[str, Any]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        state: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Execute the node and yield streaming results."""
         if not self.is_streaming_enabled():
             # Fall back to non-streaming execution
@@ -46,8 +47,8 @@ class StreamableNode:
     
     async def _stream_execution(
         self, 
-        state: Dict[str, Any]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        state: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Override this method for custom streaming logic."""
         # Default: execute normally and yield result
         result = await self.execute(state)
@@ -56,8 +57,8 @@ class StreamableNode:
     async def _emit_chunk(
         self, 
         chunk: str, 
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Emit a streaming chunk."""
         chunk_data = {
             "node_id": self.node_id,
@@ -73,8 +74,8 @@ class StreamableNode:
     
     async def _emit_final_chunk(
         self, 
-        final_result: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        final_result: dict[str, Any]
+    ) -> dict[str, Any]:
         """Emit the final streaming chunk."""
         return {
             "node_id": self.node_id,
@@ -111,8 +112,8 @@ class LLMStreamNode(StreamableNode, BaseNode):
     
     async def _stream_execution(
         self, 
-        state: Dict[str, Any]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        state: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Stream LLM response chunks."""
         # Get LLM response (this would be the actual LLM call)
         full_response = await self._get_llm_response(state)
@@ -137,13 +138,13 @@ class LLMStreamNode(StreamableNode, BaseNode):
         
         yield await self._emit_final_chunk(final_result)
     
-    async def _get_llm_response(self, state: Dict[str, Any]) -> str:
+    async def _get_llm_response(self, state: dict[str, Any]) -> str:
         """Get the full LLM response (to be implemented by subclasses)."""
         # This is a placeholder - actual implementation would call the LLM
         message = state.get("message", "")
         return f"LLM response to: {message}"
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Non-streaming execution fallback."""
         full_response = await self._get_llm_response(state)
         
@@ -153,7 +154,7 @@ class LLMStreamNode(StreamableNode, BaseNode):
             "streaming_used": False,
         }
     
-    def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate inputs for LLM node."""
         errors = []
         
@@ -172,8 +173,8 @@ class ToolStreamNode(StreamableNode, BaseNode):
     
     async def _stream_execution(
         self, 
-        state: Dict[str, Any]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        state: dict[str, Any]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Stream tool execution progress."""
         # Emit start chunk
         yield await self._emit_chunk("Starting tool execution...", {
@@ -202,12 +203,12 @@ class ToolStreamNode(StreamableNode, BaseNode):
         
         yield await self._emit_final_chunk(final_result)
     
-    async def _execute_tool(self, state: Dict[str, Any]) -> str:
+    async def _execute_tool(self, state: dict[str, Any]) -> str:
         """Execute the tool (to be implemented by subclasses)."""
         # Placeholder implementation
         return "Tool execution result"
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Non-streaming execution fallback."""
         result = await self._execute_tool(state)
         
@@ -217,7 +218,7 @@ class ToolStreamNode(StreamableNode, BaseNode):
             "streaming_used": False,
         }
     
-    def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate inputs for tool node."""
         errors = []
         

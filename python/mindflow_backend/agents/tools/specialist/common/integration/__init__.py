@@ -8,8 +8,8 @@ from __future__ import annotations
 
 # Git and Docker integration
 from .integration_tools import (
-    GitTool,
     DockerTool,
+    GitTool,
 )
 
 __all__ = [

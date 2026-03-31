@@ -9,7 +9,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class CacheEvictionPolicy(Enum):
@@ -52,7 +52,7 @@ class CacheConfig:
     invalidate_on_config_change: bool = True
 
     # Content-based caching
-    cacheable_content_types: List[str] = field(default_factory=lambda: [
+    cacheable_content_types: list[str] = field(default_factory=lambda: [
         "application/json",
         "application/x-protobuf",
         "text/plain",
@@ -82,7 +82,7 @@ class CacheConfig:
         self,
         method: str,
         request_data: bytes,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Generate cache key for request."""
         key_parts = [self.key_prefix]

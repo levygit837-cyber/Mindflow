@@ -7,15 +7,15 @@ and high-level operations.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ...schemas.storage_specialized.vector import (
-    VectorConfig,
-    VectorCollection,
-    VectorSearchRequest,
-    VectorSearchResponse,
     VectorBatchRequest,
     VectorBatchResponse,
+    VectorCollection,
+    VectorConfig,
+    VectorSearchRequest,
+    VectorSearchResponse,
 )
 
 
@@ -23,7 +23,7 @@ class VectorStoreInterface(ABC):
     """High-level vector store interface."""
     
     @abstractmethod
-    async def get_collections(self) -> List[VectorCollection]:
+    async def get_collections(self) -> list[VectorCollection]:
         """Get all collections."""
         pass
     
@@ -38,12 +38,12 @@ class VectorStoreInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_collection_stats(self, collection_name: str) -> Dict[str, Any]:
+    async def get_collection_stats(self, collection_name: str) -> dict[str, Any]:
         """Get collection statistics."""
         pass
     
     @abstractmethod
-    async def optimize_collection(self, collection_name: str) -> Dict[str, Any]:
+    async def optimize_collection(self, collection_name: str) -> dict[str, Any]:
         """Optimize collection index."""
         pass
 
@@ -52,37 +52,37 @@ class VectorManagerInterface(ABC):
     """Interface for vector database management."""
     
     @abstractmethod
-    async def get_database_info(self) -> Dict[str, Any]:
+    async def get_database_info(self) -> dict[str, Any]:
         """Get database information."""
         pass
     
     @abstractmethod
-    async def get_performance_metrics(self) -> Dict[str, Any]:
+    async def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics."""
         pass
     
     @abstractmethod
-    async def get_storage_stats(self) -> Dict[str, Any]:
+    async def get_storage_stats(self) -> dict[str, Any]:
         """Get storage statistics."""
         pass
     
     @abstractmethod
-    async def backup_database(self, backup_path: str) -> Dict[str, Any]:
+    async def backup_database(self, backup_path: str) -> dict[str, Any]:
         """Backup database."""
         pass
     
     @abstractmethod
-    async def restore_database(self, backup_path: str) -> Dict[str, Any]:
+    async def restore_database(self, backup_path: str) -> dict[str, Any]:
         """Restore database."""
         pass
     
     @abstractmethod
-    async def compact_database(self) -> Dict[str, Any]:
+    async def compact_database(self) -> dict[str, Any]:
         """Compact database."""
         pass
     
     @abstractmethod
-    async def reindex_collection(self, collection_name: str) -> Dict[str, Any]:
+    async def reindex_collection(self, collection_name: str) -> dict[str, Any]:
         """Reindex collection."""
         pass
 
@@ -91,7 +91,7 @@ class VectorIndexInterface(ABC):
     """Interface for vector indexing operations."""
     
     @abstractmethod
-    async def create_index(self, collection_name: str, index_config: Dict[str, Any]) -> bool:
+    async def create_index(self, collection_name: str, index_config: dict[str, Any]) -> bool:
         """Create index."""
         pass
     
@@ -101,17 +101,17 @@ class VectorIndexInterface(ABC):
         pass
     
     @abstractmethod
-    async def list_indexes(self, collection_name: str) -> List[Dict[str, Any]]:
+    async def list_indexes(self, collection_name: str) -> list[dict[str, Any]]:
         """List indexes."""
         pass
     
     @abstractmethod
-    async def get_index_stats(self, collection_name: str, index_name: str) -> Dict[str, Any]:
+    async def get_index_stats(self, collection_name: str, index_name: str) -> dict[str, Any]:
         """Get index statistics."""
         pass
     
     @abstractmethod
-    async def optimize_index(self, collection_name: str, index_name: str) -> Dict[str, Any]:
+    async def optimize_index(self, collection_name: str, index_name: str) -> dict[str, Any]:
         """Optimize index."""
         pass
 
@@ -124,8 +124,8 @@ class VectorMigrationInterface(ABC):
         self,
         source_collection: str,
         target_collection: str,
-        config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        config: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Migrate collection data."""
         pass
     
@@ -134,13 +134,13 @@ class VectorMigrationInterface(ABC):
         self,
         source_config: VectorConfig,
         target_config: VectorConfig,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Migrate entire database."""
         pass
     
     @abstractmethod
-    async def validate_migration(self, migration_id: str) -> Dict[str, Any]:
+    async def validate_migration(self, migration_id: str) -> dict[str, Any]:
         """Validate migration integrity."""
         pass
 
@@ -152,24 +152,24 @@ class VectorCacheInterface(ABC):
     async def cache_search_result(
         self,
         query_hash: str,
-        results: List[Dict[str, Any]],
+        results: list[dict[str, Any]],
         ttl: int = 3600
     ) -> bool:
         """Cache search results."""
         pass
     
     @abstractmethod
-    async def get_cached_search(self, query_hash: str) -> Optional[List[Dict[str, Any]]]:
+    async def get_cached_search(self, query_hash: str) -> list[dict[str, Any]] | None:
         """Get cached search results."""
         pass
     
     @abstractmethod
-    async def invalidate_cache(self, collection_name: str, vector_ids: List[str]) -> None:
+    async def invalidate_cache(self, collection_name: str, vector_ids: list[str]) -> None:
         """Invalidate cache entries."""
         pass
     
     @abstractmethod
-    async def clear_cache(self, collection_name: Optional[str] = None) -> None:
+    async def clear_cache(self, collection_name: str | None = None) -> None:
         """Clear cache."""
         pass
 
@@ -190,8 +190,8 @@ class VectorBatchInterface(ABC):
     async def batch_update(
         self,
         collection_name: str,
-        updates: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        updates: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Batch update vectors."""
         pass
     
@@ -199,8 +199,8 @@ class VectorBatchInterface(ABC):
     async def batch_delete(
         self,
         collection_name: str,
-        vector_ids: List[str]
-    ) -> Dict[str, Any]:
+        vector_ids: list[str]
+    ) -> dict[str, Any]:
         """Batch delete vectors."""
         pass
     
@@ -208,7 +208,7 @@ class VectorBatchInterface(ABC):
     async def batch_search(
         self,
         collection_name: str,
-        queries: List[VectorSearchRequest]
-    ) -> List[VectorSearchResponse]:
+        queries: list[VectorSearchRequest]
+    ) -> list[VectorSearchResponse]:
         """Batch search vectors."""
         pass

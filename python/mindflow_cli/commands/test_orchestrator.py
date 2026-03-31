@@ -3,13 +3,11 @@ from __future__ import annotations
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.tree import Tree
 
 from mindflow_cli.client import MindFlowCliClient
-from mindflow_cli.render.chat_stream import ChatStreamRenderer
 from mindflow_cli.render.theme import MINDFLOW_THEME
 
 console = Console(theme=MINDFLOW_THEME)
@@ -274,14 +272,14 @@ def _show_test_summary(
     
     # Routing decision
     if show_routing and routing_decision:
-        console.print(f"\n[bold cyan]🔀 Routing Decision:[/]")
+        console.print("\n[bold cyan]🔀 Routing Decision:[/]")
         console.print(f"[dim]{routing_decision}[/]")
     
     # Selected agent
     if show_agent_selection and selected_agent:
         console.print(f"\n[bold green]🤖 Selected Agent:[/] {selected_agent}")
     elif show_agent_selection:
-        console.print(f"\n[bold yellow]🤖 Selected Agent:[/] [dim]Not detected[/]")
+        console.print("\n[bold yellow]🤖 Selected Agent:[/] [dim]Not detected[/]")
     
     # Execution steps
     if execution_steps:
@@ -294,7 +292,7 @@ def _show_test_summary(
     # Response preview
     if response:
         preview = response[:200] + "..." if len(response) > 200 else response
-        console.print(f"\n[bold]💬 Response Preview:[/]")
+        console.print("\n[bold]💬 Response Preview:[/]")
         console.print(f"[dim]{preview}[/]")
     
     console.print("\n" + "="*60)

@@ -4,25 +4,26 @@ with security controls, validation, and error handling.
 """
 
 from __future__ import annotations
-import os
-import re
-import fnmatch
-import shutil
-import asyncio
-import subprocess
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
 
-from mindflow_backend.infra.logging import get_logger
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.agents.tools.security import (
     WorkspaceSecurityError,
     is_read_only_mode,
     resolve_workspace_path,
 )
-from mindflow_backend.schemas.tools.filesystem_schemas import READ_FILE_SCHEMA, WRITE_FILE_SCHEMA, EDIT_FILE_SCHEMA, DELETE_FILE_SCHEMA, LIST_DIRECTORY_SCHEMA
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.tools.filesystem_schemas import (
+    DELETE_FILE_SCHEMA,
+    EDIT_FILE_SCHEMA,
+    LIST_DIRECTORY_SCHEMA,
+    READ_FILE_SCHEMA,
+    WRITE_FILE_SCHEMA,
+)
 
 _logger = get_logger(__name__)
 
@@ -80,7 +81,7 @@ class FileReadTool(AsyncToolInterface):
 
         self._schema = READ_FILE_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Read file contents with security validation.
         Args:
@@ -128,7 +129,7 @@ class FileReadTool(AsyncToolInterface):
                 )
 
             # Read file
-            with open(path_obj, 'r', encoding=encoding) as file:
+            with open(path_obj, encoding=encoding) as file:
                 if max_lines:
                     lines = []
                     for i, line in enumerate(file):
@@ -173,7 +174,7 @@ class FileReadTool(AsyncToolInterface):
                 error=f"File read error: {str(e)}"
             )
 
-    def _validate_path(self, file_path: str) -> Dict[str, Any]:
+    def _validate_path(self, file_path: str) -> dict[str, Any]:
         """
         Validate file path for security restrictions.
         Args:
@@ -207,7 +208,7 @@ class FileReadTool(AsyncToolInterface):
                 "error": f"Path validation error: {str(e)}"
             }
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """
@@ -232,7 +233,7 @@ class FileEditTool(AsyncToolInterface):
 
         self._schema = EDIT_FILE_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         file_path = kwargs["file_path"]
         old_string = kwargs["old_string"]
         new_string = kwargs["new_string"]
@@ -269,7 +270,7 @@ class FileEditTool(AsyncToolInterface):
 
         return self._format_result(success=True, result={"replacements": replacements})
 
-    def _validate_path(self, file_path: str) -> Dict[str, Any]:
+    def _validate_path(self, file_path: str) -> dict[str, Any]:
         try:
             path_obj = Path(file_path).resolve()
             for restricted in self.restricted_paths:
@@ -279,7 +280,7 @@ class FileEditTool(AsyncToolInterface):
         except Exception as e:
             return {"valid": False, "error": f"Path validation error: {e}"}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -326,7 +327,7 @@ class FileWriteTool(AsyncToolInterface):
 
         self._schema = WRITE_FILE_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Write content to file with security validation.
         Args:
@@ -400,7 +401,7 @@ class FileWriteTool(AsyncToolInterface):
                 error=f"File write error: {str(e)}"
             )
 
-    def _validate_path(self, file_path: str) -> Dict[str, Any]:
+    def _validate_path(self, file_path: str) -> dict[str, Any]:
         """
         Validate file path for security restrictions.
         Args:
@@ -434,7 +435,7 @@ class FileWriteTool(AsyncToolInterface):
                 "error": f"Path validation error: {str(e)}"
             }
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """
@@ -459,7 +460,7 @@ class DirectoryListTool(AsyncToolInterface):
 
         self._schema = LIST_DIRECTORY_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         List directory contents with security validation.
         Args:
@@ -554,7 +555,7 @@ class DirectoryListTool(AsyncToolInterface):
                 error=f"Directory listing error: {str(e)}"
             )
 
-    def _validate_path(self, directory_path: str) -> Dict[str, Any]:
+    def _validate_path(self, directory_path: str) -> dict[str, Any]:
         """
         Validate directory path for security restrictions.
         Args:
@@ -581,7 +582,7 @@ class DirectoryListTool(AsyncToolInterface):
                 "error": f"Path validation error: {str(e)}"
             }
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """
@@ -606,7 +607,7 @@ class FileDeleteTool(AsyncToolInterface):
 
         self._schema = DELETE_FILE_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Delete file or directory with security validation.
         Args:
@@ -691,7 +692,7 @@ class FileDeleteTool(AsyncToolInterface):
                 error=f"Deletion error: {str(e)}"
             )
 
-    def _validate_path(self, file_path: str) -> Dict[str, Any]:
+    def _validate_path(self, file_path: str) -> dict[str, Any]:
         """
         Validate file path for security restrictions.
         Args:
@@ -718,7 +719,7 @@ class FileDeleteTool(AsyncToolInterface):
                 "error": f"Path validation error: {str(e)}"
             }
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

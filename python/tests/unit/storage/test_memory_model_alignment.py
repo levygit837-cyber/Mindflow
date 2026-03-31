@@ -6,13 +6,11 @@ be String. EMBEDDING_DIMS=768 is the single source of truth.
 """
 from __future__ import annotations
 
-import pytest
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Integer, String
 
 from mindflow_backend.memory.storage import models as mem_models
 from mindflow_backend.storage.postgresql import models as pg_models
-
 
 # ---------------------------------------------------------------------------
 # AgentMemoryEmbedding alignment

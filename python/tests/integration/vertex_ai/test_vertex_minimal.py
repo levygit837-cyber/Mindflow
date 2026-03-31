@@ -13,13 +13,8 @@ async def test_vertex_minimal():
     """Test Vertex AI with minimal dependencies."""
     try:
         # Import only what we need
-        import json
-        from pathlib import Path
-        from typing import Any
-        from collections.abc import Callable
         
         # Import settings
-        from mindflow_backend.infra.config import get_settings
         
         # Import the providers module directly
         sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python/mindflow_backend/runtime/providers')

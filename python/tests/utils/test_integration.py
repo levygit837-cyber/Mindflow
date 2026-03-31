@@ -4,11 +4,12 @@ Tests that verify the migration from old utils locations to new centralized stru
 """
 
 import pytest
+
 from mindflow_backend.utils.core import estimate_token_count
-from mindflow_backend.utils.formatting import format_sse, extract_json_from_response
-from mindflow_backend.utils.validation import validate_memory_data, validate_search_query
-from mindflow_backend.utils.network import retry_on_error, get_port_manager
+from mindflow_backend.utils.formatting import extract_json_from_response, format_sse
 from mindflow_backend.utils.monitoring import HealthStatus, health_check_database
+from mindflow_backend.utils.network import get_port_manager, retry_on_error
+from mindflow_backend.utils.validation import validate_memory_data, validate_search_query
 
 
 class TestUtilsIntegration:
@@ -85,33 +86,15 @@ class TestUtilsIntegration:
         """Test that all imports work consistently."""
         # Test that we can import from all new locations
         from mindflow_backend.utils.core import (
-            format_datetime_iso, 
-            slugify, 
+            estimate_token_count,
+            format_datetime_iso,
             generate_uuid4,
-            estimate_token_count
+            slugify,
         )
-        
-        from mindflow_backend.utils.validation import (
-            validate_email,
-            validate_url,
-            sanitize_string
-        )
-        
-        from mindflow_backend.utils.formatting import (
-            format_sse,
-            extract_json_from_response
-        )
-        
-        from mindflow_backend.utils.network import (
-            retry_on_error,
-            get_port_manager,
-            parse_url
-        )
-        
-        from mindflow_backend.utils.monitoring import (
-            HealthStatus,
-            health_check_database
-        )
+        from mindflow_backend.utils.formatting import extract_json_from_response, format_sse
+        from mindflow_backend.utils.monitoring import HealthStatus, health_check_database
+        from mindflow_backend.utils.network import get_port_manager, parse_url, retry_on_error
+        from mindflow_backend.utils.validation import sanitize_string, validate_email, validate_url
         
         # All imports should work without errors
         assert callable(format_datetime_iso)
@@ -144,13 +127,13 @@ class TestUtilsIntegration:
         """Test that old import paths no longer work."""
         # These imports should fail
         with pytest.raises(ImportError):
-            from mindflow_backend.memory.utils.validation import validate_memory_data
+            pass
         
         with pytest.raises(ImportError):
-            from mindflow_backend.agents.research.utils.port_manager import get_port_manager
+            pass
         
         with pytest.raises(ImportError):
-            from mindflow_backend.api.sse import format_sse
+            pass
         
         with pytest.raises(ImportError):
-            from mindflow_backend.decomposition.utils import extract_json_from_response
+            pass

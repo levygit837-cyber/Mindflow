@@ -6,15 +6,16 @@ HTTP requests, API interactions, and content extraction.
 
 from __future__ import annotations
 
-# Web tools (unified from backend)
-from .web_scraper import (
-    WebScraperTool,
-)
+from .api_client import ApiClientTool
 
 # Original web tools
 from .browser_search import BrowserSearchTool
 from .http_client import HttpClientTool
-from .api_client import ApiClientTool
+
+# Web tools (unified from backend)
+from .web_scraper import (
+    WebScraperTool,
+)
 
 __all__ = [
     # Web tools (unified)

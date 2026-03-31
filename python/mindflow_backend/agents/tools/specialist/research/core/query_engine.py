@@ -7,13 +7,12 @@ multiple contextualized queries for parallel browser execution.
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.agents.research import (
-    QuestionType,
     QueryIntent,
     QueryPlan,
+    QuestionType,
     SourceType,
 )
 

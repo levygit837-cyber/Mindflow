@@ -6,7 +6,7 @@ Lightweight metrics collection and aggregation utilities.
 import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -68,17 +68,17 @@ class Gauge(Metric):
         super().__init__(name, description)
         self.value = float(initial_value)
     
-    def set(self, value: Union[int, float]) -> None:
+    def set(self, value: int | float) -> None:
         """Set gauge value."""
         self.value = float(value)
         self.update(None)
     
-    def increment(self, amount: Union[int, float] = 1.0) -> None:
+    def increment(self, amount: int | float = 1.0) -> None:
         """Increment gauge."""
         self.value += float(amount)
         self.update(None)
     
-    def decrement(self, amount: Union[int, float] = 1.0) -> None:
+    def decrement(self, amount: int | float = 1.0) -> None:
         """Decrement gauge."""
         self.value -= float(amount)
         self.update(None)
@@ -99,7 +99,7 @@ class Histogram(Metric):
         self,
         name: str,
         description: str = "",
-        buckets: Optional[List[float]] = None,
+        buckets: list[float] | None = None,
     ):
         super().__init__(name, description)
         self.buckets = buckets or [0.1, 0.5, 1.0, 2.5, 5.0, 10.0, float('inf')]
@@ -107,7 +107,7 @@ class Histogram(Metric):
         self.count = 0
         self.sum = 0.0
     
-    def observe(self, value: Union[int, float]) -> None:
+    def observe(self, value: int | float) -> None:
         """Observe a value."""
         value = float(value)
         self.count += 1
@@ -120,7 +120,7 @@ class Histogram(Metric):
         
         self.update(None)
     
-    def get_value(self) -> Dict[str, Any]:
+    def get_value(self) -> dict[str, Any]:
         """Get histogram statistics."""
         return {
             "count": self.count,
@@ -154,7 +154,7 @@ class Summary(Metric):
         self.count = 0
         self.sum = 0.0
     
-    def observe(self, value: Union[int, float]) -> None:
+    def observe(self, value: int | float) -> None:
         """Observe a value."""
         value = float(value)
         self.samples.append(value)
@@ -162,7 +162,7 @@ class Summary(Metric):
         self.sum += value
         self.update(None)
     
-    def get_value(self) -> Dict[str, Any]:
+    def get_value(self) -> dict[str, Any]:
         """Get summary statistics."""
         if not self.samples:
             return {
@@ -200,11 +200,11 @@ class Summary(Metric):
 class Timer:
     """Context manager for timing operations."""
     
-    def __init__(self, histogram: Optional[Histogram] = None, summary: Optional[Summary] = None):
+    def __init__(self, histogram: Histogram | None = None, summary: Summary | None = None):
         self.histogram = histogram
         self.summary = summary
-        self.start_time: Optional[float] = None
-        self.duration: Optional[float] = None
+        self.start_time: float | None = None
+        self.duration: float | None = None
     
     def __enter__(self) -> "Timer":
         self.start_time = time.time()
@@ -219,7 +219,7 @@ class Timer:
             if self.summary:
                 self.summary.observe(self.duration)
     
-    def get_duration(self) -> Optional[float]:
+    def get_duration(self) -> float | None:
         """Get measured duration."""
         return self.duration
 
@@ -228,10 +228,10 @@ class MetricsRegistry:
     """Registry for managing metrics."""
     
     def __init__(self):
-        self.metrics: Dict[str, Metric] = {}
-        self.tags: Dict[str, Dict[str, str]] = {}
+        self.metrics: dict[str, Metric] = {}
+        self.tags: dict[str, dict[str, str]] = {}
     
-    def counter(self, name: str, description: str = "", tags: Optional[Dict[str, str]] = None) -> Counter:
+    def counter(self, name: str, description: str = "", tags: dict[str, str] | None = None) -> Counter:
         """Get or create a counter."""
         if name not in self.metrics:
             self.metrics[name] = Counter(name, description)
@@ -242,7 +242,7 @@ class MetricsRegistry:
         
         return self.metrics[name]
     
-    def gauge(self, name: str, description: str = "", tags: Optional[Dict[str, str]] = None) -> Gauge:
+    def gauge(self, name: str, description: str = "", tags: dict[str, str] | None = None) -> Gauge:
         """Get or create a gauge."""
         if name not in self.metrics:
             self.metrics[name] = Gauge(name, description)
@@ -257,8 +257,8 @@ class MetricsRegistry:
         self,
         name: str,
         description: str = "",
-        buckets: Optional[List[float]] = None,
-        tags: Optional[Dict[str, str]] = None,
+        buckets: list[float] | None = None,
+        tags: dict[str, str] | None = None,
     ) -> Histogram:
         """Get or create a histogram."""
         if name not in self.metrics:
@@ -275,7 +275,7 @@ class MetricsRegistry:
         name: str,
         description: str = "",
         max_samples: int = 1000,
-        tags: Optional[Dict[str, str]] = None,
+        tags: dict[str, str] | None = None,
     ) -> Summary:
         """Get or create a summary."""
         if name not in self.metrics:
@@ -291,18 +291,18 @@ class MetricsRegistry:
         self,
         name: str,
         description: str = "",
-        buckets: Optional[List[float]] = None,
-        tags: Optional[Dict[str, str]] = None,
+        buckets: list[float] | None = None,
+        tags: dict[str, str] | None = None,
     ) -> Timer:
         """Create a timer that records to a histogram."""
         histogram = self.histogram(name, description, buckets, tags)
         return Timer(histogram=histogram)
     
-    def get_metric(self, name: str) -> Optional[Metric]:
+    def get_metric(self, name: str) -> Metric | None:
         """Get a metric by name."""
         return self.metrics.get(name)
     
-    def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_metrics(self) -> dict[str, dict[str, Any]]:
         """Get all metrics as a dictionary."""
         result = {}
         
@@ -344,7 +344,7 @@ class MetricsRegistry:
 class PerformanceTracker:
     """Track performance metrics for operations."""
     
-    def __init__(self, registry: Optional[MetricsRegistry] = None):
+    def __init__(self, registry: MetricsRegistry | None = None):
         self.registry = registry or MetricsRegistry()
         self.operation_timers = defaultdict(list)
     
@@ -375,7 +375,7 @@ class PerformanceTracker:
             ),
         )
     
-    def get_operation_stats(self, operation_name: str, minutes: int = 60) -> Dict[str, Any]:
+    def get_operation_stats(self, operation_name: str, minutes: int = 60) -> dict[str, Any]:
         """Get statistics for an operation."""
         cutoff_time = datetime.now(UTC) - timedelta(minutes=minutes)
         
@@ -408,7 +408,7 @@ class PerformanceTracker:
 
 
 # Global metrics registry instance
-_metrics_registry: Optional[MetricsRegistry] = None
+_metrics_registry: MetricsRegistry | None = None
 
 
 def get_metrics_registry() -> MetricsRegistry:
@@ -420,7 +420,7 @@ def get_metrics_registry() -> MetricsRegistry:
 
 
 # Global performance tracker instance
-_performance_tracker: Optional[PerformanceTracker] = None
+_performance_tracker: PerformanceTracker | None = None
 
 
 def get_performance_tracker() -> PerformanceTracker:

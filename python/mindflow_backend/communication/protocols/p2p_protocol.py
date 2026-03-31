@@ -5,13 +5,13 @@ Adapted from Plexo project for MindFlow architecture.
 Provides peer-to-peer messaging between agents.
 """
 
-import uuid
 import logging
-import asyncio
-from typing import Dict, Any, Optional, List, Callable
-from datetime import datetime
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,11 @@ class P2PMessage:
     message_type: MessageType = MessageType.DIRECT
     urgency: str = "MEDIUM"
     requires_response: bool = False
-    in_reply_to: Optional[str] = None
+    in_reply_to: str | None = None
     timestamp: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "message_id": self.message_id,
@@ -55,7 +55,7 @@ class P2PMessage:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'P2PMessage':
+    def from_dict(cls, data: dict[str, Any]) -> 'P2PMessage':
         """Create instance from dictionary."""
         return cls(
             message_id=data.get("message_id", str(uuid.uuid4())),
@@ -84,9 +84,9 @@ class P2PProtocol:
     def __init__(self, agent_id: str, connection_manager: Any):
         self.agent_id = agent_id
         self.connection_manager = connection_manager
-        self.pending_requests: Dict[str, P2PMessage] = {}
-        self.message_history: List[P2PMessage] = []
-        self.response_handlers: Dict[str, Callable] = {}
+        self.pending_requests: dict[str, P2PMessage] = {}
+        self.message_history: list[P2PMessage] = []
+        self.response_handlers: dict[str, Callable] = {}
         self.is_listening: bool = False
     
     async def send_direct_message(
@@ -94,7 +94,7 @@ class P2PProtocol:
         to_agent: str,
         content: str,
         urgency: str = "MEDIUM"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a direct message to another agent.
         
@@ -132,7 +132,7 @@ class P2PProtocol:
         to_agent: str,
         content: str,
         urgency: str = "HIGH"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a request that requires a response.
         
@@ -173,7 +173,7 @@ class P2PProtocol:
         to_agent: str,
         original_message_id: str,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a response to a request.
         
@@ -210,7 +210,7 @@ class P2PProtocol:
         self,
         to_agent: str,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send an urgent message (requires checkpoint).
         
@@ -247,7 +247,7 @@ class P2PProtocol:
         self,
         to_agent: str,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a notification (does not require response).
         
@@ -282,8 +282,8 @@ class P2PProtocol:
     
     async def process_incoming_message(
         self,
-        message_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        message_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Process an incoming message.
         
@@ -321,22 +321,22 @@ class P2PProtocol:
         """Register a handler for a message response."""
         self.response_handlers[message_id] = handler
     
-    def get_pending_requests(self) -> List[Dict[str, Any]]:
+    def get_pending_requests(self) -> list[dict[str, Any]]:
         """Get pending requests."""
         return [msg.to_dict() for msg in self.pending_requests.values()]
     
-    def get_message_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_message_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get message history."""
         return [msg.to_dict() for msg in self.message_history[-limit:]]
     
-    def get_conversation_with(self, other_agent: str) -> List[Dict[str, Any]]:
+    def get_conversation_with(self, other_agent: str) -> list[dict[str, Any]]:
         """Get conversation with another agent."""
         return [
             msg.to_dict() for msg in self.message_history
             if msg.from_agent == other_agent or msg.to_agent == other_agent
         ]
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get protocol statistics."""
         return {
             "agent_id": self.agent_id,

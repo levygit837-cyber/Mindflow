@@ -5,10 +5,9 @@ Functions for Base64 encoding/decoding and related operations.
 
 import base64
 import os
-from typing import Union, Optional
 
 
-def encode_base64(data: Union[str, bytes], encoding: str = 'utf-8') -> str:
+def encode_base64(data: str | bytes, encoding: str = 'utf-8') -> str:
     """Encode data to Base64 string."""
     if isinstance(data, str):
         data = data.encode(encoding)
@@ -27,7 +26,7 @@ def decode_base64_to_string(base64_str: str, encoding: str = 'utf-8') -> str:
     return bytes_data.decode(encoding)
 
 
-def encode_base64_url_safe(data: Union[str, bytes], encoding: str = 'utf-8') -> str:
+def encode_base64_url_safe(data: str | bytes, encoding: str = 'utf-8') -> str:
     """Encode data to URL-safe Base64 string."""
     if isinstance(data, str):
         data = data.encode(encoding)
@@ -70,7 +69,7 @@ def encode_file_base64(file_path: str, chunk_size: int = 8192) -> str:
         with open(file_path, 'rb') as f:
             file_data = f.read()
         return encode_base64(file_data)
-    except (FileNotFoundError, IOError, OSError):
+    except (FileNotFoundError, OSError):
         return ""
 
 
@@ -81,11 +80,11 @@ def decode_file_base64(base64_str: str, output_path: str) -> bool:
         with open(output_path, 'wb') as f:
             f.write(file_data)
         return True
-    except (IOError, OSError, ValueError):
+    except (OSError, ValueError):
         return False
 
 
-def encode_base64_with_padding(data: Union[str, bytes], encoding: str = 'utf-8') -> str:
+def encode_base64_with_padding(data: str | bytes, encoding: str = 'utf-8') -> str:
     """Encode data to Base64 with proper padding."""
     if isinstance(data, str):
         data = data.encode(encoding)
@@ -111,7 +110,7 @@ def add_base64_padding(base64_str: str) -> str:
     return base64_str + ('=' * padding_needed)
 
 
-def encode_base64_chunked(data: Union[str, bytes], chunk_size: int = 76, encoding: str = 'utf-8') -> list[str]:
+def encode_base64_chunked(data: str | bytes, chunk_size: int = 76, encoding: str = 'utf-8') -> list[str]:
     """Encode data to Base64 in chunks."""
     if isinstance(data, str):
         data = data.encode(encoding)
@@ -167,7 +166,7 @@ def calculate_original_size(base64_size: int) -> int:
     return (base64_size * 3) // 4
 
 
-def compress_and_encode_base64(data: Union[str, bytes], encoding: str = 'utf-8') -> str:
+def compress_and_encode_base64(data: str | bytes, encoding: str = 'utf-8') -> str:
     """Compress data and encode to Base64."""
     try:
         import gzip
@@ -195,7 +194,7 @@ def decode_and_decompress_base64(base64_str: str, encoding: str = 'utf-8') -> st
         return decode_base64_to_string(base64_str, encoding)
 
 
-def encode_base64_mime(data: Union[str, bytes], encoding: str = 'utf-8', line_length: int = 76) -> str:
+def encode_base64_mime(data: str | bytes, encoding: str = 'utf-8', line_length: int = 76) -> str:
     """Encode data to MIME Base64 format with line breaks."""
     if isinstance(data, str):
         data = data.encode(encoding)
@@ -214,7 +213,7 @@ def decode_base64_mime(mime_str: str, encoding: str = 'utf-8') -> str:
     return decode_base64_to_string(clean_str, encoding)
 
 
-def base64_encode_json(data: dict, indent: Optional[int] = None) -> str:
+def base64_encode_json(data: dict, indent: int | None = None) -> str:
     """Encode JSON object to Base64 string."""
     import json
     

@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
+from .backends import MemoryCacheBackend, RedisCacheBackend
 from .models import CacheEntry, CacheLevel, CachePolicy
-from .backends import CacheBackend, MemoryCacheBackend, RedisCacheBackend
 
 _logger = get_logger(__name__)
 
@@ -34,13 +34,13 @@ class CacheManager:
 
     def __init__(self):
         """Initialize cache manager."""
-        self._l1_cache: Optional[MemoryCacheBackend] = None
-        self._l2_cache: Optional[RedisCacheBackend] = None
+        self._l1_cache: MemoryCacheBackend | None = None
+        self._l2_cache: RedisCacheBackend | None = None
         self._enable_l1 = True
         self._enable_l2 = True
         self._default_ttl = 3600  # 1 hour
         self._max_ttl = 86400  # 24 hours
-        self._background_cleanup_task: Optional[asyncio.Task] = None
+        self._background_cleanup_task: asyncio.Task | None = None
         self._is_running = False
 
         # Cache statistics
@@ -95,7 +95,7 @@ class CacheManager:
         await self.stop_background_cleanup()
         _logger.info("cache_manager_closed")
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache hierarchy.
 
         Args:
@@ -132,8 +132,8 @@ class CacheManager:
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None,
-        tags: Optional[Dict[str, str]] = None,
+        ttl: int | None = None,
+        tags: dict[str, str] | None = None,
     ) -> bool:
         """Set value in cache hierarchy.
 
@@ -199,7 +199,7 @@ class CacheManager:
 
         return success
 
-    async def clear(self, level: Optional[CacheLevel] = None) -> bool:
+    async def clear(self, level: CacheLevel | None = None) -> bool:
         """Clear cache entries.
 
         Args:
@@ -220,7 +220,7 @@ class CacheManager:
 
         return success
 
-    async def invalidate_by_tag(self, tag: str, value: Optional[str] = None) -> int:
+    async def invalidate_by_tag(self, tag: str, value: str | None = None) -> int:
         """Invalidate cache entries by tag.
 
         Args:
@@ -261,7 +261,7 @@ class CacheManager:
 
         return invalidated
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get comprehensive cache statistics.
 
         Returns:
@@ -369,7 +369,7 @@ class CacheManager:
 
 
 # Global cache manager instance
-_cache_manager: Optional[CacheManager] = None
+_cache_manager: CacheManager | None = None
 
 
 def get_cache_manager() -> CacheManager:

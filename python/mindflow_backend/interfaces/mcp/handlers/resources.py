@@ -7,13 +7,16 @@ resource discovery, access, and management.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable
 from pathlib import Path
+from typing import Any, Optional
 
-from mindflow_backend.schemas.mcp.resources import (
-    MCPResourceDefinition, MCPResourceResult, MCPResourceType, MCPResourceAccess
-)
 from mindflow_backend.interfaces.mcp.handlers.message import RequestHandler
+from mindflow_backend.schemas.mcp.resources import (
+    MCPResourceAccess,
+    MCPResourceDefinition,
+    MCPResourceResult,
+    MCPResourceType,
+)
 
 
 class ResourceAccessor:
@@ -28,7 +31,7 @@ class ResourceAccessor:
         """Initialize the resource accessor."""
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
     
-    async def read_resource(self, resource_uri: str, options: Dict[str, Any]) -> MCPResourceResult:
+    async def read_resource(self, resource_uri: str, options: dict[str, Any]) -> MCPResourceResult:
         """
         Read a resource by URI.
         
@@ -84,7 +87,7 @@ class ResourceAccessor:
         else:
             return "unknown"
     
-    async def get_resource_definition(self, resource_uri: str) -> Optional[MCPResourceDefinition]:
+    async def get_resource_definition(self, resource_uri: str) -> MCPResourceDefinition | None:
         """
         Get the definition for a resource.
         
@@ -106,7 +109,7 @@ class FileSystemResourceAccessor(ResourceAccessor):
     through file:// URIs.
     """
     
-    def __init__(self, base_path: Optional[str] = None):
+    def __init__(self, base_path: str | None = None):
         """
         Initialize file system resource accessor.
         
@@ -116,7 +119,7 @@ class FileSystemResourceAccessor(ResourceAccessor):
         super().__init__()
         self.base_path = Path(base_path) if base_path else None
     
-    async def read_file(self, resource_uri: str, options: Dict[str, Any]) -> Any:
+    async def read_file(self, resource_uri: str, options: dict[str, Any]) -> Any:
         """
         Read a file resource.
         
@@ -155,10 +158,10 @@ class FileSystemResourceAccessor(ResourceAccessor):
             with open(file_path, "rb") as f:
                 return f.read()
         else:
-            with open(file_path, "r", encoding=encoding) as f:
+            with open(file_path, encoding=encoding) as f:
                 return f.read()
     
-    async def get_resource_definition(self, resource_uri: str) -> Optional[MCPResourceDefinition]:
+    async def get_resource_definition(self, resource_uri: str) -> MCPResourceDefinition | None:
         """
         Get the definition for a file resource.
         
@@ -232,9 +235,9 @@ class MemoryResourceAccessor(ResourceAccessor):
     def __init__(self):
         """Initialize memory resource accessor."""
         super().__init__()
-        self._resources: Dict[str, Any] = {}
+        self._resources: dict[str, Any] = {}
     
-    def store_resource(self, uri: str, data: Any, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def store_resource(self, uri: str, data: Any, metadata: dict[str, Any] | None = None) -> None:
         """
         Store a resource in memory.
         
@@ -249,7 +252,7 @@ class MemoryResourceAccessor(ResourceAccessor):
             "created_at": asyncio.get_event_loop().time()
         }
     
-    async def read_memory(self, resource_uri: str, options: Dict[str, Any]) -> Any:
+    async def read_memory(self, resource_uri: str, options: dict[str, Any]) -> Any:
         """
         Read a memory resource.
         
@@ -271,7 +274,7 @@ class MemoryResourceAccessor(ResourceAccessor):
         
         return self._resources[key]["data"]
     
-    async def get_resource_definition(self, resource_uri: str) -> Optional[MCPResourceDefinition]:
+    async def get_resource_definition(self, resource_uri: str) -> MCPResourceDefinition | None:
         """
         Get the definition for a memory resource.
         
@@ -335,7 +338,7 @@ class MCPResourceHandler(RequestHandler):
         Returns:
             Optional[MCPResponse]: Response message
         """
-        from mindflow_backend.schemas.mcp.base import MCPResponse, MCPError, MCPErrorCode
+        from mindflow_backend.schemas.mcp.base import MCPError, MCPErrorCode, MCPResponse
         
         if message.method == "resources/list":
             return await self._handle_list_resources(message)
@@ -392,7 +395,7 @@ class MCPResourceHandler(RequestHandler):
         Returns:
             MCPResponse: Resource read response
         """
-        from mindflow_backend.schemas.mcp.base import MCPResponse, MCPError, MCPErrorCode
+        from mindflow_backend.schemas.mcp.base import MCPError, MCPErrorCode, MCPResponse
         
         try:
             params = message.params or {}
@@ -438,7 +441,7 @@ class MCPResourceHandler(RequestHandler):
                 )
             )
     
-    async def _get_available_resources(self) -> List[MCPResourceDefinition]:
+    async def _get_available_resources(self) -> list[MCPResourceDefinition]:
         """
         Get list of available resources.
         
@@ -461,7 +464,7 @@ class CompositeResourceAccessor(ResourceAccessor):
     def __init__(self):
         """Initialize composite resource accessor."""
         super().__init__()
-        self._accessors: Dict[str, ResourceAccessor] = {}
+        self._accessors: dict[str, ResourceAccessor] = {}
     
     def register_accessor(self, scheme: str, accessor: ResourceAccessor) -> None:
         """
@@ -474,7 +477,7 @@ class CompositeResourceAccessor(ResourceAccessor):
         self._accessors[scheme] = accessor
         self.logger.info(f"Registered accessor for scheme: {scheme}")
     
-    async def read_resource(self, resource_uri: str, options: Dict[str, Any]) -> MCPResourceResult:
+    async def read_resource(self, resource_uri: str, options: dict[str, Any]) -> MCPResourceResult:
         """
         Read a resource by delegating to the appropriate accessor.
         
@@ -496,7 +499,7 @@ class CompositeResourceAccessor(ResourceAccessor):
         accessor = self._accessors[scheme]
         return await accessor.read_resource(resource_uri, options)
     
-    async def get_resource_definition(self, resource_uri: str) -> Optional[MCPResourceDefinition]:
+    async def get_resource_definition(self, resource_uri: str) -> MCPResourceDefinition | None:
         """
         Get the definition for a resource by delegating to the appropriate accessor.
         

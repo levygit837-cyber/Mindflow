@@ -9,11 +9,11 @@ Use: from mindflow_backend.interfaces.api import AgentServiceInterface, SessionS
 # Forward compatibility aliases - import from new location
 from mindflow_backend.interfaces.api.services import (
     AgentServiceInterface,
-    SessionServiceInterface,
+    BaseServiceInterface,
+    MemoryServiceInterface,
     OrchestrationServiceInterface,
     ProviderServiceInterface,
-    MemoryServiceInterface,
-    BaseServiceInterface,
+    SessionServiceInterface,
 )
 
 # Maintain backward compatibility

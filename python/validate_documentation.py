@@ -4,19 +4,17 @@ Validador final da documentação gerada.
 Verifica se todos os diretórios e arquivos foram mapeados corretamente.
 """
 
-import os
-from pathlib import Path
-from typing import Dict, List, Set
 import argparse
+from pathlib import Path
 
 
 class DocumentationValidator:
     def __init__(self, base_path: str, docs_path: str):
         self.base_path = Path(base_path)
         self.docs_path = Path(docs_path)
-        self.expected_directories: Set[str] = set()
-        self.expected_files: Dict[str, List[str]] = {}
-        self.generated_files: Set[str] = set()
+        self.expected_directories: set[str] = set()
+        self.expected_files: dict[str, list[str]] = {}
+        self.generated_files: set[str] = set()
         self.validation_results = {
             'missing_directories': [],
             'missing_files': [],
@@ -103,7 +101,7 @@ class DocumentationValidator:
             if not filepath.exists():
                 continue
             
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding='utf-8') as f:
                 content = f.read()
             
             # Verificar se o caminho está correto

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from mindflow_backend.decomposition.pipeline.tasker import EnhancedTasker
 from mindflow_backend.decomposition.pipeline.resolver import ContextAwareResolver
 from mindflow_backend.decomposition.pipeline.scheduler import SemanticScheduler
 from mindflow_backend.decomposition.pipeline.synthesizer import TaskSynthesizer
+from mindflow_backend.decomposition.pipeline.tasker import EnhancedTasker
 
 __all__ = [
     "EnhancedTasker",

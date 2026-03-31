@@ -6,8 +6,10 @@ and security-related API errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.business import (
+from mindflow_backend.exceptions.base.business_new import (
     AuthenticationError as BaseAuthenticationError,
+)
+from mindflow_backend.exceptions.base.business_new import (
     AuthorizationError as BaseAuthorizationError,
 )
 

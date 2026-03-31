@@ -6,23 +6,42 @@ Demonstrates the core integration features without complex dependencies.
 """
 
 import asyncio
-import sys
 import os
+import sys
 import time
-import random
-from typing import Dict, Any
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mindflow_backend.grpc.config import GrpcConfig
-from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import EnhancedGrpcCircuitBreaker, EnhancedCircuitBreakerConfig, AdaptiveThresholdType
-from mindflow_backend.grpc.resilience.advanced_retry import AdvancedRetryPolicy, AdvancedRetryConfig, AdaptiveBackoffType
-from mindflow_backend.grpc.resilience.bulkhead import GrpcBulkhead, BulkheadConfig
-from mindflow_backend.grpc.resilience.fallback import FallbackManager, FallbackConfig, DefaultResponseFallback
-from mindflow_backend.grpc.performance.compression.compressor import GrpcMessageCompressor, CompressionConfig, CompressionAlgorithm
-from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache, CacheConfig
-from mindflow_backend.grpc.monitoring.alerting import AlertManager, AlertConfig, AlertCondition, AlertSeverity
+from mindflow_backend.grpc.monitoring.alerting import (
+    AlertCondition,
+    AlertConfig,
+    AlertManager,
+    AlertSeverity,
+)
+from mindflow_backend.grpc.performance.caching.cache import CacheConfig, GrpcResponseCache
+from mindflow_backend.grpc.performance.compression.compressor import (
+    CompressionAlgorithm,
+    CompressionConfig,
+    GrpcMessageCompressor,
+)
+from mindflow_backend.grpc.resilience.advanced_retry import (
+    AdaptiveBackoffType,
+    AdvancedRetryConfig,
+    AdvancedRetryPolicy,
+)
+from mindflow_backend.grpc.resilience.bulkhead import BulkheadConfig, GrpcBulkhead
+from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import (
+    AdaptiveThresholdType,
+    EnhancedCircuitBreakerConfig,
+    EnhancedGrpcCircuitBreaker,
+)
+from mindflow_backend.grpc.resilience.fallback import (
+    DefaultResponseFallback,
+    FallbackConfig,
+    FallbackManager,
+)
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -74,8 +93,8 @@ class Phase4SimpleDemo:
                 enable_enhanced_protection=True
             )
             
-            print(f"   ✅ Comprehensive configuration created")
-            print(f"   📋 Configuration Summary:")
+            print("   ✅ Comprehensive configuration created")
+            print("   📋 Configuration Summary:")
             print(f"      - Server: {config.host}:{config.port}")
             print(f"      - Metrics: {config.enable_metrics}")
             print(f"      - Resilience: {config.enable_resilience}")
@@ -84,7 +103,7 @@ class Phase4SimpleDemo:
             print(f"      - Enhanced Protection: {config.enable_enhanced_protection}")
             
             # Show feature flags
-            print(f"   🚩 Feature Flags:")
+            print("   🚩 Feature Flags:")
             print(f"      - Adaptive Circuit Breaker: {config.enable_adaptive_circuit_breaker}")
             print(f"      - Adaptive Retry: {config.enable_adaptive_retry}")
             print(f"      - Bulkhead Pattern: {config.bulkhead_enabled}")
@@ -152,8 +171,8 @@ class Phase4SimpleDemo:
             default_fallback = DefaultResponseFallback(fallback_config, default_responses)
             fallback_manager.add_strategy(default_fallback)
             
-            print(f"   ✅ Resilience components created")
-            print(f"   🛡️  Components:")
+            print("   ✅ Resilience components created")
+            print("   🛡️  Components:")
             print(f"      - Enhanced Circuit Breaker: {circuit_config.adaptive_threshold_type.value}")
             print(f"      - Advanced Retry Policy: {retry_config.adaptive_backoff_type.value}")
             print(f"      - Bulkhead: max_concurrent={bulkhead_config.max_concurrent}")
@@ -216,14 +235,14 @@ class Phase4SimpleDemo:
         successful = sum(1 for r in results if not isinstance(r, Exception))
         failed = sum(1 for r in results if isinstance(r, Exception))
         
-        print(f"   📊 Integrated Resilience Results:")
+        print("   📊 Integrated Resilience Results:")
         print(f"      Total operations: {len(tasks)}")
         print(f"      Successful: {successful}")
         print(f"      Failed: {failed}")
         print(f"      Success rate: {(successful/len(tasks))*100:.1f}%")
         
         # Show component metrics
-        print(f"   📈 Component Metrics:")
+        print("   📈 Component Metrics:")
         print(f"      - Circuit Breaker: {self.components['circuit_breaker'].get_enhanced_metrics()['state']}")
         print(f"      - Retry Policy: {self.components['retry_policy'].get_advanced_metrics()['success_rate']:.1f}% success rate")
         bulkhead_status = await self.components['bulkhead'].get_status()
@@ -254,8 +273,8 @@ class Phase4SimpleDemo:
             )
             cache = GrpcResponseCache(cache_config)
             
-            print(f"   ✅ Performance components created")
-            print(f"   ⚡ Components:")
+            print("   ✅ Performance components created")
+            print("   ⚡ Components:")
             print(f"      - Message Compressor: {compression_config.algorithm.value}")
             print(f"      - Response Cache: max_size={cache_config.max_size}")
             
@@ -279,7 +298,7 @@ class Phase4SimpleDemo:
         test_data = b'x' * 1000  # 1KB of data
         compressed_result = self.components['compressor'].compress_message(test_data)
         
-        print(f"   📊 Compression Results:")
+        print("   📊 Compression Results:")
         print(f"      Original size: {len(test_data)} bytes")
         print(f"      Compressed size: {len(compressed_result.compressed_data)} bytes")
         print(f"      Compression ratio: {len(test_data)/len(compressed_result.compressed_data):.2f}x")
@@ -304,7 +323,7 @@ class Phase4SimpleDemo:
         cached_result2 = self.components['cache'].get(cache_key)
         second_call_time = time.time() - start_time
         
-        print(f"   📊 Caching Results:")
+        print("   📊 Caching Results:")
         print(f"      First call (cache miss): {first_call_time*1000:.2f}ms")
         print(f"      Second call (cache hit): {second_call_time*1000:.2f}ms")
         print(f"      Speedup: {(first_call_time/second_call_time):.1f}x")
@@ -313,7 +332,7 @@ class Phase4SimpleDemo:
         cache_stats = self.components['cache'].get_stats()
         compression_stats = self.components['compressor'].get_compression_stats()
         
-        print(f"   📈 Performance Metrics:")
+        print("   📈 Performance Metrics:")
         print(f"      - Cache Hit Rate: {cache_stats['hit_rate']:.1f}%")
         print(f"      - Cache Total Requests: {cache_stats['total_requests']}")
         print(f"      - Compression Ratio: {compression_stats['compression_ratio']:.2f}x")
@@ -357,8 +376,8 @@ class Phase4SimpleDemo:
             alert_manager.add_condition(high_latency)
             alert_manager.add_condition(high_error_rate)
             
-            print(f"   ✅ Monitoring components created")
-            print(f"   📊 Components:")
+            print("   ✅ Monitoring components created")
+            print("   📊 Components:")
             print(f"      - Alert Manager: {len(alert_manager._conditions)} conditions")
             print(f"      - Rate Limiting: {alert_config.max_alerts_per_hour}/hour")
             print(f"      - Deduplication: {alert_config.deduplication_window_minutes}min window")
@@ -402,7 +421,7 @@ class Phase4SimpleDemo:
         alert_metrics = self.components['alert_manager'].get_alert_metrics()
         active_alerts = self.components['alert_manager'].get_active_alerts()
         
-        print(f"   📊 Alerting Results:")
+        print("   📊 Alerting Results:")
         print(f"      Total Alerts: {alert_metrics['total_alerts']}")
         print(f"      Active Alerts: {len(active_alerts)}")
         print(f"      Notifications Sent: {alert_metrics['notifications_sent']}")
@@ -410,7 +429,7 @@ class Phase4SimpleDemo:
         
         # Show active alerts
         if active_alerts:
-            print(f"   🚨 Active Alerts:")
+            print("   🚨 Active Alerts:")
             for alert in active_alerts[:3]:  # Show first 3
                 print(f"      - {alert.condition_name}: {alert.severity.value}")
                 print(f"        Message: {alert.message}")
@@ -427,28 +446,28 @@ class Phase4SimpleDemo:
             # Configuration status
             if 'config' in self.components:
                 config = self.components['config']
-                print(f"   ⚙️  Configuration:")
+                print("   ⚙️  Configuration:")
                 print(f"      - Server: {config.host}:{config.port}")
                 print(f"      - Features Enabled: {sum([config.enable_resilience, config.enable_performance_optimization, config.enable_alerting])}/3")
             
             # Resilience status
             resilience_components = ['circuit_breaker', 'retry_policy', 'bulkhead', 'fallback_manager']
             active_resilience = [c for c in resilience_components if c in self.components]
-            print(f"   🛡️  Resilience:")
+            print("   🛡️  Resilience:")
             print(f"      - Active Components: {len(active_resilience)}/{len(resilience_components)}")
             print(f"      - Components: {', '.join(active_resilience)}")
             
             # Performance status
             performance_components = ['compressor', 'cache']
             active_performance = [c for c in performance_components if c in self.components]
-            print(f"   ⚡ Performance:")
+            print("   ⚡ Performance:")
             print(f"      - Active Components: {len(active_performance)}/{len(performance_components)}")
             print(f"      - Components: {', '.join(active_performance)}")
             
             # Monitoring status
             monitoring_components = ['alert_manager']
             active_monitoring = [c for c in monitoring_components if c in self.components]
-            print(f"   📊 Monitoring:")
+            print("   📊 Monitoring:")
             print(f"      - Active Components: {len(active_monitoring)}/{len(monitoring_components)}")
             print(f"      - Components: {', '.join(active_monitoring)}")
             
@@ -457,16 +476,16 @@ class Phase4SimpleDemo:
             active_total = len(active_resilience) + len(active_performance) + len(active_monitoring)
             integration_percentage = (active_total / total_components) * 100
             
-            print(f"   🎯 Overall Integration:")
+            print("   🎯 Overall Integration:")
             print(f"      - Components Integrated: {active_total}/{total_components}")
             print(f"      - Integration Success: {integration_percentage:.1f}%")
             
             if integration_percentage >= 90:
-                print(f"      - Status: 🟢 EXCELLENT")
+                print("      - Status: 🟢 EXCELLENT")
             elif integration_percentage >= 75:
-                print(f"      - Status: 🟡 GOOD")
+                print("      - Status: 🟡 GOOD")
             else:
-                print(f"      - Status: 🔴 NEEDS IMPROVEMENT")
+                print("      - Status: 🔴 NEEDS IMPROVEMENT")
             
         except Exception as e:
             print(f"   ❌ Integration status demo failed: {e}")

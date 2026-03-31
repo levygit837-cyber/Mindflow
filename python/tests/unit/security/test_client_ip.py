@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 from starlette.requests import Request
 
 from mindflow_backend.infra.config import Settings

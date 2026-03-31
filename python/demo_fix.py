@@ -4,7 +4,7 @@ Simple demonstration of the PinchTabService multi-instance fix concept.
 No external dependencies required.
 """
 
-from typing import Dict, Any
+from typing import Any
 
 
 class MockHttpClient:
@@ -25,7 +25,7 @@ class OldPinchTabService:
     def __init__(self):
         self.base_url = "http://localhost:9867"  # ❌ Single global URL
         self._client = None  # ❌ Single global client
-        self._active_instances: Dict[str, Any] = {}
+        self._active_instances: dict[str, Any] = {}
     
     def create_instance(self, port: int) -> str:
         """Create instance with old buggy approach."""
@@ -49,8 +49,8 @@ class NewPinchTabService:
     
     def __init__(self):
         # ✅ SOLUTION: No global state
-        self._active_instances: Dict[str, Any] = {}
-        self._instance_clients: Dict[str, MockHttpClient] = {}
+        self._active_instances: dict[str, Any] = {}
+        self._instance_clients: dict[str, MockHttpClient] = {}
     
     def create_instance(self, port: int) -> str:
         """Create instance with new fixed approach."""
@@ -191,12 +191,12 @@ def main():
     demonstrate_fix()
     
     # Final results
-    print(f"\n📊 FINAL RESULTS:")
+    print("\n📊 FINAL RESULTS:")
     print("=" * 30)
     print(f"Old approach: {'❌ BROKEN (all requests to same URL)' if old_broken else '✅ Works'}")
     print(f"New approach: {'✅ FIXED (proper isolation)' if new_fixed else '❌ Still broken'}")
     
-    print(f"\n🎯 CONCLUSION:")
+    print("\n🎯 CONCLUSION:")
     if old_broken and new_fixed:
         print("✅ The fix successfully resolves the multi-instance issue!")
         print("✅ MindFlow can now run true parallel browser research!")
@@ -204,7 +204,7 @@ def main():
     else:
         print("❌ The demonstration shows issues with the fix.")
     
-    print(f"\n🌟 IMPACT:")
+    print("\n🌟 IMPACT:")
     print("• Multi-browser parallel research now works correctly")
     print("• No more port conflicts between instances")
     print("• Proper resource isolation and cleanup")

@@ -6,7 +6,7 @@ and format checking errors.
 
 from __future__ import annotations
 
-from mindflow_backend.exceptions.base.business import ValidationError
+from mindflow_backend.exceptions.base.business_new import ValidationError
 
 
 class SchemaError(ValidationError):

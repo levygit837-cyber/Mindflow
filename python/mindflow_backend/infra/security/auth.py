@@ -7,25 +7,19 @@ and security monitoring.
 
 from __future__ import annotations
 
-import asyncio
-import time
-import hashlib
 import secrets
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Union, Set
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-import json
-import jwt
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
+from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
+import jwt
+
 from mindflow_backend.infra.cache.redis_client import get_redis_client
 from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -63,12 +57,12 @@ class User:
     id: str
     username: str
     email: str
-    roles: List[Role] = field(default_factory=list)
-    permissions: Set[Permission] = field(default_factory=set)
+    roles: list[Role] = field(default_factory=list)
+    permissions: set[Permission] = field(default_factory=set)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
     is_active: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def has_permission(self, permission: Permission) -> bool:
         """Check if user has permission.
@@ -115,7 +109,7 @@ class User:
             return True
         return False
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -136,13 +130,13 @@ class APIToken:
     token_id: str
     user_id: str
     name: str
-    permissions: Set[Permission] = field(default_factory=set)
+    permissions: set[Permission] = field(default_factory=set)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    expires_at: Optional[datetime] = None
-    last_used: Optional[datetime] = None
+    expires_at: datetime | None = None
+    last_used: datetime | None = None
     is_active: bool = True
     usage_count: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def is_expired(self) -> bool:
         """Check if token is expired.
@@ -165,7 +159,7 @@ class APIToken:
         """
         return permission in self.permissions
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "token_id": self.token_id,
@@ -185,7 +179,7 @@ class AuthProvider(ABC):
     """Abstract authentication provider."""
     
     @abstractmethod
-    async def authenticate(self, credentials: Dict[str, Any]) -> Optional[User]:
+    async def authenticate(self, credentials: dict[str, Any]) -> User | None:
         """Authenticate user credentials.
         
         Args:
@@ -197,7 +191,7 @@ class AuthProvider(ABC):
         pass
         
     @abstractmethod
-    async def validate_token(self, token: str) -> Optional[User]:
+    async def validate_token(self, token: str) -> User | None:
         """Validate authentication token.
         
         Args:
@@ -223,7 +217,7 @@ class JWTAuthProvider(AuthProvider):
         self.algorithm = algorithm
         self._token_expiry = timedelta(hours=24)
         
-    async def authenticate(self, credentials: Dict[str, Any]) -> Optional[User]:
+    async def authenticate(self, credentials: dict[str, Any]) -> User | None:
         """Authenticate with username/password and return JWT.
         
         Args:
@@ -250,7 +244,7 @@ class JWTAuthProvider(AuthProvider):
         
         return user
         
-    async def validate_token(self, token: str) -> Optional[User]:
+    async def validate_token(self, token: str) -> User | None:
         """Validate JWT token and return user.
         
         Args:
@@ -315,7 +309,7 @@ class APIKeyAuthProvider(AuthProvider):
         self._redis_client = get_redis_client()
         await self._redis_client.initialize()
         
-    async def authenticate(self, credentials: Dict[str, Any]) -> Optional[User]:
+    async def authenticate(self, credentials: dict[str, Any]) -> User | None:
         """API key authentication not supported for initial auth.
         
         Args:
@@ -326,7 +320,7 @@ class APIKeyAuthProvider(AuthProvider):
         """
         return None
         
-    async def validate_token(self, api_key: str) -> Optional[User]:
+    async def validate_token(self, api_key: str) -> User | None:
         """Validate API key and return user.
         
         Args:
@@ -376,8 +370,8 @@ class APIKeyAuthProvider(AuthProvider):
         self,
         user_id: str,
         name: str,
-        permissions: Set[Permission],
-        expires_at: Optional[datetime] = None
+        permissions: set[Permission],
+        expires_at: datetime | None = None
     ) -> str:
         """Create new API key.
         
@@ -446,10 +440,10 @@ class AuthManager:
     
     def __init__(self):
         """Initialize auth manager."""
-        self._providers: Dict[AuthMethod, AuthProvider] = {}
-        self._users: Dict[str, User] = {}
-        self._api_key_provider: Optional[APIKeyAuthProvider] = None
-        self._jwt_provider: Optional[JWTAuthProvider] = None
+        self._providers: dict[AuthMethod, AuthProvider] = {}
+        self._users: dict[str, User] = {}
+        self._api_key_provider: APIKeyAuthProvider | None = None
+        self._jwt_provider: JWTAuthProvider | None = None
         self._is_initialized = False
         
         # Security settings
@@ -496,8 +490,8 @@ class AuthManager:
     async def authenticate(
         self,
         method: AuthMethod,
-        credentials: Dict[str, Any]
-    ) -> Optional[User]:
+        credentials: dict[str, Any]
+    ) -> User | None:
         """Authenticate user with specified method.
         
         Args:
@@ -537,7 +531,7 @@ class AuthManager:
             self._stats["failed_auth"] += 1
             return None
             
-    async def validate_token(self, token: str, method: AuthMethod = AuthMethod.JWT) -> Optional[User]:
+    async def validate_token(self, token: str, method: AuthMethod = AuthMethod.JWT) -> User | None:
         """Validate authentication token.
         
         Args:
@@ -603,9 +597,9 @@ class AuthManager:
         self,
         user_id: str,
         name: str,
-        permissions: Set[Permission],
-        expires_at: Optional[datetime] = None
-    ) -> Optional[str]:
+        permissions: set[Permission],
+        expires_at: datetime | None = None
+    ) -> str | None:
         """Create API key for user.
         
         Args:
@@ -660,7 +654,7 @@ class AuthManager:
             _logger.error("api_key_revocation_failed", error=str(e))
             return False
             
-    def get_user(self, user_id: str) -> Optional[User]:
+    def get_user(self, user_id: str) -> User | None:
         """Get user by ID.
         
         Args:
@@ -709,7 +703,7 @@ class AuthManager:
             
         return result
         
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get auth manager statistics.
         
         Returns:
@@ -735,7 +729,7 @@ class AuthManager:
         
         return stats
         
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform auth manager health check.
         
         Returns:
@@ -803,7 +797,7 @@ class AuthManager:
 
 
 # Global auth manager instance
-_auth_manager: Optional[AuthManager] = None
+_auth_manager: AuthManager | None = None
 
 
 def get_auth_manager() -> AuthManager:

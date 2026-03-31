@@ -7,12 +7,12 @@ for the fundamental exception types.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field
 
-from .base import ErrorSchema, ErrorCategory, ErrorSeverity, ErrorContext
+from .base import ErrorCategory, ErrorSchema, ErrorSeverity
 
 
 class MindFlowErrorSchema(ErrorSchema):
@@ -28,11 +28,11 @@ class MindFlowErrorSchema(ErrorSchema):
     # MindFlowError specific fields
     error_id: str = Field(description="Unique error identifier from exception")
     timestamp: datetime = Field(description="When the error occurred")
-    component: Optional[str] = Field(default=None, description="Component where error originated")
-    session_id: Optional[str] = Field(default=None, description="User session ID")
-    user_id: Optional[str] = Field(default=None, description="User ID")
-    context: Dict[str, Any] = Field(default_factory=dict, description="Error context metadata")
-    cause: Optional[str] = Field(default=None, description="Root cause exception")
+    component: str | None = Field(default=None, description="Component where error originated")
+    session_id: str | None = Field(default=None, description="User session ID")
+    user_id: str | None = Field(default=None, description="User ID")
+    context: dict[str, Any] = Field(default_factory=dict, description="Error context metadata")
+    cause: str | None = Field(default=None, description="Root cause exception")
     
     class Config:
         json_encoders = {
@@ -52,9 +52,9 @@ class SystemErrorSchema(ErrorSchema):
     recoverable: bool = Field(description="Whether the error is recoverable")
     
     # Additional system context
-    service: Optional[str] = Field(default=None, description="Service where error occurred")
-    operation: Optional[str] = Field(default=None, description="Operation being performed")
-    system_state: Optional[Dict[str, Any]] = Field(default=None, description="System state at error time")
+    service: str | None = Field(default=None, description="Service where error occurred")
+    operation: str | None = Field(default=None, description="Operation being performed")
+    system_state: dict[str, Any] | None = Field(default=None, description="System state at error time")
     
     class Config:
         json_encoders = {
@@ -69,10 +69,10 @@ class ConfigurationErrorSchema(SystemErrorSchema):
     """
     
     # ConfigurationError specific fields
-    config_key: Optional[str] = Field(default=None, description="Configuration key that caused error")
-    expected_type: Optional[str] = Field(default=None, description="Expected configuration type")
-    actual_value: Optional[Any] = Field(default=None, description="Actual configuration value")
-    config_file: Optional[str] = Field(default=None, description="Configuration file path")
+    config_key: str | None = Field(default=None, description="Configuration key that caused error")
+    expected_type: str | None = Field(default=None, description="Expected configuration type")
+    actual_value: Any | None = Field(default=None, description="Actual configuration value")
+    config_file: str | None = Field(default=None, description="Configuration file path")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Configuration errors are medium severity")
     recoverable: bool = Field(default=True, description="Configuration errors are typically recoverable")
@@ -85,10 +85,10 @@ class InfrastructureErrorSchema(SystemErrorSchema):
     """
     
     # InfrastructureError specific fields
-    service: Optional[str] = Field(default=None, description="Infrastructure service name")
-    operation: Optional[str] = Field(default=None, description="Operation being performed")
-    endpoint: Optional[str] = Field(default=None, description="Service endpoint")
-    health_check: Optional[bool] = Field(default=None, description="Service health status")
+    service: str | None = Field(default=None, description="Infrastructure service name")
+    operation: str | None = Field(default=None, description="Operation being performed")
+    endpoint: str | None = Field(default=None, description="Service endpoint")
+    health_check: bool | None = Field(default=None, description="Service health status")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.HIGH, description="Infrastructure errors are high severity")
     recoverable: bool = Field(default=True, description="Infrastructure errors may be recoverable")
@@ -101,10 +101,10 @@ class NetworkErrorSchema(SystemErrorSchema):
     """
     
     # NetworkError specific fields
-    endpoint: Optional[str] = Field(default=None, description="Network endpoint that failed")
-    timeout: Optional[float] = Field(default=None, description="Network timeout in seconds")
+    endpoint: str | None = Field(default=None, description="Network endpoint that failed")
+    timeout: float | None = Field(default=None, description="Network timeout in seconds")
     retry_count: int = Field(default=0, description="Number of retry attempts")
-    network_state: Optional[Dict[str, Any]] = Field(default=None, description="Network state information")
+    network_state: dict[str, Any] | None = Field(default=None, description="Network state information")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Network errors are medium severity")
     recoverable: bool = Field(default=True, description="Network errors are typically recoverable")
@@ -117,9 +117,9 @@ class ResourceErrorSchema(SystemErrorSchema):
     """
     
     # ResourceError specific fields
-    resource_type: Optional[str] = Field(default=None, description="Type of resource that is exhausted")
-    current_usage: Optional[str] = Field(default=None, description="Current resource usage")
-    resource_limit: Optional[str] = Field(default=None, description="Resource limit")
+    resource_type: str | None = Field(default=None, description="Type of resource that is exhausted")
+    current_usage: str | None = Field(default=None, description="Current resource usage")
+    resource_limit: str | None = Field(default=None, description="Resource limit")
     allocation_failure: bool = Field(default=False, description="Whether resource allocation failed")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.HIGH, description="Resource errors are high severity")
@@ -133,10 +133,10 @@ class TimeoutErrorSchema(SystemErrorSchema):
     """
     
     # TimeoutError specific fields
-    operation: Optional[str] = Field(default=None, description="Operation that timed out")
-    timeout_seconds: Optional[float] = Field(default=None, description="Timeout limit in seconds")
-    elapsed_time: Optional[float] = Field(default=None, description="Actual elapsed time")
-    timeout_type: Optional[str] = Field(default=None, description="Type of timeout (e.g., connect, read, write)")
+    operation: str | None = Field(default=None, description="Operation that timed out")
+    timeout_seconds: float | None = Field(default=None, description="Timeout limit in seconds")
+    elapsed_time: float | None = Field(default=None, description="Actual elapsed time")
+    timeout_type: str | None = Field(default=None, description="Type of timeout (e.g., connect, read, write)")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Timeout errors are medium severity")
     recoverable: bool = Field(default=True, description="Timeout errors are typically recoverable")
@@ -150,9 +150,9 @@ class BusinessLogicErrorSchema(ErrorSchema):
     """
     
     # BusinessLogicError specific fields
-    user_message: Optional[str] = Field(default=None, description="User-friendly error message")
-    error_code: Optional[str] = Field(default=None, description="Business error code")
-    business_context: Optional[Dict[str, Any]] = Field(default=None, description="Business context information")
+    user_message: str | None = Field(default=None, description="User-friendly error message")
+    error_code: str | None = Field(default=None, description="Business error code")
+    business_context: dict[str, Any] | None = Field(default=None, description="Business context information")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.LOW, description="Business logic errors are low severity")
     recoverable: bool = Field(default=True, description="Business logic errors are typically recoverable")
@@ -165,10 +165,10 @@ class ValidationErrorSchema(BusinessLogicErrorSchema):
     """
     
     # ValidationError specific fields
-    field: Optional[str] = Field(default=None, description="Field that failed validation")
-    value: Optional[Any] = Field(default=None, description="Value that failed validation")
-    validation_rule: Optional[str] = Field(default=None, description="Validation rule that failed")
-    expected_format: Optional[str] = Field(default=None, description="Expected format")
+    field: str | None = Field(default=None, description="Field that failed validation")
+    value: Any | None = Field(default=None, description="Value that failed validation")
+    validation_rule: str | None = Field(default=None, description="Validation rule that failed")
+    expected_format: str | None = Field(default=None, description="Expected format")
     
     category: ErrorCategory = Field(default=ErrorCategory.VALIDATION, description="Validation errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.LOW, description="Validation errors are low severity")
@@ -182,10 +182,10 @@ class AuthenticationErrorSchema(BusinessLogicErrorSchema):
     """
     
     # AuthenticationError specific fields
-    auth_method: Optional[str] = Field(default=None, description="Authentication method used")
-    user_identifier: Optional[str] = Field(default=None, description="User identifier (username, email, etc.)")
-    auth_provider: Optional[str] = Field(default=None, description="Authentication provider")
-    failure_reason: Optional[str] = Field(default=None, description="Specific authentication failure reason")
+    auth_method: str | None = Field(default=None, description="Authentication method used")
+    user_identifier: str | None = Field(default=None, description="User identifier (username, email, etc.)")
+    auth_provider: str | None = Field(default=None, description="Authentication provider")
+    failure_reason: str | None = Field(default=None, description="Specific authentication failure reason")
     
     category: ErrorCategory = Field(default=ErrorCategory.AUTHENTICATION, description="Authentication errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Authentication errors are medium severity")
@@ -199,10 +199,10 @@ class AuthorizationErrorSchema(BusinessLogicErrorSchema):
     """
     
     # AuthorizationError specific fields
-    required_permission: Optional[str] = Field(default=None, description="Required permission")
-    resource: Optional[str] = Field(default=None, description="Resource being accessed")
-    user_permissions: Optional[list[str]] = Field(default=None, description="User's current permissions")
-    access_level: Optional[str] = Field(default=None, description="Required access level")
+    required_permission: str | None = Field(default=None, description="Required permission")
+    resource: str | None = Field(default=None, description="Resource being accessed")
+    user_permissions: list[str] | None = Field(default=None, description="User's current permissions")
+    access_level: str | None = Field(default=None, description="Required access level")
     
     category: ErrorCategory = Field(default=ErrorCategory.AUTHORIZATION, description="Authorization errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Authorization errors are medium severity")
@@ -216,10 +216,10 @@ class BusinessRuleErrorSchema(BusinessLogicErrorSchema):
     """
     
     # BusinessRuleError specific fields
-    rule_name: Optional[str] = Field(default=None, description="Name of the violated business rule")
-    rule_description: Optional[str] = Field(default=None, description="Description of the business rule")
-    violated_condition: Optional[str] = Field(default=None, description="Specific condition that was violated")
-    business_impact: Optional[str] = Field(default=None, description="Business impact of the violation")
+    rule_name: str | None = Field(default=None, description="Name of the violated business rule")
+    rule_description: str | None = Field(default=None, description="Description of the business rule")
+    violated_condition: str | None = Field(default=None, description="Specific condition that was violated")
+    business_impact: str | None = Field(default=None, description="Business impact of the violation")
     
     category: ErrorCategory = Field(default=ErrorCategory.BUSINESS_RULE, description="Business rule errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Business rule errors are medium severity")
@@ -233,10 +233,10 @@ class ConflictErrorSchema(BusinessLogicErrorSchema):
     """
     
     # ConflictError specific fields
-    conflicting_resource: Optional[str] = Field(default=None, description="Resource in conflict")
-    conflict_type: Optional[str] = Field(default=None, description="Type of conflict")
-    existing_state: Optional[Dict[str, Any]] = Field(default=None, description="Existing conflicting state")
-    proposed_state: Optional[Dict[str, Any]] = Field(default=None, description="Proposed conflicting state")
+    conflicting_resource: str | None = Field(default=None, description="Resource in conflict")
+    conflict_type: str | None = Field(default=None, description="Type of conflict")
+    existing_state: dict[str, Any] | None = Field(default=None, description="Existing conflicting state")
+    proposed_state: dict[str, Any] | None = Field(default=None, description="Proposed conflicting state")
     
     category: ErrorCategory = Field(default=ErrorCategory.CONFLICT, description="Conflict errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Conflict errors are medium severity")
@@ -250,10 +250,10 @@ class DomainErrorSchema(BusinessLogicErrorSchema):
     """
     
     # DomainError specific fields
-    domain: Optional[str] = Field(default=None, description="Domain where constraint was violated")
-    constraint: Optional[str] = Field(default=None, description="Violated domain constraint")
-    constraint_type: Optional[str] = Field(default=None, description="Type of constraint violation")
-    domain_context: Optional[Dict[str, Any]] = Field(default=None, description="Domain-specific context")
+    domain: str | None = Field(default=None, description="Domain where constraint was violated")
+    constraint: str | None = Field(default=None, description="Violated domain constraint")
+    constraint_type: str | None = Field(default=None, description="Type of constraint violation")
+    domain_context: dict[str, Any] | None = Field(default=None, description="Domain-specific context")
     
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Domain errors are medium severity")
     recoverable: bool = Field(default=True, description="Domain errors are typically recoverable")
@@ -266,10 +266,10 @@ class NotFoundErrorSchema(BusinessLogicErrorSchema):
     """
     
     # NotFoundError specific fields
-    resource_type: Optional[str] = Field(default=None, description="Type of resource that was not found")
-    resource_id: Optional[str] = Field(default=None, description="ID of the resource that was not found")
-    search_criteria: Optional[Dict[str, Any]] = Field(default=None, description="Search criteria used")
-    available_resources: Optional[list[str]] = Field(default=None, description="List of available resources")
+    resource_type: str | None = Field(default=None, description="Type of resource that was not found")
+    resource_id: str | None = Field(default=None, description="ID of the resource that was not found")
+    search_criteria: dict[str, Any] | None = Field(default=None, description="Search criteria used")
+    available_resources: list[str] | None = Field(default=None, description="List of available resources")
     
     category: ErrorCategory = Field(default=ErrorCategory.NOT_FOUND, description="Not found errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.LOW, description="Not found errors are low severity")
@@ -283,11 +283,11 @@ class WorkflowErrorSchema(BusinessLogicErrorSchema):
     """
     
     # WorkflowError specific fields
-    workflow_step: Optional[str] = Field(default=None, description="Workflow step that failed")
-    workflow_state: Optional[str] = Field(default=None, description="Current workflow state")
-    next_steps: Optional[list[str]] = Field(default=None, description="Recommended next steps")
-    workflow_id: Optional[str] = Field(default=None, description="Workflow identifier")
-    step_context: Optional[Dict[str, Any]] = Field(default=None, description="Step-specific context")
+    workflow_step: str | None = Field(default=None, description="Workflow step that failed")
+    workflow_state: str | None = Field(default=None, description="Current workflow state")
+    next_steps: list[str] | None = Field(default=None, description="Recommended next steps")
+    workflow_id: str | None = Field(default=None, description="Workflow identifier")
+    step_context: dict[str, Any] | None = Field(default=None, description="Step-specific context")
     
     category: ErrorCategory = Field(default=ErrorCategory.WORKFLOW, description="Workflow errors category")
     severity: ErrorSeverity = Field(default=ErrorSeverity.MEDIUM, description="Workflow errors are medium severity")

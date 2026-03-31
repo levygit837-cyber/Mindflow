@@ -76,7 +76,7 @@ async def test_grpc_integration():
             enable_retry=True,
             enable_timeout_management=True
         )
-        print(f'   ✅ Enhanced client created with features: monitoring, circuit_breaker, retry, timeout_management')
+        print('   ✅ Enhanced client created with features: monitoring, circuit_breaker, retry, timeout_management')
         
         # Test 7: Statistics
         print('\n5. Testing Statistics Collection:')

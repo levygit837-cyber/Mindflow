@@ -5,8 +5,9 @@ Modelos de dados para memória semântica de tasks e sub-tasks.
 
 from datetime import UTC, datetime
 from uuid import uuid4
+
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 

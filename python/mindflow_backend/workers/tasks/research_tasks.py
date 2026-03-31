@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
@@ -28,8 +28,8 @@ class ResearchTask:
     session_id: str
     research_domain: str
     priority: str = "medium"
-    task_data: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    task_data: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self) -> None:
         """Generate task ID if not provided."""
@@ -41,7 +41,7 @@ class ResearchTask:
         """Get task ID."""
         return self.metadata["task_id"]
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert task to dictionary for queue publishing."""
         envelope = QueueMessageEnvelope(
             schema_version="1.0",
@@ -50,7 +50,7 @@ class ResearchTask:
             session_id=self.session_id,
             correlation_id=self.task_id,
             idempotency_key=self.task_id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             metadata={
                 **self.metadata,
                 "research_domain": self.research_domain,
@@ -97,8 +97,8 @@ class ResearchTaskDefinitions:
     def create_page_scraping_task(
         session_id: str,
         target_url: str,
-        extraction_rules: Dict[str, Any] = None,
-        wait_for_selector: Optional[str] = None,
+        extraction_rules: dict[str, Any] = None,
+        wait_for_selector: str | None = None,
         include_screenshots: bool = False,
         priority: str = "medium",
     ) -> ResearchTask:
@@ -124,8 +124,8 @@ class ResearchTaskDefinitions:
     def create_screenshot_capture_task(
         session_id: str,
         target_url: str,
-        capture_options: Dict[str, Any] = None,
-        viewport_size: Dict[str, int] = None,
+        capture_options: dict[str, Any] = None,
+        viewport_size: dict[str, int] = None,
         full_page: bool = False,
         priority: str = "medium",
     ) -> ResearchTask:
@@ -151,7 +151,7 @@ class ResearchTaskDefinitions:
     def create_form_interaction_task(
         session_id: str,
         target_url: str,
-        form_data: Dict[str, Any],
+        form_data: dict[str, Any],
         submit_action: str = "click",
         wait_for_result: bool = True,
         priority: str = "medium",
@@ -178,7 +178,7 @@ class ResearchTaskDefinitions:
     def create_link_extraction_task(
         session_id: str,
         target_url: str,
-        link_filters: Dict[str, Any] = None,
+        link_filters: dict[str, Any] = None,
         max_links: int = 50,
         follow_redirects: bool = False,
         priority: str = "medium",
@@ -205,8 +205,8 @@ class ResearchTaskDefinitions:
     def create_content_validation_task(
         session_id: str,
         target_url: str,
-        validation_rules: Dict[str, Any] = None,
-        content_expectations: Dict[str, Any] = None,
+        validation_rules: dict[str, Any] = None,
+        content_expectations: dict[str, Any] = None,
         accessibility_check: bool = False,
         priority: str = "medium",
     ) -> ResearchTask:
@@ -232,7 +232,7 @@ class ResearchTaskDefinitions:
     @staticmethod
     def create_content_synthesis_task(
         session_id: str,
-        content_sources: List[Dict[str, Any]],
+        content_sources: list[dict[str, Any]],
         synthesis_type: str = "comprehensive",
         target_audience: str = "technical",
         synthesis_length: str = "medium",
@@ -260,7 +260,7 @@ class ResearchTaskDefinitions:
     def create_text_processing_task(
         session_id: str,
         text_content: str,
-        processing_operations: List[str] = None,
+        processing_operations: list[str] = None,
         language: str = "auto",
         output_format: str = "structured",
         priority: str = "medium",
@@ -286,7 +286,7 @@ class ResearchTaskDefinitions:
     @staticmethod
     def create_content_categorization_task(
         session_id: str,
-        content_items: List[Dict[str, Any]],
+        content_items: list[dict[str, Any]],
         categorization_scheme: str = "hierarchical",
         confidence_threshold: float = 0.7,
         auto_tagging: bool = True,
@@ -316,7 +316,7 @@ class ResearchTaskDefinitions:
         source_content: str,
         summary_type: str = "extractive",
         summary_length: str = "medium",
-        focus_areas: List[str] = None,
+        focus_areas: list[str] = None,
         priority: str = "medium",
     ) -> ResearchTask:
         """Create a summarization task."""
@@ -340,8 +340,8 @@ class ResearchTaskDefinitions:
     @staticmethod
     def create_content_enrichment_task(
         session_id: str,
-        content_items: List[Dict[str, Any]],
-        enrichment_types: List[str] = None,
+        content_items: list[dict[str, Any]],
+        enrichment_types: list[str] = None,
         metadata_schema: str = "standard",
         priority: str = "medium",
     ) -> ResearchTask:
@@ -365,10 +365,10 @@ class ResearchTaskDefinitions:
     @staticmethod
     def create_quality_assessment_task(
         session_id: str,
-        content_items: List[Dict[str, Any]],
-        assessment_criteria: List[str] = None,
+        content_items: list[dict[str, Any]],
+        assessment_criteria: list[str] = None,
         quality_threshold: float = 0.7,
-        relevance_context: Dict[str, Any] = None,
+        relevance_context: dict[str, Any] = None,
         priority: str = "medium",
     ) -> ResearchTask:
         """Create a quality assessment task."""
@@ -393,8 +393,8 @@ class ResearchTaskDefinitions:
     @staticmethod
     def create_fact_checking_task(
         session_id: str,
-        claims: List[str],
-        verification_sources: List[str] = None,
+        claims: list[str],
+        verification_sources: list[str] = None,
         confidence_threshold: float = 0.7,
         priority: str = "medium",
     ) -> ResearchTask:
@@ -419,7 +419,7 @@ class ResearchTaskDefinitions:
     def create_literature_review_task(
         session_id: str,
         topic: str,
-        databases: List[str] = None,
+        databases: list[str] = None,
         year_range: str = "2019-2024",
         max_papers: int = 20,
         priority: str = "medium",
@@ -470,8 +470,8 @@ class ResearchTaskDefinitions:
     @staticmethod
     def create_source_validation_task(
         session_id: str,
-        sources: List[str],
-        validation_criteria: List[str] = None,
+        sources: list[str],
+        validation_criteria: list[str] = None,
         strict_mode: bool = False,
         priority: str = "medium",
     ) -> ResearchTask:
@@ -531,7 +531,7 @@ class ResearchTaskPublisher:
         
         return success
 
-    def _build_queue_message(self, task: ResearchTask) -> Dict[str, Any]:
+    def _build_queue_message(self, task: ResearchTask) -> dict[str, Any]:
         """Build the canonical queue payload for research tasks."""
         if task.task_type == "web_search":
             return build_web_search_envelope(
@@ -583,7 +583,7 @@ class ResearchTaskPublisher:
         
         return priority_mapping.get(task_priority, 5)
     
-    async def publish_multiple_tasks(self, tasks: List[ResearchTask]) -> Dict[str, bool]:
+    async def publish_multiple_tasks(self, tasks: list[ResearchTask]) -> dict[str, bool]:
         """Publish multiple tasks to queues.
         
         Args:
@@ -603,8 +603,8 @@ class ResearchTaskPublisher:
         self,
         session_id: str,
         research_query: str,
-        pipeline_config: Dict[str, Any] = None,
-    ) -> Dict[str, bool]:
+        pipeline_config: dict[str, Any] = None,
+    ) -> dict[str, bool]:
         """Publish a complete research pipeline.
         
         Args:
@@ -655,7 +655,7 @@ class ResearchTaskPublisher:
 
 
 # Global task publisher instance
-_task_publisher: Optional[ResearchTaskPublisher] = None
+_task_publisher: ResearchTaskPublisher | None = None
 
 
 def get_research_task_publisher() -> ResearchTaskPublisher:

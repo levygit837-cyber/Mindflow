@@ -3,7 +3,6 @@
 
 import sys
 import time
-from typing import Dict, Any
 from datetime import datetime
 from enum import Enum
 
@@ -11,13 +10,13 @@ from enum import Enum
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
-from rich.rule import Rule
 from rich.live import Live
+from rich.panel import Panel
+from rich.rule import Rule
 from rich.spinner import Spinner
 from rich.syntax import Syntax
+from rich.table import Table
+from rich.text import Text
 
 
 class ToolOperationType(Enum):
@@ -141,7 +140,7 @@ class SimpleToolsDemo:
         delegation_text.append(f"👤 {agent_type} DELEGATED\n\n", style="bold green italic")
         delegation_text.append(f"Delegated by: {delegated_by}\n", style="white")
         delegation_text.append(f"Task: {task}\n", style="cyan")
-        delegation_text.append(f"Status: 🔄 Executing\n", style="yellow")
+        delegation_text.append("Status: 🔄 Executing\n", style="yellow")
         delegation_text.append(f"Started: {delegation_info['start_time'].strftime('%H:%M:%S')}\n", style="dim")
         
         self.console.print(Panel(
@@ -320,7 +319,7 @@ REQUIRE_SPECIAL_CHARS = True
         
         completion_text = Text()
         completion_text.append(f"👤 {agent_type} TASK COMPLETE\n\n", style="bold green italic")
-        completion_text.append(f"Status: ✅ Success\n", style="bold green")
+        completion_text.append("Status: ✅ Success\n", style="bold green")
         completion_text.append(f"Execution Time: {execution_time.total_seconds():.2f}s\n", style="white")
         completion_text.append(f"Tool Operations: {len(delegation_info['tool_operations'])}\n", style="cyan")
         completion_text.append(f"Completed: {delegation_info['end_time'].strftime('%H:%M:%S')}\n", style="dim")

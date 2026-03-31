@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -36,24 +36,24 @@ class AgentIdentity(BaseModel):
     """Agent identification in message protocol."""
 
     agent_id: str
-    container_id: Optional[str] = None
-    service: Optional[str] = None
+    container_id: str | None = None
+    service: str | None = None
 
 
 class MessageTarget(BaseModel):
     """Message destination specification."""
 
-    agent_id: Optional[str] = None
-    team_id: Optional[str] = None
+    agent_id: str | None = None
+    team_id: str | None = None
     broadcast: bool = False
 
 
 class MessageMetadata(BaseModel):
     """Message metadata for routing and tracking."""
 
-    correlation_id: Optional[str] = None
-    reply_to: Optional[str] = None
-    ttl: Optional[int] = Field(default=30000, ge=0)
+    correlation_id: str | None = None
+    reply_to: str | None = None
+    ttl: int | None = Field(default=30000, ge=0)
     priority: int = Field(default=MessagePriority.NORMAL, ge=0, le=10)
 
 

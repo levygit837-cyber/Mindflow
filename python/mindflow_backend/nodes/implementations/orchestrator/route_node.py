@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -23,7 +23,7 @@ class RouteNode(StatefulNode, BaseNode):
         self.config.required_inputs = {"message"}
         self.config.outputs = {"decision", "complexity_score"}
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Route requests using IntelligentRouter with LLM-based intent analysis."""
         from mindflow_backend.infra.logging import get_logger
         from mindflow_backend.orchestrator.routing.intelligent_router import get_intelligent_router
@@ -90,7 +90,7 @@ class RouteNode(StatefulNode, BaseNode):
                 "complexity_score": 0.5,
             }
     
-    def validate_inputs(self, state: Dict[str, Any]) -> list[str]:
+    def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate routing inputs."""
         errors = []
         

@@ -8,7 +8,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 
 import aio_pika
 
@@ -16,8 +16,6 @@ from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.base.exceptions import (
     WorkerConfigurationError,
     WorkerConnectionError,
-    WorkerProcessingError,
-    WorkerTimeoutError,
 )
 from mindflow_backend.workers.config.queues import QueueConfig
 from mindflow_backend.workers.config.settings import get_worker_settings
@@ -40,7 +38,7 @@ class WorkerResult:
     
     success: bool
     message: str
-    data: Dict[str, Any] | None = None
+    data: dict[str, Any] | None = None
     error: Exception | None = None
     processing_time: float = 0.0
     retry_count: int = 0
@@ -234,7 +232,7 @@ class BaseWorker(ABC):
     async def _handle_failure(
         self,
         message: Any,
-        message_data: Dict[str, Any],
+        message_data: dict[str, Any],
         result: WorkerResult,
         task_id: str,
     ) -> None:
@@ -281,7 +279,7 @@ class BaseWorker(ABC):
                 f"Worker {self.worker_name} max retries exceeded for task {task_id}"
             )
 
-    def _normalize_message_data(self, message_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_message_data(self, message_data: dict[str, Any]) -> dict[str, Any]:
         """Normalize envelope and legacy payload formats for consumers."""
         if "schema_version" in message_data and "payload" in message_data:
             retry_count = message_data.get("retry_count")
@@ -331,7 +329,7 @@ class BaseWorker(ABC):
         return message_data
 
     @abstractmethod
-    async def process_message(self, message_data: Dict[str, Any]) -> WorkerResult:
+    async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process a message. Must be implemented by subclasses.
 
         Args:
@@ -348,7 +346,7 @@ class BaseWorker(ABC):
             return time.time() - self._start_time
         return 0.0
 
-    def get_metrics_snapshot(self) -> Dict[str, Any]:
+    def get_metrics_snapshot(self) -> dict[str, Any]:
         """Get current runtime metrics for monitoring and health reports."""
         average_processing_time = (
             self._total_processing_time / self._tasks_processed

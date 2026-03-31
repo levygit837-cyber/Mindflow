@@ -6,31 +6,26 @@ all core services and implementations.
 
 from __future__ import annotations
 
+from mindflow_backend.agents.context.analyzer import SessionContentAnalyzer
+from mindflow_backend.agents.context.cache import ContextCache
+from mindflow_backend.agents.context.vector_store import InMemoryVectorStore
 from mindflow_backend.agents.core.container import (
-    DIContainer,
     register_singleton,
-    register_factory,
-    register_instance,
 )
 from mindflow_backend.agents.core.interfaces import (
-    ContextRetriever,
-    VectorStore,
-    SpecialistSelector,
+    Cache,
     ContentAnalyzer,
     ResultParser,
-    Cache,
     RuleEngine,
+    VectorStore,
 )
-from mindflow_backend.agents.context.cache import get_context_cache, ContextCache
-from mindflow_backend.agents.context.vector_store import get_vector_store, InMemoryVectorStore
-from mindflow_backend.agents.context.analyzer import get_content_analyzer, SessionContentAnalyzer
-from mindflow_backend.agents.specialists.cache import get_specialist_cache, SpecialistCache
-from mindflow_backend.agents.specialists.rule_engine import get_specialist_rule_engine, SpecialistRuleEngine
+from mindflow_backend.agents.specialists.cache import SpecialistCache
 from mindflow_backend.agents.specialists.configuration import (
-    get_specialist_config_builder,
-    get_delegation_task_builder,
-    SpecialistConfigurationBuilder,
     DelegationTaskBuilder,
+    SpecialistConfigurationBuilder,
+)
+from mindflow_backend.agents.specialists.rule_engine import (
+    SpecialistRuleEngine,
 )
 from mindflow_backend.infra.logging import get_logger
 

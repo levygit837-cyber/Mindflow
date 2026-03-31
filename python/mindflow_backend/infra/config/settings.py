@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from pathlib import Path
 from typing import Literal
 
 import pydantic
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from mindflow_backend.infra.config.database import DatabaseConfig
 from mindflow_backend.infra.config.cache import CacheConfig
+from mindflow_backend.infra.config.database import DatabaseConfig
 from mindflow_backend.infra.config.monitoring import MonitoringConfig
 
 

@@ -368,6 +368,7 @@ class AgentErrors:
 # Backward compatibility aliases with deprecation warnings
 import warnings
 
+
 def _deprecated_alias(new_class, old_name):
     """Create a deprecated alias for backward compatibility."""
     class DeprecatedAlias(new_class):

@@ -1,9 +1,9 @@
 """Tests for context quality gates."""
 
 from mindflow_backend.orchestrator.context_validation import (
-    check_staleness,
-    check_relevance,
     QualityIssue,
+    check_relevance,
+    check_staleness,
 )
 
 

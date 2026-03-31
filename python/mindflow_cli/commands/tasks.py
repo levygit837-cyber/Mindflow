@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import typer
 import httpx
+import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-from rich.text import Text
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+from rich.text import Text
 
-from mindflow_cli.client import MindFlowCliClient
 from mindflow_cli.commands.chat import build_client
 from mindflow_cli.render.theme import MINDFLOW_THEME
 
@@ -311,13 +310,13 @@ def register_tasks_commands(app: typer.Typer) -> None:
                     
                     errors = progress.get("errors", [])
                     if errors:
-                        console.print(f"[bold red]Errors:[/]")
+                        console.print("[bold red]Errors:[/]")
                         for error in errors:
                             console.print(f"  • {error}")
                     
                     warnings = progress.get("warnings", [])
                     if warnings:
-                        console.print(f"[bold yellow]Warnings:[/]")
+                        console.print("[bold yellow]Warnings:[/]")
                         for warning in warnings:
                             console.print(f"  • {warning}")
                 else:

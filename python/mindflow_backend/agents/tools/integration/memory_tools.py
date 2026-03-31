@@ -9,17 +9,16 @@ Provides tools for agents to interact with the memory system:
 
 from __future__ import annotations
 
-import json
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.tools.base import (
-    ToolSchema,
-    ToolParameter,
-    ParameterType,
-)
 from mindflow_backend.orchestrator.memory_integration import recall_memory
+from mindflow_backend.schemas.tools.base import (
+    ParameterType,
+    ToolParameter,
+    ToolSchema,
+)
 
 _logger = get_logger(__name__)
 
@@ -99,7 +98,7 @@ class StoreFactTool(AsyncToolInterface):
         self.description = STORE_FACT_SCHEMA.description
         self._schema = STORE_FACT_SCHEMA
 
-    async def execute(self, **kwargs: Any) -> Dict[str, Any]:
+    async def execute(self, **kwargs: Any) -> dict[str, Any]:
         content = kwargs.get("content", "")
         fact_type = kwargs.get("fact_type", "fact")
         key = kwargs.get("key", "")
@@ -131,7 +130,7 @@ class StoreFactTool(AsyncToolInterface):
             _logger.error("store_fact_failed", error=str(exc))
             return {"success": False, "error": str(exc)}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -144,7 +143,7 @@ class SearchFactsTool(AsyncToolInterface):
         self.description = SEARCH_FACTS_SCHEMA.description
         self._schema = SEARCH_FACTS_SCHEMA
 
-    async def execute(self, **kwargs: Any) -> Dict[str, Any]:
+    async def execute(self, **kwargs: Any) -> dict[str, Any]:
         query = kwargs.get("query", "")
         fact_type = kwargs.get("fact_type", "all")
         limit = int(kwargs.get("limit", 5))
@@ -175,7 +174,7 @@ class SearchFactsTool(AsyncToolInterface):
             _logger.error("search_facts_failed", error=str(exc))
             return {"success": False, "error": str(exc), "results": []}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -188,7 +187,7 @@ class RetrieveTaskContextTool(AsyncToolInterface):
         self.description = RETRIEVE_TASK_CONTEXT_SCHEMA.description
         self._schema = RETRIEVE_TASK_CONTEXT_SCHEMA
 
-    async def execute(self, **kwargs: Any) -> Dict[str, Any]:
+    async def execute(self, **kwargs: Any) -> dict[str, Any]:
         query = kwargs.get("query", "")
         session_id = kwargs.get("session_id", "")
         limit = int(kwargs.get("limit", 5))
@@ -214,7 +213,7 @@ class RetrieveTaskContextTool(AsyncToolInterface):
             _logger.error("retrieve_task_context_failed", error=str(exc))
             return {"success": False, "error": str(exc), "results": []}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -227,7 +226,7 @@ class RecallSessionMemoryTool(AsyncToolInterface):
         self.description = RECALL_SESSION_MEMORY_SCHEMA.description
         self._schema = RECALL_SESSION_MEMORY_SCHEMA
 
-    async def execute(self, **kwargs: Any) -> Dict[str, Any]:
+    async def execute(self, **kwargs: Any) -> dict[str, Any]:
         query = kwargs.get("query", "")
         cross_session = bool(kwargs.get("cross_session", False))
         limit = int(kwargs.get("limit") or 5)
@@ -275,5 +274,5 @@ class RecallSessionMemoryTool(AsyncToolInterface):
             _logger.error("recall_session_memory_failed", error=str(exc))
             return {"success": False, "error": str(exc), "results": []}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()

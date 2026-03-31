@@ -5,7 +5,7 @@ Integração com decomposition engine para processamento de tasks.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -46,8 +46,8 @@ class TaskDecomposer(BaseAbstractService):
         task_description: str,
         session_id: str,
         agent_id: str,
-        existing_context: Optional[str] = None,
-    ) -> Tuple[MainTaskContract, List[SubTaskContract]]:
+        existing_context: str | None = None,
+    ) -> tuple[MainTaskContract, list[SubTaskContract]]:
         """Decompor task usando contexto da memória."""
         self.log_operation(
             "decompose_task_with_memory",
@@ -85,7 +85,7 @@ class TaskDecomposer(BaseAbstractService):
                 ))
             
             _logger.info(
-                f"Task decomposed with memory",
+                "Task decomposed with memory",
                 main_task_id=main_task.id,
                 sub_tasks_count=len(enhanced_sub_tasks),
             )
@@ -95,7 +95,9 @@ class TaskDecomposer(BaseAbstractService):
         except Exception as exc:
             _logger.error(f"Failed to decompose task with memory: {exc}")
             # Return empty decomposition on error
-            from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import MainTaskContract, SubTaskContract
+            from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
+                MainTaskContract,
+            )
             
             empty_main = MainTaskContract(
                 id="decomposition_failed",

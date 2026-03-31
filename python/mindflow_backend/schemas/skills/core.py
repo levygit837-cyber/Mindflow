@@ -1,8 +1,10 @@
 """Core skill schemas."""
 
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from .base import SkillConfiguration
 
 
@@ -63,7 +65,7 @@ class CodingSkillConfig(SkillConfiguration):
 
 class ResearchSkillConfig(SkillConfiguration):
     """Configuration for research skills."""
-    search_sources: List[str] = Field(
+    search_sources: list[str] = Field(
         default_factory=lambda: ["local", "web", "documentation"],
         description="Search sources to use"
     )
@@ -93,10 +95,10 @@ class CoreSkillDefinition(BaseModel):
     skill_type: CoreSkillType = Field(..., description="Core skill type")
     name: str = Field(..., description="Skill name")
     description: str = Field(..., description="Skill description")
-    capabilities: List[str] = Field(..., description="Skill capabilities")
-    supported_languages: List[str] = Field(default_factory=list, description="Supported languages")
-    required_tools: List[str] = Field(default_factory=list, description="Required tools")
-    configuration: Optional[Dict[str, Any]] = Field(None, description="Default configuration")
+    capabilities: list[str] = Field(..., description="Skill capabilities")
+    supported_languages: list[str] = Field(default_factory=list, description="Supported languages")
+    required_tools: list[str] = Field(default_factory=list, description="Required tools")
+    configuration: dict[str, Any] | None = Field(None, description="Default configuration")
     
     class Config:
         json_schema_extra = {

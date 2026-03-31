@@ -6,9 +6,9 @@ using SQLite + NumPy for context management.
 
 from __future__ import annotations
 
-from .memory_service import MemoryService, create_memory_service
-from .context_storage import ContextStorage
 from .context_retriever import ContextRetriever
+from .context_storage import ContextStorage
+from .memory_service import MemoryService, create_memory_service
 
 # Memory service instance
 _memory_service = None

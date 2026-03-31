@@ -7,9 +7,8 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.controllers.agent_controller import AgentController
-from mindflow_backend.utils.formatting import format_sse
+from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 from mindflow_backend.schemas.chat.agent import (
@@ -20,6 +19,7 @@ from mindflow_backend.schemas.chat.agent import (
 )
 from mindflow_backend.schemas.tools.shell_tabs import ShellTabCreateRequest, ShellTabExecRequest
 from mindflow_backend.services import get_shell_tab_service
+from mindflow_backend.utils.formatting import format_sse
 
 router = APIRouter(prefix="/agent", tags=["agent"], dependencies=protected_route_dependencies)
 

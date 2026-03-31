@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """Demo of dynamic tool visualization and agent delegation tracking."""
 
+import json
 import sys
 import time
-import json
-from typing import Dict, Any
+from typing import Any
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')
 
 from rich.console import Console
-from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
+
 from mindflow_backend.schemas.agent import StreamEvent
+from mindflow_cli.render.orchestrator_stream import OrchestratorStreamRenderer
 
 
-def create_mock_event(event_type: str, data: Any, meta: Dict[str, Any] = None) -> StreamEvent:
+def create_mock_event(event_type: str, data: Any, meta: dict[str, Any] = None) -> StreamEvent:
     """Create a mock stream event for testing."""
     return StreamEvent(type=event_type, data=data, meta=meta or {})
 

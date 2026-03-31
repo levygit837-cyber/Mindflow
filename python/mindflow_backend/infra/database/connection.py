@@ -8,22 +8,22 @@ This module re-exports all components from the decomposed connection package.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mindflow_backend.infra.logging import get_logger
 
+from .connection.database_manager import DatabaseManager
 from .connection.models import ConnectionMetrics, ConnectionStatus, PoolState
 from .connection.pool_monitor import ConnectionPoolMonitor
-from .connection.database_manager import DatabaseManager
 
 _logger = get_logger(__name__)
 
 
 # Global database manager instance
-_database_manager: Optional[DatabaseManager] = None
+_database_manager: DatabaseManager | None = None
 
 
 def get_db_manager() -> DatabaseManager:

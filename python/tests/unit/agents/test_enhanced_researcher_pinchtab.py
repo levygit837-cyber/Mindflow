@@ -5,7 +5,12 @@ import pytest
 from mindflow_backend.agents.tools.specialist.research.core.enhanced_researcher import (
     EnhancedResearcherAgent,
 )
-from mindflow_backend.schemas.agents.research import ResearchRequest
+from mindflow_backend.schemas.agents.research import (
+    ConfidenceLevel,
+    ResearchRequest,
+    SourceClassification,
+    SourceType,
+)
 from mindflow_backend.schemas.tools.pinchtab_schemas import (
     BrowserCommandAction,
     BrowserCommandResponse,
@@ -14,11 +19,6 @@ from mindflow_backend.schemas.tools.pinchtab_schemas import (
     BrowserRuntimeState,
     CreateBrowserResponse,
     ListBrowsersResponse,
-)
-from mindflow_backend.schemas.agents.research import (
-    ConfidenceLevel,
-    SourceClassification,
-    SourceType,
 )
 
 

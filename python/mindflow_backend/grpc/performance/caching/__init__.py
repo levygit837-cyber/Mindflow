@@ -4,7 +4,7 @@ Provides intelligent caching strategies to reduce response times
 and server load for frequently accessed data.
 """
 
-from .cache import GrpcResponseCache, CacheConfig, CacheEntry
+from .cache import CacheConfig, CacheEntry, GrpcResponseCache
 
 __all__ = [
     "GrpcResponseCache",

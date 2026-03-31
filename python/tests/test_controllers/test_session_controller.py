@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
 from mindflow_backend.api.controllers.session_controller import SessionController
-from mindflow_backend.api.schemas.responses import SessionResponse, SessionListResponse
+from mindflow_backend.api.schemas.responses import SessionListResponse, SessionResponse
 
 
 class TestSessionController:

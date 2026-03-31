@@ -216,7 +216,9 @@ class SentenceTransformerProvider:
     async def _get_service(self):
         if self._service is None:
             from mindflow_backend.services.nlp_embeddings.nlp_embedding_service import (
-                NLPEmbeddingService, EmbeddingConfig, EmbeddingMethod,
+                EmbeddingConfig,
+                EmbeddingMethod,
+                NLPEmbeddingService,
             )
             config = EmbeddingConfig(method=EmbeddingMethod.SENTENCE_TRANSFORMER, model_name=self._model_name)
             self._service = NLPEmbeddingService(config)
@@ -257,7 +259,9 @@ class TFIDFProvider:
     async def _get_service(self):
         if self._service is None:
             from mindflow_backend.services.nlp_embeddings.nlp_embedding_service import (
-                NLPEmbeddingService, EmbeddingConfig, EmbeddingMethod,
+                EmbeddingConfig,
+                EmbeddingMethod,
+                NLPEmbeddingService,
             )
             config = EmbeddingConfig(method=EmbeddingMethod.TFIDF, max_features=self._dims)
             self._service = NLPEmbeddingService(config)
@@ -356,7 +360,7 @@ class EmbeddingProviderFactory:
         return HashFallbackProvider(dims=dims)
 
     @classmethod
-    async def validate_provider(cls, provider: IEmbeddingProvider) -> "EmbeddingProviderHealth":
+    async def validate_provider(cls, provider: IEmbeddingProvider) -> EmbeddingProviderHealth:
         backend = provider.backend().value if hasattr(provider.backend(), "value") else str(provider.backend())
         model = getattr(provider, "_model_name", None)
         dims = provider.dimension()

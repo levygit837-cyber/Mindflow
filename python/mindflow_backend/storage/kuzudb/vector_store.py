@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import numpy as np
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
+
+import numpy as np
 
 from mindflow_backend.agents.core.interfaces import VectorStore
 from mindflow_backend.exceptions import AgentVectorStoreError
@@ -105,10 +106,10 @@ class KuzuDBVectorStore(VectorStore):
     async def store_vectors(
         self,
         session_id: str,
-        vectors: List[List[float]],
-        contents: List[str],
-        metadata: List[Dict[str, Any]] = None,
-    ) -> List[str]:
+        vectors: list[list[float]],
+        contents: list[str],
+        metadata: list[dict[str, Any]] = None,
+    ) -> list[str]:
         """Store vectors with associated content and metadata."""
         await self.initialize()
         
@@ -177,10 +178,10 @@ class KuzuDBVectorStore(VectorStore):
     async def search_session_context(
         self,
         session_id: str,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.7,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors in session context."""
         await self.initialize()
         
@@ -223,11 +224,11 @@ class KuzuDBVectorStore(VectorStore):
     
     async def search_similar_vectors(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         score_threshold: float = 0.7,
-        session_filter: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        session_filter: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors across all sessions or specific session."""
         await self.initialize()
         
@@ -292,7 +293,7 @@ class KuzuDBVectorStore(VectorStore):
             except Exception as e:
                 raise AgentVectorStoreError(f"Failed to delete session vectors: {e}")
     
-    async def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_stats(self, session_id: str) -> dict[str, Any]:
         """Get statistics for a session's vectors."""
         await self.initialize()
         
@@ -364,7 +365,7 @@ class KuzuDBVectorManager:
         self,
         session_id: str,
         content: str,
-        metadata: Dict[str, Any] = None,
+        metadata: dict[str, Any] = None,
     ) -> str:
         """Store context with automatic embedding."""
         # For now, create a simple embedding (in real implementation, use actual embedding model)
@@ -384,7 +385,7 @@ class KuzuDBVectorManager:
         session_id: str,
         query: str,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for similar context."""
         query_embedding = self._create_simple_embedding(query)
         
@@ -394,7 +395,7 @@ class KuzuDBVectorManager:
             limit=limit
         )
     
-    def _create_simple_embedding(self, text: str) -> List[float]:
+    def _create_simple_embedding(self, text: str) -> list[float]:
         """Create a simple embedding based on text hash (placeholder)."""
         # This is a very simple placeholder - in real implementation use proper embeddings
         import hashlib

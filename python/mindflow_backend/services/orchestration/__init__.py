@@ -6,6 +6,7 @@ and intelligent routing in complex workflows.
 
 from __future__ import annotations
 
+
 # Factory functions for orchestration services
 def get_orchestration_service():
     """Factory function for OrchestrationService."""
@@ -25,7 +26,9 @@ def get_routing_service():
 
 def get_session_runtime_state_service():
     """Factory function for the shared session runtime state service."""
-    from mindflow_backend.services.core import get_session_runtime_state_service as get_core_session_runtime_state_service
+    from mindflow_backend.services.core import (
+        get_session_runtime_state_service as get_core_session_runtime_state_service,
+    )
 
     return get_core_session_runtime_state_service()
 
@@ -38,7 +41,9 @@ def get_todo_planning_service():
     """Factory function for the session-scoped in-memory TodoPlanningService."""
     global _todo_planning_service
     if _todo_planning_service is None:
-        from mindflow_backend.services.orchestration.todo_planning_service import TodoPlanningService
+        from mindflow_backend.services.orchestration.todo_planning_service import (
+            TodoPlanningService,
+        )
         _todo_planning_service = TodoPlanningService()
     return _todo_planning_service
 

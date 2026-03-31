@@ -4,10 +4,11 @@ registration, discovery, and permission handling.
 """
 
 from __future__ import annotations
+
 import json
-from typing import Any, Dict, List, Optional, Type, Set
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -20,17 +21,17 @@ class ToolRegistry:
     """
 
     def __init__(self):
-        self._tools: Dict[str, Any] = {}
-        self._permissions: Dict[str, Dict[str, Any]] = {}
-        self._categories: Dict[str, List[str]] = {}
+        self._tools: dict[str, Any] = {}
+        self._permissions: dict[str, dict[str, Any]] = {}
+        self._categories: dict[str, list[str]] = {}
         self._initialized = False
 
     def register_tool(
         self,
-        tool_class: Type,
-        name: Optional[str] = None,
+        tool_class: type,
+        name: str | None = None,
         category: str = "general",
-        permissions: Optional[Dict[str, Any]] = None
+        permissions: dict[str, Any] | None = None
     ) -> bool:
         """
         Register a tool class with the registry.
@@ -71,7 +72,7 @@ class ToolRegistry:
             _logger.error(f"Failed to register tool {name}: {str(e)}")
             return False
 
-    def get_tool(self, name: str) -> Optional[Any]:
+    def get_tool(self, name: str) -> Any | None:
         """
         Get a tool instance by name.
         Args:
@@ -81,7 +82,7 @@ class ToolRegistry:
         """
         return self._tools.get(name)
 
-    def list_tools(self, category: Optional[str] = None) -> List[str]:
+    def list_tools(self, category: str | None = None) -> list[str]:
         """
         List all registered tools, optionally filtered by category.
         Args:
@@ -93,7 +94,7 @@ class ToolRegistry:
             return self._categories.get(category, [])
         return list(self._tools.keys())
 
-    def get_categories(self) -> List[str]:
+    def get_categories(self) -> list[str]:
         """
         Get all available categories.
         Returns:
@@ -101,7 +102,7 @@ class ToolRegistry:
         """
         return list(self._categories.keys())
 
-    def check_permissions(self, tool_name: str, user_permissions: Dict[str, Any]) -> bool:
+    def check_permissions(self, tool_name: str, user_permissions: dict[str, Any]) -> bool:
         """
         Check if user has permission to use a tool.
         Args:
@@ -123,7 +124,7 @@ class ToolRegistry:
 
         return True
 
-    def get_tool_schema(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_schema(self, name: str) -> dict[str, Any] | None:
         """
         Get schema for a specific tool.
         Args:
@@ -136,7 +137,7 @@ class ToolRegistry:
             return tool.get_schema()
         return None
 
-    def get_all_schemas(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_schemas(self) -> dict[str, dict[str, Any]]:
         """
         Get schemas for all registered tools.
         Returns:
@@ -223,7 +224,7 @@ class ToolRegistry:
             _logger.error(f"Failed to export registry: {str(e)}")
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get registry statistics.
         Returns:

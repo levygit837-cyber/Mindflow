@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import logging
 import time
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
 from functools import wraps
+from typing import TypeVar
 
 from fastapi import Depends, HTTPException, Request, status
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from mindflow_backend.infra.config import get_settings

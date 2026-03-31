@@ -7,13 +7,11 @@ and management operations.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ...schemas.storage_specialized.cache import (
-    CacheConfig,
-    CacheEntry,
-    CacheStats,
     CacheHealthCheck,
+    CacheStats,
 )
 
 
@@ -21,7 +19,7 @@ class CacheManagerInterface(ABC):
     """High-level cache management interface."""
     
     @abstractmethod
-    async def get_cache_info(self) -> Dict[str, Any]:
+    async def get_cache_info(self) -> dict[str, Any]:
         """Get cache information."""
         pass
     
@@ -41,7 +39,7 @@ class CacheManagerInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_size_info(self) -> Dict[str, Any]:
+    async def get_size_info(self) -> dict[str, Any]:
         """Get size information."""
         pass
 
@@ -50,12 +48,12 @@ class CacheDistributedInterface(ABC):
     """Interface for distributed cache operations."""
     
     @abstractmethod
-    async def get_nodes(self) -> List[Dict[str, Any]]:
+    async def get_nodes(self) -> list[dict[str, Any]]:
         """Get cache cluster nodes."""
         pass
     
     @abstractmethod
-    async def add_node(self, node_config: Dict[str, Any]) -> bool:
+    async def add_node(self, node_config: dict[str, Any]) -> bool:
         """Add cache node."""
         pass
     
@@ -69,13 +67,13 @@ class CacheDistributedInterface(ABC):
         self,
         key: str,
         value: Any,
-        target_nodes: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        target_nodes: list[str] | None = None
+    ) -> dict[str, Any]:
         """Replicate data to nodes."""
         pass
     
     @abstractmethod
-    async def get_cluster_stats(self) -> Dict[str, Any]:
+    async def get_cluster_stats(self) -> dict[str, Any]:
         """Get cluster statistics."""
         pass
 
@@ -84,12 +82,12 @@ class CachePersistenceInterface(ABC):
     """Interface for cache persistence operations."""
     
     @abstractmethod
-    async def save_to_disk(self, file_path: str) -> Dict[str, Any]:
+    async def save_to_disk(self, file_path: str) -> dict[str, Any]:
         """Save cache to disk."""
         pass
     
     @abstractmethod
-    async def load_from_disk(self, file_path: str) -> Dict[str, Any]:
+    async def load_from_disk(self, file_path: str) -> dict[str, Any]:
         """Load cache from disk."""
         pass
     
@@ -99,7 +97,7 @@ class CachePersistenceInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_persistence_info(self) -> Dict[str, Any]:
+    async def get_persistence_info(self) -> dict[str, Any]:
         """Get persistence information."""
         pass
 
@@ -108,22 +106,22 @@ class CacheWarmerInterface(ABC):
     """Interface for cache warming operations."""
     
     @abstractmethod
-    async def warm_cache(self, keys: List[str], values: List[Any]) -> Dict[str, Any]:
+    async def warm_cache(self, keys: list[str], values: list[Any]) -> dict[str, Any]:
         """Warm cache with data."""
         pass
     
     @abstractmethod
-    async def warm_by_pattern(self, pattern: str, limit: int = 1000) -> Dict[str, Any]:
+    async def warm_by_pattern(self, pattern: str, limit: int = 1000) -> dict[str, Any]:
         """Warm cache by key pattern."""
         pass
     
     @abstractmethod
-    async def warm_from_data_source(self, query: str) -> Dict[str, Any]:
+    async def warm_from_data_source(self, query: str) -> dict[str, Any]:
         """Warm cache from data source."""
         pass
     
     @abstractmethod
-    async def get_warming_stats(self) -> Dict[str, Any]:
+    async def get_warming_stats(self) -> dict[str, Any]:
         """Get warming statistics."""
         pass
 
@@ -155,7 +153,7 @@ class CacheInvalidationInterface(ABC):
     async def set_invalidation_callback(
         self,
         callback_func: callable,
-        event_types: List[str]
+        event_types: list[str]
     ) -> None:
         """Set invalidation callback."""
         pass

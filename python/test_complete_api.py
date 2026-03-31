@@ -8,7 +8,7 @@ def test_complete_api_integration():
     print("=" * 60)
     
     # Ler o router.py para verificar todos os routers
-    with open('/home/levybonito/Projetos/MindFlow/python/mindflow_backend/api/router.py', 'r') as f:
+    with open('/home/levybonito/Projetos/MindFlow/python/mindflow_backend/api/router.py') as f:
         router_content = f.read()
     
     # Fase 1: Memory API
@@ -21,7 +21,7 @@ def test_complete_api_integration():
     print(f"   ✅ Import: {memory_import}")
     print(f"   ✅ Include: {memory_include}")
     print(f"   ✅ Arquivo existe: {memory_exists}")
-    print(f"   📍 Endpoints: /v1/memory/*")
+    print("   📍 Endpoints: /v1/memory/*")
     
     # Fase 2: Chains API
     chains_import = 'from mindflow_backend.api.v1.chains import router as chains_router' in router_content
@@ -33,7 +33,7 @@ def test_complete_api_integration():
     print(f"   ✅ Import: {chains_import}")
     print(f"   ✅ Include: {chains_include}")
     print(f"   ✅ Arquivo existe: {chains_exists}")
-    print(f"   📍 Endpoints: /v1/chains/*")
+    print("   📍 Endpoints: /v1/chains/*")
     
     # Fase 3: Tasks API
     tasks_import = 'from mindflow_backend.api.v1.tasks import router as tasks_router' in router_content
@@ -45,7 +45,7 @@ def test_complete_api_integration():
     print(f"   ✅ Import: {tasks_import}")
     print(f"   ✅ Include: {tasks_include}")
     print(f"   ✅ Arquivo existe: {tasks_exists}")
-    print(f"   📍 Endpoints: /v1/tasks/*")
+    print("   📍 Endpoints: /v1/tasks/*")
     
     # Contar total de routers
     router_count = router_content.count('router.include_router(')
@@ -87,10 +87,10 @@ def test_complete_api_integration():
         print("   • Monitoramento e controle granular disponíveis")
         
         print("\n📊 ESTATÍSTICAS:")
-        print(f"   • Total de novos endpoints: 21")
+        print("   • Total de novos endpoints: 21")
         print(f"   • Total de routers: {router_count}")
-        print(f"   • Arquivos criados: 8")
-        print(f"   • Schemas criados: 4")
+        print("   • Arquivos criados: 8")
+        print("   • Schemas criados: 4")
         
         print("\n🔧 PRÓXIMOS PASSOS:")
         print("   1. Instalar dependências (asyncpg, etc.)")

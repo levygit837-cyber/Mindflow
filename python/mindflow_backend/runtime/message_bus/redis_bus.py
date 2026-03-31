@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
@@ -12,7 +13,7 @@ from redis.asyncio.client import PubSub
 from mindflow_backend.communication.circuit_breaker.breaker import CircuitBreaker
 from mindflow_backend.infra.cache.redis_client import get_async_redis
 
-from .protocol import MindFlowMessage, MessageType
+from .protocol import MessageType, MindFlowMessage
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +23,16 @@ class RedisMessageBus:
 
     def __init__(
         self,
-        redis: Optional[Redis] = None,
+        redis: Redis | None = None,
         channel_prefix: str = "mindflow:bus:",
-        circuit_breaker: Optional[CircuitBreaker] = None,
+        circuit_breaker: CircuitBreaker | None = None,
     ):
         self._redis = redis
         self._channel_prefix = channel_prefix
-        self._pubsub: Optional[PubSub] = None
+        self._pubsub: PubSub | None = None
         self._subscribers: dict[str, list[Callable]] = {}
         self._running = False
-        self._listener_task: Optional[asyncio.Task] = None
+        self._listener_task: asyncio.Task | None = None
         self._circuit_breaker = circuit_breaker or CircuitBreaker(
             name="redis_message_bus"
         )

@@ -45,6 +45,7 @@ async def test_end_to_end_trigger_flow():
 async def test_cache_expiration():
     """Test cache TTL expiration."""
     from datetime import timedelta
+
     from mindflow_backend.orchestrator.planning.cache import PlanningDecisionCache
     
     # Create cache with 1 second TTL

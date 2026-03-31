@@ -7,7 +7,7 @@ security and rate limiting controls.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any, Dict, List, Optional
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -18,10 +18,10 @@ class WebToolInterface(Protocol):
         self,
         url: str,
         method: str = "GET",
-        headers: Optional[Dict[str, str]] = None,
-        data: Optional[Dict[str, Any]] = None,
+        headers: dict[str, str] | None = None,
+        data: dict[str, Any] | None = None,
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fetch URL with HTTP request.
         
         Args:
@@ -44,11 +44,11 @@ class HttpClientTool(Protocol):
     async def get(
         self,
         url: str,
-        params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: int = 30,
         follow_redirects: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Perform HTTP GET request.
         
         Args:
@@ -66,11 +66,11 @@ class HttpClientTool(Protocol):
     async def post(
         self,
         url: str,
-        data: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Perform HTTP POST request.
         
         Args:
@@ -88,11 +88,11 @@ class HttpClientTool(Protocol):
     async def put(
         self,
         url: str,
-        data: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Perform HTTP PUT request.
         
         Args:
@@ -110,9 +110,9 @@ class HttpClientTool(Protocol):
     async def delete(
         self,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
+        headers: dict[str, str] | None = None,
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Perform HTTP DELETE request.
         
         Args:
@@ -135,11 +135,11 @@ class ApiClientTool(Protocol):
         api_base_url: str,
         endpoint: str,
         method: str = "GET",
-        params: Optional[Dict[str, str]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        auth: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+        params: dict[str, str] | None = None,
+        data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        auth: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """Call REST API endpoint.
         
         Args:
@@ -159,7 +159,7 @@ class ApiClientTool(Protocol):
     async def load_openapi_spec(
         self,
         spec_url: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Load OpenAPI specification.
         
         Args:
@@ -172,9 +172,9 @@ class ApiClientTool(Protocol):
     
     async def validate_api_response(
         self,
-        response: Dict[str, Any],
-        schema: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        response: dict[str, Any],
+        schema: dict[str, Any]
+    ) -> dict[str, Any]:
         """Validate API response against schema.
         
         Args:
@@ -197,7 +197,7 @@ class BrowserSearchTool(Protocol):
         search_engine: str = "google",
         num_results: int = 10,
         language: str = "en"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Search the web using browser automation.
         
         Args:
@@ -214,10 +214,10 @@ class BrowserSearchTool(Protocol):
     async def scrape_page(
         self,
         url: str,
-        selector: Optional[str] = None,
-        wait_for: Optional[str] = None,
+        selector: str | None = None,
+        wait_for: str | None = None,
         screenshot: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Scrape web page content.
         
         Args:
@@ -234,9 +234,9 @@ class BrowserSearchTool(Protocol):
     async def fill_form(
         self,
         url: str,
-        form_data: Dict[str, str],
+        form_data: dict[str, str],
         submit: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fill and submit web form.
         
         Args:
@@ -257,9 +257,9 @@ class WebhookTool(Protocol):
     async def create_webhook(
         self,
         url: str,
-        events: List[str],
-        secret: Optional[str] = None
-    ) -> Dict[str, Any]:
+        events: list[str],
+        secret: str | None = None
+    ) -> dict[str, Any]:
         """Create webhook subscription.
         
         Args:
@@ -275,9 +275,9 @@ class WebhookTool(Protocol):
     async def trigger_webhook(
         self,
         webhook_url: str,
-        payload: Dict[str, Any],
-        signature: Optional[str] = None
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any],
+        signature: str | None = None
+    ) -> dict[str, Any]:
         """Trigger webhook with payload.
         
         Args:
@@ -295,7 +295,7 @@ class WebhookTool(Protocol):
         payload: str,
         signature: str,
         secret: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Verify webhook signature.
         
         Args:
@@ -317,7 +317,7 @@ class RssFeedTool(Protocol):
         self,
         feed_url: str,
         limit: int = 20
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Parse RSS feed.
         
         Args:
@@ -333,7 +333,7 @@ class RssFeedTool(Protocol):
         self,
         query: str,
         limit: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Search for RSS feeds.
         
         Args:
@@ -353,7 +353,7 @@ class WebSecurityTool(Protocol):
     async def check_url_safety(
         self,
         url: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Check if URL is safe.
         
         Args:
@@ -367,7 +367,7 @@ class WebSecurityTool(Protocol):
     async def validate_ssl_certificate(
         self,
         domain: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Validate SSL certificate.
         
         Args:
@@ -382,7 +382,7 @@ class WebSecurityTool(Protocol):
         self,
         url: str,
         scan_type: str = "basic"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Scan for web vulnerabilities.
         
         Args:

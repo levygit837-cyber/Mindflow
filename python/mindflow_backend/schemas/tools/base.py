@@ -4,9 +4,12 @@ structures for tool parameters, validation, and configuration.
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union, Literal
+
+import builtins
+from dataclasses import dataclass
 from enum import Enum
-from dataclasses import dataclass, field
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -28,13 +31,13 @@ class ToolParameter:
     type: ParameterType = Field(..., description="Parameter data type")
     description: str = Field(..., description="Parameter description")
     required: bool = Field(default=False, description="Whether parameter is required")
-    default: Optional[Any] = Field(default=None, description="Default value")
-    enum: Optional[List[Any]] = Field(default=None, description="Allowed values")
-    min_value: Optional[Union[int, float]] = Field(default=None, description="Minimum value")
-    max_value: Optional[Union[int, float]] = Field(default=None, description="Maximum value")
-    min_length: Optional[int] = Field(default=None, description="Minimum length")
-    max_length: Optional[int] = Field(default=None, description="Maximum length")
-    pattern: Optional[str] = Field(default=None, description="Regex pattern")
+    default: Any | None = Field(default=None, description="Default value")
+    enum: list[Any] | None = Field(default=None, description="Allowed values")
+    min_value: int | float | None = Field(default=None, description="Minimum value")
+    max_value: int | float | None = Field(default=None, description="Maximum value")
+    min_length: int | None = Field(default=None, description="Minimum length")
+    max_length: int | None = Field(default=None, description="Maximum length")
+    pattern: str | None = Field(default=None, description="Regex pattern")
 
 
 @dataclass
@@ -44,11 +47,11 @@ class ToolSchema:
     description: str = Field(..., description="Tool description")
     category: str = Field(default="general", description="Tool category")
     version: str = Field(default="1.0.0", description="Tool version")
-    parameters: List[ToolParameter] = Field(default_factory=list, description="Tool parameters")
-    returns: Dict[str, Any] = Field(default_factory=dict, description="Return value schema")
-    examples: List[Dict[str, Any]] = Field(default_factory=list, description="Usage examples")
+    parameters: list[ToolParameter] = Field(default_factory=list, description="Tool parameters")
+    returns: builtins.dict[str, Any] = Field(default_factory=dict, description="Return value schema")
+    examples: list[builtins.dict[str, Any]] = Field(default_factory=list, description="Usage examples")
     
-    def dict(self) -> Dict[str, Any]:
+    def dict(self) -> builtins.dict[str, Any]:
         """Convert schema to dictionary."""
         from dataclasses import asdict
         result = asdict(self)
@@ -75,9 +78,9 @@ class ToolSchema:
 class ToolResult(BaseModel):
     """Standard tool result format."""
     success: bool = Field(..., description="Whether execution was successful")
-    result: Optional[Any] = Field(default=None, description="Execution result")
-    error: Optional[str] = Field(default=None, description="Error message")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    result: Any | None = Field(default=None, description="Execution result")
+    error: str | None = Field(default=None, description="Error message")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     timestamp: str = Field(..., description="Execution timestamp")
 
 
@@ -85,8 +88,8 @@ def create_tool_schema(
     name: str,
     description: str,
     category: str = "general",
-    parameters: Optional[List[Dict[str, Any]]] = None,
-    returns: Optional[Dict[str, Any]] = None,
+    parameters: list[dict[str, Any]] | None = None,
+    returns: dict[str, Any] | None = None,
     version: str = "1.0.0"
 ) -> ToolSchema:
     """
@@ -135,13 +138,13 @@ def create_parameter(
     param_type: ParameterType,
     description: str,
     required: bool = False,
-    default: Optional[Any] = None,
-    enum: Optional[List[Any]] = None,
-    min_value: Optional[Union[int, float]] = None,
-    max_value: Optional[Union[int, float]] = None,
-    min_length: Optional[int] = None,
-    max_length: Optional[int] = None,
-    pattern: Optional[str] = None
+    default: Any | None = None,
+    enum: list[Any] | None = None,
+    min_value: int | float | None = None,
+    max_value: int | float | None = None,
+    min_length: int | None = None,
+    max_length: int | None = None,
+    pattern: str | None = None
 ) -> ToolParameter:
     """
     Create a tool parameter.
@@ -176,9 +179,9 @@ def create_parameter(
 
 
 def validate_tool_parameters(
-    parameters: Dict[str, Any],
+    parameters: dict[str, Any],
     schema: ToolSchema
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate parameters against a tool schema.
     Args:

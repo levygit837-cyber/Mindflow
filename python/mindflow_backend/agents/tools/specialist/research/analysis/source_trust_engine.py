@@ -7,15 +7,14 @@ bias detection, and content freshness verification.
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime, timedelta
-from typing import Dict, List, Set, Tuple
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.agents.research import (
+    ConfidenceLevel,
     SourceClassification,
     SourceType,
-    ConfidenceLevel,
 )
 
 _logger = get_logger(__name__)
@@ -136,7 +135,7 @@ class ContentFreshness:
     """Content freshness evaluation."""
     
     @staticmethod
-    def extract_freshness_indicators(content: str) -> Dict[str, any]:
+    def extract_freshness_indicators(content: str) -> dict[str, any]:
         """Extract freshness indicators from content.
         
         Args:
@@ -182,7 +181,7 @@ class ContentFreshness:
         }
         
     @staticmethod
-    def calculate_freshness_score(indicators: Dict[str, any]) -> float:
+    def calculate_freshness_score(indicators: dict[str, any]) -> float:
         """Calculate freshness score from indicators.
         
         Args:
@@ -235,7 +234,7 @@ class BiasDetector:
     }
     
     @classmethod
-    def detect_bias(cls, content: str) -> Dict[str, float]:
+    def detect_bias(cls, content: str) -> dict[str, float]:
         """Detect bias indicators in content.
         
         Args:
@@ -258,7 +257,7 @@ class BiasDetector:
         return bias_scores
         
     @classmethod
-    def calculate_bias_penalty(cls, bias_scores: Dict[str, float]) -> float:
+    def calculate_bias_penalty(cls, bias_scores: dict[str, float]) -> float:
         """Calculate overall bias penalty.
         
         Args:
@@ -291,9 +290,9 @@ class CrossReferenceValidator:
     
     def __init__(self) -> None:
         """Initialize cross-reference validator."""
-        self._source_facts: Dict[str, Set[str]] = {}
+        self._source_facts: dict[str, set[str]] = {}
         
-    def add_source_facts(self, source_url: str, facts: List[str]) -> None:
+    def add_source_facts(self, source_url: str, facts: list[str]) -> None:
         """Add facts from a source for cross-reference validation.
         
         Args:
@@ -339,7 +338,7 @@ class CrossReferenceValidator:
         validation_ratio = corroborating_sources / total_other_sources
         return min(validation_ratio, 1.0)
         
-    def find_conflicts(self, source_url: str) -> List[str]:
+    def find_conflicts(self, source_url: str) -> list[str]:
         """Find conflicting facts across sources.
         
         Args:
@@ -416,7 +415,7 @@ class SourceTrustEngine:
         url: str,
         content: str,
         title: str = "",
-        existing_sources: List[str] = None,
+        existing_sources: list[str] = None,
     ) -> SourceClassification:
         """Comprehensive source trust evaluation.
         
@@ -620,7 +619,7 @@ class SourceTrustEngine:
                 
         return None
         
-    def _extract_facts(self, content: str) -> List[str]:
+    def _extract_facts(self, content: str) -> list[str]:
         """Extract factual claims from content (simplified).
         
         Args:

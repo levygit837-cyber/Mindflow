@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from mindflow_backend.schemas.core.common import LLMProvider
@@ -14,28 +15,28 @@ class AgentChatRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     message: str = Field(min_length=1, max_length=100000, description="User message")
-    provider: Optional[LLMProvider] = Field(default=None, description="LLM provider")
-    model: Optional[str] = Field(default=None, description="Model name")
-    session_id: Optional[str] = Field(default=None, alias="sessionId", description="Session ID")
-    agent_type: Optional[str] = Field(default=None, description="Agent type to use")
+    provider: LLMProvider | None = Field(default=None, description="LLM provider")
+    model: str | None = Field(default=None, description="Model name")
+    session_id: str | None = Field(default=None, alias="sessionId", description="Session ID")
+    agent_type: str | None = Field(default=None, description="Agent type to use")
     orchestrate: bool = Field(default=False, description="Whether to use orchestration")
     debug_steps: bool = Field(default=False, alias="debugSteps", description="Enable debug steps")
-    folder_path: Optional[str] = Field(default=None, description="Working directory for filesystem tools")
+    folder_path: str | None = Field(default=None, description="Working directory for filesystem tools")
 
 
 class SessionCreateRequest(BaseModel):
     """Request for creating a new session."""
     
-    title: Optional[str] = Field(default=None, max_length=255, description="Session title")
-    user_id: Optional[str] = Field(default=None, max_length=100, description="User identifier")
+    title: str | None = Field(default=None, max_length=255, description="Session title")
+    user_id: str | None = Field(default=None, max_length=100, description="User identifier")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Session metadata")
 
 
 class SessionUpdateRequest(BaseModel):
     """Request for updating a session."""
     
-    title: Optional[str] = Field(default=None, max_length=255, description="New session title")
-    metadata: Optional[dict[str, Any]] = Field(default=None, description="Session metadata")
+    title: str | None = Field(default=None, max_length=255, description="New session title")
+    metadata: dict[str, Any] | None = Field(default=None, description="Session metadata")
 
 
 class MessageAddRequest(BaseModel):
@@ -43,8 +44,8 @@ class MessageAddRequest(BaseModel):
     
     role: Literal["user", "assistant", "system"] = Field(description="Message role")
     content: str = Field(min_length=1, max_length=100000, description="Message content")
-    provider: Optional[str] = Field(default=None, description="LLM provider")
-    model: Optional[str] = Field(default=None, description="Model name")
+    provider: str | None = Field(default=None, description="LLM provider")
+    model: str | None = Field(default=None, description="Model name")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Message metadata")
 
 
@@ -52,13 +53,13 @@ class OrchestrationRequest(BaseModel):
     """Request for task orchestration."""
     
     task_description: str = Field(min_length=10, max_length=10000, description="Task description")
-    complexity_level: Optional[Literal["low", "medium", "high"]] = Field(
+    complexity_level: Literal["low", "medium", "high"] | None = Field(
         default="medium", description="Task complexity level"
     )
-    agent_sequence: Optional[list[str]] = Field(
+    agent_sequence: list[str] | None = Field(
         default=None, description="Specific agent sequence to use"
     )
-    session_id: Optional[str] = Field(default=None, description="Session ID")
+    session_id: str | None = Field(default=None, description="Session ID")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Orchestration metadata")
 
 
@@ -66,8 +67,8 @@ class TaskDecompositionRequest(BaseModel):
     """Request for task decomposition."""
     
     task_description: str = Field(min_length=10, max_length=10000, description="Task to decompose")
-    session_id: Optional[str] = Field(default=None, description="Session ID")
-    complexity_level: Optional[Literal["low", "medium", "high"]] = Field(
+    session_id: str | None = Field(default=None, description="Session ID")
+    complexity_level: Literal["low", "medium", "high"] | None = Field(
         default="medium", description="Task complexity level"
     )
     max_subtasks: int = Field(default=10, ge=1, le=50, description="Maximum number of subtasks")
@@ -79,8 +80,8 @@ class SpecialistSelectionRequest(BaseModel):
     task_id: str = Field(description="Task identifier")
     task_description: str = Field(min_length=10, max_length=10000, description="Task description")
     task_complexity: Literal["low", "medium", "high"] = Field(description="Task complexity")
-    current_specialist: Optional[str] = Field(default=None, description="Current specialist")
-    context_requirements: Optional[list[str]] = Field(
+    current_specialist: str | None = Field(default=None, description="Current specialist")
+    context_requirements: list[str] | None = Field(
         default=None, description="Required context"
     )
 
@@ -88,10 +89,10 @@ class SpecialistSelectionRequest(BaseModel):
 class ProviderConfigRequest(BaseModel):
     """Request for provider configuration."""
     
-    api_endpoint: Optional[str] = Field(default=None, description="API endpoint URL")
-    timeout: Optional[int] = Field(default=30, ge=1, le=300, description="Timeout in seconds")
-    max_tokens: Optional[int] = Field(default=4096, ge=1, le=100000, description="Max tokens")
-    api_key: Optional[str] = Field(default=None, description="API key (if updating)")
+    api_endpoint: str | None = Field(default=None, description="API endpoint URL")
+    timeout: int | None = Field(default=30, ge=1, le=300, description="Timeout in seconds")
+    max_tokens: int | None = Field(default=4096, ge=1, le=100000, description="Max tokens")
+    api_key: str | None = Field(default=None, description="API key (if updating)")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional config")
 
 
@@ -99,7 +100,7 @@ class ProviderTestRequest(BaseModel):
     """Request for testing provider connection."""
     
     provider_id: str = Field(description="Provider identifier")
-    test_model: Optional[str] = Field(default=None, description="Model to test with")
+    test_model: str | None = Field(default=None, description="Model to test with")
 
 
 class MemorySearchRequest(BaseModel):
@@ -107,13 +108,13 @@ class MemorySearchRequest(BaseModel):
     
     query: str = Field(min_length=1, max_length=1000, description="Search query")
     session_id: str = Field(description="Session ID")
-    agent_id: Optional[str] = Field(default=None, description="Agent ID filter")
+    agent_id: str | None = Field(default=None, description="Agent ID filter")
     search_type: Literal["semantic", "keyword", "hybrid"] = Field(
         default="semantic", description="Search type"
     )
     top_k: int = Field(default=5, ge=1, le=50, description="Maximum results")
     min_score: float = Field(default=0.3, ge=0.0, le=1.0, description="Minimum similarity score")
-    token_range: Optional[tuple[int, int]] = Field(default=None, description="Token range filter")
+    token_range: tuple[int, int] | None = Field(default=None, description="Token range filter")
 
 
 class MemorySummaryRequest(BaseModel):
@@ -135,4 +136,4 @@ class ContextWindowRequest(BaseModel):
     window_start: int = Field(ge=0, description="Window start position")
     window_end: int = Field(ge=1, description="Window end position")
     include_metadata: bool = Field(default=True, description="Include metadata")
-    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to return")
+    max_tokens: int | None = Field(default=None, description="Maximum tokens to return")

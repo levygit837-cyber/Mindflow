@@ -12,13 +12,14 @@ from .models import (
     AgentMemoryEvent,
     AgentMemoryFact,
     AgentMemoryWindow,
-    ChatMessage,
-    ChatSession,
     BrowserActionTrail,
     BrowserInstance,
+    ChatMessage,
+    ChatSession,
     ResearchFinding,
     ResearchSession,
 )
+
 try:
     from .repositories import (
         ChatRepository,

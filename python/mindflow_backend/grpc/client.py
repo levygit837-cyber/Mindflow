@@ -8,21 +8,27 @@ proper connection management.
 from __future__ import annotations
 
 import asyncio
-import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
-import grpc
 from grpc.aio import Channel, UnaryStreamCall
 
-from mindflow_backend.grpc.interfaces.client import GrpcClient
-from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
-from mindflow_backend.grpc.monitoring.interceptor import ClientMetricsInterceptor
-from mindflow_backend.grpc.resilience.circuit_breaker import GrpcCircuitBreaker, CircuitBreakerConfig
-from mindflow_backend.grpc.resilience.retry import AdvancedRetryPolicy, RetryConfig, RetryExhaustedError
-from mindflow_backend.grpc.resilience.timeout import TimeoutManager, TimeoutConfig, TimeoutError
-from mindflow_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
+import grpc
 from mindflow_backend.grpc.config import GrpcClientConfig
+from mindflow_backend.grpc.interfaces.client import GrpcClient
+from mindflow_backend.grpc.monitoring.interceptor import ClientMetricsInterceptor
+from mindflow_backend.grpc.monitoring.metrics import GrpcMetricsCollector
+from mindflow_backend.grpc.resilience.circuit_breaker import (
+    CircuitBreakerConfig,
+    GrpcCircuitBreaker,
+)
+from mindflow_backend.grpc.resilience.retry import (
+    AdvancedRetryPolicy,
+    RetryConfig,
+    RetryExhaustedError,
+)
+from mindflow_backend.grpc.resilience.timeout import TimeoutConfig, TimeoutError, TimeoutManager
+from mindflow_backend.grpc.services.agent_runtime_service import AgentRuntimeServiceImpl
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent

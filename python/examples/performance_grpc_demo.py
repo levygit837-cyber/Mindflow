@@ -7,17 +7,23 @@ connection pooling, load balancing, compression, caching, and monitoring.
 """
 
 import asyncio
-import sys
 import os
-import time
 import random
-from typing import Dict, Any
+import sys
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mindflow_backend.grpc.performance.compression import GrpcMessageCompressor, CompressionConfig, CompressionAlgorithm
-from mindflow_backend.grpc.performance.caching import GrpcResponseCache, CacheConfig, CacheEvictionPolicy
+from mindflow_backend.grpc.performance.caching import (
+    CacheConfig,
+    CacheEvictionPolicy,
+    GrpcResponseCache,
+)
+from mindflow_backend.grpc.performance.compression import (
+    CompressionAlgorithm,
+    CompressionConfig,
+    GrpcMessageCompressor,
+)
 from mindflow_backend.grpc.performance.monitoring import GrpcProfiler, ProfileConfig, ProfileLevel
 from mindflow_backend.grpc.performance.optimization import GrpcOptimizer, OptimizationConfig
 from mindflow_backend.infra.logging import get_logger
@@ -78,12 +84,12 @@ class PerformanceGrpcDemo:
                 # Test decompression
                 decompressed = self.compressor.decompress_message(compressed, result.algorithm)
                 assert decompressed == message, "Decompression failed!"
-                print(f"      ✅ Decompression successful")
+                print("      ✅ Decompression successful")
                 print()
             
             # Get compression statistics
             stats = self.compressor.get_compression_stats()
-            print(f"   📊 Compression Statistics:")
+            print("   📊 Compression Statistics:")
             print(f"      Total compressions: {stats['total_compressions']}")
             print(f"      Success rate: {stats['success_rate']:.1f}%")
             print(f"      Overall compression ratio: {stats['overall_compression_ratio']:.3f}")
@@ -91,7 +97,7 @@ class PerformanceGrpcDemo:
             print(f"      Average compression time: {stats['average_compression_time_ms']:.2f}ms")
             
             # Algorithm usage
-            print(f"   📈 Algorithm Usage:")
+            print("   📈 Algorithm Usage:")
             for algo, count in stats['algorithm_usage'].items():
                 print(f"      {algo}: {count}")
             
@@ -160,7 +166,7 @@ class PerformanceGrpcDemo:
             
             # Cache statistics
             stats = self.cache.get_stats()
-            print(f"   📊 Cache Statistics:")
+            print("   📊 Cache Statistics:")
             print(f"      Entries: {stats['entries']}/{stats['max_entries']}")
             print(f"      Hit rate: {stats['hit_rate_percent']:.1f}%")
             print(f"      Total size: {stats['total_size_mb']:.2f}MB")
@@ -170,7 +176,7 @@ class PerformanceGrpcDemo:
             
             # Test cache invalidation
             removed = self.cache.remove("user:123")
-            print(f"\n   🗑️  Cache invalidation:")
+            print("\n   🗑️  Cache invalidation:")
             print(f"      Removed user:123: {'✅' if removed else '❌'}")
             
             # Verify removal
@@ -246,7 +252,7 @@ class PerformanceGrpcDemo:
             
             # Get performance summary
             summary = self.profiler.get_performance_summary(time_window_seconds=60)
-            print(f"   📊 Performance Summary:")
+            print("   📊 Performance Summary:")
             print(f"      Total requests: {summary['total_requests']}")
             print(f"      Success rate: {summary['success_rate']:.1f}%")
             print(f"      Average duration: {summary['avg_duration_ms']:.1f}ms")
@@ -257,7 +263,7 @@ class PerformanceGrpcDemo:
             
             # Operation breakdown
             if 'operation_breakdown' in summary:
-                print(f"\n   📋 Operation Breakdown:")
+                print("\n   📋 Operation Breakdown:")
                 for op_type, stats in summary['operation_breakdown'].items():
                     print(f"      {op_type}:")
                     print(f"        Count: {stats['count']}")
@@ -265,7 +271,7 @@ class PerformanceGrpcDemo:
             
             # Profiling statistics
             profiler_stats = self.profiler.get_profiling_stats()
-            print(f"\n   🔧 Profiling Statistics:")
+            print("\n   🔧 Profiling Statistics:")
             print(f"      Total profiles: {profiler_stats['total_profiles']}")
             print(f"      Active profiles: {profiler_stats['active_profiles']}")
             print(f"      Slow requests: {profiler_stats['slow_requests']}")
@@ -275,12 +281,12 @@ class PerformanceGrpcDemo:
             # Performance issues
             issues = self.profiler.identify_performance_issues()
             if issues:
-                print(f"\n   ⚠️  Performance Issues:")
+                print("\n   ⚠️  Performance Issues:")
                 for issue in issues:
                     print(f"      {issue['type'].upper()}: {issue['description']}")
                     print(f"        Severity: {issue['severity']}")
             else:
-                print(f"\n   ✅ No performance issues detected")
+                print("\n   ✅ No performance issues detected")
             
         except Exception as e:
             print(f"   ❌ Monitoring demo failed: {e}")
@@ -303,7 +309,7 @@ class PerformanceGrpcDemo:
             )
             
             self.optimizer = GrpcOptimizer(config)
-            print(f"   ✅ Optimizer initialized")
+            print("   ✅ Optimizer initialized")
             
             # Simulate performance data
             performance_data = []
@@ -325,13 +331,13 @@ class PerformanceGrpcDemo:
                 'circuit_breaker_threshold': 5
             }
             
-            print(f"   🔍 Analyzing performance data...")
+            print("   🔍 Analyzing performance data...")
             
             # Generate optimizations
             optimizations = self.optimizer.analyze_performance(None, performance_data)
             
             if optimizations:
-                print(f"\n   💡 Optimization Recommendations:")
+                print("\n   💡 Optimization Recommendations:")
                 for i, opt in enumerate(optimizations[:3], 1):  # Show top 3
                     print(f"      {i}. {opt.optimization_type.value.replace('_', ' ').title()}")
                     print(f"         Current: {opt.current_config}")
@@ -342,11 +348,11 @@ class PerformanceGrpcDemo:
                     print(f"         Reasoning: {opt.reasoning}")
                     print()
             else:
-                print(f"   ℹ️  No optimization recommendations generated")
+                print("   ℹ️  No optimization recommendations generated")
             
             # Optimization statistics
             stats = self.optimizer.get_optimization_stats()
-            print(f"   📊 Optimization Statistics:")
+            print("   📊 Optimization Statistics:")
             print(f"      Total optimizations: {stats['total_optimizations']}")
             print(f"      Applied optimizations: {stats['applied_optimizations']}")
             print(f"      Rolled back: {stats['rolled_back_optimizations']}")

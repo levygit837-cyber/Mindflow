@@ -7,7 +7,7 @@ Some modules still import basic tools from `operations.py`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
@@ -42,7 +42,7 @@ class DirectoryListTool(AsyncToolInterface):
             returns={"type": "object", "description": "Directory listing"},
         )
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         raw_path = kwargs["path"]
         try:
             path = _resolve_tool_path(self, raw_path)
@@ -52,7 +52,7 @@ class DirectoryListTool(AsyncToolInterface):
             return {"success": False, "error": f"Not a directory: {path}"}
         return {"success": True, "entries": [p.name for p in path.iterdir()]}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -71,7 +71,7 @@ class FileDeleteTool(AsyncToolInterface):
             returns={"type": "object", "description": "Deletion result"},
         )
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         try:
             if is_read_only_mode(self.sandbox_mode):
                 return {"success": False, "error": "Delete operation blocked in read-only sandbox mode"}
@@ -83,7 +83,7 @@ class FileDeleteTool(AsyncToolInterface):
         path.unlink()
         return {"success": True}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
 
 
@@ -104,7 +104,7 @@ class DirectoryCreateTool(AsyncToolInterface):
             returns={"type": "object", "description": "Create directory result"},
         )
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         try:
             if is_read_only_mode(self.sandbox_mode):
                 return {"success": False, "error": "Create directory blocked in read-only sandbox mode"}
@@ -116,5 +116,5 @@ class DirectoryCreateTool(AsyncToolInterface):
         path.mkdir(parents=parents, exist_ok=exist_ok)
         return {"success": True}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()

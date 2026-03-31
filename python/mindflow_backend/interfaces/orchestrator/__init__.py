@@ -6,13 +6,13 @@ plus core orchestrator, personality management, and delegation contracts.
 """
 
 from mindflow_backend.interfaces.orchestrator.core import OrchestratorCoreContract
-from mindflow_backend.interfaces.orchestrator.tasker import TaskerProtocol
+from mindflow_backend.interfaces.orchestrator.delegation_manager import DelegationManagerContract
+from mindflow_backend.interfaces.orchestrator.personality import PersonalityManagerContract
 from mindflow_backend.interfaces.orchestrator.resolver import ResolverProtocol
 from mindflow_backend.interfaces.orchestrator.scheduler import SchedulerProtocol
 from mindflow_backend.interfaces.orchestrator.scorer import ScorerProtocol
 from mindflow_backend.interfaces.orchestrator.synthesizer import SynthesizerProtocol
-from mindflow_backend.interfaces.orchestrator.personality import PersonalityManagerContract
-from mindflow_backend.interfaces.orchestrator.delegation_manager import DelegationManagerContract
+from mindflow_backend.interfaces.orchestrator.tasker import TaskerProtocol
 
 __all__ = [
     "OrchestratorCoreContract",

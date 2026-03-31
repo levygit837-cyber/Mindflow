@@ -1,28 +1,23 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 from rich.console import Console
+from rich.layout import Layout
+from rich.live import Live
 from rich.panel import Panel
+from rich.rule import Rule
+from rich.spinner import Spinner
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
-from rich.columns import Columns
-from rich.layout import Layout
-from rich.live import Live
-from rich.spinner import Spinner
-from rich.progress import Progress, BarColumn, TextColumn
-from rich.rule import Rule
-from rich.align import Align
-from rich.syntax import Syntax
-from rich.filesize import decimal
 
 from mindflow_backend.schemas.agent import StreamEvent
-from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision, AgentType
+from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorDecision
 from mindflow_cli.render.chat_stream import ChatStreamRenderer
-from mindflow_cli.render.theme import MINDFLOW_THEME
 
 
 class MessageRole(Enum):
@@ -76,7 +71,7 @@ class AgentDelegationInfo:
         self.state = AgentDelegationState.NOT_DELEGATED
         self.start_time = None
         self.end_time = None
-        self.tool_operations: List[ToolOperation] = []
+        self.tool_operations: list[ToolOperation] = []
         self.current_operation: ToolOperation = None
 
 
@@ -108,8 +103,8 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
         self._step_progress = None
         
         # Tool and delegation tracking
-        self._agent_delegations: Dict[str, AgentDelegationInfo] = {}
-        self._tool_operations: List[ToolOperation] = []
+        self._agent_delegations: dict[str, AgentDelegationInfo] = {}
+        self._tool_operations: list[ToolOperation] = []
         self._active_tool_operation: ToolOperation = None
         self._file_changes_live: Live = None
         
@@ -202,7 +197,7 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
         v = getattr(decision, key, None)
         return getattr(v, "value", v) if v is not None and hasattr(v, "value") else str(v) if v else default
 
-    def render_orchestrator_decision(self, decision: OrchestratorDecision | Dict[str, Any]) -> None:
+    def render_orchestrator_decision(self, decision: OrchestratorDecision | dict[str, Any]) -> None:
         """Render orchestrator decision with enhanced central figure visualization."""
         self._ensure_response_line_closed()
         self._current_agent_role = MessageRole.ORCHESTRATOR
@@ -334,7 +329,7 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
         delegation_text.append(f"{prefix} DELEGATED\n\n", style=style)
         delegation_text.append(f"Delegated by: {delegated_by}\n", style="white")
         delegation_text.append(f"Task: {task}\n", style="cyan")
-        delegation_text.append(f"Status: 🔄 Executing\n", style="yellow")
+        delegation_text.append("Status: 🔄 Executing\n", style="yellow")
         delegation_text.append(f"Started: {delegation_info.start_time.strftime('%H:%M:%S')}\n", style="dim")
         
         border_style = "bright_green" if role == MessageRole.CORE_SPECIALIST else "green"
@@ -370,11 +365,11 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
         completion_text.append(f"{prefix} TASK COMPLETE\n\n", style=style)
         
         if success:
-            completion_text.append(f"Status: ✅ Success\n", style="bold green")
+            completion_text.append("Status: ✅ Success\n", style="bold green")
             completion_text.append(f"Execution Time: {execution_time.total_seconds():.2f}s\n", style="white")
             completion_text.append(f"Tool Operations: {len(delegation_info.tool_operations)}\n", style="cyan")
         else:
-            completion_text.append(f"Status: ❌ Failed\n", style="bold red")
+            completion_text.append("Status: ❌ Failed\n", style="bold red")
             completion_text.append(f"Error: {error_message}\n", style="red")
             completion_text.append(f"Execution Time: {execution_time.total_seconds():.2f}s\n", style="white")
         
@@ -572,7 +567,7 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
             padding=(1, 1)
         ))
     
-    def render_tool_operations_summary(self, agent_type: str, operations: List[ToolOperation]) -> None:
+    def render_tool_operations_summary(self, agent_type: str, operations: list[ToolOperation]) -> None:
         """Render a summary of all tool operations performed by an agent."""
         self._ensure_response_line_closed()
         
@@ -868,7 +863,7 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
         }
         return agent_colors.get(agent_type.upper(), "white")
 
-    def _render_notifier(self, kind: str, message: str, details: Dict[str, Any]) -> None:
+    def _render_notifier(self, kind: str, message: str, details: dict[str, Any]) -> None:
         """Render a flexible notifier (kind, message, details). Any info to show in the UI."""
         self._ensure_response_line_closed()
         kind_lower = (kind or "info").lower()
@@ -899,7 +894,7 @@ class OrchestratorStreamRenderer(ChatStreamRenderer):
                 if v is not None and str(v).strip():
                     parts.append(f"{k}={v}")
             if parts:
-                self.console.print(Text(f"      " + " | ".join(parts), style="dim"))
+                self.console.print(Text("      " + " | ".join(parts), style="dim"))
     
     def render(self, event: StreamEvent) -> None:
         """Override render to handle orchestrator-specific events with enhanced UI/UX."""

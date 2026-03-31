@@ -5,8 +5,9 @@ This test demonstrates the core logic without complex dependencies.
 """
 
 import asyncio
+from typing import Any
+
 import httpx
-from typing import Dict, Any
 
 
 class MockPinchTabService:
@@ -18,8 +19,8 @@ class MockPinchTabService:
         # self._client = None  # Single client for all instances
         
         # NEW APPROACH (fixed):
-        self._active_instances: Dict[str, Any] = {}
-        self._instance_clients: Dict[str, httpx.AsyncClient] = {}
+        self._active_instances: dict[str, Any] = {}
+        self._instance_clients: dict[str, httpx.AsyncClient] = {}
     
     async def create_instance_old(self, port: int) -> str:
         """Old buggy approach - single base_url shared across instances."""
@@ -123,7 +124,7 @@ async def test_old_vs_new_approach():
     
     await service_new.cleanup_new()
     
-    print(f"\n📊 RESULTS:")
+    print("\n📊 RESULTS:")
     print(f"   Old approach: {'❌ BROKEN' if all_urls_same else '✅ Works'}")
     print(f"   New approach: {'✅ FIXED' if urls_correct else '❌ Broken'}")
     
@@ -182,7 +183,7 @@ async def main():
     
     success = await test_old_vs_new_approach()
     
-    print(f"\n🎯 CONCLUSION:")
+    print("\n🎯 CONCLUSION:")
     if success:
         print("✅ The fix correctly isolates HTTP clients per browser instance!")
         print("✅ Multi-instance parallel execution will now work properly!")

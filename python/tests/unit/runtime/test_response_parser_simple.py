@@ -2,7 +2,6 @@
 """Simple test for response parser utilities."""
 
 import sys
-import os
 
 # Add the project root to Python path
 sys.path.insert(0, '/home/levybonito/Projetos/MindFlow/python')

@@ -39,8 +39,8 @@ class _FakeProcess:
 @pytest.mark.asyncio
 async def test_shell_tab_service_persists_and_rehydrates_snapshot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import mindflow_backend.services.core.shell_tab_service as module
-    from mindflow_backend.services.core.shell_tab_service import ShellTabService
     from mindflow_backend.schemas.tools.shell_tabs import ShellTabState
+    from mindflow_backend.services.core.shell_tab_service import ShellTabService
 
     fake_runtime_state = _FakeRuntimeStateService()
     monkeypatch.setattr(module, "_get_session_runtime_state_service", lambda: fake_runtime_state, raising=False)
@@ -70,8 +70,8 @@ async def test_shell_tab_service_persists_and_rehydrates_snapshot(monkeypatch: p
 @pytest.mark.asyncio
 async def test_shell_tab_service_persists_exec_updates(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import mindflow_backend.services.core.shell_tab_service as module
-    from mindflow_backend.services.core.shell_tab_service import ShellTabService
     from mindflow_backend.schemas.tools.shell_tabs import ShellTabState
+    from mindflow_backend.services.core.shell_tab_service import ShellTabService
 
     fake_runtime_state = _FakeRuntimeStateService()
     monkeypatch.setattr(module, "_get_session_runtime_state_service", lambda: fake_runtime_state, raising=False)

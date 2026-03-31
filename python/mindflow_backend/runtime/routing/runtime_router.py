@@ -5,6 +5,7 @@ Handles routing logic for orchestrated, direct agent, and legacy execution modes
 """
 
 from typing import Any
+
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.chat.agent import AgentChatRequest
 

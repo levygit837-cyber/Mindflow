@@ -29,7 +29,7 @@ _logger = get_logger(__name__)
 
 _LEGACY_SESSION_ID = "legacy-pinchtab-session"
 _LEGACY_AGENT_ID = "researcher"
-_pinchtab_service: "PinchTabService | None" = None
+_pinchtab_service: PinchTabService | None = None
 
 
 class PinchTabService:

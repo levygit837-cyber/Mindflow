@@ -1,14 +1,12 @@
 """Tests for Session Review Service functionality."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from mindflow_backend.schemas.session_review import (
     ReviewPriority,
-    ReviewTask,
     ReviewTriggerType,
-    SessionReviewConfig,
-    WindowProgressInfo,
     WindowSize,
 )
 from mindflow_backend.services.session_review_service import SessionReviewService

@@ -6,10 +6,10 @@ Manages XMPP connections for agents.
 """
 
 import logging
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+from typing import Any
 
-from ..connection.xmpp_connection import XMPPConnectionManager, XMPPConnectionConfig
+from ..circuit_breaker import circuit_protected
+from ..connection.xmpp_connection import XMPPConnectionConfig, XMPPConnectionManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,14 @@ class XMPPService:
             f"XMPPService initialized with server: {self.config.server}:{self.config.port}"
         )
     
-    async def register_agent(self, username: str, password: str) -> Dict[str, Any]:
+    @circuit_protected(
+        breaker_name="xmpp_register",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "XMPP circuit open"},
+    )
+    async def register_agent(self, username: str, password: str) -> dict[str, Any]:
         """
         Register a new agent on the XMPP server.
         
@@ -61,7 +68,14 @@ class XMPPService:
             logger.error(f"Error registering agent {username}: {e}")
             return {"success": False, "error": str(e)}
     
-    async def connect_agent(self, username: str, password: str) -> Dict[str, Any]:
+    @circuit_protected(
+        breaker_name="xmpp_connect",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "XMPP circuit open"},
+    )
+    async def connect_agent(self, username: str, password: str) -> dict[str, Any]:
         """
         Connect an agent to the XMPP server.
         
@@ -85,6 +99,13 @@ class XMPPService:
             logger.error(f"Error connecting agent {username}: {e}")
             return {"success": False, "error": str(e)}
     
+    @circuit_protected(
+        breaker_name="xmpp_disconnect",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return=False,
+    )
     async def disconnect_agent(self, username: str) -> bool:
         """
         Disconnect an agent from the XMPP server.
@@ -106,13 +127,20 @@ class XMPPService:
             logger.error(f"Error disconnecting agent {username}: {e}")
             return False
     
+    @circuit_protected(
+        breaker_name="xmpp_send_message",
+        failure_threshold=5,
+        recovery_timeout=30,
+        success_threshold=3,
+        fallback_return={"success": False, "error": "XMPP circuit open"},
+    )
     async def send_message(
         self,
         from_username: str,
         to_username: str,
         content: str,
         urgency: str = "MEDIUM"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a message between agents.
         
@@ -143,7 +171,7 @@ class XMPPService:
             logger.error(f"Error sending message: {e}")
             return {"success": False, "error": str(e)}
     
-    def get_connected_agents(self) -> List[str]:
+    def get_connected_agents(self) -> list[str]:
         """Get list of connected agents."""
         return self.connection_manager.get_connected_agents()
     
@@ -151,11 +179,11 @@ class XMPPService:
         """Check if an agent is connected."""
         return self.connection_manager.is_agent_connected(username)
     
-    def get_agent_jid(self, username: str) -> Optional[str]:
+    def get_agent_jid(self, username: str) -> str | None:
         """Get JID for an agent."""
         return self.connection_manager.get_agent_jid(username)
     
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         """Get service configuration."""
         return {
             "server": self.config.server,

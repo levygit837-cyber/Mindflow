@@ -8,9 +8,9 @@ Use: from mindflow_backend.services import get_agent_service, get_session_servic
 
 # Legacy compatibility aliases - import from centralized locations
 from mindflow_backend.api.services.agent_service import AgentService
-from mindflow_backend.api.services.session_service import SessionService
-from mindflow_backend.api.services.provider_service import ProviderService
 from mindflow_backend.api.services.orchestration_service import OrchestrationService
+from mindflow_backend.api.services.provider_service import ProviderService
+from mindflow_backend.api.services.session_service import SessionService
 
 __all__ = [
     "AgentService",

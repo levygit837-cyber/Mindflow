@@ -7,18 +7,19 @@ and transaction coordination for complex operations.
 from __future__ import annotations
 
 import asyncio
+import uuid
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import AsyncGenerator, Dict, Any, List, Optional, Callable
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
-import uuid
+from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.database.connection import get_db_session
+from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
 
@@ -45,12 +46,12 @@ class TransactionMetrics:
     """Metrics for transaction monitoring."""
     transaction_id: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     state: TransactionState = TransactionState.PENDING
     isolation_level: TransactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED
     operations_count: int = 0
-    rollback_reason: Optional[str] = None
-    error: Optional[Exception] = None
+    rollback_reason: str | None = None
+    error: Exception | None = None
     
     @property
     def duration_ms(self) -> float:
@@ -73,14 +74,14 @@ class TransactionManager:
     
     def __init__(self) -> None:
         """Initialize transaction manager."""
-        self._active_transactions: Dict[str, TransactionMetrics] = {}
+        self._active_transactions: dict[str, TransactionMetrics] = {}
         self._transaction_lock = asyncio.Lock()
         
     @asynccontextmanager
     async def transaction(
         self,
         isolation_level: TransactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED,
-        rollback_for: Optional[List[type]] = None,
+        rollback_for: list[type] | None = None,
         retry_count: int = 0,
     ) -> AsyncGenerator[AsyncSession, None]:
         """Execute database transaction with advanced management.
@@ -194,7 +195,7 @@ class TransactionManager:
                 self._active_transactions.pop(transaction_id, None)
                 
     @asynccontextmanager
-    async def savepoint(self, session: AsyncSession, name: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def savepoint(self, session: AsyncSession, name: str | None = None) -> AsyncGenerator[str, None]:
         """Create and manage transaction savepoint.
         
         Args:
@@ -229,10 +230,10 @@ class TransactionManager:
             
     async def execute_in_transaction(
         self,
-        operations: List[Callable[[AsyncSession], Any]],
+        operations: list[Callable[[AsyncSession], Any]],
         isolation_level: TransactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED,
-        rollback_for: Optional[List[type]] = None,
-    ) -> List[Any]:
+        rollback_for: list[type] | None = None,
+    ) -> list[Any]:
         """Execute multiple operations in a single transaction.
         
         Args:
@@ -271,7 +272,7 @@ class TransactionManager:
                     
         return results
         
-    async def get_transaction_metrics(self, transaction_id: str) -> Optional[TransactionMetrics]:
+    async def get_transaction_metrics(self, transaction_id: str) -> TransactionMetrics | None:
         """Get metrics for a specific transaction.
         
         Args:
@@ -283,7 +284,7 @@ class TransactionManager:
         async with self._transaction_lock:
             return self._active_transactions.get(transaction_id)
             
-    async def get_all_active_transactions(self) -> Dict[str, TransactionMetrics]:
+    async def get_all_active_transactions(self) -> dict[str, TransactionMetrics]:
         """Get all currently active transactions.
         
         Returns:
@@ -323,7 +324,7 @@ class TransactionManager:
             
         return cleaned_count
         
-    async def _get_current_transaction_id(self, session: AsyncSession) -> Optional[str]:
+    async def _get_current_transaction_id(self, session: AsyncSession) -> str | None:
         """Get transaction ID for current session.
         
         Args:
@@ -342,7 +343,7 @@ class TransactionManager:
 
 
 # Global transaction manager instance
-_transaction_manager: Optional[TransactionManager] = None
+_transaction_manager: TransactionManager | None = None
 
 
 def get_transaction_manager() -> TransactionManager:
@@ -357,7 +358,7 @@ def get_transaction_manager() -> TransactionManager:
 @asynccontextmanager
 async def transaction(
     isolation_level: TransactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED,
-    rollback_for: Optional[List[type]] = None,
+    rollback_for: list[type] | None = None,
 ) -> AsyncGenerator[AsyncSession, None]:
     """Convenience function for transaction management.
     
@@ -377,7 +378,7 @@ async def transaction(
 
 
 @asynccontextmanager
-async def savepoint(session: AsyncSession, name: Optional[str] = None) -> AsyncGenerator[str, None]:
+async def savepoint(session: AsyncSession, name: str | None = None) -> AsyncGenerator[str, None]:
     """Convenience function for savepoint management.
     
     Args:

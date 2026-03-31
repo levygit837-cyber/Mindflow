@@ -6,10 +6,11 @@ to ensure loose coupling and testability.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable, Any
+from typing import Any, Protocol, runtime_checkable
+
+from mindflow_backend.schemas.orchestration.specialists import SpecialistDecisionResult
 from mindflow_backend.schemas.session.contracts import RetrievedContext
 from mindflow_backend.schemas.session.review import ReviewExecutionContext
-from mindflow_backend.schemas.orchestration.specialists import SpecialistDecisionResult
 
 
 @runtime_checkable

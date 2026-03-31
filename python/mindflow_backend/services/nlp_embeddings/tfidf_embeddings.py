@@ -6,10 +6,9 @@ vectorization with optional BM25 scoring.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-import math
 import asyncio
-from collections import Counter, defaultdict
+import math
+from collections import Counter
 
 try:
     import numpy as np
@@ -20,7 +19,8 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 from mindflow_backend.infra.logging import get_logger
-from .nlp_embedding_service import EmbeddingConfig, BaseEmbeddingGenerator
+
+from .nlp_embedding_service import BaseEmbeddingGenerator, EmbeddingConfig
 
 _logger = get_logger(__name__)
 
@@ -35,9 +35,9 @@ class BM25EmbeddingGenerator(BaseEmbeddingGenerator):
             config: Embedding configuration.
         """
         self.config = config
-        self.doc_freqs: List[Counter] = []
-        self.idf: Optional[dict] = None
-        self.doc_len: List[int] = []
+        self.doc_freqs: list[Counter] = []
+        self.idf: dict | None = None
+        self.doc_len: list[int] = []
         self.avg_doc_len: float = 0
         self.corpus_size: int = 0
         self.k1 = config.kwargs.get('k1', 1.2)
@@ -45,7 +45,7 @@ class BM25EmbeddingGenerator(BaseEmbeddingGenerator):
         self.epsilon = config.kwargs.get('epsilon', 0.25)
         self.is_fitted = False
     
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization.
         
         Args:
@@ -59,7 +59,7 @@ class BM25EmbeddingGenerator(BaseEmbeddingGenerator):
         tokens = re.findall(r'\b\w+\b', text.lower())
         return tokens
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit BM25 model on corpus.
         
         Args:
@@ -88,7 +88,7 @@ class BM25EmbeddingGenerator(BaseEmbeddingGenerator):
         self.is_fitted = True
         _logger.info(f"BM25 fitted on {len(texts)} documents with {len(self.idf)} unique terms")
     
-    def _get_score(self, doc_freq: Counter, query_tokens: List[str]) -> float:
+    def _get_score(self, doc_freq: Counter, query_tokens: list[str]) -> float:
         """Calculate BM25 score for document.
         
         Args:
@@ -113,7 +113,7 @@ class BM25EmbeddingGenerator(BaseEmbeddingGenerator):
         
         return score
     
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate BM25-based embeddings.
         
         Args:
@@ -158,7 +158,7 @@ class BM25EmbeddingGenerator(BaseEmbeddingGenerator):
             raise RuntimeError("Model not fitted")
         return len(self.idf)
     
-    async def similarity(self, query: List[float], candidates: List[List[float]]) -> List[float]:
+    async def similarity(self, query: list[float], candidates: list[list[float]]) -> list[float]:
         """Calculate similarity using BM25 scoring.
         
         Args:
@@ -196,7 +196,7 @@ class AdvancedTfidfEmbeddingGenerator(BaseEmbeddingGenerator):
             raise ImportError("scikit-learn is required for advanced TF-IDF embeddings")
         
         self.config = config
-        self.vectorizer: Optional[TfidfVectorizer] = None
+        self.vectorizer: TfidfVectorizer | None = None
         self.is_fitted = False
         
         # Additional features
@@ -206,7 +206,7 @@ class AdvancedTfidfEmbeddingGenerator(BaseEmbeddingGenerator):
         self.min_df = config.min_df
         self.max_df = config.max_df
     
-    async def fit(self, texts: List[str]) -> None:
+    async def fit(self, texts: list[str]) -> None:
         """Fit advanced TF-IDF vectorizer.
         
         Args:
@@ -278,7 +278,7 @@ class AdvancedTfidfEmbeddingGenerator(BaseEmbeddingGenerator):
         self.is_fitted = True
         _logger.info(f"Advanced TF-IDF fitted on {len(texts)} texts")
     
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate advanced TF-IDF embeddings.
         
         Args:
@@ -353,7 +353,7 @@ class AdvancedTfidfEmbeddingGenerator(BaseEmbeddingGenerator):
         else:
             return len(self.vectorizer.vocabulary_)
     
-    async def similarity(self, query: List[float], candidates: List[List[float]]) -> List[float]:
+    async def similarity(self, query: list[float], candidates: list[list[float]]) -> list[float]:
         """Calculate cosine similarity.
         
         Args:

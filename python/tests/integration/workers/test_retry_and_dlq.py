@@ -8,7 +8,12 @@ import pytest
 
 from mindflow_backend.infra.config.settings import Settings
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
-from mindflow_backend.workers.config.queues import QueueConfig, QueueDefinitions, QueuePriority, WorkerDomain
+from mindflow_backend.workers.config.queues import (
+    QueueConfig,
+    QueueDefinitions,
+    QueuePriority,
+    WorkerDomain,
+)
 from mindflow_backend.workers.infrastructure.queue_manager import QueueManager
 from mindflow_backend.workers.research.schemas.content_tasks import (
     build_content_synthesis_envelope,

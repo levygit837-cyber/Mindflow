@@ -7,12 +7,14 @@ performance-based tuning, and comprehensive monitoring integration.
 from __future__ import annotations
 
 import asyncio
-import time
 import threading
-from typing import Dict, Any, Optional, List, Callable
+import time
+from collections.abc import Callable
+from typing import Any
 
 from mindflow_backend.grpc.resilience.circuit_breaker import (
-    CircuitState, CallResult, CircuitBreakerOpenError
+    CircuitBreakerOpenError,
+    CircuitState,
 )
 from mindflow_backend.infra.logging import get_logger
 
@@ -25,7 +27,7 @@ _logger = get_logger(__name__)
 class EnhancedGrpcCircuitBreaker:
     """Enhanced circuit breaker with adaptive thresholds and advanced metrics."""
     
-    def __init__(self, name: str, config: Optional[EnhancedCircuitBreakerConfig] = None):
+    def __init__(self, name: str, config: EnhancedCircuitBreakerConfig | None = None):
         self.name = name
         self.config = config or EnhancedCircuitBreakerConfig()
         
@@ -45,7 +47,7 @@ class EnhancedGrpcCircuitBreaker:
         self._metrics_lock = threading.Lock()
         
         # Background tasks
-        self._background_tasks: List[asyncio.Task] = []
+        self._background_tasks: list[asyncio.Task] = []
         self._running = False
         
         # Performance tracking
@@ -85,7 +87,7 @@ class EnhancedGrpcCircuitBreaker:
             
             return result
             
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             duration = time.time() - start_time
             self._record_failure(duration, exc)
             raise
@@ -380,7 +382,7 @@ class EnhancedGrpcCircuitBreaker:
             success_count=self._success_count
         )
     
-    def _trigger_state_change_callbacks(self, event_type: str, data: Dict[str, Any]) -> None:
+    def _trigger_state_change_callbacks(self, event_type: str, data: dict[str, Any]) -> None:
         """Trigger state change callbacks."""
         for callback in self.config.state_change_callbacks:
             try:
@@ -414,7 +416,7 @@ class EnhancedGrpcCircuitBreaker:
             except Exception as e:
                 _logger.error("config_update_loop_error", error=str(e))
     
-    def get_enhanced_metrics(self) -> Dict[str, Any]:
+    def get_enhanced_metrics(self) -> dict[str, Any]:
         """Get comprehensive circuit breaker metrics."""
         with self._metrics_lock:
             base_metrics = {

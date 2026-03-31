@@ -1,17 +1,17 @@
 """Test gRPC server functionality."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 from mindflow_backend.grpc.server import (
     EnhancedGrpcAgentServer,
     GrpcAgentServer,
-    get_server,
     get_grpc_server,
+    get_server,
     start_grpc_server,
     stop_grpc_server,
 )
-
 
 # ── Task 1: public compatibility surface ──────────────────────────────────────
 

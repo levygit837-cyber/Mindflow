@@ -7,7 +7,7 @@ memory/shared/retrieval/semantic.py (pgvector-based).
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -34,7 +34,7 @@ class SemanticRetriever:
         query: str,
         top_k: int = 5,
         min_score: float = 0.3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for semantically similar context via the shared SemanticRetriever."""
         try:
             from mindflow_backend.memory.shared.retrieval.semantic import (
@@ -53,8 +53,8 @@ class SemanticRetriever:
 
     def calculate_relevance_score(
         self,
-        query_embedding: List[float],
-        candidate_embedding: List[float],
+        query_embedding: list[float],
+        candidate_embedding: list[float],
     ) -> float:
         """Calculate cosine similarity between two embeddings."""
         return _cosine_similarity(query_embedding, candidate_embedding)

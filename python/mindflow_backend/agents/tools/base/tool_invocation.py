@@ -15,9 +15,10 @@ This module is imported by ``graphs/implementations/orchestrator/simple_flow.py`
 
 from __future__ import annotations
 
-import json
 import copy
-from typing import Any, Awaitable, Callable
+import json
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 
@@ -254,6 +255,7 @@ async def stream_with_tools(
         The complete final text response.
     """
     from langchain_core.messages import ToolMessage
+
     from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 
     tools_by_name: dict[str, Any] = {t.name: t for t in lc_tools}

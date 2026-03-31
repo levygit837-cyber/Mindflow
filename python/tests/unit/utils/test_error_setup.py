@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi import FastAPI
 
 from mindflow_backend.utils.error_setup import (
+    create_error_handling_config,
+    setup_comprehensive_error_handling,
     setup_fastapi_error_handling,
     setup_grpc_error_handling,
-    setup_comprehensive_error_handling,
-    create_error_handling_config,
 )
 
 

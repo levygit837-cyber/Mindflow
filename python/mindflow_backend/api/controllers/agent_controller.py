@@ -4,21 +4,28 @@ from __future__ import annotations
 
 import inspect
 from typing import Any
-from fastapi import HTTPException, Request, Depends
+
+from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from mindflow_backend.api.controllers.base_controller import BaseController, require_auth, sanitize_input, rate_limit, audit_log
-from mindflow_backend.api.schemas.requests import AgentChatRequest
-from mindflow_backend.api.schemas.responses import AgentResponse
-from mindflow_backend.services import get_agent_service
+from mindflow_backend.api.controllers.base_controller import (
+    BaseController,
+    audit_log,
+    rate_limit,
+    require_auth,
+    sanitize_input,
+)
 from mindflow_backend.grpc.factory import get_runtime_client
-from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
+from mindflow_backend.infra.sanitizer import SanitizationError
+from mindflow_backend.schemas.api.requests import AgentChatRequest
+from mindflow_backend.schemas.api.responses import AgentResponse
 from mindflow_backend.schemas.chat.agent import (
     AgentExecutionMessageRequest,
     AgentExecutionResponse,
     StreamEvent,
     StreamEventMeta,
 )
+from mindflow_backend.services import get_agent_service
 
 # ── Module-level client access ────────────────────────────────────────────────
 # Use the transport factory so the active transport mode is respected.
@@ -71,6 +78,7 @@ class AgentController(BaseController):
                 """Generate streaming events."""
                 import asyncio
                 import json
+
                 from mindflow_backend.utils.formatting import format_sse
                 try:
                     async for event in grpc_client.stream_chat(

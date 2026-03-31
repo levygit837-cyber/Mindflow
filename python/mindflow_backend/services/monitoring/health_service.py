@@ -6,9 +6,9 @@ service health monitoring, database connectivity checks, and system diagnostics.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime, UTC, timedelta
-import asyncio
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import psutil
 
 from mindflow_backend.infra.logging import get_logger
@@ -28,12 +28,12 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         super().__init__()
         
         # Health check registry
-        self._health_checks: Dict[str, callable] = {}
-        self._health_history: List[Dict[str, Any]] = []
+        self._health_checks: dict[str, callable] = {}
+        self._health_history: list[dict[str, Any]] = []
         self._max_history_size = 1000
         
         # Service status cache
-        self._service_status: Dict[str, Dict[str, Any]] = {}
+        self._service_status: dict[str, dict[str, Any]] = {}
         self._status_cache_ttl = 60  # 1 minute
         
         # System metrics
@@ -47,7 +47,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         """Get logger instance for this service."""
         return get_logger(__name__)
     
-    async def check_service_health(self, service_name: str) -> Dict[str, Any]:
+    async def check_service_health(self, service_name: str) -> dict[str, Any]:
         """Check health of a specific service.
         
         Args:
@@ -89,7 +89,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                 "details": {"error_type": type(exc).__name__}
             }
     
-    async def check_system_health(self) -> Dict[str, Any]:
+    async def check_system_health(self) -> dict[str, Any]:
         """Check overall system health including resources and services.
         
         Returns:
@@ -146,7 +146,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                 "details": {"error_type": type(exc).__name__}
             }
     
-    async def check_database_health(self) -> Dict[str, Any]:
+    async def check_database_health(self) -> dict[str, Any]:
         """Check database connectivity and performance.
         
         Returns:
@@ -204,7 +204,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                 "checked_at": datetime.now(UTC).isoformat()
             }
     
-    async def check_external_service_health(self, service_url: str) -> Dict[str, Any]:
+    async def check_external_service_health(self, service_url: str) -> dict[str, Any]:
         """Check health of external service via HTTP request.
         
         Args:
@@ -216,8 +216,8 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         self.log_operation("check_external_service_health", service_url=service_url)
         
         try:
+
             import aiohttp
-            import asyncio
             
             timeout = aiohttp.ClientTimeout(total=10)
             
@@ -239,7 +239,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                             "content_length": len(await response.text())
                         }
                         
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     return {
                         "service_url": service_url,
                         "status": "timeout",
@@ -257,7 +257,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                 "checked_at": datetime.now(UTC).isoformat()
             }
     
-    async def get_health_metrics(self) -> Dict[str, Any]:
+    async def get_health_metrics(self) -> dict[str, Any]:
         """Get comprehensive health metrics.
         
         Returns:
@@ -322,7 +322,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         check_name: str,
         check_function: callable,
         interval: int = 60
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Register a custom health check function.
         
         Args:
@@ -356,9 +356,9 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
     
     async def get_health_history(
         self,
-        service_name: Optional[str] = None,
-        time_range: Optional[Tuple[str, str]] = None
-    ) -> List[Dict[str, Any]]:
+        service_name: str | None = None,
+        time_range: Tuple[str, str] | None = None
+    ) -> list[dict[str, Any]]:
         """Get health check history with optional filtering.
         
         Args:
@@ -401,7 +401,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
     
     # Helper methods
     
-    async def _check_system_resources(self) -> Dict[str, Any]:
+    async def _check_system_resources(self) -> dict[str, Any]:
         """Check system resource usage."""
         try:
             # CPU usage
@@ -454,7 +454,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
                 "checked_at": datetime.now(UTC).isoformat()
             }
     
-    async def _check_all_services(self) -> List[Dict[str, Any]]:
+    async def _check_all_services(self) -> list[dict[str, Any]]:
         """Check health of all registered services."""
         service_results = []
         
@@ -464,7 +464,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         
         return service_results
     
-    async def _default_service_health_check(self, service_name: str) -> Dict[str, Any]:
+    async def _default_service_health_check(self, service_name: str) -> dict[str, Any]:
         """Default health check for unregistered services."""
         # Check if service is importable and has expected methods
         try:
@@ -487,14 +487,14 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         except Exception as exc:
             return {"healthy": False, "error": str(exc), "response_time_ms": 0}
     
-    def _cache_service_status(self, service_name: str, result: Dict[str, Any]) -> None:
+    def _cache_service_status(self, service_name: str, result: dict[str, Any]) -> None:
         """Cache service status result."""
         self._service_status[service_name] = {
             **result,
             "cached_at": datetime.now(UTC).isoformat()
         }
     
-    def _identify_critical_issues(self, system_status: Dict[str, Any], service_results: List[Dict[str, Any]], database_status: Dict[str, Any]) -> List[str]:
+    def _identify_critical_issues(self, system_status: dict[str, Any], service_results: list[dict[str, Any]], database_status: dict[str, Any]) -> list[str]:
         """Identify critical issues from health check results."""
         issues = []
         
@@ -518,7 +518,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         
         return issues
     
-    def _store_health_result(self, result: Dict[str, Any]) -> None:
+    def _store_health_result(self, result: dict[str, Any]) -> None:
         """Store health check result in history."""
         self._health_history.append(result)
         
@@ -526,7 +526,7 @@ class HealthService(BaseAbstractService, HealthServiceInterface):
         if len(self._health_history) > self._max_history_size:
             self._health_history = self._health_history[-self._max_history_size:]
     
-    def _get_most_common_issues(self) -> List[str]:
+    def _get_most_common_issues(self) -> list[str]:
         """Get most common issues from health history."""
         issue_counts = {}
         

@@ -7,16 +7,16 @@ meaningful information from session data.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 from uuid import uuid4
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from mindflow_backend.agents.core.interfaces import ContentAnalyzer
+from mindflow_backend.config.agents import get_agent_config
 from mindflow_backend.exceptions import ContentAnalysisError
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.providers import get_model_for_provider
-from mindflow_backend.config.agents import get_agent_config
 
 _logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class SessionContentAnalyzer(ContentAnalyzer):
                 window_range=getattr(context, 'window_range', None)
             )
     
-    def _prepare_analysis_messages(self, context: Any) -> List[BaseMessage]:
+    def _prepare_analysis_messages(self, context: Any) -> list[BaseMessage]:
         """Prepare messages for LLM analysis."""
         system_prompt = self._build_system_prompt()
         
@@ -170,7 +170,7 @@ class ContextExtractor:
             r"Dependencies\s+Identified:\s*(.+?)(?=\n\n|\n[A-Z]|$)",
         ]
     
-    def extract_actions(self, content: str) -> List[Dict[str, Any]]:
+    def extract_actions(self, content: str) -> list[dict[str, Any]]:
         """Extract action information from analyzed content."""
         actions = []
         
@@ -196,7 +196,7 @@ class ContextExtractor:
         
         return actions
     
-    def extract_insights(self, content: str) -> List[Dict[str, Any]]:
+    def extract_insights(self, content: str) -> list[dict[str, Any]]:
         """Extract insight information from analyzed content."""
         insights = []
         
@@ -216,7 +216,7 @@ class ContextExtractor:
         
         return insights
     
-    def extract_decisions(self, content: str) -> List[Dict[str, Any]]:
+    def extract_decisions(self, content: str) -> list[dict[str, Any]]:
         """Extract decision information from analyzed content."""
         decisions = []
         
@@ -235,7 +235,7 @@ class ContextExtractor:
         
         return decisions
     
-    def extract_dependencies(self, content: str) -> List[Dict[str, Any]]:
+    def extract_dependencies(self, content: str) -> list[dict[str, Any]]:
         """Extract dependency information from analyzed content."""
         dependencies = []
         
@@ -254,7 +254,7 @@ class ContextExtractor:
         
         return dependencies
     
-    def _extract_files_from_text(self, text: str) -> List[str]:
+    def _extract_files_from_text(self, text: str) -> list[str]:
         """Extract file paths from text."""
         file_patterns = [
             r"`([^`]+\.\w{2,5})`",  # Code blocks
@@ -270,7 +270,7 @@ class ContextExtractor:
         
         return list(files)
     
-    def _extract_commands_from_text(self, text: str) -> List[str]:
+    def _extract_commands_from_text(self, text: str) -> list[str]:
         """Extract command executions from text."""
         command_patterns = [
             r"`([^`]*(?:git|npm|pip|python|node|docker|kubectl)\s+[^`]+)`",
@@ -320,7 +320,7 @@ class ContextExtractor:
         
         return min(score, 1.0)
     
-    def _extract_evidence_from_text(self, insight_text: str, full_text: str) -> List[str]:
+    def _extract_evidence_from_text(self, insight_text: str, full_text: str) -> list[str]:
         """Extract supporting evidence for insight."""
         evidence = []
         sentences = full_text.split('.')
@@ -339,7 +339,7 @@ class ContextExtractor:
         patterns = [
             rf"because\s+(.+?){decision_text}",
             rf"{decision_text}.+?reason:.+?(\.+)",
-            rf"rationale:\s*(.+?)(?=\n|$)",
+            r"rationale:\s*(.+?)(?=\n|$)",
         ]
         
         for pattern in patterns:

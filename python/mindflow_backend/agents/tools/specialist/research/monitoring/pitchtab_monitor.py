@@ -7,13 +7,9 @@ with automatic recovery and resource management.
 from __future__ import annotations
 
 import asyncio
-import signal
-import subprocess
-from typing import Dict, List, Optional
 
-from mindflow_backend.utils.network import get_port_manager
-from mindflow_backend.utils.monitoring import get_health_manager
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.utils.network import get_port_manager
 
 _logger = get_logger(__name__)
 
@@ -25,16 +21,16 @@ class PitchTabMonitor:
         """Initialize PitchTab monitor."""
         self.port_manager = get_port_manager()
         self.health_checker = get_health_checker()
-        self._instances: Dict[str, Dict[str, any]] = {}
-        self._recovery_task: Optional[asyncio.Task] = None
+        self._instances: dict[str, dict[str, any]] = {}
+        self._recovery_task: asyncio.Task | None = None
         
     async def start_instance(
         self,
         instance_id: str,
         headless: bool = True,
         stealth: bool = True,
-        preferred_port: Optional[int] = None,
-    ) -> Dict[str, any]:
+        preferred_port: int | None = None,
+    ) -> dict[str, any]:
         """Start a new PitchTab instance with monitoring.
         
         Args:
@@ -141,7 +137,7 @@ class PitchTabMonitor:
                 process.terminate()
                 try:
                     await asyncio.wait_for(process.wait(), timeout=10)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Force kill if graceful shutdown fails
                     process.kill()
                     await process.wait()
@@ -203,7 +199,7 @@ class PitchTabMonitor:
         except Exception:
             return False
             
-    async def get_instance_health(self, instance_id: str) -> Optional[Dict[str, any]]:
+    async def get_instance_health(self, instance_id: str) -> dict[str, any] | None:
         """Get health status for a specific instance.
         
         Args:
@@ -221,7 +217,7 @@ class PitchTabMonitor:
         
         return instance_info
         
-    async def get_all_instances(self) -> List[Dict[str, any]]:
+    async def get_all_instances(self) -> list[dict[str, any]]:
         """Get status of all PitchTab instances.
         
         Returns:
@@ -338,7 +334,7 @@ class PitchTabMonitor:
         except Exception as exc:
             _logger.error("orphan_scan_failed", error=str(exc))
             
-    def get_monitoring_status(self) -> Dict[str, any]:
+    def get_monitoring_status(self) -> dict[str, any]:
         """Get overall monitoring status.
         
         Returns:

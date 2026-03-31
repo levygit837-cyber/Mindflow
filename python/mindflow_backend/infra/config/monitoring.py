@@ -6,8 +6,9 @@ health checks, alerting, and observability settings.
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, List
-from pydantic import field_validator,  Field, validator
+from typing import Any
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -54,10 +55,10 @@ class MonitoringConfig(BaseSettings):
     
     # Alerting Configuration
     alerting_enabled: bool = Field(default=True, description="Enable alerting")
-    alert_webhook_url: Optional[str] = Field(default=None, description="Alert webhook URL")
-    alert_email_recipients: List[str] = Field(default_factory=list, description="Alert email recipients")
-    alert_slack_webhook: Optional[str] = Field(default=None, description="Slack webhook URL")
-    alert_discord_webhook: Optional[str] = Field(default=None, description="Discord webhook URL")
+    alert_webhook_url: str | None = Field(default=None, description="Alert webhook URL")
+    alert_email_recipients: list[str] = Field(default_factory=list, description="Alert email recipients")
+    alert_slack_webhook: str | None = Field(default=None, description="Slack webhook URL")
+    alert_discord_webhook: str | None = Field(default=None, description="Discord webhook URL")
     
     # Alert Thresholds
     alert_cpu_threshold: float = Field(default=80.0, description="CPU usage alert threshold (%)")
@@ -70,13 +71,13 @@ class MonitoringConfig(BaseSettings):
     tracing_enabled: bool = Field(default=True, description="Enable distributed tracing")
     tracing_sample_rate: float = Field(default=1.0, description="Tracing sample rate (0.0-1.0)")
     tracing_service_name: str = Field(default="mindflow-backend", description="Tracing service name")
-    tracing_endpoint: Optional[str] = Field(default=None, description="Tracing collector endpoint")
+    tracing_endpoint: str | None = Field(default=None, description="Tracing collector endpoint")
     
     # OpenTelemetry Configuration
     otel_enabled: bool = Field(default=False, description="Enable OpenTelemetry")
     otel_exporter: str = Field(default="otlp", description="OpenTelemetry exporter type")
-    otel_endpoint: Optional[str] = Field(default=None, description="OpenTelemetry endpoint")
-    otel_headers: Optional[str] = Field(default=None, description="OpenTelemetry headers")
+    otel_endpoint: str | None = Field(default=None, description="OpenTelemetry endpoint")
+    otel_headers: str | None = Field(default=None, description="OpenTelemetry headers")
     
     # Performance Monitoring Configuration
     performance_monitoring_enabled: bool = Field(default=True, description="Enable performance monitoring")
@@ -101,7 +102,7 @@ class MonitoringConfig(BaseSettings):
     # Dashboard Configuration
     dashboard_enabled: bool = Field(default=True, description="Enable dashboard")
     dashboard_refresh_interval: int = Field(default=30, description="Dashboard refresh interval in seconds")
-    dashboard_url: Optional[str] = Field(default=None, description="Dashboard URL")
+    dashboard_url: str | None = Field(default=None, description="Dashboard URL")
     
     # Logging Configuration for Monitoring
     enable_monitoring_logs: bool = Field(default=True, description="Enable monitoring logs")
@@ -121,7 +122,7 @@ class MonitoringConfig(BaseSettings):
     export_enabled: bool = Field(default=False, description="Enable metrics export")
     export_format: str = Field(default="json", description="Export format (json, csv, prometheus)")
     export_interval: int = Field(default=3600, description="Export interval in seconds")
-    export_path: Optional[str] = Field(default=None, description="Export file path")
+    export_path: str | None = Field(default=None, description="Export file path")
 
     @field_validator("tracing_sample_rate")
     def validate_tracing_sample_rate(cls, v: float) -> float:
@@ -175,7 +176,7 @@ class MonitoringConfig(BaseSettings):
             raise ValueError("Anomaly threshold must be positive")
         return v
 
-    def get_metrics_config(self) -> Dict[str, Any]:
+    def get_metrics_config(self) -> dict[str, Any]:
         """Get metrics configuration.
         
         Returns:
@@ -194,7 +195,7 @@ class MonitoringConfig(BaseSettings):
             },
         }
 
-    def get_health_check_config(self) -> Dict[str, Any]:
+    def get_health_check_config(self) -> dict[str, Any]:
         """Get health check configuration.
         
         Returns:
@@ -214,7 +215,7 @@ class MonitoringConfig(BaseSettings):
             },
         }
 
-    def get_alerting_config(self) -> Dict[str, Any]:
+    def get_alerting_config(self) -> dict[str, Any]:
         """Get alerting configuration.
         
         Returns:
@@ -235,7 +236,7 @@ class MonitoringConfig(BaseSettings):
             },
         }
 
-    def get_tracing_config(self) -> Dict[str, Any]:
+    def get_tracing_config(self) -> dict[str, Any]:
         """Get tracing configuration.
         
         Returns:
@@ -254,7 +255,7 @@ class MonitoringConfig(BaseSettings):
             },
         }
 
-    def get_performance_config(self) -> Dict[str, Any]:
+    def get_performance_config(self) -> dict[str, Any]:
         """Get performance monitoring configuration.
         
         Returns:
@@ -267,7 +268,7 @@ class MonitoringConfig(BaseSettings):
             "enable_profiling": self.enable_profiling,
         }
 
-    def get_resource_config(self) -> Dict[str, Any]:
+    def get_resource_config(self) -> dict[str, Any]:
         """Get resource monitoring configuration.
         
         Returns:
@@ -284,7 +285,7 @@ class MonitoringConfig(BaseSettings):
             },
         }
 
-    def get_app_metrics_config(self) -> Dict[str, Any]:
+    def get_app_metrics_config(self) -> dict[str, Any]:
         """Get application metrics configuration.
         
         Returns:
@@ -301,7 +302,7 @@ class MonitoringConfig(BaseSettings):
             },
         }
 
-    def get_anomaly_detection_config(self) -> Dict[str, Any]:
+    def get_anomaly_detection_config(self) -> dict[str, Any]:
         """Get anomaly detection configuration.
         
         Returns:
@@ -313,7 +314,7 @@ class MonitoringConfig(BaseSettings):
             "threshold": self.anomaly_threshold,
         }
 
-    def get_export_config(self) -> Dict[str, Any]:
+    def get_export_config(self) -> dict[str, Any]:
         """Get export configuration.
         
         Returns:

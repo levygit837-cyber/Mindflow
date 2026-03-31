@@ -4,16 +4,15 @@ untrusted code with comprehensive security controls and resource limits.
 """
 
 from __future__ import annotations
-import asyncio
-import subprocess
-import tempfile
-import os
-import signal
-from typing import Any, Dict, List, Optional, Union
-from pathlib import Path
 
-from mindflow_backend.infra.logging import get_logger
+import asyncio
+import os
+import tempfile
+from pathlib import Path
+from typing import Any
+
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.system_schemas import SANDBOX_SCHEMA
 
 _logger = get_logger(__name__)
@@ -45,7 +44,7 @@ class SandboxTool(AsyncToolInterface):
 
         self._schema = SANDBOX_SCHEMA
 
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute code in sandbox environment.
         Args:
@@ -98,7 +97,7 @@ class SandboxTool(AsyncToolInterface):
                 error=f"Sandbox execution error: {str(e)}"
             )
 
-    def _validate_code(self, code: str, language: str) -> Dict[str, Any]:
+    def _validate_code(self, code: str, language: str) -> dict[str, Any]:
         """
         Validate code for security restrictions.
         Args:
@@ -166,7 +165,7 @@ class SandboxTool(AsyncToolInterface):
 
         return code_file
 
-    def _get_execution_command(self, language: str, code_file: Path, working_dir: Path) -> List[str]:
+    def _get_execution_command(self, language: str, code_file: Path, working_dir: Path) -> list[str]:
         """
         Get execution command for language.
         Args:
@@ -193,11 +192,11 @@ class SandboxTool(AsyncToolInterface):
 
     async def _execute_in_sandbox(
         self,
-        command: List[str],
+        command: list[str],
         timeout: int,
-        environment_vars: Dict[str, str],
+        environment_vars: dict[str, str],
         temp_dir: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute command in sandbox environment.
         Args:
@@ -241,7 +240,7 @@ class SandboxTool(AsyncToolInterface):
                     timeout=timeout
                 )
                 exit_code = process.returncode
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 process.kill()
                 await process.wait()
                 return {
@@ -319,7 +318,7 @@ class SandboxTool(AsyncToolInterface):
         except psutil.NoSuchProcess:
             return 0
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """
         Get tool schema.
         """

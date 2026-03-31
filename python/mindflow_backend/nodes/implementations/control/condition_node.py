@@ -6,9 +6,10 @@ enabling complex decision trees and conditional branching logic.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
-from mindflow_backend.nodes.base.node import BaseNode, NodeType, NodeCategory
+from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
@@ -22,10 +23,10 @@ class ConditionNode(StatefulNode, BaseNode):
     def __init__(
         self,
         node_id: str = "condition",
-        condition: Union[str, Callable[[Dict[str, Any]], bool]] = None,
-        true_path: Optional[str] = None,
-        false_path: Optional[str] = None,
-        default_path: Optional[str] = None,
+        condition: str | Callable[[dict[str, Any]], bool] = None,
+        true_path: str | None = None,
+        false_path: str | None = None,
+        default_path: str | None = None,
         description: str = ""
     ) -> None:
         super().__init__(
@@ -56,7 +57,7 @@ class ConditionNode(StatefulNode, BaseNode):
         if isinstance(self.condition, str):
             self._compile_string_condition(self.condition)
     
-    async def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute the condition evaluation and return path decision."""
         data = state.get("data", {})
         
@@ -92,7 +93,7 @@ class ConditionNode(StatefulNode, BaseNode):
                 "error": str(e)
             }
     
-    async def _evaluate_condition(self, data: Dict[str, Any]) -> bool:
+    async def _evaluate_condition(self, data: dict[str, Any]) -> bool:
         """Evaluate the condition against the provided data."""
         if self.condition is None:
             return True  # Default to true if no condition
@@ -108,7 +109,7 @@ class ConditionNode(StatefulNode, BaseNode):
         # Direct boolean value
         return bool(self.condition)
     
-    async def _evaluate_string_condition(self, data: Dict[str, Any], condition_str: str) -> bool:
+    async def _evaluate_string_condition(self, data: dict[str, Any], condition_str: str) -> bool:
         """Evaluate a string-based condition."""
         # Check cache first
         if condition_str in self._condition_cache:
@@ -123,7 +124,7 @@ class ConditionNode(StatefulNode, BaseNode):
         # Evaluate condition
         return eval_function(data)
     
-    def _parse_and_compile_condition(self, condition_str: str) -> Callable[[Dict[str, Any]], bool]:
+    def _parse_and_compile_condition(self, condition_str: str) -> Callable[[dict[str, Any]], bool]:
         """Parse condition string and compile to executable function."""
         # Simple condition language parser
         # Supports syntax like: "data.age > 18", "data.status == 'active'", etc.
@@ -183,7 +184,7 @@ class ConditionNode(StatefulNode, BaseNode):
             # If parsing fails, default to False
             return lambda data: False
     
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_nested_value(self, data: dict[str, Any], path: str) -> Any:
         """Get nested value from data using dot notation."""
         keys = path.split('.')
         current = data
@@ -223,7 +224,7 @@ class ConditionNode(StatefulNode, BaseNode):
         # Return as string
         return value_str
     
-    def _determine_next_path(self, condition_result: bool) -> Optional[str]:
+    def _determine_next_path(self, condition_result: bool) -> str | None:
         """Determine the next path based on condition result."""
         if condition_result and self.true_path:
             return self.true_path
@@ -241,7 +242,7 @@ class ConditionNode(StatefulNode, BaseNode):
         # For now, just store the string for later parsing
         pass
     
-    def set_condition(self, condition: Union[str, Callable[[Dict[str, Any]], bool]]) -> None:
+    def set_condition(self, condition: str | Callable[[dict[str, Any]], bool]) -> None:
         """Update the condition dynamically."""
         self.condition = condition
         
@@ -251,9 +252,9 @@ class ConditionNode(StatefulNode, BaseNode):
     
     def set_paths(
         self,
-        true_path: Optional[str] = None,
-        false_path: Optional[str] = None,
-        default_path: Optional[str] = None
+        true_path: str | None = None,
+        false_path: str | None = None,
+        default_path: str | None = None
     ) -> None:
         """Update the path configurations."""
         if true_path is not None:
@@ -263,7 +264,7 @@ class ConditionNode(StatefulNode, BaseNode):
         if default_path is not None:
             self.default_path = default_path
     
-    def get_condition_info(self) -> Dict[str, Any]:
+    def get_condition_info(self) -> dict[str, Any]:
         """Get information about the current condition configuration."""
         return {
             "condition_type": type(self.condition).__name__,
@@ -293,7 +294,7 @@ class MultiConditionNode(ConditionNode):
     def __init__(
         self,
         node_id: str = "multi_condition",
-        conditions: List[Dict[str, Any]] = None,
+        conditions: list[dict[str, Any]] = None,
         operator: str = "and",  # and, or, xor
         description: str = "Multiple condition evaluation"
     ) -> None:
@@ -311,11 +312,11 @@ class MultiConditionNode(ConditionNode):
     
     def _create_multi_condition_evaluator(
         self,
-        conditions: List[Dict[str, Any]],
+        conditions: list[dict[str, Any]],
         operator: str
-    ) -> Callable[[Dict[str, Any]], bool]:
+    ) -> Callable[[dict[str, Any]], bool]:
         """Create a function that evaluates multiple conditions."""
-        async def multi_evaluator(data: Dict[str, Any]) -> bool:
+        async def multi_evaluator(data: dict[str, Any]) -> bool:
             results = []
             
             for condition_config in conditions:
@@ -377,7 +378,7 @@ class MultiConditionNode(ConditionNode):
         
         return False
     
-    def get_conditions_info(self) -> Dict[str, Any]:
+    def get_conditions_info(self) -> dict[str, Any]:
         """Get information about all configured conditions."""
         return {
             "conditions": self.conditions,

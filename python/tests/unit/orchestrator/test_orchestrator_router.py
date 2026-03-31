@@ -6,8 +6,11 @@ deterministic and side-effect free.
 
 import pytest
 
+from mindflow_backend.orchestrator.routing.intelligent_router import (
+    IntelligentRouter,
+    IntentAnalysis,
+)
 from mindflow_backend.orchestrator.routing.router import route_message
-from mindflow_backend.orchestrator.routing.intelligent_router import IntelligentRouter, IntentAnalysis
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
     ChainType,

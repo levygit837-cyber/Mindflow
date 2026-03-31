@@ -6,13 +6,10 @@ and data analysis capabilities.
 
 from __future__ import annotations
 
-import asyncio
 import csv
-import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+from typing import Any
 
 try:
     import pandas as pd
@@ -33,10 +30,9 @@ except ImportError:
     text = None
     sessionmaker = None
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.schemas.tools.data_schemas import DATABASE_SCHEMA, CSV_PROCESSOR_SCHEMA
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.tools.data_schemas import CSV_PROCESSOR_SCHEMA, DATABASE_SCHEMA
 
 _logger = get_logger(__name__)
 
@@ -44,7 +40,7 @@ _logger = get_logger(__name__)
 class DatabaseTool(AsyncToolInterface):
     """Database operations tool with multi-database support."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the database tool.
         
         Args:
@@ -59,7 +55,7 @@ class DatabaseTool(AsyncToolInterface):
         
         self._schema = DATABASE_SCHEMA
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute database operation.
         
         Args:
@@ -119,7 +115,7 @@ class DatabaseTool(AsyncToolInterface):
                 error=f"Database operation failed: {str(e)}"
             )
     
-    async def _connect_database(self, database_type: str, connection_string: str) -> Dict[str, Any]:
+    async def _connect_database(self, database_type: str, connection_string: str) -> dict[str, Any]:
         """Connect to database."""
         try:
             # For SQLite, create connection
@@ -151,7 +147,7 @@ class DatabaseTool(AsyncToolInterface):
                 error=f"Failed to connect: {str(e)}"
             )
     
-    async def _execute_query(self, database_type: str, connection_string: str, query: str) -> Dict[str, Any]:
+    async def _execute_query(self, database_type: str, connection_string: str, query: str) -> dict[str, Any]:
         """Execute SQL query."""
         try:
             if database_type == "sqlite":
@@ -203,7 +199,7 @@ class DatabaseTool(AsyncToolInterface):
                 error=f"Query execution failed: {str(e)}"
             )
     
-    async def _list_tables(self, database_type: str, connection_string: str) -> Dict[str, Any]:
+    async def _list_tables(self, database_type: str, connection_string: str) -> dict[str, Any]:
         """List database tables."""
         try:
             if database_type == "sqlite":
@@ -236,7 +232,7 @@ class DatabaseTool(AsyncToolInterface):
                 error=f"Failed to list tables: {str(e)}"
             )
     
-    async def _get_table_schema(self, database_type: str, connection_string: str, table_name: str) -> Dict[str, Any]:
+    async def _get_table_schema(self, database_type: str, connection_string: str, table_name: str) -> dict[str, Any]:
         """Get table schema."""
         try:
             if database_type == "sqlite":
@@ -278,7 +274,7 @@ class DatabaseTool(AsyncToolInterface):
                 error=f"Failed to get schema: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()
 
@@ -286,7 +282,7 @@ class DatabaseTool(AsyncToolInterface):
 class CSVProcessorTool(AsyncToolInterface):
     """CSV processing and analysis tool."""
     
-    def __init__(self, backend: Optional[Any] = None):
+    def __init__(self, backend: Any | None = None):
         """Initialize the CSV processor tool.
         
         Args:
@@ -299,7 +295,7 @@ class CSVProcessorTool(AsyncToolInterface):
         
         self._schema = CSV_PROCESSOR_SCHEMA
     
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute CSV operation.
         
         Args:
@@ -361,7 +357,7 @@ class CSVProcessorTool(AsyncToolInterface):
                 error=f"CSV operation failed: {str(e)}"
             )
     
-    async def _read_csv(self, file_path: str, delimiter: str, encoding: str, headers: bool) -> Dict[str, Any]:
+    async def _read_csv(self, file_path: str, delimiter: str, encoding: str, headers: bool) -> dict[str, Any]:
         """Read CSV file."""
         try:
             path = Path(file_path)
@@ -392,7 +388,7 @@ class CSVProcessorTool(AsyncToolInterface):
                 )
             else:
                 # Fallback to csv module
-                with open(path, 'r', encoding=encoding, newline='') as f:
+                with open(path, encoding=encoding, newline='') as f:
                     reader = csv.reader(f, delimiter=delimiter)
                     
                     if headers:
@@ -421,7 +417,7 @@ class CSVProcessorTool(AsyncToolInterface):
                 error=f"Failed to read CSV: {str(e)}"
             )
     
-    async def _write_csv(self, file_path: str, data: List[Dict], delimiter: str, encoding: str, headers: bool) -> Dict[str, Any]:
+    async def _write_csv(self, file_path: str, data: list[dict], delimiter: str, encoding: str, headers: bool) -> dict[str, Any]:
         """Write CSV file."""
         try:
             path = Path(file_path)
@@ -476,7 +472,7 @@ class CSVProcessorTool(AsyncToolInterface):
                 error=f"Failed to write CSV: {str(e)}"
             )
     
-    async def _get_csv_info(self, file_path: str, delimiter: str, encoding: str) -> Dict[str, Any]:
+    async def _get_csv_info(self, file_path: str, delimiter: str, encoding: str) -> dict[str, Any]:
         """Get CSV file information."""
         try:
             path = Path(file_path)
@@ -489,11 +485,11 @@ class CSVProcessorTool(AsyncToolInterface):
             stat = path.stat()
             
             # Quick row count
-            with open(path, 'r', encoding=encoding) as f:
+            with open(path, encoding=encoding) as f:
                 line_count = sum(1 for _ in f)
             
             # Get column count from first line
-            with open(path, 'r', encoding=encoding) as f:
+            with open(path, encoding=encoding) as f:
                 first_line = f.readline().strip()
                 column_count = len(first_line.split(delimiter))
             
@@ -517,7 +513,7 @@ class CSVProcessorTool(AsyncToolInterface):
                 error=f"Failed to get CSV info: {str(e)}"
             )
     
-    async def _analyze_csv(self, file_path: str, delimiter: str, encoding: str, headers: bool) -> Dict[str, Any]:
+    async def _analyze_csv(self, file_path: str, delimiter: str, encoding: str, headers: bool) -> dict[str, Any]:
         """Analyze CSV file."""
         try:
             # Get basic info first
@@ -557,6 +553,6 @@ class CSVProcessorTool(AsyncToolInterface):
                 error=f"Failed to analyze CSV: {str(e)}"
             )
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get tool schema."""
         return self._schema.dict()

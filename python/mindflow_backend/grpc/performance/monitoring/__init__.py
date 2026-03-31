@@ -4,7 +4,7 @@ Provides profiling, metrics collection, and performance
 analysis for gRPC operations and system health.
 """
 
-from .profiler import GrpcProfiler, ProfileConfig, PerformanceProfile, ProfileLevel
+from .profiler import GrpcProfiler, PerformanceProfile, ProfileConfig, ProfileLevel
 
 __all__ = [
     "GrpcProfiler",
