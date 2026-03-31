@@ -11,10 +11,13 @@ com os Execution Graphs existentes.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from mindflow_backend.schemas.orchestration.communication import MissionGraphType
+
+if TYPE_CHECKING:
+    from mindflow_backend.execution.sub_teams.sub_team_config import SubTeamConfig
 
 
 @dataclass
@@ -33,6 +36,9 @@ class MissionContext:
         max_duration_seconds: Timeout máximo em segundos.
         max_iterations: Limite de iterações do graph.
         metadata: Dicionário com metadados extras.
+        is_sub_agent: Flag indicando se este é um sub-agente (previne recursão).
+        parent_agent_id: ID do agente pai (para sub-agentes).
+        sub_team_config: Configuração de sub-team (se aplicável).
     """
 
     agent_id: str
@@ -46,6 +52,9 @@ class MissionContext:
     max_duration_seconds: float = 300.0
     max_iterations: int = 500
     metadata: dict[str, Any] = field(default_factory=dict)
+    is_sub_agent: bool = False
+    parent_agent_id: str | None = None
+    sub_team_config: SubTeamConfig | None = None
 
     def to_graph_state(self) -> dict[str, Any]:
         """Converte MissionContext para dict compatível com GraphState.
@@ -54,6 +63,11 @@ class MissionContext:
         esperam no estado inicial, incluindo identificação da missão,
         tarefa, sessão e metadados de controle.
         """
+        # Copy metadata and add sub_team_config if present
+        metadata = self.metadata.copy()
+        if self.sub_team_config is not None:
+            metadata["sub_team_config"] = self.sub_team_config
+
         return {
             "agent_id": self.agent_id,
             "mission_type": self.mission_type.value,
@@ -63,10 +77,12 @@ class MissionContext:
             "parent_mission_id": self.parent_mission_id,
             "memory_scope": self.memory_scope,
             "max_iterations": self.max_iterations,
-            "metadata": self.metadata.copy(),
+            "metadata": metadata,
             "messages": [],
             "result": "",
             "annotations": [],
             "errors": [],
             "iteration": 0,
+            "is_sub_agent": self.is_sub_agent,
+            "parent_agent_id": self.parent_agent_id,
         }

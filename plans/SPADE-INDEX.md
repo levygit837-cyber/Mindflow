@@ -62,7 +62,8 @@ FASE 4 — TRANSPORTE (Semanas 9+, condicional)
                                                                           [4] ejabberd ←(condicional)
 ```
 
-### Regras:
+### Regras
+
 - **1A** e **1C** podem iniciar em paralelo na Semana 1
 - **1B** começa após **1A** ter o `CommunicationBus` funcional
 - **2A** é paralelo a **1A/1C** — não há dependência de código
@@ -76,9 +77,11 @@ FASE 4 — TRANSPORTE (Semanas 9+, condicional)
 ## 🎯 Objetivos por Fase
 
 ### Fase 1 — Fundação
+
 **Entregável:** Agentes conseguem trocar mensagens P2P diretamente durante execução, sem passar pelo Orchestrator LLM. Circuit breaker ativo para fault tolerance.
 
 **Done When:**
+
 - [ ] `InternalCommunicationBus` funcionando com asyncio queues
 - [ ] `AgentCommunicationMixin` injetado pelo `DelegationEngine`
 - [ ] Todos os agentes registrados no bus no startup
@@ -87,9 +90,11 @@ FASE 4 — TRANSPORTE (Semanas 9+, condicional)
 - [ ] Teste de integração: Coder envia P2P ao Analyst durante delegação
 
 ### Fase 2 — Execution Graphs
+
 **Entregável:** Cada agente executa no grafo especializado correto para o tipo de missão. `MissionLauncher` seleciona e lança o graph sem hardcode.
 
 **Done When:**
+
 - [ ] `AnalysisGraph`, `CodingGraph`, `ResearchGraph`, `SecurityAuditGraph` criados
 - [ ] Todos registrados no `GraphFactory`
 - [ ] `AgentRuntimePolicy` com `available_mission_graphs` por agente
@@ -98,9 +103,11 @@ FASE 4 — TRANSPORTE (Semanas 9+, condicional)
 - [ ] Anotação contínua de memória em cada iteração dos graphs
 
 ### Fase 3 — Team Protocol
+
 **Entregável:** Orchestrator cria times de agentes que discutem antes de executar missões paralelas. MemoryObserver anota contexto em tempo real.
 
 **Done When:**
+
 - [ ] `TeamSession` com 4 fases (Formation→Discussion→Missions→Synthesis)
 - [ ] `TeamOrchestrator` facilita discussion e extrai `MissionDAG`
 - [ ] Missões paralelas com sincronização via P2P signals
@@ -109,9 +116,11 @@ FASE 4 — TRANSPORTE (Semanas 9+, condicional)
 - [ ] Resultado final sintetizado pelo Orchestrator
 
 ### Fase 4 — Transporte (Condicional)
+
 **Entregável:** ejabberd como message bus real, substituindo `InternalCommunicationBus` quando validado.
 
 **Done When (se aprovado):**
+
 - [ ] ejabberd running em ambiente dev/staging
 - [ ] `XMPPCommunicationBus` implementado e testado
 - [ ] `InternalBus` substituível via config (feature flag)
@@ -131,9 +140,63 @@ FASE 4 — TRANSPORTE (Semanas 9+, condicional)
 
 ---
 
+## 📋 Plano de Execução — Próximas Etapas (2026-03-31)
+
+### ✅ Status Atual: Fases 1-3 COMPLETAS (código implementado)
+
+**Testes executados:**
+
+- Fase 1 (Communication): **16 passed** ✅
+- Fase 2/3 (Missions, Teams, Memory): **49 passed** ✅
+- Total: **65/66 testes passam** (1 bug de circular import em `test_mission_launcher.py`)
+
+### 📌 Etapa Imediata: Correção do test_mission_launcher.py
+
+| # | Tarefa | Arquivo | Responsável |
+|---|---|---|---|
+| I-1 | Resolver circular import em `test_mission_launcher.py` | `mindflow_backend/tests/unit/execution/test_mission_launcher.py` | Dev |
+| I-2 | Verificar que todos os 65+ testes passam | CI | Dev |
+
+### 📌 Etapa 1: Validação E2E (Semana 1)
+
+| # | Tarefa | Critério de Sucesso |
+|---|---|---|
+| 1.1 | Teste de integração P2P: Coder → Analyst | Mensagem enviada e recebida < 100ms |
+| 1.2 | Teste de MissionLauncher com graph real | Missão executa sem LLM durante delegação |
+| 1.3 | Teste de TeamSession com 2+ agentes | Discussão → DAG → Missões paralelas |
+| 1.4 | Teste de MemoryObserver | ≥5 memory annotations por sessão |
+| 1.5 | Medir latência do InternalBus | < 50ms em dev |
+| 1.6 | Coletar métricas de produção | Volume msgs/sessão, necessidade persistência |
+
+### 📌 Etapa 2: Decisão Go/No-Go para Fase 4
+
+| Critério | Threshold | Status Atual |
+|---|---|---|
+| Volume de mensagens P2P por sessão | > 1000 msgs | ⬜ A medir |
+| Persistência de mensagens necessária | Sim | ⬜ Avaliar |
+| Multi-instância MindFlow | ≥ 2 instâncias | ⬜ Planejar |
+| InternalBus latência > 500ms | Consistentemente | ⬜ Medir |
+| **Decisão** | | ⬜ **PENDENTE** |
+
+### 📌 Etapa 3: Fase 4 — ejabberd (Só se Go/No-Go aprovar)
+
+| # | Tarefa | Arquivo | Status |
+|---|---|---|---|
+| 3.1 | Criar ADR-001 com decisão de transporte | `docs/adr/ADR-001-transport.md` | ⬜ Pendente |
+| 3.2 | Configurar ejabberd em Docker Compose | `docker/ejabberd/docker-compose.yml` | ⬜ Pendente |
+| 3.3 | Criar `XMPPCommunicationBus` | `communication/bus/xmpp_bus.py` | ⬜ Pendente |
+| 3.4 | Adicionar feature flag `use_xmpp_transport` | `infra/config.py` | ⬜ Pendente |
+| 3.5 | Atualizar `_initialize_communication_bus()` | `runtime/core/agent_runtime.py` | ⬜ Pendente |
+| 3.6 | Circuit breakers em XMPP calls | `communication/circuit_breaker/` | ⬜ Pendente |
+| 3.7 | Testes de integração XMPP | `tests/integration/` | ⬜ Pendente |
+| 3.8 | Teste de fallback (XMPP → InternalBus) | `tests/integration/` | ⬜ Pendente |
+
+---
+
 ## 🧩 Arquivos que Serão Criados/Modificados
 
 ### Novos arquivos
+
 ```
 communication/
   bus/
@@ -183,6 +246,7 @@ schemas/orchestration/
 ```
 
 ### Arquivos modificados
+
 ```
 agents/specialists/runtime_policy.py  ← 1C (CommRole + available_mission_graphs)
 graphs/base/types.py                   ← 2A (MissionGraphType enum)

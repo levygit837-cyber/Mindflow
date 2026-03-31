@@ -11,10 +11,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from mindflow_backend.schemas.orchestration.communication import MissionGraphType
+
+if TYPE_CHECKING:
+    from mindflow_backend.execution.sub_teams.sub_team_session import SubTeamResult
 
 
 @dataclass
@@ -73,6 +76,7 @@ class MissionResult:
     started_at: datetime = field(default_factory=datetime.now)
     completed_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    sub_team_result: SubTeamResult | Any | None = None
 
     @classmethod
     def from_graph_state(
@@ -124,6 +128,10 @@ class MissionResult:
         errors = state.get("errors", [])
         error_text = "; ".join(errors) if errors else None
 
+        # Extract sub_team_result from metadata if present
+        metadata = state.get("metadata", {})
+        sub_team_result = metadata.get("sub_team_result")
+
         return cls(
             agent_id=agent_id,
             mission_type=mission_type,
@@ -137,7 +145,8 @@ class MissionResult:
             error=error_text,
             started_at=started if isinstance(started, datetime) else datetime.now(),
             completed_at=completed,
-            metadata=state.get("metadata", {}),
+            metadata=metadata,
+            sub_team_result=sub_team_result,
         )
 
     def to_delegation_result_data(self) -> dict[str, Any]:
@@ -147,7 +156,7 @@ class MissionResult:
         espera, permitindo integração transparente entre MissionLauncher
         e o sistema de delegação existente.
         """
-        return {
+        data = {
             "status": "completed" if self.success else "failed",
             "full_output": self.result,
             "key_findings": self.result,
@@ -167,3 +176,15 @@ class MissionResult:
             "duration_seconds": self.duration_seconds,
             "iterations": self.iterations,
         }
+
+        # Add sub-team summary if present
+        if self.sub_team_result is not None:
+            data["sub_team_summary"] = {
+                "sub_agent_count": getattr(
+                    self.sub_team_result, "sub_agent_count", 0
+                ),
+                "success_count": getattr(self.sub_team_result, "success_count", 0),
+                "total_duration": getattr(self.sub_team_result, "total_duration", 0.0),
+            }
+
+        return data

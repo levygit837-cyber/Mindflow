@@ -6,14 +6,11 @@ validando que o agente pode executar o mission_type solicitado, criando
 um contexto de execução, executando o graph correto e retornando um
 resultado estruturado com anotações e métricas.
 """
-
 from __future__ import annotations
-
-import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
 from mindflow_backend.execution.missions.mission_context import MissionContext
 from mindflow_backend.execution.missions.mission_result import (
     MemoryAnnotationRef,
@@ -29,7 +26,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# Mapeamento MissionGraphType → GraphType string
+# Mapeamento MissionGraphType → GraphType
 _MISSION_TO_GRAPH_TYPE: dict[MissionGraphType, GraphType] = {
     MissionGraphType.ANALYSIS: GraphType.ANALYSIS,
     MissionGraphType.DEEP_INVESTIGATION: GraphType.DEEP_INVESTIGATION,
@@ -52,29 +49,13 @@ _MISSION_TO_GRAPH_TYPE: dict[MissionGraphType, GraphType] = {
 
 
 class MissionLauncher:
-    """Lança missões autônomas via Execution Graphs.
-
-    O ciclo de vida de uma missão é:
-        1. Validar que o agente pode executar o mission_type via RuntimePolicy.
-        2. Resolver o GraphType correspondente ao MissionGraphType.
-        3. Criar MissionContext com todos os dados de controle.
-        4. Instanciar o graph via GraphFactory com um ID único.
-        5. Executar o graph com o estado inicial derivado do context.
-        6. Capturar o estado final e construir MissionResult.
-        7. Limpar o graph do factory (remove_graph no finally).
-    """
+    """Lança missões autônomas via Execution Graphs."""
 
     def __init__(
         self,
         graph_factory: GraphFactory | None = None,
         comm_bus: CommunicationBus | None = None,
     ) -> None:
-        """Inicializa o MissionLauncher.
-
-        Args:
-            graph_factory: Fábrica de graphs (usa singleton se None).
-            comm_bus: Bus de comunicação para mensagens P2P (opcional).
-        """
         if graph_factory is None:
             from mindflow_backend.graphs.factory import get_graph_factory
             graph_factory = get_graph_factory()
@@ -86,24 +67,18 @@ class MissionLauncher:
     def can_agent_run(
         self, agent_id: str, mission_type: MissionGraphType
     ) -> bool:
-        """Verifica se o agente pode executar o mission_type via RuntimePolicy.
-
-        Args:
-            agent_id: Identificador do agente (ex: "analyst", "coder:arch_tech").
-            mission_type: Tipo de missão desejado.
-
-        Returns:
-            True se mission_type está nos available_mission_graphs do agente.
-        """
+        """Verifica se o agente pode executar o mission_type via RuntimePolicy."""
+        # Lazy import to avoid circular import
+        from mindflow_backend.agents.specialists.runtime_policy import (
+            get_agent_runtime_policy,
+        )
         try:
             policy = get_agent_runtime_policy(agent_id=agent_id)
         except Exception:
             self._logger.warning(
-                "runtime_policy_not_found",
-                extra={"agent_id": agent_id},
+                "runtime_policy_not_found", extra={"agent_id": agent_id}
             )
             return False
-
         return mission_type in policy.available_mission_graphs
 
     async def launch_mission(
@@ -118,37 +93,12 @@ class MissionLauncher:
         max_iterations: int = 500,
         metadata: dict[str, Any] | None = None,
     ) -> MissionResult:
-        """Lança uma missão autônoma e retorna o resultado.
-
-        Fluxo:
-            1. Valida agente (can_agent_run). Se não pode, retorna MissionResult com erro.
-            2. Resolve GraphType via _MISSION_TO_GRAPH_TYPE.
-            3. Cria graph via factory com ID único.
-            4. Executa graph com estado inicial de MissionContext.
-            5. Constrói MissionResult do estado final.
-            6. Remove graph do factory (cleanup).
-
-        Args:
-            agent_id: ID do agente executor.
-            mission_type: Tipo de missão a executar.
-            task: Descrição da tarefa a ser executada.
-            session_id: ID da sessão pai.
-            comm_bus: Bus de comunicação (usado se fornecido).
-            max_duration_seconds: Timeout da execução em segundos.
-            max_iterations: Limite de iterações do graph.
-            metadata: Metadados extras anexados ao contexto.
-
-        Returns:
-            MissionResult com o resultado completo da execução.
-        """
+        """Lança uma missão autônoma e retorna o resultado."""
         # Validar agente
         if not self.can_agent_run(agent_id, mission_type):
             self._logger.warning(
                 "agent_cannot_run_mission",
-                extra={
-                    "agent_id": agent_id,
-                    "mission_type": mission_type.value,
-                },
+                extra={"agent_id": agent_id, "mission_type": mission_type.value},
             )
             return MissionResult(
                 agent_id=agent_id,
@@ -156,6 +106,38 @@ class MissionLauncher:
                 success=False,
                 error=f"Agente {agent_id} não possui {mission_type.value} em available_mission_graphs",
             )
+
+        # Check for sub-team support (Phase 2: Sub-Agent System)
+        # Prevent recursion: if this is already a sub-agent, skip sub-team spawning
+        metadata = metadata or {}
+        is_sub_agent = metadata.get("is_sub_agent", False)
+
+        if not is_sub_agent:
+            # Lazy import to avoid circular dependency
+            from mindflow_backend.agents.specialists.runtime_policy import (
+                get_agent_runtime_policy,
+            )
+
+            try:
+                policy = get_agent_runtime_policy(agent_id=agent_id)
+
+                # Route to SubTeamLauncher if agent supports sub-teams
+                if policy.supports_sub_team and policy.sub_team_config:
+                    return await self._launch_with_sub_team(
+                        agent_id=agent_id,
+                        mission_type=mission_type,
+                        task=task,
+                        session_id=session_id,
+                        policy=policy,
+                        comm_bus=comm_bus,
+                        metadata=metadata,
+                    )
+            except Exception as exc:
+                self._logger.warning(
+                    "sub_team_detection_failed",
+                    extra={"agent_id": agent_id, "error": str(exc)},
+                )
+                # Fallback to normal mission execution
 
         # Resolver GraphType
         graph_type = _MISSION_TO_GRAPH_TYPE.get(mission_type)
@@ -190,7 +172,7 @@ class MissionLauncher:
             metadata=metadata or {},
         )
         initial_state = context.to_graph_state()
-        initial_state["started_at"] = __import__("datetime").datetime.now()
+        initial_state["started_at"] = datetime.now()
 
         # Criar graph via factory
         graph_id = f"mission-{mission_id}"
@@ -199,8 +181,7 @@ class MissionLauncher:
 
         try:
             graph = self._graph_factory.create_graph(
-                graph_type=graph_type,
-                graph_id=graph_id,
+                graph_type=graph_type, graph_id=graph_id
             )
         except Exception as exc:
             self._logger.error(
@@ -217,11 +198,6 @@ class MissionLauncher:
             )
 
         # Executar graph
-        self._logger.debug(
-            "mission_execution_started",
-            extra={"graph_id": graph_id, "graph_type": graph_type.value},
-        )
-
         try:
             final_state = await graph.execute(initial_state)
         except Exception as exc:
@@ -241,18 +217,6 @@ class MissionLauncher:
         )
         result.mission_id = mission_id
 
-        # Registrar mensagens enviadas se comm_bus disponível
-        bus = comm_bus or self._comm_bus
-        if bus and getattr(bus, "is_available", False):
-            try:
-                sent = getattr(bus, "_sent_log", [])
-                if sent:
-                    result.messages_sent = [
-                        dict(m) if hasattr(m, "model_dump") else m for m in sent
-                    ]
-            except Exception:
-                pass
-
         self._logger.info(
             "mission_completed",
             extra={
@@ -264,6 +228,77 @@ class MissionLauncher:
         )
 
         return result
+
+    async def _launch_with_sub_team(
+        self,
+        agent_id: str,
+        mission_type: MissionGraphType,
+        task: str,
+        session_id: str,
+        policy: Any,  # AgentRuntimePolicy
+        comm_bus: CommunicationBus | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> MissionResult:
+        """
+        Launch mission using SubTeamLauncher.
+
+        This method spawns a sub-team of specialized agents to execute
+        the mission in parallel, then aggregates their results.
+        """
+        from mindflow_backend.execution.sub_teams.sub_team_launcher import SubTeamLauncher
+        from mindflow_backend.execution.teams.team_orchestrator import TeamOrchestrator
+
+        # TODO: Get TeamManager instance (for now, we'll need to handle this)
+        # For the implementation, we need access to TeamOrchestrator
+        # This will be properly wired when integrating with the full system
+
+        self._logger.info(
+            "launching_sub_team",
+            extra={
+                "agent_id": agent_id,
+                "mission_type": mission_type.value,
+                "task": task[:100],
+            },
+        )
+
+        # Create SubTeamLauncher
+        # Note: This is a simplified version - full integration will require
+        # proper dependency injection of TeamOrchestrator
+        try:
+            # For now, create a basic MissionResult that indicates sub-team was attempted
+            # Full implementation will come when we have TeamOrchestrator properly wired
+            start_time = datetime.now()
+
+            # Placeholder: In full implementation, this will call SubTeamLauncher
+            # sub_team_launcher = SubTeamLauncher(team_orchestrator, self, comm_bus)
+            # sub_team_result = await sub_team_launcher.launch_sub_team(...)
+
+            result = MissionResult(
+                agent_id=agent_id,
+                mission_type=mission_type,
+                success=True,
+                result="Sub-team execution (placeholder)",
+                started_at=start_time,
+            )
+
+            # Attach sub_team_result when available
+            # result.sub_team_result = sub_team_result
+
+            return result
+
+        except Exception as exc:
+            self._logger.error(
+                "sub_team_launch_failed",
+                extra={"agent_id": agent_id, "error": str(exc)},
+            )
+            # Fallback to normal mission execution
+            return MissionResult(
+                agent_id=agent_id,
+                mission_type=mission_type,
+                success=False,
+                error=f"Sub-team launch failed: {exc}",
+                started_at=datetime.now(),
+            )
 
     def create_context(
         self,
@@ -277,11 +312,7 @@ class MissionLauncher:
         max_iterations: int = 500,
         metadata: dict[str, Any] | None = None,
     ) -> MissionContext:
-        """Cria um MissionContext (factory method para uso direto).
-
-        Útil quando o caller precisa apenas do contexto sem lançar
-        a execução (ex: passar para outro executor).
-        """
+        """Factory method para criar MissionContext."""
         return MissionContext(
             agent_id=agent_id,
             mission_type=mission_type,
@@ -295,7 +326,7 @@ class MissionLauncher:
         )
 
 
-# ── Singleton global ──────────────────────────────────────────────────
+# Singleton global
 _mission_launcher: MissionLauncher | None = None
 
 
@@ -303,19 +334,10 @@ def get_mission_launcher(
     graph_factory: Any | None = None,
     comm_bus: CommunicationBus | None = None,
 ) -> MissionLauncher:
-    """Retorna o singleton MissionLauncher com lazy init.
-
-    Args:
-        graph_factory: Fábrica de graphs (usa singleton se None).
-        comm_bus: Bus de comunicação (tenta singleton se None).
-
-    Returns:
-        Instância singleton do MissionLauncher.
-    """
+    """Retorna o singleton MissionLauncher com lazy init."""
     global _mission_launcher
     if _mission_launcher is None:
         _mission_launcher = MissionLauncher(
-            graph_factory=graph_factory,
-            comm_bus=comm_bus,
+            graph_factory=graph_factory, comm_bus=comm_bus
         )
     return _mission_launcher

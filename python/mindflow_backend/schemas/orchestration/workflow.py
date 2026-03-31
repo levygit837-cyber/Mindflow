@@ -6,6 +6,8 @@ final execution plan consumed by the canonical simple-flow runtime.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from mindflow_backend.schemas.orchestration.orchestrator import (
@@ -33,6 +35,7 @@ class WorkflowRouteDecision(BaseModel):
     priority: Priority = Priority.NORMAL
     tools: list[ToolScope] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def agent_id(self) -> str:

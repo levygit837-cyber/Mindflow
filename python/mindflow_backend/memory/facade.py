@@ -23,6 +23,7 @@ from mindflow_backend.memory.storage.models import (
     SessionBlock,
     SessionEmbedding,
 )
+from mindflow_backend.schemas.memory.annotation import MemoryAnnotation
 from mindflow_backend.schemas.memory.contracts import (
     AgentMemorySnapshot,
     MemoryPersistResult,
@@ -364,6 +365,79 @@ class MemoryFacade:
             query = query.order_by(SessionBlock.sequence.desc()).limit(limit)
             rows = list((await db.execute(query)).scalars())
         return [self._to_session_block_schema(row) for row in rows]
+
+    async def save_annotation(self, annotation: MemoryAnnotation) -> None:
+        """
+        Salva anotação de observer na memória universal.
+
+        Usa o sistema de memória existente com tags especiais para
+        identificação de anotações de observers.
+
+        Fase 3B — SPADE Memory Observer Protocol
+        """
+        if not annotation.is_significant():
+            return
+
+        content = annotation.to_memory_content()
+        token_count = estimate_token_count(content)
+        if token_count <= 0:
+            return
+
+        try:
+            async with _get_db_session_factory()() as db:
+                event = AgentMemoryEvent(
+                    session_id=annotation.session_id,
+                    agent_id=annotation.observer_agent_id,
+                    role="observer",
+                    content=content,
+                    token_count=token_count,
+                )
+                db.add(event)
+                await db.flush()
+
+                embedding_outcome = await self._embed_text(content)
+                if embedding_outcome.vector is not None:
+                    session_embedding = SessionEmbedding(
+                        session_id=annotation.session_id,
+                        content=content[:1500],
+                        embedding=embedding_outcome.vector,
+                        role="observer",
+                        agent_id=annotation.observer_agent_id,
+                        indexable=True,
+                        content_kind="annotation",
+                        quality_flags=[f"type:{annotation.annotation_type}"],
+                        source_status="observer",
+                        session_metadata={
+                            "annotation_id": annotation.annotation_id,
+                            "source_agent": annotation.source_agent_id,
+                            "mission_id": annotation.mission_id,
+                            "importance": annotation.importance,
+                            "annotation_type": annotation.annotation_type,
+                            "tags": annotation.tags,
+                        },
+                    )
+                    db.add(session_embedding)
+                await db.commit()
+
+                _logger.debug(
+                    "annotation_saved",
+                    extra={
+                        "annotation_id": annotation.annotation_id,
+                        "observer": annotation.observer_agent_id,
+                        "source": annotation.source_agent_id,
+                        "mission_id": annotation.mission_id,
+                        "importance": annotation.importance,
+                        "type": annotation.annotation_type,
+                    },
+                )
+        except Exception as exc:
+            _logger.warning(
+                "annotation_save_failed",
+                extra={
+                    "annotation_id": annotation.annotation_id,
+                    "error": str(exc),
+                },
+            )
 
     async def _find_existing_session_embedding(
         self,

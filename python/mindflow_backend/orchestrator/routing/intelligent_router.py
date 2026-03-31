@@ -306,6 +306,34 @@ STRICT RULES:
                 confidence=intent.confidence,
             )
 
+        # --- TEAM_SESSION: create team of agents for collaborative missions ---
+        if intent.execution_strategy == ExecutionStrategy.TEAM_SESSION:
+            agent_ids = (
+                [a.value for a in intent.agent_sequence]
+                if intent.agent_sequence
+                else [intent.recommended_agent.value]
+            )
+            _logger.info(
+                "orchestrator_team_session",
+                agents=agent_ids,
+                task=intent.formulated_objective or message,
+            )
+            return WorkflowRouteDecision(
+                rationale=(
+                    f"Team session: {len(agent_ids)} agents will collaborate. "
+                    f"Agents: {', '.join(agent_ids)}"
+                ),
+                agent_role=AgentType.ORCHESTRATOR,
+                specialist=specialist,
+                task=intent.formulated_objective or intent.user_intent or message,
+                thinking=ThinkingLevel.HIGH,
+                tools=self._get_tools_for_agent(AgentType.ORCHESTRATOR),
+                priority=Priority.HIGH,
+                execution_strategy=ExecutionStrategy.TEAM_SESSION,
+                confidence=intent.confidence,
+                metadata={"team_agent_ids": agent_ids},
+            )
+
         # --- DELEGATE: delegate to one or more agents ---
         if intent.is_multi_agent and intent.agent_sequence:
             target_agent = intent.agent_sequence[0]

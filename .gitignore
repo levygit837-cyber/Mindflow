@@ -96,6 +96,7 @@ start_dev.sh
 # AI tools and IDE configurations
 .windsurf/
 .claude/
+claude/
 
 # Context+ MCP cache
 .mcp_data/

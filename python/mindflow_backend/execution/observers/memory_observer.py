@@ -1,0 +1,320 @@
+"""
+MemoryObserver — Agente em modo passivo que monitora missões e anota memória.
+
+Ativado quando agente com can_observe=True conclui sua missão em uma TeamSession.
+Nunca bloqueia execução — apenas escuta AgentLogBus e grava anotações significativas.
+
+Fase 3B — SPADE Memory Observer Protocol
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import TYPE_CHECKING, Any
+
+from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.schemas.memory.annotation import (
+    EVENT_IMPORTANCE_MAP,
+    IMPORTANCE_THRESHOLDS,
+    MemoryAnnotation,
+)
+
+if TYPE_CHECKING:
+    from mindflow_backend.memory.facade import MemoryFacade
+
+logger = get_logger(__name__)
+
+ANNOTATION_RATE_LIMIT = 10
+"""Máximo de anotações por minuto por observer."""
+
+
+class MemoryObserver:
+    """
+    Monitor passivo que anota memória durante execução de outros agentes.
+
+    Roda em background (asyncio task).
+    Nunca bloqueia o agente sendo observado.
+    Filtro de importância: só anota eventos com score >= threshold.
+    """
+
+    def __init__(
+        self,
+        observer_agent_id: str,
+        memory_facade: "MemoryFacade",
+        session_id: str,
+    ) -> None:
+        self._observer_id = observer_agent_id
+        self._memory = memory_facade
+        self._session_id = session_id
+        self._running = False
+        self._task: asyncio.Task | None = None
+        self._annotations_count = 0
+        self._annotations_this_minute = 0
+        self._observed_missions: set[str] = set()
+        self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def start_observing(self, mission_ids: list[str]) -> None:
+        """
+        Inicia observação em background de uma ou mais missões.
+
+        Retorna imediatamente — observação ocorre em asyncio Task separada.
+        """
+        self._observed_missions.update(mission_ids)
+        self._running = True
+        self._task = asyncio.create_task(
+            self._observation_loop(),
+            name=f"observer_{self._observer_id}",
+        )
+        logger.info(
+            "observer_started",
+            extra={
+                "observer": self._observer_id,
+                "missions": mission_ids,
+            },
+        )
+
+    async def stop_observing(self) -> None:
+        """Para a observação gracefully."""
+        self._running = False
+        if self._task and not self._task.done():
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+        logger.info(
+            "observer_stopped",
+            extra={
+                "observer": self._observer_id,
+                "total_annotations": self._annotations_count,
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Event reception
+    # ------------------------------------------------------------------
+
+    async def receive_event(self, event: dict[str, Any]) -> None:
+        """
+        Recebe evento do AgentLogBus.
+
+        Chamado pelo AgentLogBus quando há evento nas missões observadas.
+        Enfileira para processamento assíncrono.
+        """
+        if not self._running:
+            return
+        try:
+            self._event_queue.put_nowait(event)
+        except asyncio.QueueFull:
+            logger.debug("observer_queue_full", extra={"observer": self._observer_id})
+
+    # ------------------------------------------------------------------
+    # Internal loop
+    # ------------------------------------------------------------------
+
+    async def _observation_loop(self) -> None:
+        """Loop principal de processamento de eventos."""
+        rate_limit_reset_task = asyncio.create_task(
+            self._rate_limit_reset_loop(),
+            name=f"observer_ratereset_{self._observer_id}",
+        )
+
+        try:
+            while self._running:
+                try:
+                    event = await asyncio.wait_for(
+                        self._event_queue.get(),
+                        timeout=1.0,
+                    )
+                    await self._process_event(event)
+                except TimeoutError:
+                    continue
+                except asyncio.CancelledError:
+                    break
+                except Exception as exc:
+                    logger.debug(
+                        "observer_event_error",
+                        extra={"observer": self._observer_id, "error": str(exc)},
+                    )
+        finally:
+            rate_limit_reset_task.cancel()
+            try:
+                await rate_limit_reset_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _process_event(self, event: dict[str, Any]) -> None:
+        """Processa um evento e anota memória se relevante."""
+        # Rate limiting
+        if self._annotations_this_minute >= ANNOTATION_RATE_LIMIT:
+            return
+
+        importance = self._score_importance(event)
+        if importance < 0.3:
+            return
+
+        annotation_type = self._classify_event(event)
+        threshold = IMPORTANCE_THRESHOLDS.get(annotation_type, 0.3)
+        if importance < threshold:
+            return
+
+        content = self._summarize_event(event)
+        if not content:
+            return
+
+        annotation = MemoryAnnotation(
+            observer_agent_id=self._observer_id,
+            source_agent_id=event.get("agent_id", ""),
+            mission_id=event.get("mission_id", ""),
+            session_id=self._session_id,
+            content=content,
+            raw_event_type=event.get("type", ""),
+            importance=importance,
+            annotation_type=annotation_type,
+            tags=self._extract_tags(event),
+        )
+
+        if not annotation.is_significant():
+            return
+
+        try:
+            await self._save_annotation(annotation)
+            self._annotations_count += 1
+            self._annotations_this_minute += 1
+            logger.debug(
+                "observer_annotated",
+                extra={
+                    "observer": self._observer_id,
+                    "type": annotation_type,
+                    "importance": importance,
+                },
+            )
+        except Exception as exc:
+            logger.debug(
+                "observer_save_failed",
+                extra={"observer": self._observer_id, "error": str(exc)},
+            )
+
+    # ------------------------------------------------------------------
+    # Scoring and classification
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _score_importance(event: dict[str, Any]) -> float:
+        """Calcula score de importância do evento (0.0–1.0)."""
+        event_type = event.get("type", "")
+        level = event.get("level", "INFO")
+
+        base_score = EVENT_IMPORTANCE_MAP.get(event_type, 0.2)
+
+        # Boosts por nível
+        if level == "ERROR":
+            base_score = max(base_score, 0.9)
+        elif level == "WARNING":
+            base_score = max(base_score, 0.7)
+
+        # Eventos tardios têm menos novidade
+        if event.get("iteration", 1) > 10:
+            base_score *= 0.8
+
+        return min(base_score, 1.0)
+
+    @staticmethod
+    def _classify_event(event: dict[str, Any]) -> str:
+        """Classifica evento em tipo de anotação."""
+        event_type = event.get("type", "")
+        level = event.get("level", "INFO")
+
+        if level in ("ERROR", "WARNING"):
+            return "warning"
+        if event_type in ("agent_decision", "finding"):
+            return "finding"
+        if event_type == "mission_complete":
+            return "insight"
+        return "observation"
+
+    @staticmethod
+    def _summarize_event(event: dict[str, Any]) -> str:
+        """Gera resumo textual do evento para memória."""
+        agent_id = event.get("agent_id", "unknown")
+        event_type = event.get("type", "event")
+        message = event.get("message", "")
+        data = event.get("data", {})
+
+        if not message and not data:
+            return ""
+
+        summary = f"{agent_id} [{event_type}]: {message}"
+        if data and isinstance(data, dict):
+            key_data = {
+                k: v
+                for k, v in data.items()
+                if k in ("result", "finding", "error", "file", "pattern")
+            }
+            if key_data:
+                summary += f" | {key_data}"
+
+        return summary[:500]  # Máximo 500 chars por anotação
+
+    @staticmethod
+    def _extract_tags(event: dict[str, Any]) -> list[str]:
+        """Extrai tags do evento para classificação."""
+        tags: list[str] = []
+        if event.get("type"):
+            tags.append(f"event:{event['type']}")
+        if event.get("agent_id"):
+            tags.append(f"agent:{event['agent_id']}")
+        if event.get("level") in ("ERROR", "WARNING"):
+            tags.append(event["level"].lower())
+        return tags
+
+    # ------------------------------------------------------------------
+    # Memory save
+    # ------------------------------------------------------------------
+
+    async def _save_annotation(self, annotation: MemoryAnnotation) -> None:
+        """Salva anotação via MemoryFacade."""
+        if hasattr(self._memory, "save_annotation"):
+            await self._memory.save_annotation(annotation)
+        else:
+            # Fallback: usa record_message se save_annotation não existir
+            content = annotation.to_memory_content()
+            # Cria um db session temporário
+            from mindflow_backend.infra.config import get_settings
+
+            settings = get_settings()
+            if hasattr(self._memory, "_session_service"):
+                # Usa session_id para salvar como evento de memória
+                from mindflow_backend.memory.facade import _get_db_session_factory
+
+                async with _get_db_session_factory()() as db:
+                    await self._memory.save_annotation(annotation)
+
+    # ------------------------------------------------------------------
+    # Rate limit reset
+    # ------------------------------------------------------------------
+
+    async def _rate_limit_reset_loop(self) -> None:
+        """Reseta contador de rate limit a cada 60s."""
+        while True:
+            await asyncio.sleep(60)
+            self._annotations_this_minute = 0
+
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
+
+    def get_stats(self) -> dict[str, Any]:
+        """Retorna estatísticas do observer."""
+        return {
+            "observer_id": self._observer_id,
+            "running": self._running,
+            "total_annotations": self._annotations_count,
+            "rate_this_minute": self._annotations_this_minute,
+            "observed_missions": sorted(self._observed_missions),
+        }

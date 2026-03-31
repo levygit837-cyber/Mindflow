@@ -168,6 +168,15 @@ class Settings(BaseSettings):
 
     # RabbitMQ Configuration
     rabbitmq_url: str = Field(default="amqp://guest:guest@127.0.0.1:5672/", alias="RABBITMQ_URL")
+
+    # XMPP / SPADE Communication Configuration (Fase 4)
+    use_xmpp_transport: bool = Field(default=False, alias="USE_XMPP_TRANSPORT")
+    xmpp_server: str = Field(default="localhost", alias="XMPP_SERVER")
+    xmpp_port: int = Field(default=5222, alias="XMPP_PORT")
+    xmpp_domain: str = Field(default="mindflow.local", alias="XMPP_DOMAIN")
+    xmpp_use_tls: bool = Field(default=False, alias="XMPP_USE_TLS")
+    xmpp_admin: str = Field(default="admin@mindflow.local", alias="XMPP_ADMIN")
+    xmpp_admin_password: str = Field(default="mindflow_dev_pass", alias="XMPP_ADMIN_PASSWORD", repr=False)
     rabbitmq_host: str = Field(default="127.0.0.1", alias="RABBITMQ_HOST")
     rabbitmq_port: int = Field(default=5672, alias="RABBITMQ_PORT")
     rabbitmq_username: str = Field(default="guest", alias="RABBITMQ_USERNAME")

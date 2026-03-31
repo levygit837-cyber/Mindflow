@@ -12,6 +12,7 @@ This module is the single source of truth for runtime identity:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from mindflow_backend.agents._base import BaseAgent
 from mindflow_backend.agents.prompts.core.analyst import (
@@ -34,6 +35,25 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
     ToolScope,
 )
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
+
+if TYPE_CHECKING:
+    from mindflow_backend.execution.sub_teams.sub_team_config import SubTeamConfig
+
+
+# Import predefined sub-team configs for runtime use
+def _get_sub_team_configs() -> dict[str, Any]:
+    """Lazy import of SubTeamConfig to avoid circular dependencies."""
+    from mindflow_backend.execution.sub_teams.sub_team_config import (
+        ANALYST_SUB_TEAM_CONFIG,
+        CODER_SUB_TEAM_CONFIG,
+        RESEARCHER_SUB_TEAM_CONFIG,
+    )
+
+    return {
+        "analyst": ANALYST_SUB_TEAM_CONFIG,
+        "coder": CODER_SUB_TEAM_CONFIG,
+        "researcher": RESEARCHER_SUB_TEAM_CONFIG,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +84,13 @@ class AgentRuntimePolicy:
     mission_types: tuple[str, ...] = ()
     """Tipos de missão que este agente pode liderar (strings descritivas)"""
 
+    # ── Sub-Team capability fields (Phase 3.3) ──────────────────────────
+    supports_sub_team: bool = False
+    """Se True, este agente pode spawnar sub-teams de executores especializados"""
+
+    sub_team_config: SubTeamConfig | None = None
+    """Configuração de sub-team (model tier, timeout, max agents)"""
+
     @property
     def agent_id(self) -> str:
         if self.specialist is None:
@@ -81,6 +108,18 @@ class AgentRuntimePolicy:
             sandbox=self.sandbox,
             keep_context=self.keep_context,
         )
+
+
+# Lazy-load sub-team configs to avoid circular imports at module level
+_SUB_TEAM_CONFIGS: dict[str, Any] | None = None
+
+
+def _ensure_sub_team_configs() -> dict[str, Any]:
+    """Ensure sub-team configs are loaded."""
+    global _SUB_TEAM_CONFIGS
+    if _SUB_TEAM_CONFIGS is None:
+        _SUB_TEAM_CONFIGS = _get_sub_team_configs()
+    return _SUB_TEAM_CONFIGS
 
 
 AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
@@ -118,6 +157,9 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         ),
         can_observe=True,
         mission_types=("analysis", "code_investigation", "review"),
+        # ── Sub-Team capability (Phase 3.3) ───────────────────────────
+        supports_sub_team=True,
+        sub_team_config=_get_sub_team_configs()["analyst"],
     ),
     "analyst:security_guard": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
@@ -233,6 +275,9 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         ),
         can_observe=False,
         mission_types=("coding", "bug_fix", "refactor", "implementation"),
+        # ── Sub-Team capability (Phase 3.3) ───────────────────────────
+        supports_sub_team=True,
+        sub_team_config=_get_sub_team_configs()["coder"],
     ),
     "coder:arch_tech": AgentRuntimePolicy(
         agent_role=AgentType.CODER,
@@ -272,6 +317,9 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         ),
         can_observe=False,
         mission_types=("web_research", "documentation", "comparison"),
+        # ── Sub-Team capability (Phase 3.3) ───────────────────────────
+        supports_sub_team=True,
+        sub_team_config=_get_sub_team_configs()["researcher"],
     ),
 }
 

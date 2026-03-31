@@ -89,19 +89,62 @@ class AgentRuntime:
         asyncio.create_task(self._initialize_communication_bus())
     
     async def _initialize_communication_bus(self) -> None:
-        """Register all known agents in the CommunicationBus."""
+        """Initialize CommunicationBus (Internal or XMPP based on feature flag) and register agents."""
         try:
+            settings = get_settings()
+
+            if settings.use_xmpp_transport:
+                from mindflow_backend.communication.bus import (
+                    XMPPCommunicationBus,
+                    get_communication_bus,
+                    set_communication_bus,
+                )
+                from mindflow_backend.communication.connection.xmpp_connection import (
+                    XMPPConnectionConfig,
+                )
+
+                config = XMPPConnectionConfig(
+                    server=settings.xmpp_server,
+                    port=settings.xmpp_port,
+                    domain=settings.xmpp_domain,
+                    use_tls=settings.xmpp_use_tls,
+                )
+                xmpp_bus = XMPPCommunicationBus(config)
+                connected = await xmpp_bus.connect()
+
+                if connected:
+                    set_communication_bus(xmpp_bus)
+                    _logger.info(
+                        "xmpp_transport_activated",
+                        extra={
+                            "server": settings.xmpp_server,
+                            "domain": settings.xmpp_domain,
+                        },
+                    )
+                else:
+                    _logger.warning(
+                        "xmpp_transport_failed_fallback_to_internal",
+                        extra={"server": settings.xmpp_server},
+                    )
+            else:
+                # InternalBus is already default (lazy init via get_communication_bus)
+                _logger.info("internal_bus_transport_default")
+
+            # Register agents (works for both InternalBus and XMPPBus)
             from mindflow_backend.agents.specialists.runtime_policy import (
                 list_agent_runtime_policies,
             )
             from mindflow_backend.communication.bus import get_communication_bus
-            
+
             bus = get_communication_bus()
             for policy in list_agent_runtime_policies():
                 await bus.register_agent(policy.agent_id)
             _logger.info(
                 "communication_bus_agents_registered",
-                extra={"count": len(list_agent_runtime_policies())},
+                extra={
+                    "count": len(list_agent_runtime_policies()),
+                    "bus_type": type(bus).__name__,
+                },
             )
         except Exception as exc:
             _logger.warning(
