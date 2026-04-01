@@ -104,7 +104,7 @@ class DockerSandbox:
             volumes[temp_dir] = {"bind": "/workspace", "mode": "ro"}
 
         try:
-            # Run container
+            # Run container (timeout is handled by Docker daemon, not by run() parameter)
             container = self.client.containers.run(
                 self.config.image,
                 command=["sh", "-c", command],
@@ -119,7 +119,6 @@ class DockerSandbox:
                 detach=False,
                 stdout=True,
                 stderr=True,
-                timeout=self.config.timeout,
             )
 
             # Decode output
