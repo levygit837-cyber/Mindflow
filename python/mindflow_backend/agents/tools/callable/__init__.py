@@ -8,6 +8,17 @@ All tools here use:
 - Direct callable interface (no LangChain wrapper needed)
 
 Migration status tracked in README.md.
+
+## Usage
+
+To register all callable tools with the central registry:
+
+```python
+from mindflow_backend.agents.tools.callable import register_all_callable_tools
+
+# During application startup
+register_all_callable_tools()
+```
 """
 
 # Filesystem tools (Priority 1 - Read-only) ✅ COMPLETE
@@ -41,12 +52,18 @@ from .web import (
     ApiClientCallable,
 )
 
-# Planning tools (Priority 5)
-# from .planning import (
-#     TodoListReadCallable,
-#     TodoListWriteCallable,
-#     TodoListFocusCallable,
-# )
+# Planning tools (Priority 5) ✅ COMPLETE
+from .planning import (
+    TodoListReadCallable,
+    TodoListWriteCallable,
+    TodoListFocusCallable,
+)
+
+# Registration
+from .registration import (
+    register_all_callable_tools,
+    unregister_all_callable_tools,
+)
 
 __all__ = [
     # Priority 1 - Read-only filesystem (COMPLETE)
@@ -68,5 +85,12 @@ __all__ = [
     "HttpClientCallable",
     "WebScraperCallable",
     "ApiClientCallable",
+    # Priority 5 - Planning (COMPLETE)
+    "TodoListReadCallable",
+    "TodoListWriteCallable",
+    "TodoListFocusCallable",
+    # Registration
+    "register_all_callable_tools",
+    "unregister_all_callable_tools",
 ]
 

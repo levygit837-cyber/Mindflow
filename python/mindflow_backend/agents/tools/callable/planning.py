@@ -252,3 +252,119 @@ TodoListWriteCallable = build_callable_tool(
     is_destructive=False,  # Replaces but doesn't delete
     interrupt_behavior="block",  # Don't interrupt todo list writes
 )
+
+
+# ---------------------------------------------------------------------------
+# TodoListFocusCallable - Priority 5
+# ---------------------------------------------------------------------------
+
+
+class TodoListFocusInput(BaseModel):
+    """Input schema for TodoListFocusCallable."""
+
+    task_id: str = Field(
+        description="Planned execution task identifier"
+    )
+    limit: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="Maximum number of items to return"
+    )
+    session_id: str | None = Field(
+        default=None,
+        description="Chat session identifier (optional, can be inferred from context)"
+    )
+
+
+async def todo_list_focus_impl(
+    input: TodoListFocusInput,
+    context: ToolContext,
+    on_progress: ProgressCallback | None = None,
+) -> CallableToolResult[dict[str, Any]]:
+    """Return the most complex open items from a planning todo list.
+
+    Args:
+        input: Validated input (Pydantic model)
+        context: Tool execution context
+        on_progress: Optional progress callback
+
+    Returns:
+        CallableToolResult with focused todo items or error
+    """
+    try:
+        # Resolve session_id
+        session_id = input.session_id
+        if not session_id:
+            # Try to get from context metadata
+            session_id = context.session_id or context.metadata.get("session_id")
+
+        if not session_id:
+            return CallableToolResult(
+                data=None,
+                success=False,
+                error="session_id is required for planning operations",
+                metadata={
+                    "error_code": "MISSING_SESSION_ID",
+                    "task_id": input.task_id,
+                }
+            )
+
+        # Get planning service
+        service = get_todo_planning_service()
+
+        # Get focused items
+        focused = await service.focus_complex_items(
+            session_id=str(session_id),
+            task_id=input.task_id,
+            limit=input.limit,
+        )
+
+        return CallableToolResult(
+            data={
+                "task_id": input.task_id,
+                "session_id": str(session_id),
+                "limit": input.limit,
+                "focused_items": focused.model_dump(mode="json"),
+            },
+            success=True,
+            metadata={
+                "operation": "focus_todos",
+            }
+        )
+
+    except ValueError as e:
+        return CallableToolResult(
+            data=None,
+            success=False,
+            error=f"Validation error: {e}",
+            metadata={
+                "error_code": "VALIDATION_ERROR",
+                "task_id": input.task_id,
+            }
+        )
+    except Exception as e:
+        return CallableToolResult(
+            data=None,
+            success=False,
+            error=f"Failed to focus todo items: {e}",
+            metadata={
+                "error_code": "FOCUS_ERROR",
+                "task_id": input.task_id,
+            }
+        )
+
+
+TodoListFocusCallable = build_readonly_tool(
+    name="focus_todos",
+    description=(
+        "Return the most complex open todo items for the current planned execution task. "
+        "Prioritizes items by complexity to help focus on the most challenging work first. "
+        "Useful for breaking down complex tasks and planning execution order. "
+        "Concurrent-safe: can read multiple todo lists in parallel."
+    ),
+    input_schema=TodoListFocusInput,
+    call_fn=todo_list_focus_impl,
+    is_concurrency_safe=True,  # Safe to read multiple todo lists in parallel
+    interrupt_behavior="cancel",  # Safe to interrupt todo list reads
+)
