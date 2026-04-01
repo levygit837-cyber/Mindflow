@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
-from mindflow_backend.agents.tools.security import (
+from mindflow_backend.agents.tools.workspace_security import (
     WorkspaceSecurityError,
     is_read_only_mode,
     resolve_workspace_path,

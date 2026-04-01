@@ -10,7 +10,7 @@ from mindflow_backend.runtime.execution.safe_backend import (
 from mindflow_backend.runtime.memory.memory_integration import MemoryIntegration
 from mindflow_backend.runtime.monitoring.log_bus import AgentLogBus, log_bus
 from mindflow_backend.runtime.processing.output_categorizer import OutputCategory, categorize_output
-from mindflow_backend.runtime.providers import get_model_for_provider
+from mindflow_backend.runtime.providers.providers import get_model_for_provider
 from mindflow_backend.runtime.registry.node_registry import (
     NodeCategory,
     classify_node,

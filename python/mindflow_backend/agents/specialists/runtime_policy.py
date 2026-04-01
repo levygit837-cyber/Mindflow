@@ -98,14 +98,71 @@ class AgentRuntimePolicy:
         return f"{self.agent_role.value}:{self.specialist.value}"
 
     def build_agent(self) -> BaseAgent:
-        """Create the concrete runtime agent from the policy."""
+        """Create the concrete runtime agent from the policy.
+
+        Injects tool descriptions into the system prompt so the LLM
+        knows which tools are available and how to use them.
+        """
+        enhanced_prompt = self._inject_tool_descriptions(self.system_prompt)
         return BaseAgent(
             agent_role=self.agent_role,
             specialist=self.specialist,
-            system_prompt=self.system_prompt,
+            system_prompt=enhanced_prompt,
             tools=list(self.tools),
             thinking_level=self.thinking_level,
             sandbox=self.sandbox,
+            keep_context=self.keep_context,
+        )
+
+    def _inject_tool_descriptions(self, base_prompt: str) -> str:
+        """Inject tool descriptions and usage instructions into the prompt."""
+        try:
+            from mindflow_backend.agents.tools.tool_injection import (
+                inject_tools_into_prompt,
+            )
+            from mindflow_backend.agents.tools.base.tool_registry import (
+                get_tool_registry,
+            )
+
+            # Create a temporary BaseAgent to pass to injector
+            temp_agent = BaseAgent(
+                agent_role=self.agent_role,
+                specialist=self.specialist,
+                system_prompt=base_prompt,
+                tools=list(self.tools),
+            )
+            registry = get_tool_registry()
+            return inject_tools_into_prompt(base_prompt, registry, temp_agent)
+        except Exception:
+            # Fallback: return original prompt if injection fails
+            return base_prompt
+
+    async def build_agent_assembled(self, working_directory: str | None = None) -> BaseAgent:
+        """NOVO: Cria agente usando PromptAssembler multi-camada."""
+        from mindflow_backend.agents.prompts.base import build_assembled_prompt
+        from mindflow_backend.agents.tools.tool_injection import ToolPromptInjector
+        from mindflow_backend.agents.tools.base.tool_registry import get_tool_registry
+
+        registry = get_tool_registry()
+        injector = ToolPromptInjector(registry)
+
+        assembled_prompt = await build_assembled_prompt(
+            personality_prompt=self.system_prompt,
+            include_tools=True,
+            include_environment=True,
+            include_git=True,
+            include_memory=True,
+            tool_injector=injector,
+            working_directory=working_directory,
+        )
+
+        return BaseAgent(
+            agent_role=self.agent_role,
+            specialist=self.specialist,
+            system_prompt=assembled_prompt,
+            tools=list(self.tools),
+            sandbox=self.sandbox,
+            thinking_level=self.thinking_level,
             keep_context=self.keep_context,
         )
 

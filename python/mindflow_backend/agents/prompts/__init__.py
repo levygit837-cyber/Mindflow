@@ -8,7 +8,17 @@ add context-specific capabilities. Composite prompts maintain backward compatibi
 from __future__ import annotations
 
 # Base utilities
-from mindflow_backend.agents.prompts.base import MINDFLOW_PREAMBLE, build_system_prompt
+from mindflow_backend.agents.prompts.base import MINDFLOW_PREAMBLE, build_system_prompt, build_assembled_prompt
+
+# Assembler and layers (Phase 1: Prompt Injection System)
+from mindflow_backend.agents.prompts.assembler import AssemblyContext, PromptAssembler
+from mindflow_backend.agents.prompts.layers import (
+    BasePromptLayer,
+    EnvironmentLayer,
+    GitContextLayer,
+    MemoryFileLayer,
+    ToolDescriptionLayer,
+)
 
 # Composite prompts (pre-built combinations for backward compatibility)
 from mindflow_backend.agents.prompts.composite import (
@@ -48,7 +58,16 @@ ORCHESTRATOR_SYSTEM_PROMPT_LEGACY = FULL_ORCHESTRATOR_PROMPT
 __all__ = [
     # Base utilities
     "build_system_prompt",
+    "build_assembled_prompt",
     "MINDFLOW_PREAMBLE",
+    # Assembler and layers
+    "AssemblyContext",
+    "PromptAssembler",
+    "BasePromptLayer",
+    "EnvironmentLayer",
+    "GitContextLayer",
+    "MemoryFileLayer",
+    "ToolDescriptionLayer",
     # Core personalities
     "ANALYST_SYSTEM_PROMPT",
     "CODER_SYSTEM_PROMPT",

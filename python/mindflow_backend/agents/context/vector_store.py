@@ -441,26 +441,155 @@ class InMemoryVectorStore(VectorStore):
 
 
 class EmbeddingProvider:
-    """Simple embedding provider for generating vectors."""
-    
-    def __init__(self, vector_size: int = 256):
-        self.vector_size = vector_size
-    
-    async def generate_embedding(self, text: str) -> list[float]:
-        """Generate embedding for text.
-        
-        This is a placeholder implementation that generates
-        random vectors. In production, this would use
-        a proper embedding model.
+    """Real embedding provider using sentence-transformers.
+
+    Provides high-quality embeddings for semantic search and similarity.
+    Features:
+    - Uses sentence-transformers for state-of-the-art embeddings
+    - Caches embeddings to avoid recomputation
+    - Supports batching for efficiency
+    - Async execution to avoid blocking
+    """
+
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        """Initialize embedding provider.
+
+        Args:
+            model_name: Name of the sentence-transformers model to use
+                       Default is a fast, lightweight model (384 dimensions)
         """
-        # TODO: Replace with actual embedding model
-        import random
-        random.seed(hash(text) % (2**32))  # Reproducible for same text
-        return [random.uniform(-1, 1) for _ in range(self.vector_size)]
-    
+        self._model = None
+        self._model_name = model_name
+        self._cache: dict[str, list[float]] = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
+
+    def _get_model(self):
+        """Lazy load the model (only when first needed)."""
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._model = SentenceTransformer(self._model_name)
+            except ImportError:
+                raise ImportError(
+                    "sentence-transformers not installed. "
+                    "Install with: pip install sentence-transformers"
+                )
+        return self._model
+
+    async def generate_embedding(self, text: str) -> list[float]:
+        """Generate embedding for a single text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector as list of floats
+        """
+        # Check cache first
+        cache_key = self._get_cache_key(text)
+        if cache_key in self._cache:
+            self._cache_hits += 1
+            return self._cache[cache_key]
+
+        self._cache_misses += 1
+
+        # Generate embedding in thread pool to avoid blocking
+        import asyncio
+        loop = asyncio.get_running_loop()
+
+        model = self._get_model()
+        embedding = await loop.run_in_executor(
+            None,
+            model.encode,
+            text,
+        )
+
+        # Convert to list and cache
+        embedding_list = embedding.tolist()
+        self._cache[cache_key] = embedding_list
+
+        # Limit cache size
+        if len(self._cache) > 10000:
+            # Remove oldest 20% of entries
+            keys_to_remove = list(self._cache.keys())[:2000]
+            for key in keys_to_remove:
+                del self._cache[key]
+
+        return embedding_list
+
     async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for multiple texts."""
-        return [await self.generate_embedding(text) for text in texts]
+        """Generate embeddings for multiple texts (batched for efficiency).
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
+        """
+        # Check cache for all texts
+        results = []
+        uncached_texts = []
+        uncached_indices = []
+
+        for i, text in enumerate(texts):
+            cache_key = self._get_cache_key(text)
+            if cache_key in self._cache:
+                self._cache_hits += 1
+                results.append(self._cache[cache_key])
+            else:
+                self._cache_misses += 1
+                results.append(None)  # Placeholder
+                uncached_texts.append(text)
+                uncached_indices.append(i)
+
+        # Generate embeddings for uncached texts in batch
+        if uncached_texts:
+            import asyncio
+            loop = asyncio.get_running_loop()
+
+            model = self._get_model()
+            embeddings = await loop.run_in_executor(
+                None,
+                model.encode,
+                uncached_texts,
+            )
+
+            # Fill in results and cache
+            for idx, embedding in zip(uncached_indices, embeddings):
+                embedding_list = embedding.tolist()
+                results[idx] = embedding_list
+
+                # Cache it
+                cache_key = self._get_cache_key(texts[idx])
+                self._cache[cache_key] = embedding_list
+
+        return results
+
+    @staticmethod
+    def _get_cache_key(text: str) -> str:
+        """Generate cache key for text."""
+        import hashlib
+        return hashlib.md5(text.encode()).hexdigest()
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get cache statistics."""
+        total = self._cache_hits + self._cache_misses
+        hit_rate = (self._cache_hits / total * 100) if total > 0 else 0
+
+        return {
+            "cache_size": len(self._cache),
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate_percent": round(hit_rate, 2),
+            "model_name": self._model_name,
+        }
+
+    def clear_cache(self) -> None:
+        """Clear the embedding cache."""
+        self._cache.clear()
+        self._cache_hits = 0
+        self._cache_misses = 0
 
 
 # Global vector store instance

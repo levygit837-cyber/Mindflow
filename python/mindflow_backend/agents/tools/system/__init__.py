@@ -13,10 +13,16 @@ from .resource_monitor import (
     ResourceMonitorTool,
 )
 
-# System tools (unified from backend)
+# Shell executor v2 (Claude Code standard)
+from .shell_executor_v2 import (
+    ShellExecutorToolV2,
+)
+
+# Shell executor v1 (backward compatibility - deprecated)
 from .shell_executor import (
     ShellExecutorTool,
 )
+
 from .shell_tabs import (
     ShellTabCloseTool,
     ShellTabExecTool,
@@ -30,8 +36,13 @@ from .system_info import (
 )
 
 __all__ = [
-    # System tools (unified)
+    # Shell executor v2 (default)
+    "ShellExecutorToolV2",
+
+    # Shell executor v1 (deprecated)
     "ShellExecutorTool",
+
+    # Other system tools
     "ResourceMonitorTool",
     "SystemInfoTool",
     "ShellTabOpenTool",
@@ -40,7 +51,7 @@ __all__ = [
     "ShellTabExecTool",
     "ShellTabReadTool",
     "ShellTabCloseTool",
-    
+
     # Original system tools
     "MindFlowSandbox",
     "ProcessManagerTool",

@@ -172,7 +172,7 @@ class OpenAIProvider:
 # ---------------------------------------------------------------------------
 
 class OllamaProvider:
-    def __init__(self, *, model_name: str = "nomic-embed-text-v2-moe:latest", dims: int = 768, base_url: str | None = None) -> None:
+    def __init__(self, *, model_name: str = "qwen3-embedding:8b", dims: int = 768, base_url: str | None = None) -> None:
         self._model_name = model_name
         self._dims = dims
         self._base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -346,7 +346,7 @@ class EmbeddingProviderFactory:
             return OpenAIProvider(model_name=model_name or "text-embedding-3-small", dims=dims, api_key=api_key)
         if backend == EmbeddingBackend.OLLAMA:
             return OllamaProvider(
-                model_name=model_name or "nomic-embed-text-v2-moe:latest",
+                model_name=model_name or "qwen3-embedding:8b",
                 dims=dims,
                 base_url=base_url,
             )

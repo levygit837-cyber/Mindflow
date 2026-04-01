@@ -113,7 +113,7 @@ class Settings(BaseSettings):
 
     # Embedding Provider Configuration (EmbeddingProviderFactory)
     embedding_backend: str = Field(default="ollama", alias="EMBEDDING_BACKEND")
-    embedding_model_name: str = Field(default="nomic-embed-text-v2-moe:latest", alias="EMBEDDING_MODEL_NAME")
+    embedding_model_name: str = Field(default="qwen3-embedding:8b", alias="EMBEDDING_MODEL_NAME")
     embedding_dims: int = Field(default=768, alias="EMBEDDING_DIMS")
     memory_block_max_messages: int = Field(default=8, alias="MEMORY_BLOCK_MAX_MESSAGES")
     memory_block_max_tokens: int = Field(default=1200, alias="MEMORY_BLOCK_MAX_TOKENS")

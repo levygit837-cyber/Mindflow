@@ -4,10 +4,16 @@ Stream Manager - Handles stream event creation and normalization.
 Provides utilities for creating typed stream events.
 """
 
+import json
 import uuid
+from collections.abc import AsyncGenerator
+from typing import Any
 
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
+
+_logger = get_logger(__name__)
 
 
 class StreamManager:
@@ -114,4 +120,97 @@ class StreamManager:
             mode="custom",
             data=data,
             meta=meta,
+        )
+
+    async def stream_tool_execution(
+        self,
+        executor: Any,  # StreamingToolExecutor
+        *,
+        counter: list[int],
+        provider: str,
+        model: str,
+        run_id: str,
+        session_id: str,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """Stream de execução de ferramentas.
+
+        Emite eventos:
+        - tool_start: Quando ferramenta inicia
+        - tool_result: Quando ferramenta completa
+        - tool_error: Quando ferramenta falha
+
+        Args:
+            executor: StreamingToolExecutor com ferramentas adicionadas
+            counter: Contador de sequência
+            provider: Provedor do modelo
+            model: Modelo sendo usado
+            run_id: ID da execução
+            session_id: ID da sessão
+        """
+        normalizer = AgentChatStreamNormalizer(provider=provider, model=model, turn_run_id=session_id)
+
+        try:
+            async for streaming_result in executor.get_remaining_results():
+                if streaming_result.status.value == "running":
+                    # Emite tool_start
+                    yield normalizer.tool_call_event(
+                        self.next_seq(counter),
+                        tool_call_id=streaming_result.tool_id,
+                        name=streaming_result.tool_name,
+                        args={},
+                        run_id=run_id,
+                    )
+
+                elif streaming_result.status.value == "completed" and streaming_result.result:
+                    # Emite tool_result
+                    result_data = streaming_result.result.to_dict() if hasattr(streaming_result.result, 'to_dict') else str(streaming_result.result)
+                    yield normalizer.tool_result_event(
+                        self.next_seq(counter),
+                        tool_call_id=streaming_result.tool_id,
+                        name=streaming_result.tool_name,
+                        result=json.dumps(result_data) if isinstance(result_data, dict) else str(result_data),
+                        run_id=run_id,
+                    )
+
+                elif streaming_result.status.value == "error":
+                    # Emite tool_error
+                    yield self.error_event(
+                        exc=Exception(streaming_result.error or "Unknown error"),
+                        counter=counter,
+                        provider=provider,
+                        model=model,
+                        run_id=run_id,
+                        session_id=session_id,
+                        node="streaming_executor",
+                        node_category="TOOL_EXECUTION",
+                    )
+
+                elif streaming_result.status.value == "discarded":
+                    # Log discarded
+                    _logger.info(
+                        "tool_discarded",
+                        tool_id=streaming_result.tool_id,
+                        tool_name=streaming_result.tool_name,
+                    )
+
+        except Exception as exc:
+            _logger.error("stream_tool_execution_error", error=str(exc))
+            yield self.error_event(
+                exc=exc,
+                counter=counter,
+                provider=provider,
+                model=model,
+                run_id=run_id,
+                session_id=session_id,
+                node="streaming_executor",
+                node_category="TOOL_EXECUTION",
+            )
+
+        # Emite evento done
+        yield self.done_event(
+            counter=counter,
+            provider=provider,
+            model=model,
+            run_id=run_id,
+            session_id=session_id,
         )

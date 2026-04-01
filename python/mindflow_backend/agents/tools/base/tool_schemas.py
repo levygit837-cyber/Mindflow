@@ -1,22 +1,22 @@
 """
 Tool schema definitions for MindFlow agents.
 
-DEPRECATED: This module has been moved to mindflow_backend.schemas.tools.base
+DEPRECATED: This module has been moved to mindflow_backend.schemas.tools
 This file is maintained for backward compatibility during migration.
 
-Use: from mindflow_backend.schemas.tools.base import ParameterType, ToolParameter, ToolSchema, ToolResult, create_tool_schema, create_parameter, validate_tool_parameters
+Use: from mindflow_backend.schemas.tools.base import ParameterType, ToolParameterSchema, ToolSchema, make_parameter, make_tool_schema
+     from mindflow_backend.schemas.tools.result import ToolResult
 """
 
 # Forward compatibility aliases - import from new location
 from mindflow_backend.schemas.tools.base import (
     ParameterType,
-    ToolParameter,
-    ToolResult,
+    ToolParameterSchema as ToolParameter,
     ToolSchema,
-    create_parameter,
-    create_tool_schema,
-    validate_tool_parameters,
+    make_parameter as create_parameter,
+    make_tool_schema as create_tool_schema,
 )
+from mindflow_backend.schemas.tools.result import ToolResult
 
 # Maintain backward compatibility
 __all__ = [
@@ -26,5 +26,4 @@ __all__ = [
     "ToolResult",
     "create_tool_schema",
     "create_parameter",
-    "validate_tool_parameters",
 ]

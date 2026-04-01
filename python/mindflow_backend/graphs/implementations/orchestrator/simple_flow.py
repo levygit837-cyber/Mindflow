@@ -20,7 +20,6 @@ from mindflow_backend.memory.indexing import is_continuation_prompt
 from mindflow_backend.nodes.implementations.orchestrator.execute_node import ExecuteNode
 from mindflow_backend.nodes.implementations.orchestrator.respond_node import RespondNode
 from mindflow_backend.nodes.implementations.orchestrator.route_node import RouteNode
-from mindflow_backend.runtime import get_model_for_provider
 from mindflow_backend.schemas.orchestration.orchestrator import (
     ExecutionStrategy,
     OrchestratorDecision,
@@ -271,6 +270,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
                 from mindflow_backend.orchestrator.chain_integration import (
                     execute_chain_with_intelligence,
                 )
+                from mindflow_backend.runtime.providers.providers import get_model_for_provider
 
                 # The Orchestrator creates the LLM and passes it to the chain so chains
                 # never instantiate their own models — they use whichever specialist was
@@ -403,6 +403,8 @@ class SimpleOrchestratorGraph(SimpleGraph):
         messages.append({"role": "user", "content": state["message"]})
 
         try:
+            from mindflow_backend.runtime.providers.providers import get_model_for_provider
+
             llm = get_model_for_provider(provider, model)
             llm_with_tools = llm.bind_tools(lc_tools)
 

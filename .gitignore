@@ -117,3 +117,24 @@ AGENTS.md
 
 # Personal Claude Code preferences (not shared with team)
 CLAUDE.local.md
+
+# ── GSD baseline (auto-generated) ──
+.gsd
+Thumbs.db
+*.swp
+*.swo
+*~
+*.code-workspace
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+build/
+venv/
+target/
+vendor/
+coverage/
+.cache/
+tmp/

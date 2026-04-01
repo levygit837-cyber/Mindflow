@@ -144,7 +144,7 @@ async def fetch_embedding(text: str, provider: str = "ollama") -> list[float]:
         else:
             import ollama
 
-            model = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+            model = os.environ.get("OLLAMA_EMBED_MODEL", "qwen3-embedding:8b")
             host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
             client = ollama.AsyncClient(host=host)
             response = await client.embeddings(model=model, prompt=text)

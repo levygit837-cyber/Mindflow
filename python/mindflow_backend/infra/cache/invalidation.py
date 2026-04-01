@@ -215,24 +215,24 @@ class DependencyTracker:
             return all_dependents
 
 
-class InvalidationStrategy(ABC):
+class BaseInvalidationStrategy(ABC):
     """Abstract base class for invalidation strategies."""
-    
+
     @abstractmethod
     async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
         """Execute invalidation strategy.
-        
+
         Args:
             keys: Keys to invalidate
             context: Invalidation context
-            
+
         Returns:
             Invalidation result
         """
         pass
 
 
-class ImmediateInvalidationStrategy(InvalidationStrategy):
+class ImmediateInvalidationStrategy(BaseInvalidationStrategy):
     """Immediate cache invalidation."""
     
     async def execute(self, keys: list[str], context: dict[str, Any]) -> dict[str, Any]:
@@ -263,7 +263,7 @@ class ImmediateInvalidationStrategy(InvalidationStrategy):
         return results
 
 
-class DelayedInvalidationStrategy(InvalidationStrategy):
+class DelayedInvalidationStrategy(BaseInvalidationStrategy):
     """Delayed cache invalidation."""
     
     def __init__(self, delay_seconds: float):
@@ -283,7 +283,7 @@ class DelayedInvalidationStrategy(InvalidationStrategy):
         return await immediate_strategy.execute(keys, context)
 
 
-class BatchedInvalidationStrategy(InvalidationStrategy):
+class BatchedInvalidationStrategy(BaseInvalidationStrategy):
     """Batched cache invalidation."""
     
     def __init__(self, batch_size: int = 100):
@@ -336,7 +336,7 @@ class BatchedInvalidationStrategy(InvalidationStrategy):
         return results
 
 
-class ConditionalInvalidationStrategy(InvalidationStrategy):
+class ConditionalInvalidationStrategy(BaseInvalidationStrategy):
     """Conditional cache invalidation."""
     
     def __init__(self, condition: Callable[[str, dict[str, Any]], bool]):
@@ -396,7 +396,7 @@ class CacheInvalidator:
         self._rules: dict[str, InvalidationRule] = {}
         self._events: list[InvalidationEvent] = []
         self._dependency_tracker = DependencyTracker()
-        self._strategies: dict[InvalidationStrategy, InvalidationStrategy] = {
+        self._strategies: dict[InvalidationStrategy, BaseInvalidationStrategy] = {
             InvalidationStrategy.IMMEDIATE: ImmediateInvalidationStrategy(),
             InvalidationStrategy.DELAYED: DelayedInvalidationStrategy(0.0),
             InvalidationStrategy.BATCHED: BatchedInvalidationStrategy(),

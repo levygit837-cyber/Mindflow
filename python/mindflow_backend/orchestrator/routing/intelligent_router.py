@@ -252,6 +252,28 @@ STRICT RULES:
             if intent.recommended_specialist:
                 specialist = SpecialistType(intent.recommended_specialist)
 
+        # --- AUTO-ACTIVATE TEAM_SESSION for complex multi-agent tasks ---
+        # Check if we should automatically upgrade to team session
+        from mindflow_backend.runtime.feature_flags import FeatureFlags
+
+        should_use_team_session = (
+            FeatureFlags.team_sessions_enabled()
+            and intent.complexity_score >= 0.7
+            and intent.is_multi_agent
+            and intent.agent_sequence
+            and len(intent.agent_sequence) >= 2
+        )
+
+        if should_use_team_session:
+            # Override execution strategy to TEAM_SESSION
+            intent.execution_strategy = ExecutionStrategy.TEAM_SESSION
+            _logger.info(
+                "orchestrator_auto_team_session",
+                complexity=intent.complexity_score,
+                agent_count=len(intent.agent_sequence),
+                agents=[a.value for a in intent.agent_sequence],
+            )
+
         # --- DIRECT_RESPONSE: Orchestrator answers itself ---
         if intent.execution_strategy == ExecutionStrategy.DIRECT_RESPONSE:
             _logger.info("orchestrator_direct_response", intent=intent.user_intent)

@@ -52,11 +52,11 @@ class PermissionDeniedHandler:
     @staticmethod
     async def execute(
         tool_name: str,
-      tool_input: dict[str, Any],
-      tool_use_id: str,
-      session_id: str,
-      *,
-      timeout: float = 30.0,
+        tool_input: dict[str, Any],
+        tool_use_id: str,
+        session_id: str,
+        *,
+        timeout: float = 30.0,
     ) -> AsyncGenerator[HookResult, None]:
         from mindflow_backend.hooks.context import HookContext
         from mindflow_backend.hooks.types import HookEvent

@@ -1478,3 +1478,158 @@ class RuntimeExecutor:
                 execution_id=execution_id,
                 error=str(exc),
             )
+
+    # ── Streaming Tool Execution ─────────────────────────────────────
+
+    async def execute_with_streaming(
+        self,
+        tool_blocks: list[dict[str, Any]],
+        session_id: str,
+        *,
+        run_id: str | None = None,
+        max_concurrent: int = 5,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """Executa ferramentas com streaming usando StreamingToolExecutor.
+
+        Cria StreamingToolExecutor, adiciona ferramentas,
+        e retorna resultados conforme ficam prontos.
+
+        Args:
+            tool_blocks: Lista de blocos de uso de ferramenta
+            session_id: ID da sessão
+            run_id: ID da execução (opcional)
+            max_concurrent: Máximo de ferramentas concorrentes
+        """
+        from mindflow_backend.runtime.execution.streaming_executor import (
+            StreamingToolExecutor,
+            ToolDefinition,
+            ToolUseContext,
+        )
+        from mindflow_backend.schemas.tools.streaming_types import AbortController
+
+        provider, model, run_id, normalizer, counter = self._create_stream_context(
+            AgentChatRequest(message="", provider=None, model=None),
+            session_id,
+            run_id,
+        )
+
+        # Cria AbortController para esta execução
+        abort_controller = AbortController()
+
+        # Cria contexto de uso de ferramentas
+        tool_context = ToolUseContext(
+            session_id=session_id,
+            abort_controller=abort_controller,
+        )
+
+        # Função de permissão padrão (sempre permite)
+        async def _default_can_use_tool(
+            tool_name: str,
+            tool_input: dict[str, Any],
+        ) -> tuple[bool, str | None]:
+            return True, None
+
+        # Cria executor de ferramentas streaming
+        executor = StreamingToolExecutor(
+            tool_definitions={},  # Ferramentas serão adicionadas dinamicamente
+            can_use_tool=_default_can_use_tool,
+            tool_use_context=tool_context,
+            max_concurrent=max_concurrent,
+        )
+
+        try:
+            yield normalizer.step_event(
+                self._next_seq(counter),
+                run_id=run_id,
+                step_name="Streaming Tool Execution",
+                detail=f"Executing {len(tool_blocks)} tools with streaming.",
+                action="start",
+                node="streaming_executor",
+                node_category="TOOL_EXECUTION",
+                user_visible=True,
+            )
+
+            # Adiciona ferramentas ao executor
+            for block in tool_blocks:
+                tool_use_id = block.get("id", str(uuid.uuid4()))
+                tool_name = block.get("name", "")
+                tool_input = block.get("input", {})
+
+                if tool_name:
+                    executor.add_tool(
+                        tool_use_id=tool_use_id,
+                        tool_name=tool_name,
+                        tool_input=tool_input,
+                    )
+
+                    yield normalizer.tool_call_event(
+                        self._next_seq(counter),
+                        tool_call_id=tool_use_id,
+                        name=tool_name,
+                        args=tool_input,
+                        run_id=run_id,
+                    )
+
+            # Emite resultados conforme ficam prontos
+            async for streaming_result in executor.get_remaining_results():
+                if streaming_result.result:
+                    yield normalizer.tool_result_event(
+                        self._next_seq(counter),
+                        tool_call_id=streaming_result.tool_id,
+                        name=streaming_result.tool_name,
+                        result=str(streaming_result.result),
+                        run_id=run_id,
+                    )
+                elif streaming_result.error:
+                    yield self._error_event(
+                        exc=Exception(streaming_result.error),
+                        counter=counter,
+                        provider=provider,
+                        model=model,
+                        run_id=run_id,
+                        session_id=session_id,
+                        node="streaming_executor",
+                        node_category="TOOL_EXECUTION",
+                    )
+
+            # Emite estatísticas
+            stats = executor.get_stats()
+            _logger.info(
+                "streaming_tool_execution_complete",
+                **stats,
+            )
+
+            yield normalizer.step_event(
+                self._next_seq(counter),
+                run_id=run_id,
+                step_name="Streaming Tool Execution",
+                detail=f"Completed: {stats['completed']} success, {stats['errored']} errors.",
+                action="complete",
+                node="streaming_executor",
+                node_category="TOOL_EXECUTION",
+                user_visible=True,
+            )
+
+        except Exception as exc:
+            _logger.error("streaming_tool_execution_error", error=str(exc))
+            yield self._error_event(
+                exc=exc,
+                counter=counter,
+                provider=provider,
+                model=model,
+                run_id=run_id,
+                session_id=session_id,
+                node="streaming_executor",
+                node_category="TOOL_EXECUTION",
+            )
+        finally:
+            # Cleanup
+            executor.discard()
+
+        yield self._done_event(
+            counter=counter,
+            provider=provider,
+            model=model,
+            run_id=run_id,
+            session_id=session_id,
+        )

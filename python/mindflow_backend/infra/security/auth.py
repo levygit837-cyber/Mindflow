@@ -18,7 +18,6 @@ from typing import Any
 import jwt
 
 from mindflow_backend.infra.cache.redis_client import get_redis_client
-from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -464,11 +463,11 @@ class AuthManager:
         
     async def initialize(self) -> None:
         """Initialize auth manager."""
-        settings = get_settings()
-        
-        # Initialize JWT provider
+        from mindflow_backend.security.auth.jwt_secret import get_jwt_secret_key
+
+        # Initialize JWT provider with secure secret from environment
         self._jwt_provider = JWTAuthProvider(
-            secret_key=settings.app_name + "_secret_key",  # In production, use proper secret
+            secret_key=get_jwt_secret_key(),
             algorithm="HS256"
         )
         self._providers[AuthMethod.JWT] = self._jwt_provider

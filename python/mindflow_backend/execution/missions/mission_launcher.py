@@ -240,17 +240,12 @@ class MissionLauncher:
         metadata: dict[str, Any] | None = None,
     ) -> MissionResult:
         """
-        Launch mission using SubTeamLauncher.
+        Launch mission using sub-team of specialized agents.
 
-        This method spawns a sub-team of specialized agents to execute
-        the mission in parallel, then aggregates their results.
+        This method spawns a sub-team to execute the mission in parallel,
+        then aggregates their results.
         """
-        from mindflow_backend.execution.sub_teams.sub_team_launcher import SubTeamLauncher
-        from mindflow_backend.execution.teams.team_orchestrator import TeamOrchestrator
-
-        # TODO: Get TeamManager instance (for now, we'll need to handle this)
-        # For the implementation, we need access to TeamOrchestrator
-        # This will be properly wired when integrating with the full system
+        from mindflow_backend.execution.agent_team_manager import AgentTeamManager
 
         self._logger.info(
             "launching_sub_team",
@@ -261,44 +256,122 @@ class MissionLauncher:
             },
         )
 
-        # Create SubTeamLauncher
-        # Note: This is a simplified version - full integration will require
-        # proper dependency injection of TeamOrchestrator
+        start_time = datetime.now()
+
         try:
-            # For now, create a basic MissionResult that indicates sub-team was attempted
-            # Full implementation will come when we have TeamOrchestrator properly wired
-            start_time = datetime.now()
+            # Create team manager
+            team_manager = AgentTeamManager(
+                comm_bus=comm_bus,
+                mission_launcher=self,
+            )
 
-            # Placeholder: In full implementation, this will call SubTeamLauncher
-            # sub_team_launcher = SubTeamLauncher(team_orchestrator, self, comm_bus)
-            # sub_team_result = await sub_team_launcher.launch_sub_team(...)
+            # Select agents for sub-team based on mission type
+            sub_team_agents = self._select_sub_team_agents(mission_type, agent_id)
 
+            if not sub_team_agents:
+                # Fallback to single agent if no sub-team needed
+                return await self._launch_with_execution_graph(
+                    agent_id=agent_id,
+                    mission_type=mission_type,
+                    task=task,
+                    session_id=session_id,
+                    policy=policy,
+                    metadata=metadata,
+                )
+
+            # Run sub-team session (skip discussion for efficiency)
+            team_result = await team_manager.run_team_session(
+                task=task,
+                agent_ids=sub_team_agents,
+                session_id=session_id,
+                skip_discussion=True,  # Sub-teams execute directly
+            )
+
+            duration = (datetime.now() - start_time).total_seconds()
+
+            # Convert team result to mission result
             result = MissionResult(
                 agent_id=agent_id,
                 mission_type=mission_type,
-                success=True,
-                result="Sub-team execution (placeholder)",
-                started_at=start_time,
+                success=team_result.success,
+                result=team_result.synthesized_response,
+                duration_seconds=duration,
+                metadata={
+                    "sub_team_agents": sub_team_agents,
+                    "mission_count": len(team_result.mission_results),
+                    "team_id": team_result.team_id,
+                },
+                memory_annotations=[],
+                start_time=start_time,
+                end_time=datetime.now(),
             )
 
-            # Attach sub_team_result when available
-            # result.sub_team_result = sub_team_result
+            self._logger.info(
+                "sub_team_completed",
+                extra={
+                    "agent_id": agent_id,
+                    "success": result.success,
+                    "duration": duration,
+                    "sub_team_size": len(sub_team_agents),
+                },
+            )
 
             return result
 
         except Exception as exc:
+            duration = (datetime.now() - start_time).total_seconds()
             self._logger.error(
-                "sub_team_launch_failed",
-                extra={"agent_id": agent_id, "error": str(exc)},
+                "sub_team_failed",
+                extra={
+                    "agent_id": agent_id,
+                    "error": str(exc),
+                    "mission_type": mission_type.value,
+                },
             )
-            # Fallback to normal mission execution
+
             return MissionResult(
                 agent_id=agent_id,
                 mission_type=mission_type,
                 success=False,
-                error=f"Sub-team launch failed: {exc}",
-                started_at=datetime.now(),
+                result=f"Sub-team execution failed: {exc}",
+                duration_seconds=duration,
+                metadata={"error": str(exc)},
+                memory_annotations=[],
+                start_time=start_time,
+                end_time=datetime.now(),
             )
+
+    def _select_sub_team_agents(
+        self,
+        mission_type: MissionGraphType,
+        primary_agent_id: str,
+    ) -> list[str]:
+        """Select appropriate agents for a sub-team based on mission type.
+
+        Args:
+            mission_type: Type of mission
+            primary_agent_id: Primary agent requesting the sub-team
+
+        Returns:
+            List of agent IDs for the sub-team
+        """
+        # Map mission types to agent combinations
+        mission_to_agents = {
+            MissionGraphType.CODING_TASK: ["coder", "analyst:critic"],
+            MissionGraphType.RESEARCH: ["researcher", "analyst"],
+            MissionGraphType.ANALYSIS: ["analyst", "analyst:critic"],
+            MissionGraphType.ARCHITECTURE_DESIGN: ["coder:arch_tech", "analyst"],
+            MissionGraphType.BUG_FIX: ["coder", "analyst:critic"],
+            MissionGraphType.REFACTOR: ["coder:arch_tech", "analyst:critic"],
+            MissionGraphType.IMPLEMENTATION: ["coder", "analyst"],
+        }
+
+        agents = mission_to_agents.get(mission_type, [])
+
+        # Filter out the primary agent to avoid duplication
+        agents = [a for a in agents if a != primary_agent_id]
+
+        return agents
 
     def create_context(
         self,

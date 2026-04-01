@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
 
-from .security import (
+from .workspace_security import (
     normalize_sandbox_mode,
     sanitize_environment,
     secure_sandbox_enabled,

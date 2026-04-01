@@ -195,42 +195,93 @@ class OrchestratorWorker(BaseWorker):
         )
     
     async def _handle_agent_coordination(self, message_data: dict[str, Any]) -> WorkerResult:
-        """Handle coordination between agents."""
+        """Handle coordination between agents using AgentTeamManager."""
         coordination_type = message_data.get("coordination_type", "collaboration")
         participating_agents = message_data.get("participating_agents", [])
         coordination_context = message_data.get("coordination_context", {})
-        
-        # TODO: Implement agent coordination logic
-        # This would manage inter-agent communication and collaboration
-        
-        await asyncio.sleep(0.3)  # Simulate coordination
-        
-        return WorkerResult(
-            success=True,
-            message=f"Agent coordination completed: {coordination_type}",
-            data={
-                "coordination_type": coordination_type,
-                "participating_agents": participating_agents,
-                "coordination_events": [
-                    {
-                        "timestamp": "2024-03-02T10:00:00Z",
-                        "from_agent": "orchestrator",
-                        "to_agent": "coder",
-                        "message_type": "task_assignment",
-                        "content": "New coding task assigned",
+        task = message_data.get("task", "")
+        session_id = message_data.get("session_id", "")
+
+        if not participating_agents:
+            return WorkerResult(
+                success=False,
+                message="No participating agents specified",
+                data={"error": "participating_agents is required"},
+            )
+
+        if not task:
+            return WorkerResult(
+                success=False,
+                message="No task specified for coordination",
+                data={"error": "task is required"},
+            )
+
+        try:
+            # Import AgentTeamManager
+            from mindflow_backend.execution.agent_team_manager import AgentTeamManager
+
+            # Create team manager
+            team_manager = AgentTeamManager()
+
+            if coordination_type == "collaboration":
+                # Run full team session
+                result = await team_manager.run_team_session(
+                    task=task,
+                    agent_ids=participating_agents,
+                    session_id=session_id,
+                    skip_discussion=False,
+                )
+
+                return WorkerResult(
+                    success=result.success,
+                    message=f"Team collaboration completed: {len(result.mission_results)} missions executed",
+                    data={
+                        "coordination_type": coordination_type,
+                        "participating_agents": participating_agents,
+                        "team_id": result.team_id,
+                        "mission_count": len(result.mission_results),
+                        "synthesized_response": result.synthesized_response,
+                        "success": result.success,
                     },
-                    {
-                        "timestamp": "2024-03-02T10:01:00Z",
-                        "from_agent": "coder",
-                        "to_agent": "analyst",
-                        "message_type": "status_update",
-                        "content": "Task in progress",
+                )
+
+            elif coordination_type == "delegation":
+                # Simple delegation without discussion
+                result = await team_manager.run_team_session(
+                    task=task,
+                    agent_ids=participating_agents,
+                    session_id=session_id,
+                    skip_discussion=True,
+                )
+
+                return WorkerResult(
+                    success=result.success,
+                    message=f"Agent delegation completed",
+                    data={
+                        "coordination_type": coordination_type,
+                        "participating_agents": participating_agents,
+                        "mission_count": len(result.mission_results),
+                        "success": result.success,
                     },
-                ],
-                "collaboration_score": 0.91,
-                "communication_efficiency": 0.88,
-            },
-        )
+                )
+
+            else:
+                return WorkerResult(
+                    success=False,
+                    message=f"Unknown coordination type: {coordination_type}",
+                    data={"error": f"Unsupported coordination_type: {coordination_type}"},
+                )
+
+        except Exception as exc:
+            return WorkerResult(
+                success=False,
+                message=f"Agent coordination failed: {exc}",
+                data={
+                    "error": str(exc),
+                    "coordination_type": coordination_type,
+                    "participating_agents": participating_agents,
+                },
+            )
     
     async def _handle_progress_monitoring(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle task and workflow progress monitoring."""

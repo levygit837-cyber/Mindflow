@@ -5,16 +5,14 @@ personalities, specialists, enhanced agents, and orchestration.
 """
 
 from ..core.base import AgentInterface
-from .analyst import Analyst
-from .coder import Coder
 from .context import Cache, ContextRetriever, VectorStore
 from .core_personality import CorePersonalityContract
-from .enhanced_analyst import EnhancedAnalyst
-from .enhanced_coder import EnhancedCoder
+from .enhanced.analyst import EnhancedAnalyst
+from .enhanced.coder import EnhancedCoder
+from .enhanced.researcher import EnhancedResearcher
 from .enhanced_reviewer import EnhancedReviewer
 from .personality import RuleEngine as PersonalityRuleEngine
 from .personality import SpecialistSelector as PersonalitySpecialistSelector
-from .researcher import EnhancedResearcher
 from .reviewer import Reviewer
 from .session import SessionManagerContract
 from .specialist import RuleEngine, SpecialistSelector
@@ -42,8 +40,6 @@ __all__ = [
     "PersonalityRuleEngine",
     "EnhancedResearcher",
     "TaskRagAgent",
-    "Analyst",
-    "Coder",
     "Reviewer",
     "EnhancedCoder",
     "EnhancedAnalyst",

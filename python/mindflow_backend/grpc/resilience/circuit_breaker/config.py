@@ -10,7 +10,16 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
-from mindflow_backend.grpc.resilience.circuit_breaker import CircuitBreakerConfig
+
+@dataclass
+class CircuitBreakerConfig:
+    """Configuration for circuit breaker (base class)."""
+    failure_threshold: int = 5          # Number of failures before opening
+    recovery_timeout: float = 60.0      # Seconds to wait before trying again
+    success_threshold: int = 3          # Successes needed to close circuit
+    timeout: float = 30.0              # Timeout for individual calls
+    max_half_open_calls: int = 10       # Max calls in half-open state
+    monitor_period: float = 10.0        # Period to monitor health
 
 
 class AdaptiveThresholdType(Enum):

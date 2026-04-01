@@ -34,7 +34,9 @@ This project is indexed by GitNexus as **MindFlow** (93539 symbols, 234822 relat
 
 **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind v4 + Zustand
 
-**Package Managers:** `uv` for Python (NOT pip/poetry), `npm` for frontend
+**CLI:** React 18 + Ink 5 + Zustand (Terminal UI)
+
+**Package Managers:** `uv` for Python (NOT pip/poetry), `npm` for frontend/CLI
 
 ## Essential Commands
 
@@ -53,10 +55,25 @@ This project is indexed by GitNexus as **MindFlow** (93539 symbols, 234822 relat
 - `npm run test` - Vitest unit tests
 - `npm run test:e2e` - Playwright e2e tests
 
+**CLI (from `/cli/`):**
+- `npm run dev` - Start CLI in development mode
+- `npm run build` - Build CLI for production
+- `npm start` - Run built CLI
+- `npm run typecheck` - TypeScript type checking
+
 **Full Stack (from root):**
 - `./start_dev.sh` - Start all services (Docker + API + Frontend + Worker)
 - `./stop_dev.sh` - Stop all services
 - `./status_dev.sh` - Check service status
+
+**Quick Start CLI:**
+```bash
+# Terminal 1: Start backend
+cd python && uv run mindflow-api
+
+# Terminal 2: Start CLI
+cd cli && npm run dev
+```
 
 ## Critical Gotchas
 
@@ -86,6 +103,18 @@ This project is indexed by GitNexus as **MindFlow** (93539 symbols, 234822 relat
 - Python tests in `python/tests/` with markers: `@pytest.mark.live`, `@pytest.mark.slow`, `@pytest.mark.integration`
 - Frontend uses Vitest for unit tests, Playwright for e2e
 - Coverage threshold: 80% for Python
+
+## Architecture Documentation
+
+**Distributed Agent Orchestration** (In Progress - Validation Phase):
+- **Location**: `docs/architecture/distributed-orchestration/`
+- **Status**: Validation experiments (Weeks 1-4)
+- **Decision**: Option A - Validate First
+- **Start**: [00-EXECUTIVE-SUMMARY.md](docs/architecture/distributed-orchestration/00-EXECUTIVE-SUMMARY.md)
+- **Quick Start**: [QUICK-START.md](docs/architecture/distributed-orchestration/QUICK-START.md)
+- **PRD**: [PRD-Distributed-Agent-Orchestration.md](PRD-Distributed-Agent-Orchestration.md)
+
+This is a major architectural initiative to migrate from centralized routing to distributed agent self-organization. See documentation for full details.
 
 ## Git Workflow
 

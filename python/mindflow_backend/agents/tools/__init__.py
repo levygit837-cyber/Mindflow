@@ -32,7 +32,7 @@ from mindflow_backend.agents.tools.contextplus_validator import (
 from .base.tool_registry import ToolRegistry
 from .base.tool_schemas import ToolSchema
 from .sandbox import MindFlowSandbox
-from .security import normalize_sandbox_mode, secure_sandbox_enabled
+from .workspace_security import normalize_sandbox_mode, secure_sandbox_enabled
 
 _logger = get_logger(__name__)
 
@@ -120,60 +120,74 @@ class _DefaultRegistry:
         return tools
 
     def _get_filesystem_tools(self) -> list[Any]:
-        """Get filesystem tools."""
+        """Get filesystem tools (v2 by default, v1 for backward compatibility)."""
         tools = []
-        
+
         try:
+            # Import v2 tools (Claude Code standard)
+            from .filesystem import (
+                FileReadToolV2,
+                FileWriteToolV2,
+                FileEditToolV2,
+                GrepToolV2,
+                GlobToolV2,
+            )
+
+            # Import v1 tools for backward compatibility
             from .filesystem import (
                 DirectoryCreateTool,
                 DirectoryListTool,
                 FileDeleteTool,
-                FileEditTool,
-                FileReadTool,
-                FileWriteTool,
                 FindFilesTool,
-                GlobSearchTool,
-                GrepSearchTool,
             )
-            
+
             tools = [
-                FileReadTool(),
-                FileWriteTool(), 
-                FileEditTool(),
-                GrepSearchTool(),
-                GlobSearchTool(),
+                # v2 tools (default)
+                FileReadToolV2(),
+                FileWriteToolV2(),
+                FileEditToolV2(),
+                GrepToolV2(),
+                GlobToolV2(),
+
+                # v1 tools (backward compatibility)
                 FindFilesTool(),
                 DirectoryListTool(),
                 FileDeleteTool(),
                 DirectoryCreateTool()
             ]
-            _logger.info(f"Loaded {len(tools)} filesystem tools")
-            
+            _logger.info(f"Loaded {len(tools)} filesystem tools (5 v2 + 4 v1)")
+
         except ImportError as e:
             _logger.warning(f"Could not import filesystem tools: {e}")
-            
+
         return tools
 
     def _get_shell_tools(self) -> list[Any]:
-        """Get shell/system tools."""
+        """Get shell/system tools (v2 by default, v1 for backward compatibility)."""
         tools = []
-        
+
         try:
+            # Import v2 tools (Claude Code standard)
+            from .system import ShellExecutorToolV2
+
+            # Import v1 and other system tools
             from .system import (
                 ProcessManagerTool,
                 ResourceMonitorTool,
-                ShellExecutorTool,
                 ShellTabCloseTool,
                 ShellTabExecTool,
                 ShellTabListTool,
                 ShellTabOpenTool,
                 ShellTabReadTool,
                 ShellTabStatusTool,
-                SystemInfoTool,  # Corrigido: SystemInfoCollector → SystemInfoTool
+                SystemInfoTool,
             )
-            
+
             tools = [
-                ShellExecutorTool(),
+                # v2 tools (default)
+                ShellExecutorToolV2(),
+
+                # Other system tools
                 ResourceMonitorTool(),
                 SystemInfoTool(),
                 ProcessManagerTool(),
@@ -184,11 +198,11 @@ class _DefaultRegistry:
                 ShellTabReadTool(),
                 ShellTabCloseTool(),
             ]
-            _logger.info(f"Loaded {len(tools)} shell tools")
-            
+            _logger.info(f"Loaded {len(tools)} shell tools (1 v2 + 9 other)")
+
         except ImportError as e:
             _logger.warning(f"Could not import shell tools: {e}")
-            
+
         return tools
 
     def _get_web_search_tools(self) -> list[Any]:
@@ -303,9 +317,9 @@ class _DefaultRegistry:
         return tools
 
     def _get_code_analysis_tools(self) -> list[Any]:
-        """Get code analysis tools."""
+        """Get code analysis tools (using v2 filesystem tools)."""
         tools = []
-        
+
         try:
             from .code import (
                 GitNexusContextTool,
@@ -314,25 +328,25 @@ class _DefaultRegistry:
                 GitNexusStatusTool,
             )
             from .filesystem import (
-                FileReadTool,
-                GlobSearchTool,
-                GrepSearchTool,
+                FileReadToolV2,
+                GlobToolV2,
+                GrepToolV2,
             )
-            
+
             tools = [
                 GitNexusStatusTool(),
                 GitNexusQueryTool(),
                 GitNexusContextTool(),
                 GitNexusImpactTool(),
-                FileReadTool(),
-                GrepSearchTool(),
-                GlobSearchTool()
+                FileReadToolV2(),
+                GrepToolV2(),
+                GlobToolV2()
             ]
-            _logger.info(f"Loaded {len(tools)} code analysis tools (GitNexus + filesystem fallback)")
-            
+            _logger.info(f"Loaded {len(tools)} code analysis tools (GitNexus + v2 filesystem fallback)")
+
         except ImportError as e:
             _logger.warning(f"Could not import code analysis tools: {e}")
-            
+
         return tools
 
     def _get_database_tools(self) -> list[Any]:

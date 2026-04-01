@@ -75,6 +75,16 @@ from mindflow_backend.schemas.tools.result import (
     ResultTruncation,
 )
 
+# -- Streaming types (NEW — for StreamingToolExecutor) --
+from mindflow_backend.schemas.tools.streaming_types import (
+    ToolStatus,
+    TrackedTool,
+    StreamingToolResult,
+    AbortController,
+    ToolExecutionAbortedError,
+    create_child_abort_controller,
+)
+
 __all__ = [
     # Primary API (new)
     "Tool",
@@ -112,4 +122,11 @@ __all__ = [
     "ContentReplacement",
     "ToolResultBudget",
     "ResultTruncation",
+    # Streaming types (new)
+    "ToolStatus",
+    "TrackedTool",
+    "StreamingToolResult",
+    "AbortController",
+    "ToolExecutionAbortedError",
+    "create_child_abort_controller",
 ]

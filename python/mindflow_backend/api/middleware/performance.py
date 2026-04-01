@@ -214,10 +214,57 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         return content_length >= self.compression_threshold
     
     def _compress_response(self, response: Response) -> Response:
-        """Apply compression to response (placeholder — no-op until real gzip is wired)."""
-        # NOTE: Do NOT set content-encoding without actually compressing the body.
-        _logger.debug("Compression skipped (not yet implemented)")
-        return response
+        """Apply gzip compression to response body.
+
+        Args:
+            response: Response object to compress
+
+        Returns:
+            Response with compressed body and updated headers
+        """
+        if not self._should_compress(response):
+            return response
+
+        try:
+            import gzip
+
+            # Get original body
+            if hasattr(response, 'body'):
+                original_body = response.body
+            else:
+                _logger.debug("Response has no body attribute, skipping compression")
+                return response
+
+            # Compress body
+            compressed_body = gzip.compress(original_body, compresslevel=6)
+
+            # Calculate compression ratio
+            original_size = len(original_body)
+            compressed_size = len(compressed_body)
+            compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+
+            # Only use compression if it actually reduces size
+            if compressed_size < original_size:
+                response.body = compressed_body
+                response.headers["Content-Encoding"] = "gzip"
+                response.headers["Content-Length"] = str(compressed_size)
+                response.headers["X-Compression-Ratio"] = f"{compression_ratio:.1f}%"
+
+                _logger.debug(
+                    f"Response compressed: {original_size} -> {compressed_size} bytes "
+                    f"({compression_ratio:.1f}% reduction)"
+                )
+            else:
+                _logger.debug(
+                    f"Compression skipped: compressed size ({compressed_size}) >= "
+                    f"original size ({original_size})"
+                )
+
+            return response
+
+        except Exception as exc:
+            _logger.warning(f"Compression failed: {exc}")
+            return response
     
     def _add_performance_headers(self, response: Response, response_time: float) -> Response:
         """Add performance-related headers to response."""
