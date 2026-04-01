@@ -6,6 +6,7 @@ retrieval, message handling, and context coordination with memory services.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -14,6 +15,10 @@ from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.core_interfaces import SessionServiceInterface
 from mindflow_backend.storage import ChatMessage, ChatRepository, ChatSession
+
+# Hook handlers for session lifecycle
+from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
+from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
 
 
 class SessionService(BaseAbstractService, SessionServiceInterface):
@@ -88,6 +93,9 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                     agent_types=["analyst", "coder", "researcher", "reviewer"]
                 )
                 
+                # Fire SessionStart hook (background task — non-blocking)
+                asyncio.create_task(self._fire_session_start_hook(session_id))
+                
                 return {
                     "id": chat_session.id,
                     "title": chat_session.title,
@@ -102,6 +110,23 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         except Exception as exc:
             self._logger.error(f"Error creating session: {str(exc)}")
             raise
+
+    async def _fire_session_start_hook(self, session_id: str) -> None:
+        """Fire SessionStart hook in background."""
+        try:
+            async for result in SessionStartHandler.execute(session_id=session_id):
+                if result.add_context:
+                    self._logger.debug(
+                        "session_start_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            self._logger.warning(
+                "session_start_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )
     
     async def get_session(self, session_id: str) -> dict[str, Any]:
         """Get session details and history from database.
@@ -264,12 +289,35 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                     # Clean up memory data
                     memory_service = self._get_memory_service()
                     await memory_service.cleanup_session_memory(session_id)
+                    
+                    # Fire SessionEnd hook (background task — non-blocking)
+                    asyncio.create_task(self._fire_session_end_hook(session_id))
                 
                 return deleted
                 
         except Exception as exc:
             self._logger.error(f"Error deleting session {session_id}: {str(exc)}")
             raise
+
+    async def _fire_session_end_hook(self, session_id: str) -> None:
+        """Fire SessionEnd hook in background."""
+        try:
+            async for result in SessionEndHandler.execute(
+                session_id=session_id,
+                reason="logout",
+            ):
+                if result.add_context:
+                    self._logger.debug(
+                        "session_end_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            self._logger.warning(
+                "session_end_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )
     
     async def add_message(
         self,

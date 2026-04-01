@@ -412,3 +412,40 @@ def get_settings() -> Settings:
         Settings instance with configuration loaded.
     """
     return Settings()
+
+
+def load_hooks_on_startup(settings_path: str, plugin_dirs: list[str] | None = None) -> int:
+    """Carrega todos os hooks na inicialização do sistema.
+
+    Ordem de carregamento:
+    1. Builtin hooks (format, lint, test, git safety)
+    2. Config hooks (settings.yaml)
+    3. Plugin hooks (plugins/*/hooks.json)
+
+    Returns:
+        Número total de hooks registrados.
+    """
+    from pathlib import Path
+
+    from mindflow_backend.hooks.builtin import register_builtin_hooks
+    from mindflow_backend.hooks.config_loader import load_hooks_from_settings
+    from mindflow_backend.hooks.plugin_loader import load_plugin_hooks
+    from mindflow_backend.infra.logging import get_logger
+
+    logger = get_logger(__name__)
+    total = 0
+
+    # 1. Builtin hooks
+    total += register_builtin_hooks()
+
+    # 2. Config hooks (settings.yaml)
+    total += load_hooks_from_settings(settings_path)
+
+    # 3. Plugin hooks
+    if plugin_dirs:
+        for plugin_dir in plugin_dirs:
+            plugin_name = Path(plugin_dir).name
+            total += load_plugin_hooks(plugin_name, plugin_dir)
+
+    logger.info("all_hooks_loaded", total=total)
+    return total

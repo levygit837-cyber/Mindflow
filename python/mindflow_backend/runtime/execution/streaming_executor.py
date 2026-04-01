@@ -18,6 +18,14 @@ from typing import Any, Callable, Protocol
 
 from mindflow_backend.hooks.manager import HookManager
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.error_handling import (
+    classify_error,
+    ErrorCategory,
+    StreamingWatchdog,
+    is_retryable,
+    get_retry_delay,
+    QuerySource,
+)
 from mindflow_backend.schemas.tools.result import ToolResult
 from mindflow_backend.schemas.tools.streaming_types import (
     AbortController,
@@ -308,11 +316,24 @@ class StreamingToolExecutor:
                     cwd=self._tool_use_context.cwd,
                     permission_mode=self._tool_use_context.permission_mode,
                 ):
-                    if hook_result.behavior == "block":
+                    # Corrigido: usar "deny" em vez de "block" (padrão Claude Code)
+                    if hook_result.behavior == "deny":
                         pre_hook_blocked = True
-                        tool.mark_error(f"Blocked by hook: {hook_result.reasoning or hook_result.error}")
+                        tool.mark_error(f"Blocked by hook: {hook_result.reason or hook_result.error}")
                         await self._emit_result(tool)
                         return
+
+                    # Aplicar input mutation se hook retornou updated_input
+                    if hook_result.updated_input:
+                        tool.tool_input = {**tool.tool_input, **hook_result.updated_input}
+
+                    # Adicionar contexto adicional se hook retornou add_context
+                    if hook_result.add_context:
+                        self._tool_use_context.metadata["hook_context"] = (
+                            self._tool_use_context.metadata.get("hook_context", "")
+                            + "\n"
+                            + hook_result.add_context
+                        )
 
                 if pre_hook_blocked:
                     return
@@ -354,11 +375,16 @@ class StreamingToolExecutor:
                 self._abort_siblings(f"Tool {tool.tool_name} aborted: {exc.reason}")
 
             except Exception as exc:
+                # Classifica erro usando novo sistema
+                error_category = classify_error(exc)
+
                 _logger.error(
                     "tool_execution_error",
                     tool_id=tool.id,
                     tool_name=tool.tool_name,
                     error=str(exc),
+                    error_category=error_category.value,
+                    is_retryable=is_retryable(exc),
                 )
 
                 # Executa hooks PostToolFailure

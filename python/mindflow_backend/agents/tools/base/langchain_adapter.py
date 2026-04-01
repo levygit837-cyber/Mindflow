@@ -1,11 +1,14 @@
 """LangChain adapter for MindFlow tools.
 
-Converts MindFlow ``AsyncToolInterface`` / ``ToolInterface`` instances to proper
-LangChain ``StructuredTool`` objects that can be passed to ``llm.bind_tools()``.
+Converts MindFlow tools to LangChain ``StructuredTool`` objects that can be
+passed to ``llm.bind_tools()``.
 
-The MindFlow schema format (ToolSchema / ToolParameter) is translated to a
-dynamically-built Pydantic model so LangChain can generate the correct JSON Schema
-for function calling.
+Supports THREE tool systems:
+1. **CALLABLE**: CallableTool (from schemas/tools/callable.py) - Phase 2 pattern
+2. **NEW**: Tool (from schemas/tools/tool.py) - uses build_tool() factory
+3. **LEGACY**: AsyncToolInterface (from agents/tools/base/tool_interface.py)
+
+The adapter automatically detects which type and converts appropriately.
 """
 
 from __future__ import annotations
@@ -19,6 +22,24 @@ from pydantic import Field, create_model
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
+
+# Import new Tool type for isinstance check
+try:
+    from mindflow_backend.schemas.tools.tool import Tool as NewTool
+    from mindflow_backend.schemas.tools.context import ToolContext
+    _NEW_TOOL_AVAILABLE = True
+except ImportError:
+    _NEW_TOOL_AVAILABLE = False
+    _logger.warning("New Tool system not available - only legacy tools supported")
+
+# Import CallableTool type for isinstance check (Phase 2)
+try:
+    from mindflow_backend.schemas.tools.callable import CallableTool
+    from mindflow_backend.schemas.tools.callable_adapter import callable_to_langchain
+    _CALLABLE_TOOL_AVAILABLE = True
+except ImportError:
+    _CALLABLE_TOOL_AVAILABLE = False
+    _logger.warning("CallableTool system not available - using legacy/new tools only")
 
 # Map MindFlow type strings → Python types used in Pydantic field definitions.
 # array → List[str]: Vertex AI requires items to be defined for every array property.
@@ -142,10 +163,118 @@ def _build_args_schema(schema_dict: dict):
         return None
 
 
-def to_langchain_tool(mindflow_tool: Any):
-    """Convert a single MindFlow tool to a LangChain ``StructuredTool``.
+def _is_callable_tool(tool: Any) -> bool:
+    """Detect if tool is CallableTool (Phase 2 callable pattern)."""
+    if not _CALLABLE_TOOL_AVAILABLE:
+        return False
+    return isinstance(tool, CallableTool)
 
-    Returns a ``StructuredTool`` instance or ``None`` if conversion fails.
+
+def _is_new_tool(tool: Any) -> bool:
+    """Detect if tool is new Tool (schemas/tools) or legacy AsyncToolInterface."""
+    if not _NEW_TOOL_AVAILABLE:
+        return False
+    return isinstance(tool, NewTool)
+
+
+def _convert_new_tool(tool: Any):
+    """Convert Tool (new system) → LangChain StructuredTool.
+
+    New tools use:
+    - input_schema (Pydantic model) instead of get_schema()
+    - execute(input, context) instead of execute(**kwargs)
+    - Explicit permission metadata (is_read_only, is_destructive)
+    """
+    try:
+        from langchain_core.tools import StructuredTool
+    except ImportError:
+        _logger.error("langchain_core not installed")
+        return None
+
+    try:
+        # Extract input schema (already a Pydantic model)
+        input_model = tool.input_schema
+
+        # Build metadata
+        tool_metadata = {
+            "tool_name": tool.name,
+            "tool_type": "new",
+            "is_read_only": tool.is_read_only,
+            "is_destructive": tool.is_destructive,
+            "is_concurrency_safe": tool.is_concurrency_safe,
+            "execution_mode": str(tool.execution_mode),
+        }
+
+        # Keep stable reference
+        _tool = tool
+
+        async def _arun(**kwargs: Any) -> str:
+            """Async execution wrapper that injects ToolContext."""
+            try:
+                # Create minimal context
+                # TODO: Inject real permission_manager from runtime
+                context = ToolContext(
+                    permission_context=None,
+                    metadata={
+                        "tool_name": _tool.name,
+                        "tool_input": kwargs,
+                    }
+                )
+
+                # Validate input with Pydantic
+                try:
+                    validated_input = input_model(**kwargs)
+                except Exception as e:
+                    return json.dumps({
+                        "success": False,
+                        "error": f"Invalid input: {e}",
+                        "error_code": "VALIDATION_ERROR"
+                    })
+
+                # Execute tool
+                result = await _tool.execute(validated_input, context)
+
+                if isinstance(result, dict):
+                    return json.dumps(result, ensure_ascii=False, default=str)
+                return str(result)
+
+            except Exception as exc:
+                return json.dumps({
+                    "success": False,
+                    "error": str(exc),
+                    "error_code": "EXECUTION_ERROR"
+                })
+
+        def _run(**kwargs: Any) -> str:
+            """Sync fallback."""
+            try:
+                return asyncio.run(_arun(**kwargs))
+            except Exception as exc:
+                return json.dumps({"success": False, "error": str(exc)})
+
+        lc_tool = StructuredTool.from_function(
+            func=_run,
+            coroutine=_arun,
+            name=_tool.name,
+            description=_tool.description,
+            args_schema=input_model,
+            handle_tool_error=True,
+            metadata=tool_metadata,
+        )
+
+        _logger.debug(f"Converted NEW tool '{_tool.name}' → LangChain StructuredTool")
+        return lc_tool
+
+    except Exception as exc:
+        tool_name = getattr(tool, "name", repr(tool))
+        _logger.warning(f"Failed to convert new tool '{tool_name}': {exc}")
+        return None
+
+
+def _convert_legacy_tool(mindflow_tool: Any):
+    """Convert AsyncToolInterface (legacy) → LangChain StructuredTool.
+
+    This is the original conversion logic for legacy tools.
     """
     try:
         from langchain_core.tools import StructuredTool
@@ -230,13 +359,43 @@ def to_langchain_tool(mindflow_tool: Any):
             except Exception:
                 pass  # non-critical — tool still usable
 
-        _logger.debug(f"Converted tool '{mindflow_tool.name}' → LangChain StructuredTool")
+        _logger.debug(f"Converted LEGACY tool '{mindflow_tool.name}' → LangChain StructuredTool")
         return lc_tool
 
     except Exception as exc:
         tool_name = getattr(mindflow_tool, "name", repr(mindflow_tool))
-        _logger.warning(f"Failed to convert tool '{tool_name}' to LangChain: {exc}")
+        _logger.warning(f"Failed to convert legacy tool '{tool_name}': {exc}")
         return None
+
+
+def to_langchain_tool(mindflow_tool: Any):
+    """Convert a MindFlow tool to a LangChain ``StructuredTool``.
+
+    Supports THREE types (checked in priority order):
+    1. CallableTool (Phase 2 callable pattern from schemas/tools/callable.py)
+    2. Tool (new system from schemas/tools/tool.py)
+    3. AsyncToolInterface (legacy from agents/tools/base/tool_interface.py)
+
+    Returns a ``StructuredTool`` instance or ``None`` if conversion fails.
+    """
+    # Priority 1: Check for CallableTool (Phase 2)
+    if _is_callable_tool(mindflow_tool):
+        _logger.debug(f"Detected CALLABLE tool: {getattr(mindflow_tool, 'name', 'unknown')}")
+        try:
+            return callable_to_langchain(mindflow_tool)
+        except Exception as exc:
+            tool_name = getattr(mindflow_tool, "name", repr(mindflow_tool))
+            _logger.warning(f"Failed to convert callable tool '{tool_name}': {exc}")
+            return None
+
+    # Priority 2: Check for new Tool
+    if _is_new_tool(mindflow_tool):
+        _logger.debug(f"Detected NEW tool: {getattr(mindflow_tool, 'name', 'unknown')}")
+        return _convert_new_tool(mindflow_tool)
+
+    # Priority 3: Legacy AsyncToolInterface
+    _logger.debug(f"Detected LEGACY tool: {getattr(mindflow_tool, 'name', 'unknown')}")
+    return _convert_legacy_tool(mindflow_tool)
 
 
 def to_langchain_tools(mindflow_tools: list[Any]) -> list[Any]:

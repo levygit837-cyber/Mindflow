@@ -137,4 +137,40 @@ def get_match_query_for_event(
         return context.get("mission_name")
     if event == HookEvent.MISSION_STOP:
         return context.get("mission_name")
+    if event == HookEvent.SESSION_END:
+        return context.get("reason")
+    if event == HookEvent.STOP_FAILURE:
+        return context.get("stop_error")
+    if event == HookEvent.PRE_COMPACT:
+        return context.get("trigger")
+    if event == HookEvent.POST_COMPACT:
+        return context.get("trigger")
+    if event == HookEvent.NOTIFICATION:
+        return context.get("notification_type")
+    if event == HookEvent.TASK_CREATED:
+        return context.get("task_name")
+    if event == HookEvent.TASK_COMPLETED:
+        return context.get("task_name")
+    if event == HookEvent.SETUP:
+        return context.get("setup_trigger")
+    if event == HookEvent.CONFIG_CHANGE:
+        return context.get("config_key")
+    if event == HookEvent.FILE_CHANGED:
+        return context.get("file_path")
+    if event == HookEvent.CWD_CHANGED:
+        return context.get("new_cwd")
+    if event == HookEvent.SUBAGENT_START:
+        return context.get("subagent_type")
+    if event == HookEvent.SUBAGENT_STOP:
+        return context.get("subagent_type")
+    if event == HookEvent.ELICITATION:
+        return context.get("mcp_server_name")
+    if event == HookEvent.ELICITATION_RESULT:
+        return context.get("mcp_server_name")
+    if event == HookEvent.WORKTREE_CREATE:
+        return context.get("worktree_path")
+    if event == HookEvent.WORKTREE_REMOVE:
+        return context.get("worktree_path")
+    if event == HookEvent.TEAMMATE_IDLE:
+        return context.get("agent_id")
     return None

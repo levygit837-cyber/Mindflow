@@ -35,6 +35,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from mindflow_backend.schemas.tools.base import ToolSchema
+from mindflow_backend.schemas.tools.context import ToolContext
 from mindflow_backend.schemas.tools.execution import ToolExecutionMode
 
 if TYPE_CHECKING:
@@ -46,42 +47,6 @@ if TYPE_CHECKING:
 
 I = TypeVar("I", bound=dict[str, Any])  # Input: must be a dict (JSON-compatible)
 O = TypeVar("O", bound=Any)  # Output: any JSON-serializable type
-
-# ---------------------------------------------------------------------------
-# Tool Context
-# ---------------------------------------------------------------------------
-
-
-class ToolContext:
-    """Context available during tool execution.
-
-    Similar to Claude Code's ToolUseContext — provides access to:
-    - Permission state
-    - Abort signal (for cancellation)
-    - AppState (for reading/writing tool-internal state)
-    """
-
-    def __init__(
-        self,
-        permission_context: ToolPermissionContext | None = None,
-        abort_signal: Any = None,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        self.permission_context = permission_context
-        self.abort_signal = abort_signal
-        self.metadata = metadata or {}
-
-    @property
-    def is_aborted(self) -> bool:
-        """Check if execution should be cancelled."""
-        if self.abort_signal is None:
-            return False
-        # Support threading.Event, asyncio.Event, or plain bool
-        if callable(self.abort_signal):
-            return self.abort_signal()
-        if hasattr(self.abort_signal, "is_set"):
-            return self.abort_signal.is_set()
-        return bool(self.abort_signal)
 
 
 # ---------------------------------------------------------------------------

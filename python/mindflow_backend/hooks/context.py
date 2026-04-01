@@ -52,6 +52,46 @@ class HookContext:
     description: str | None = None
     permission_suggestions: list[dict[str, Any]] | None = None
 
+    # ── SessionEnd specific ──
+    reason: str | None = None  # "clear" | "resume" | "logout" | "other"
+
+    # ── PreCompact / PostCompact specific ──
+    trigger: str | None = None  # "manual" | "auto"
+    summary: str | None = None  # PostCompact only
+
+    # ── Notification specific ──
+    notification_type: str | None = None
+
+    # ── Task lifecycle specific ──
+    task_id: str | None = None
+    task_name: str | None = None
+
+    # ── ConfigChange specific ──
+    config_key: str | None = None
+    old_value: Any = None
+    new_value: Any = None
+
+    # ── FileChanged / CwdChanged specific ──
+    file_path: str | None = None
+    old_cwd: str | None = None
+    new_cwd: str | None = None
+
+    # ── StopFailure specific ──
+    stop_error: str | None = None
+
+    # ── Subagent specific ──
+    subagent_id: str | None = None
+    subagent_type: str | None = None
+
+    # ── Setup specific ──
+    setup_trigger: str | None = None
+
+    # ── MCP Elicitation specific ──
+    mcp_server_name: str | None = None
+
+    # ── Worktree specific ──
+    worktree_path: str | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Serializa para JSON — passado via stdin ao hook command."""
         result: dict[str, Any] = {}

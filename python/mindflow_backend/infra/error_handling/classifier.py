@@ -1,0 +1,121 @@
+"""Error Classification System inspired by Claude Code.
+
+Equivalente ao classifyAPIError() do Claude Code em services/api/errors.py.
+Classifica erros em categorias padronizadas para analytics e retry decisions.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from enum import Enum
+from typing import Any
+
+from mindflow_backend.infra.logging import get_logger
+
+_logger = get_logger(__name__)
+
+
+class ErrorCategory(str, Enum):
+    """Categorias de erro padronizadas.
+
+    Inspirado nas 15+ categorias do Claude Code:
+    - aborted, api_timeout, repeated_529, capacity_off_switch
+    - rate_limit, server_overload, prompt_too_long, pdf_too_large
+    - tool_use_mismatch, unexpected_tool_result, duplicate_tool_use_id
+    - invalid_model, credit_balance_low, invalid_api_key, auth_error
+    """
+    ABORTED = "aborted"
+    TIMEOUT = "timeout"
+    CIRCUIT_OPEN = "circuit_open"
+    RATE_LIMIT = "rate_limit"
+    SERVER_OVERLOAD = "server_overload"
+    AUTH_ERROR = "auth_error"
+    NETWORK_ERROR = "network_error"
+    TOOL_ERROR = "tool_error"
+    VALIDATION_ERROR = "validation_error"
+    CAPACITY_ERROR = "capacity_error"
+    UNKNOWN = "unknown"
+
+
+def classify_error(error: Exception) -> ErrorCategory:
+    """Classifica erro para analytics e retry decisions.
+
+    Equivalente ao classifyAPIError() do Claude Code.
+
+    Args:
+        error: Exceção a ser classificada
+
+    Returns:
+        ErrorCategory correspondente
+    """
+    # Cancelled/Aborted
+    if isinstance(error, asyncio.CancelledError):
+        return ErrorCategory.ABORTED
+
+    # Timeout
+    if isinstance(error, TimeoutError):
+        return ErrorCategory.TIMEOUT
+
+    # Circuit breaker open
+    try:
+        from mindflow_backend.infra.resilience.circuit_breaker.core import CircuitOpenError
+        if isinstance(error, CircuitOpenError):
+            return ErrorCategory.CIRCUIT_OPEN
+    except ImportError:
+        pass
+
+    # Network errors
+    try:
+        from mindflow_backend.exceptions.base.core_new import NetworkError
+        if isinstance(error, NetworkError):
+            return ErrorCategory.NETWORK_ERROR
+    except ImportError:
+        pass
+
+    # Check HTTP status codes if available
+    status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
+    if status is not None:
+        return _classify_by_status(status, error)
+
+    # Check error message patterns
+    msg = str(error).lower()
+    if 'timeout' in msg:
+        return ErrorCategory.TIMEOUT
+    if 'rate limit' in msg or '429' in msg:
+        return ErrorCategory.RATE_LIMIT
+    if 'overload' in msg or '529' in msg:
+        return ErrorCategory.SERVER_OVERLOAD
+    if 'auth' in msg or '401' in msg or '403' in msg:
+        return ErrorCategory.AUTH_ERROR
+
+    return ErrorCategory.UNKNOWN
+
+
+def _classify_by_status(status: int, error: Exception) -> ErrorCategory:
+    """Classifica erro por HTTP status code."""
+    if status == 429:
+        return ErrorCategory.RATE_LIMIT
+    if status == 529:
+        return ErrorCategory.SERVER_OVERLOAD
+    if status in (401, 403):
+        return ErrorCategory.AUTH_ERROR
+    if status in (500, 502, 503, 504):
+        return ErrorCategory.SERVER_OVERLOAD
+    if status == 408:
+        return ErrorCategory.TIMEOUT
+    return ErrorCategory.UNKNOWN
+
+
+def is_retryable(error: Exception) -> bool:
+    """Verifica se o erro é retryable.
+
+    Similar ao shouldRetry() do Claude Code.
+    """
+    category = classify_error(error)
+    return category in {
+        ErrorCategory.TIMEOUT,
+        ErrorCategory.RATE_LIMIT,
+        ErrorCategory.SERVER_OVERLOAD,
+        ErrorCategory.NETWORK_ERROR,
+        ErrorCategory.CAPACITY_ERROR,
+    }

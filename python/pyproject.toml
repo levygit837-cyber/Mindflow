@@ -43,6 +43,7 @@ dependencies = [
   "redis>=5.0.0",
   "PyPDF2>=3.0.0",
   "sentence-transformers>=2.2.0",
+  "beautifulsoup4>=4.14.3",
 ]
 
 [project.optional-dependencies]

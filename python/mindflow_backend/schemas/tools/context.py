@@ -31,6 +31,7 @@ class ToolContext:
     - Permission state (PermissionContext + PermissionManager)
     - Abort signal for cancellation
     - AppState for reading/writing tool-internal state
+    - Runtime context (root_dir, sandbox_mode, session tracking)
 
     Usage:
         class MyTool(Tool):
@@ -43,7 +44,7 @@ class ToolContext:
     """
 
     # Permission system integration
-    permission_context: PermissionContext
+    permission_context: PermissionContext | None = None
     permission_manager: Any | None = None  # PermissionManager | None
 
     # Cancellation support
@@ -57,6 +58,12 @@ class ToolContext:
     # AppState access (for tools that need to read/write internal state)
     get_state: Callable[[], Any] | None = None
     set_state: Callable[[Any], None] | None = None
+
+    # Runtime context (Phase 2 additions for callable tools)
+    root_dir: str | None = None  # Sandbox root directory for path resolution
+    sandbox_mode: Any | None = None  # SandboxMode enum (read-only enforcement)
+    session_id: str | None = None  # Session tracking
+    execution_id: str | None = None  # Execution tracking
 
     @property
     def is_aborted(self) -> bool:

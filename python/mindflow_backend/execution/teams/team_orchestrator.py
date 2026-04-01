@@ -4,6 +4,7 @@ TeamOrchestrator — Coordena sessões colaborativas multi-agente.
 Fases: Formation → Discussion → Missions → Synthesis
 
 Fase 3A — SPADE Team Protocol
+Fase 3B — Memory Observer Integration
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from mindflow_backend.communication.bus.communication_bus import CommunicationBus
     from mindflow_backend.execution.missions.mission_launcher import MissionLauncher
     from mindflow_backend.execution.missions.mission_result import MissionResult
+    from mindflow_backend.execution.observers.memory_observer import MemoryObserver
 
 logger = get_logger(__name__)
 
@@ -296,6 +298,9 @@ class TeamOrchestrator:
             },
         )
 
+        # Track active observers for cleanup
+        active_observers: list[Any] = []
+
         for wave_idx, wave in enumerate(waves):
             logger.info(
                 "team_wave_start",
@@ -370,6 +375,25 @@ class TeamOrchestrator:
                                 data={"agent": agent_id},
                             )
 
+                    # Ativar Memory Observer para agente que completou missão com sucesso
+                    if result.success:
+                        # Obter IDs de missões ativas (próximas waves)
+                        active_mission_ids = []
+                        for future_wave in waves[wave_idx + 1:]:
+                            for future_agent_id in future_wave:
+                                future_node = dag.get_node(future_agent_id)
+                                if future_node:
+                                    active_mission_ids.append(f"{future_agent_id}_mission")
+
+                        if active_mission_ids:
+                            observer = await self._start_observer_for_completed_agent(
+                                completed_agent_id=agent_id,
+                                session=session,
+                                active_mission_ids=active_mission_ids,
+                            )
+                            if observer:
+                                active_observers.append(observer)
+
             logger.info(
                 "team_wave_complete",
                 extra={
@@ -378,6 +402,10 @@ class TeamOrchestrator:
                     "session_id": session.session_id,
                 },
             )
+
+        # Parar todos os observers no final da fase de missões
+        for observer in active_observers:
+            await self._stop_observer(observer, session)
 
     # ------------------------------------------------------------------
     # Phase 4: Synthesis
@@ -512,4 +540,94 @@ class TeamOrchestrator:
             success=False,
             error=error,
             started_at=datetime.now(),
+        )
+
+    # ------------------------------------------------------------------
+    # Memory Observer (Fase 3B)
+    # ------------------------------------------------------------------
+
+    async def _start_observer_for_completed_agent(
+        self,
+        completed_agent_id: str,
+        session: "TeamSession",
+        active_mission_ids: list[str],
+    ) -> "MemoryObserver | None":
+        """Ativa modo observer para agente que completou sua missão.
+
+        Fase 3B — SPADE Memory Observer Protocol:
+        - Verifica se agente tem can_observe=True
+        - Cria MemoryObserver e registra no AgentLogBus
+        - Observer escuta eventos das missões ativas e anota memória
+        """
+        from mindflow_backend.execution.observers.memory_observer import MemoryObserver
+
+        try:
+            policy = get_agent_runtime_policy(agent_id=completed_agent_id)
+            if not policy.can_observe:
+                return None
+
+            from mindflow_backend.memory import get_memory_service
+
+            observer = MemoryObserver(
+                observer_agent_id=completed_agent_id,
+                memory_facade=get_memory_service(),
+                session_id=session.session_id,
+            )
+
+            await observer.start_observing(active_mission_ids)
+
+            # Registrar observer no AgentLogBus para receber eventos
+            from mindflow_backend.runtime.monitoring.log_bus import log_bus
+
+            for mission_id in active_mission_ids:
+                log_bus.subscribe_to_mission(
+                    mission_id=mission_id,
+                    observer_id=completed_agent_id,
+                    handler=observer.receive_event,
+                )
+
+            logger.info(
+                "observer_activated",
+                extra={
+                    "observer_id": completed_agent_id,
+                    "missions": active_mission_ids,
+                    "session_id": session.session_id,
+                },
+            )
+            return observer
+
+        except Exception as exc:
+            logger.debug(
+                "observer_start_failed",
+                extra={
+                    "agent_id": completed_agent_id,
+                    "error": str(exc),
+                },
+            )
+            return None
+
+    async def _stop_observer(
+        self,
+        observer: "MemoryObserver",
+        session: "TeamSession",
+    ) -> None:
+        """Para observer e remove subscriptions do AgentLogBus."""
+        from mindflow_backend.runtime.monitoring.log_bus import log_bus
+
+        observer_id = observer._observer_id
+        stats = observer.get_stats()
+
+        # Remover subscriptions
+        log_bus.unsubscribe_all(observer_id)
+
+        # Parar observer
+        await observer.stop_observing()
+
+        logger.info(
+            "observer_stopped",
+            extra={
+                "observer_id": observer_id,
+                "total_annotations": stats.get("total_annotations", 0),
+                "session_id": session.session_id,
+            },
         )

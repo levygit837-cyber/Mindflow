@@ -30,7 +30,8 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from mindflow_backend.schemas.tools.execution import ToolExecutionMode
-from mindflow_backend.schemas.tools.tool import Tool, ToolContext
+from mindflow_backend.schemas.tools.tool import Tool
+from mindflow_backend.schemas.tools.context import ToolContext
 
 # ---------------------------------------------------------------------------
 # Type Variables (local — avoids circular import with tool.py)

@@ -15,6 +15,11 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 
+# Hook handlers for session lifecycle
+from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
+from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
+from mindflow_backend.hooks.handlers.user_prompt_submit import UserPromptSubmitHandler
+
 _logger = get_logger(__name__)
 
 # Lazy imports for optional services
@@ -306,3 +311,84 @@ class AgentRuntime:
         
         await self._execution_memory.request_pause(execution_id=execution_id, reason=reason)
         return await self.get_execution_status(execution_id)
+
+    # ─── Session Lifecycle Hooks ──────────────────────────────────
+
+    async def start_session(self, session_id: str) -> None:
+        """Start session with SessionStart + InstructionsLoaded hooks.
+
+        Executed when a new session is initialized. Fires SessionStart hooks
+        so other systems can react (logging, initialization, external services).
+        """
+        try:
+            async for result in SessionStartHandler.execute(session_id=session_id):
+                if result.add_context:
+                    _logger.debug(
+                        "session_start_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "session_start_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )
+
+    async def end_session(self, session_id: str, reason: str = "other") -> None:
+        """End session with SessionEnd hooks.
+
+        Executed when a session is terminated. Fires SessionEnd hooks
+        so other systems can react (cleanup, logging, persistence).
+
+        Args:
+            session_id: The session ID to end
+            reason: Why the session ended ("clear", "resume", "logout", "other")
+        """
+        try:
+            async for result in SessionEndHandler.execute(
+                session_id=session_id,
+                reason=reason,
+            ):
+                if result.add_context:
+                    _logger.debug(
+                        "session_end_hook_context",
+                        session_id=session_id,
+                        reason=reason,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "session_end_hooks_error",
+                session_id=session_id,
+                reason=reason,
+                error=str(exc),
+            )
+
+    async def handle_user_prompt(self, session_id: str, prompt: str) -> None:
+        """Process user prompt with UserPromptSubmit hooks.
+
+        Executed when user submits a prompt. Fires UserPromptSubmit hooks
+        so other systems can react (validation, enrichment, filtering).
+
+        Args:
+            session_id: The session ID
+            prompt: The user's prompt text
+        """
+        try:
+            async for result in UserPromptSubmitHandler.execute(
+                session_id=session_id,
+                cwd=get_settings().working_path,
+            ):
+                if result.add_context:
+                    _logger.debug(
+                        "user_prompt_submit_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "user_prompt_submit_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )

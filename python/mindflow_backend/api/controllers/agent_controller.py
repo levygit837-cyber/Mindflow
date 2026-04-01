@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 from typing import Any
 
@@ -26,6 +27,9 @@ from mindflow_backend.schemas.chat.agent import (
     StreamEventMeta,
 )
 from mindflow_backend.services import get_agent_service
+
+# Hook handlers for prompt submission
+from mindflow_backend.hooks.handlers.user_prompt_submit import UserPromptSubmitHandler
 
 # ── Module-level client access ────────────────────────────────────────────────
 # Use the transport factory so the active transport mode is respected.
@@ -70,6 +74,9 @@ class AgentController(BaseController):
             import uuid
             turn_id = f"turn-{uuid.uuid4()}"
             run_id = str(uuid.uuid4())
+            
+            # Fire UserPromptSubmit hook (background task — non-blocking)
+            asyncio.create_task(self._fire_user_prompt_submit_hook(session_id))
             
             # Reuse the cached client (avoids rebuilding AgentRuntime / LangGraph per request)
             grpc_client = _get_local_agent_client()
@@ -433,3 +440,24 @@ class AgentController(BaseController):
                 if not key.startswith("_")
             }
         return {"value": payload}
+
+    async def _fire_user_prompt_submit_hook(self, session_id: str) -> None:
+        """Fire UserPromptSubmit hook in background."""
+        from mindflow_backend.infra.config import get_settings
+        try:
+            async for result in UserPromptSubmitHandler.execute(
+                session_id=session_id,
+                cwd=get_settings().working_path,
+            ):
+                if result.add_context:
+                    self.logger.debug(
+                        "user_prompt_submit_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            self.logger.warning(
+                "user_prompt_submit_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )

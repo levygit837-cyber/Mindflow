@@ -17,10 +17,12 @@ from __future__ import annotations
 # -- Core interface (NEW — primary API going forward) --
 from mindflow_backend.schemas.tools.tool import (
     Tool,
-    ToolContext,
     tool,
     ToolBase,  # Backwards-compatible alias
 )
+
+# -- Tool Context (imported from context.py, not tool.py) --
+from mindflow_backend.schemas.tools.context import ToolContext
 
 # -- Factory (NEW — recommended way to create tools) --
 from mindflow_backend.schemas.tools.builder import (
@@ -85,6 +87,32 @@ from mindflow_backend.schemas.tools.streaming_types import (
     create_child_abort_controller,
 )
 
+# -- Callable tool infrastructure (PHASE 1 — eliminates LangChain dependency) --
+from mindflow_backend.schemas.tools.callable import (
+    CallableTool,
+    ProgressCallback,
+    ToolResult as CallableToolResult,  # Alias to avoid conflict with existing ToolResult
+)
+
+from mindflow_backend.schemas.tools.callable_builder import (
+    CALLABLE_TOOL_DEFAULTS,
+    build_callable_tool,
+    build_readonly_tool,
+    build_destructive_tool,
+)
+
+from mindflow_backend.schemas.tools.callable_executor import (
+    StreamingToolExecutor,
+    ToolExecutionState,
+)
+
+# Temporary adapter (will be removed in Phase 3)
+from mindflow_backend.schemas.tools.callable_adapter import (
+    callable_to_langchain,
+    callables_to_langchain,
+    hybrid_tools_to_langchain,
+)
+
 __all__ = [
     # Primary API (new)
     "Tool",
@@ -129,4 +157,18 @@ __all__ = [
     "AbortController",
     "ToolExecutionAbortedError",
     "create_child_abort_controller",
+    # Callable tool infrastructure (Phase 1)
+    "CallableTool",
+    "CallableToolResult",
+    "ProgressCallback",
+    "build_callable_tool",
+    "build_readonly_tool",
+    "build_destructive_tool",
+    "CALLABLE_TOOL_DEFAULTS",
+    "StreamingToolExecutor",
+    "ToolExecutionState",
+    # Temporary adapter (Phase 1-2 only)
+    "callable_to_langchain",
+    "callables_to_langchain",
+    "hybrid_tools_to_langchain",
 ]

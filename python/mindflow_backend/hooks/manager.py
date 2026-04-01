@@ -12,6 +12,8 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+import uuid
+
 from mindflow_backend.hooks.context import HookContext
 from mindflow_backend.hooks.registry import HookRegistry
 from mindflow_backend.hooks.result import AggregatedHookResult, HookCommand, HookMatcher, HookResult
@@ -424,6 +426,40 @@ class HookManager:
         ):
             yield result
 
+    async def execute_instructions_loaded(
+        self,
+        session_id: str,
+        memory_type: str,
+        file_path: str,
+        content: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks InstructionsLoaded — disparado quando um MIND.md é carregado.
+
+        Equivalente ao hook InstructionsLoaded do Claude Code.
+        Permite validação, transformação ou logging de instruções carregadas.
+        """
+        context = HookContext(
+            hook_event_name=HookEvent.INSTRUCTIONS_LOADED,
+            session_id=session_id,
+            cwd=cwd,
+            extra={
+                "memory_type": memory_type,
+                "file_path": file_path,
+                "content_length": len(content),
+            },
+        )
+        async for result in self.execute(
+            HookEvent.INSTRUCTIONS_LOADED,
+            context,
+            match_query=memory_type,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
     async def execute_mission_start(
         self,
         session_id: str,
@@ -469,8 +505,284 @@ class HookManager:
         )
         async for result in self.execute(
             HookEvent.MISSION_STOP,
-          context,
+            context,
             match_query=mission_name,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_session_end(
+        self,
+        session_id: str,
+        reason: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks SessionEnd."""
+        context = HookContext(
+            hook_event_name=HookEvent.SESSION_END,
+            session_id=session_id,
+            reason=reason,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.SESSION_END,
+            context,
+            match_query=reason,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_stop_failure(
+        self,
+        session_id: str,
+        stop_error: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks StopFailure."""
+        context = HookContext(
+            hook_event_name=HookEvent.STOP_FAILURE,
+            session_id=session_id,
+            stop_error=stop_error,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.STOP_FAILURE,
+            context,
+            match_query=stop_error,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_pre_compact(
+        self,
+        session_id: str,
+        trigger: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks PreCompact."""
+        context = HookContext(
+            hook_event_name=HookEvent.PRE_COMPACT,
+            session_id=session_id,
+            trigger=trigger,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.PRE_COMPACT,
+            context,
+            match_query=trigger,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_post_compact(
+        self,
+        session_id: str,
+        trigger: str,
+        summary: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks PostCompact."""
+        context = HookContext(
+            hook_event_name=HookEvent.POST_COMPACT,
+            session_id=session_id,
+            trigger=trigger,
+            summary=summary,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.POST_COMPACT,
+            context,
+            match_query=trigger,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_notification(
+        self,
+        session_id: str,
+        notification_type: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks Notification."""
+        context = HookContext(
+            hook_event_name=HookEvent.NOTIFICATION,
+            session_id=session_id,
+            notification_type=notification_type,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.NOTIFICATION,
+            context,
+            match_query=notification_type,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_task_created(
+        self,
+        session_id: str,
+        task_id: str,
+        task_name: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks TaskCreated."""
+        context = HookContext(
+            hook_event_name=HookEvent.TASK_CREATED,
+            session_id=session_id,
+            task_id=task_id,
+            task_name=task_name,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.TASK_CREATED,
+            context,
+            match_query=task_name,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_task_completed(
+        self,
+        session_id: str,
+        task_id: str,
+        task_name: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks TaskCompleted."""
+        context = HookContext(
+            hook_event_name=HookEvent.TASK_COMPLETED,
+            session_id=session_id,
+            task_id=task_id,
+            task_name=task_name,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.TASK_COMPLETED,
+            context,
+            match_query=task_name,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_setup(
+        self,
+        session_id: str,
+        setup_trigger: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks Setup."""
+        context = HookContext(
+            hook_event_name=HookEvent.SETUP,
+            session_id=session_id,
+            setup_trigger=setup_trigger,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.SETUP,
+            context,
+            match_query=setup_trigger,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_config_change(
+        self,
+        session_id: str,
+        config_key: str,
+        old_value: Any,
+        new_value: Any,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks ConfigChange."""
+        context = HookContext(
+            hook_event_name=HookEvent.CONFIG_CHANGE,
+            session_id=session_id,
+            config_key=config_key,
+            old_value=old_value,
+            new_value=new_value,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.CONFIG_CHANGE,
+            context,
+            match_query=config_key,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_file_changed(
+        self,
+        session_id: str,
+        file_path: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks FileChanged."""
+        context = HookContext(
+            hook_event_name=HookEvent.FILE_CHANGED,
+            session_id=session_id,
+            file_path=file_path,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.FILE_CHANGED,
+            context,
+            match_query=file_path,
+            timeout=timeout,
+            session_id=session_id,
+        ):
+            yield result
+
+    async def execute_cwd_changed(
+        self,
+        session_id: str,
+        old_cwd: str,
+        new_cwd: str,
+        *,
+        cwd: str | None = None,
+        timeout: float = DEFAULT_HOOK_TIMEOUT,
+    ) -> AsyncGenerator[HookResult, None]:
+        """Executa hooks CwdChanged."""
+        context = HookContext(
+            hook_event_name=HookEvent.CWD_CHANGED,
+            session_id=session_id,
+            old_cwd=old_cwd,
+            new_cwd=new_cwd,
+            cwd=cwd,
+        )
+        async for result in self.execute(
+            HookEvent.CWD_CHANGED,
+            context,
+            match_query=new_cwd,
             timeout=timeout,
             session_id=session_id,
         ):

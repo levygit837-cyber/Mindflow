@@ -7,6 +7,38 @@ error handling.
 
 from __future__ import annotations
 
+# File operations v3 (New Tool system - migrated)
+from .file_operations_v3 import (
+    FileReadToolV3,
+)
+from .file_write_v3 import (
+    FileWriteToolV3,
+)
+from .file_edit_v3 import (
+    FileEditToolV3,
+)
+from .grep_v3 import (
+    GrepToolV3,
+)
+from .glob_v3 import (
+    GlobToolV3,
+)
+
+# Directory and file management v3 (New Tool system - Phase 1 migration)
+from .directory_list_v3 import (
+    DirectoryListToolV3,
+)
+from .directory_create_v3 import (
+    DirectoryCreateToolV3,
+)
+from .file_delete_v3 import (
+    FileDeleteToolV3,
+)
+from .file_finder_v3 import (
+    FileFinderToolV3,
+    FindFilesToolV3,
+)
+
 # File operations v2 (Claude Code standard)
 from .file_operations_v2 import (
     FileEditToolV2,
@@ -42,6 +74,20 @@ from .search_tools import (
 )
 
 __all__ = [
+    # File operations v3 (New Tool system - migrated)
+    "FileReadToolV3",
+    "FileWriteToolV3",
+    "FileEditToolV3",
+    "GrepToolV3",
+    "GlobToolV3",
+
+    # Directory and file management v3 (Phase 1 migration)
+    "DirectoryListToolV3",
+    "DirectoryCreateToolV3",
+    "FileDeleteToolV3",
+    "FileFinderToolV3",
+    "FindFilesToolV3",
+
     # File operations v2 (default)
     "FileReadToolV2",
     "FileWriteToolV2",
