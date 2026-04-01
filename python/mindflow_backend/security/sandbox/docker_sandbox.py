@@ -88,7 +88,7 @@ class DockerSandbox:
         if security_decision.behavior != "passthrough":
             return {
                 "success": False,
-                "error": security_decision.message,
+                "error": f"Command blocked: {security_decision.message}",
                 "security_blocked": True,
                 "exit_code": 1,
             }
