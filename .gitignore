@@ -72,8 +72,7 @@ backend/searxng/searxng/
 # Git worktrees
 .worktrees/
 
-# documentation (never commit)
-/docs/
+# documentation
 
 # local configuration and planning (never commit)
 .serena/
@@ -84,7 +83,6 @@ design/
 
 # ADR-IA (local only)
 /ADR-IA
-/docs/ADR-IA
 
 # local-only explicit files
 *.log
