@@ -10,7 +10,9 @@ from mindflow_backend.security.secrets.scanner import SecretScanner, SecretMatch
 def test_secret_scanner_anthropic_key():
     """Test detection of Anthropic API key."""
     scanner = SecretScanner()
-    content = "API_KEY = 'sk-ant-api03-' + 'A' * 93 + 'AA'"
+    # Real Anthropic key format: sk-ant-api03-{93 chars}AA
+    fake_key = "sk-ant-api03-" + "A" * 93 + "AA"
+    content = f"API_KEY = '{fake_key}'"
 
     matches = scanner.scan_content(content)
 
@@ -22,7 +24,8 @@ def test_secret_scanner_anthropic_key():
 def test_secret_scanner_openai_key():
     """Test detection of OpenAI API key."""
     scanner = SecretScanner()
-    content = "OPENAI_KEY = 'sk-' + 'A' * 48"
+    fake_key = "sk-" + "A" * 48
+    content = f"OPENAI_KEY = '{fake_key}'"
 
     matches = scanner.scan_content(content)
 
@@ -48,7 +51,8 @@ def test_secret_scanner_aws_credentials():
 def test_secret_scanner_github_token():
     """Test detection of GitHub tokens."""
     scanner = SecretScanner()
-    content = "GITHUB_TOKEN = 'ghp_' + 'A' * 36"
+    fake_token = "ghp_" + "A" * 36
+    content = f"GITHUB_TOKEN = '{fake_token}'"
 
     matches = scanner.scan_content(content)
 
@@ -96,9 +100,11 @@ def test_secret_scanner_jwt_token():
 def test_secret_scanner_multiple_secrets():
     """Test detection of multiple secrets in one file."""
     scanner = SecretScanner()
-    content = """
-    OPENAI_KEY = 'sk-' + 'A' * 48
-    GITHUB_TOKEN = 'ghp_' + 'B' * 36
+    openai_key = "sk-" + "A" * 48
+    github_token = "ghp_" + "B" * 36
+    content = f"""
+    OPENAI_KEY = '{openai_key}'
+    GITHUB_TOKEN = '{github_token}'
     DATABASE_URL = 'postgresql://user:pass@localhost/db'
     """
 
@@ -110,9 +116,10 @@ def test_secret_scanner_multiple_secrets():
 def test_secret_scanner_line_numbers():
     """Test line number tracking."""
     scanner = SecretScanner()
-    content = """line 1
+    fake_key = "sk-ant-api03-" + "A" * 93 + "AA"
+    content = f"""line 1
 line 2
-API_KEY = 'sk-ant-api03-' + 'A' * 93 + 'AA'
+API_KEY = '{fake_key}'
 line 4"""
 
     matches = scanner.scan_content(content)
@@ -124,9 +131,10 @@ line 4"""
 def test_secret_scanner_scan_file():
     """Test scanning a file."""
     scanner = SecretScanner()
+    fake_key = "sk-ant-api03-" + "A" * 93 + "AA"
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        f.write("API_KEY = 'sk-ant-api03-' + 'A' * 93 + 'AA'\n")
+        f.write(f"API_KEY = '{fake_key}'\n")
         temp_path = f.name
 
     try:
@@ -140,7 +148,8 @@ def test_secret_scanner_scan_file():
 def test_secret_scanner_format_report():
     """Test report formatting."""
     scanner = SecretScanner()
-    content = "API_KEY = 'sk-ant-api03-' + 'A' * 93 + 'AA'"
+    fake_key = "sk-ant-api03-" + "A" * 93 + "AA"
+    content = f"API_KEY = '{fake_key}'"
 
     matches = scanner.scan_content(content)
     report = scanner.format_report(matches)
@@ -167,8 +176,9 @@ def test_secret_scanner_no_secrets():
 def test_secret_scanner_severity_levels():
     """Test different severity levels."""
     scanner = SecretScanner()
-    content = """
-    API_KEY = 'sk-ant-api03-' + 'A' * 93 + 'AA'  # critical
+    fake_key = "sk-ant-api03-" + "A" * 93 + "AA"
+    content = f"""
+    API_KEY = '{fake_key}'  # critical
     PASSWORD = "mypassword123"  # medium
     """
 
