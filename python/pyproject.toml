@@ -121,3 +121,8 @@ include = ["mindflow_backend*", "mindflow_cli*", "mindflow_desktop*"]
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+]
