@@ -13,6 +13,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
+from mindflow_backend.execution.observers.directory_mapper import DirectoryMapper
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.memory.annotation import (
     EVENT_IMPORTANCE_MAP,
@@ -43,6 +44,7 @@ class MemoryObserver:
         observer_agent_id: str,
         memory_facade: "MemoryFacade",
         session_id: str,
+        project_root: str | None = None,
     ) -> None:
         self._observer_id = observer_agent_id
         self._memory = memory_facade
@@ -53,6 +55,11 @@ class MemoryObserver:
         self._annotations_this_minute = 0
         self._observed_missions: set[str] = set()
         self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+
+        # Phase 2: Directory-aware categorization
+        self._directory_mapper: DirectoryMapper | None = None
+        if project_root:
+            self._directory_mapper = DirectoryMapper(project_root)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -149,7 +156,10 @@ class MemoryObserver:
                 pass
 
     async def _process_event(self, event: dict[str, Any]) -> None:
-        """Processa um evento e anota memória se relevante."""
+        """Processa um evento e anota memória se relevante.
+
+        Phase 2: Detecta code changes e usa DirectoryMapper para categorização automática.
+        """
         # Rate limiting
         if self._annotations_this_minute >= ANNOTATION_RATE_LIMIT:
             return
@@ -163,21 +173,49 @@ class MemoryObserver:
         if importance < threshold:
             return
 
-        content = self._summarize_event(event)
-        if not content:
-            return
+        # Phase 2: Detectar code changes
+        code_change_info = self._extract_code_change(event)
 
-        annotation = MemoryAnnotation(
-            observer_agent_id=self._observer_id,
-            source_agent_id=event.get("agent_id", ""),
-            mission_id=event.get("mission_id", ""),
-            session_id=self._session_id,
-            content=content,
-            raw_event_type=event.get("type", ""),
-            importance=importance,
-            annotation_type=annotation_type,
-            tags=self._extract_tags(event),
-        )
+        if code_change_info and self._directory_mapper:
+            # Code change detectado - usar contexto rico e categorização automática
+            content = self._generate_rich_context(event, code_change_info)
+            category, subcategory = self._directory_mapper.categorize_file(
+                code_change_info["file_path"]
+            )
+
+            # Adicionar tags de categoria
+            tags = self._extract_tags(event)
+            tags.extend([category.lower(), subcategory.lower() if subcategory else ""])
+            tags = [t for t in tags if t]  # Remove empty strings
+
+            annotation = MemoryAnnotation(
+                observer_agent_id=self._observer_id,
+                source_agent_id=event.get("agent_id", ""),
+                mission_id=event.get("mission_id", ""),
+                session_id=self._session_id,
+                content=content,
+                raw_event_type=event.get("type", ""),
+                importance=importance,
+                annotation_type="code_change",
+                tags=tags,
+            )
+        else:
+            # Evento normal - usar summarize_event
+            content = self._summarize_event(event)
+            if not content:
+                return
+
+            annotation = MemoryAnnotation(
+                observer_agent_id=self._observer_id,
+                source_agent_id=event.get("agent_id", ""),
+                mission_id=event.get("mission_id", ""),
+                session_id=self._session_id,
+                content=content,
+                raw_event_type=event.get("type", ""),
+                importance=importance,
+                annotation_type=annotation_type,
+                tags=self._extract_tags(event),
+            )
 
         if not annotation.is_significant():
             return
@@ -190,8 +228,9 @@ class MemoryObserver:
                 "observer_annotated",
                 extra={
                     "observer": self._observer_id,
-                    "type": annotation_type,
+                    "type": annotation.annotation_type,
                     "importance": importance,
+                    "code_change": code_change_info is not None,
                 },
             )
         except Exception as exc:
@@ -272,6 +311,102 @@ class MemoryObserver:
         if event.get("level") in ("ERROR", "WARNING"):
             tags.append(event["level"].lower())
         return tags
+
+    # ------------------------------------------------------------------
+    # Phase 2: Code change detection
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_code_change(event: dict[str, Any]) -> dict[str, Any] | None:
+        """Extrai informações de code change do evento.
+
+        Detecta tool_result events de file operations (write_file, edit_file, etc.)
+        e extrai file_path, lines_modified, diff.
+
+        Returns:
+            Dict com file_path, lines, diff, operation ou None se não for code change
+        """
+        event_type = event.get("type", "")
+        data = event.get("data", {})
+
+        # Detectar tool_result de file operations
+        if event_type == "tool_result":
+            tool_name = data.get("tool_name", "")
+
+            if tool_name in ("write_file", "edit_file", "replace_in_file", "create_file"):
+                file_path = data.get("file_path") or data.get("path") or data.get("file")
+                if not file_path:
+                    return None
+
+                return {
+                    "file_path": str(file_path),
+                    "lines": data.get("lines_modified", {}),
+                    "diff": data.get("diff", ""),
+                    "operation": tool_name,
+                }
+
+        # Detectar eventos de file_written, file_modified
+        if event_type in ("file_written", "file_modified", "file_created"):
+            file_path = data.get("file_path") or data.get("path")
+            if not file_path:
+                return None
+
+            return {
+                "file_path": str(file_path),
+                "lines": data.get("lines_modified", {}),
+                "diff": data.get("diff", ""),
+                "operation": event_type,
+            }
+
+        return None
+
+    def _generate_rich_context(self, event: dict[str, Any], code_info: dict[str, Any]) -> str:
+        """Gera contexto RICO em linguagem natural (sem limite de 500 chars).
+
+        Args:
+            event: Evento original
+            code_info: Informações de code change extraídas
+
+        Returns:
+            Descrição detalhada em linguagem natural
+        """
+        agent = event.get("agent_id", "unknown")
+        file_path = code_info["file_path"]
+        lines = code_info.get("lines", {})
+        operation = code_info.get("operation", "modified")
+        message = event.get("message", "")
+        diff = code_info.get("diff", "")
+
+        # Categorizar automaticamente se DirectoryMapper disponível
+        category_info = ""
+        if self._directory_mapper:
+            category, subcategory = self._directory_mapper.categorize_file(file_path)
+            category_info = f"\nCategory: {category}"
+            if subcategory:
+                category_info += f" > {subcategory}"
+
+        # Formatar lines_modified
+        lines_info = ""
+        if lines:
+            start = lines.get("start", "?")
+            end = lines.get("end", "?")
+            change_type = lines.get("type", "modified")
+            lines_info = f"\nLines {change_type}: {start}-{end}"
+
+        # Formatar diff preview
+        diff_preview = ""
+        if diff:
+            diff_preview = f"\n\nDiff preview:\n```\n{diff[:500]}\n```"
+
+        context = f"""Agent {agent} {operation} file: {file_path}{category_info}{lines_info}
+
+Change summary:
+{message or 'No description provided'}
+{diff_preview}
+
+Context: This change was made during mission {event.get('mission_id')} in session {self._session_id}.
+"""
+        return context.strip()
 
     # ------------------------------------------------------------------
     # Memory save
