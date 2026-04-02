@@ -18,8 +18,11 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.tools.callable import CallableToolResult, ProgressCallback
-from mindflow_backend.schemas.tools.callable_builder import build_readonly_tool
+from mindflow_backend.schemas.tools import (
+    CallableToolResult,
+    ProgressCallback,
+    build_readonly_tool,
+)
 from mindflow_backend.schemas.tools.context import ToolContext
 
 _logger = get_logger(__name__)

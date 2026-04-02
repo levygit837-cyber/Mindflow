@@ -67,7 +67,10 @@ class _DefaultRegistry:
             return {}
 
     def _get_tools_for_scope(self, scope: Any) -> list[Any]:
-        """Get concrete tool instances for a given ToolScope."""
+        """Get concrete tool instances for a given ToolScope.
+
+        Phase 3: Prefers CallableTools when available, falls back to legacy tools.
+        """
         cache_key = str(scope)
         if cache_key in self._initialized_tools:
             return self._initialized_tools[cache_key]
@@ -77,6 +80,21 @@ class _DefaultRegistry:
         try:
             from mindflow_backend.schemas.orchestration.orchestrator import ToolScope
 
+            # Phase 3: Try to get CallableTools first
+            try:
+                from mindflow_backend.agents.tools.callable.scope_mapping import (
+                    get_callable_tools_for_scope,
+                )
+                callable_tools = get_callable_tools_for_scope(scope)
+                if callable_tools:
+                    _logger.debug(f"Using {len(callable_tools)} CallableTools for scope {scope}")
+                    tools = callable_tools
+                    self._initialized_tools[cache_key] = tools
+                    return tools
+            except Exception as e:
+                _logger.debug(f"CallableTools not available for scope {scope}: {e}")
+
+            # Fallback to legacy tools if CallableTools not available
             if scope == ToolScope.FILESYSTEM:
                 tools = self._get_filesystem_tools()
             elif scope == ToolScope.SHELL:

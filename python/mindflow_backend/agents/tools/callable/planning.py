@@ -13,8 +13,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mindflow_backend.schemas.tools.callable import CallableToolResult, ProgressCallback
-from mindflow_backend.schemas.tools.callable_builder import (
+from mindflow_backend.schemas.tools import (
+    CallableToolResult,
+    ProgressCallback,
     build_readonly_tool,
     build_callable_tool,
 )

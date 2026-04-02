@@ -65,6 +65,13 @@ from .registration import (
     unregister_all_callable_tools,
 )
 
+# Scope mapping
+from .scope_mapping import (
+    get_callable_tools_for_scope,
+    get_all_callable_tools,
+    get_callable_tools_by_names,
+)
+
 __all__ = [
     # Priority 1 - Read-only filesystem (COMPLETE)
     "FileReadCallable",
@@ -92,5 +99,9 @@ __all__ = [
     # Registration
     "register_all_callable_tools",
     "unregister_all_callable_tools",
+    # Scope mapping
+    "get_callable_tools_for_scope",
+    "get_all_callable_tools",
+    "get_callable_tools_by_names",
 ]
 

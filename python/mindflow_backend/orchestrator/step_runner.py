@@ -128,26 +128,66 @@ async def run_workflow_step(
                 }
 
         if tools:
-            lc_tools = to_langchain_tools(tools)
-            if lc_tools:
-                llm_with_tools = llm.bind_tools(lc_tools)
-                if chunk_dispatcher is not None:
-                    response_text = await stream_with_tools(
-                        llm=llm_with_tools,
-                        messages=messages,
-                        lc_tools=lc_tools,
-                        chunk_dispatcher=chunk_dispatcher,
-                        event_dispatcher=event_dispatcher,
-                        max_iterations=policy.max_iterations,  # Use full iterations even with memory
-                    )
-                else:
-                    response_text = await invoke_with_tools(
-                        llm=llm_with_tools,
-                        messages=messages,
-                        lc_tools=lc_tools,
-                        event_dispatcher=event_dispatcher,
-                        max_iterations=policy.max_iterations,  # Use full iterations even with memory
-                    )
+            from mindflow_backend.agents.tools.base.tool_detection import (
+                get_tool_execution_strategy,
+                separate_tools,
+            )
+            from mindflow_backend.schemas.tools.context import ToolContext
+
+            strategy = get_tool_execution_strategy(tools)
+
+            if strategy == "callable":
+                # Phase 3: All tools are CallableTools → use direct execution
+                from mindflow_backend.agents.tools.base.tool_invocation_callable import (
+                    invoke_with_callable_tools,
+                )
+
+                callable_tools, _ = separate_tools(tools)
+
+                # Build ToolContext for callable execution
+                tool_context = ToolContext(
+                    permission_context=None,
+                    metadata={
+                        "session_id": session_id,
+                        "agent_id": step.agent_id,
+                        "step_id": step.step_id,
+                    },
+                    root_dir=sandbox_root,
+                    sandbox_mode=agent.sandbox,
+                    session_id=session_id,
+                )
+
+                response_text = await invoke_with_callable_tools(
+                    llm=llm,
+                    messages=messages,
+                    callable_tools=callable_tools,
+                    tool_context=tool_context,
+                    event_dispatcher=event_dispatcher,
+                    max_iterations=policy.max_iterations,
+                )
+
+            elif strategy == "legacy":
+                # Legacy path: Use LangChain adapter
+                lc_tools = to_langchain_tools(tools)
+                if lc_tools:
+                    llm_with_tools = llm.bind_tools(lc_tools)
+                    if chunk_dispatcher is not None:
+                        response_text = await stream_with_tools(
+                            llm=llm_with_tools,
+                            messages=messages,
+                            lc_tools=lc_tools,
+                            chunk_dispatcher=chunk_dispatcher,
+                            event_dispatcher=event_dispatcher,
+                            max_iterations=policy.max_iterations,
+                        )
+                    else:
+                        response_text = await invoke_with_tools(
+                            llm=llm_with_tools,
+                            messages=messages,
+                            lc_tools=lc_tools,
+                            event_dispatcher=event_dispatcher,
+                            max_iterations=policy.max_iterations,
+                        )
             else:
                 response = await llm.ainvoke(messages)
                 response_text = response.content if hasattr(response, "content") else str(response)

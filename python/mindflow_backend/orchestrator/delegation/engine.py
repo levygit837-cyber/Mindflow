@@ -241,20 +241,62 @@ class DelegationEngine(ExecutionMemoryMixin):
             # Bind tools and run with tool invocation loop if tools are available
             response_text = ""
             if tools:
-                from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-                from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+                from mindflow_backend.agents.tools.base.tool_detection import (
+                    get_tool_execution_strategy,
+                    separate_tools,
+                )
+                from mindflow_backend.schemas.tools.context import ToolContext
 
-                lc_tools = to_langchain_tools(tools)
-                if lc_tools:
-                    llm_with_tools = llm.bind_tools(lc_tools)
-                    response_text = await invoke_with_tools(
-                        llm=llm_with_tools,
+                strategy = get_tool_execution_strategy(tools)
+
+                if strategy == "callable":
+                    # Phase 3: All tools are CallableTools → use direct execution
+                    from mindflow_backend.agents.tools.base.tool_invocation_callable import (
+                        invoke_with_callable_tools,
+                    )
+
+                    callable_tools, _ = separate_tools(tools)
+
+                    # Build ToolContext for callable execution
+                    tool_context = ToolContext(
+                        permission_context=None,  # TODO: Add permission context
+                        metadata={
+                            "session_id": session_id,
+                            "execution_id": child_execution_id,
+                            "agent_id": task.agent_id,
+                        },
+                        root_dir=sandbox.cwd,
+                        sandbox_mode=agent.sandbox,
+                        session_id=session_id,
+                        execution_id=child_execution_id,
+                    )
+
+                    response_text = await invoke_with_callable_tools(
+                        llm=llm,
                         messages=messages,
-                        lc_tools=lc_tools,
+                        callable_tools=callable_tools,
+                        tool_context=tool_context,
                         event_dispatcher=self._make_event_dispatcher(child_execution_id),
                         before_iteration=self._make_before_iteration(child_execution_id),
                         max_iterations=max(1, getattr(task, "max_iterations", 1) * 5),
                     )
+
+                elif strategy == "legacy":
+                    # Legacy path: Use LangChain adapter for backward compatibility
+                    from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+                    from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+
+                    lc_tools = to_langchain_tools(tools)
+                    if lc_tools:
+                        llm_with_tools = llm.bind_tools(lc_tools)
+                        response_text = await invoke_with_tools(
+                            llm=llm_with_tools,
+                            messages=messages,
+                            lc_tools=lc_tools,
+                            event_dispatcher=self._make_event_dispatcher(child_execution_id),
+                            before_iteration=self._make_before_iteration(child_execution_id),
+                            max_iterations=max(1, getattr(task, "max_iterations", 1) * 5),
+                        )
 
             if not response_text:
                 # Fallback: no tools or tool conversion failed
