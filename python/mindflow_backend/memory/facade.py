@@ -20,6 +20,10 @@ from mindflow_backend.memory.shared.retrieval.semantic import SemanticRetriever
 from mindflow_backend.memory.storage.models import (
     AgentMemoryEvent,
     AgentMemoryWindow,
+    HierarchicalAnnotation,
+    MemoryCategory,
+    MemorySubCategory,
+    ProjectMemory,
     SessionBlock,
     SessionEmbedding,
 )
@@ -936,3 +940,133 @@ class MemoryFacade:
         if left_norm == 0.0 or right_norm == 0.0:
             return 0.0
         return numerator / (left_norm * right_norm)
+
+    # ========================================================================
+    # Phase 3: Hierarchical Memory Save
+    # ========================================================================
+
+    async def save_hierarchical_annotation(
+        self,
+        db: Any,
+        *,
+        annotation: MemoryAnnotation,
+        project_name: str,
+        project_root: str,
+        category_name: str | None = None,
+        subcategory_name: str | None = None,
+        file_path: str | None = None,
+        lines_modified: dict[str, Any] | None = None,
+        diff_summary: str | None = None,
+    ) -> int:
+        """Save a hierarchical annotation to the database.
+
+        Automatically creates ProjectMemory, MemoryCategory, and MemorySubCategory
+        if they don't exist.
+
+        Args:
+            db: Database session
+            annotation: MemoryAnnotation with basic info
+            project_name: Name of the project (e.g., "MindFlow")
+            project_root: Root path of the project
+            category_name: Optional category name (e.g., "API")
+            subcategory_name: Optional subcategory name (e.g., "Controllers")
+            file_path: Optional file path for code changes
+            lines_modified: Optional dict with line change info
+            diff_summary: Optional diff summary
+
+        Returns:
+            ID of the created HierarchicalAnnotation
+        """
+        # Get or create ProjectMemory
+        project_result = await db.execute(
+            select(ProjectMemory).where(
+                ProjectMemory.project_name == project_name,
+                ProjectMemory.root_path == project_root,
+            )
+        )
+        project = project_result.scalar_one_or_none()
+
+        if not project:
+            project = ProjectMemory(
+                project_name=project_name,
+                root_path=project_root,
+            )
+            db.add(project)
+            await db.flush()  # Get project.id
+
+        # Get or create MemoryCategory (if category_name provided)
+        category_id = None
+        if category_name:
+            category_result = await db.execute(
+                select(MemoryCategory).where(
+                    MemoryCategory.project_id == project.id,
+                    MemoryCategory.name == category_name,
+                )
+            )
+            category = category_result.scalar_one_or_none()
+
+            if not category:
+                category = MemoryCategory(
+                    project_id=project.id,
+                    name=category_name,
+                )
+                db.add(category)
+                await db.flush()  # Get category.id
+
+            category_id = category.id
+
+        # Get or create MemorySubCategory (if subcategory_name provided)
+        subcategory_id = None
+        if subcategory_name and category_id:
+            subcategory_result = await db.execute(
+                select(MemorySubCategory).where(
+                    MemorySubCategory.category_id == category_id,
+                    MemorySubCategory.name == subcategory_name,
+                )
+            )
+            subcategory = subcategory_result.scalar_one_or_none()
+
+            if not subcategory:
+                subcategory = MemorySubCategory(
+                    category_id=category_id,
+                    name=subcategory_name,
+                )
+                db.add(subcategory)
+                await db.flush()  # Get subcategory.id
+
+            subcategory_id = subcategory.id
+
+        # Create HierarchicalAnnotation
+        hierarchical_annotation = HierarchicalAnnotation(
+            project_id=project.id,
+            category_id=category_id,
+            subcategory_id=subcategory_id,
+            observer_agent_id=annotation.observer_agent_id,
+            source_agent_id=annotation.source_agent_id,
+            mission_id=annotation.mission_id,
+            session_id=annotation.session_id,
+            file_path=file_path,
+            lines_modified=lines_modified,
+            diff_summary=diff_summary,
+            content=annotation.content,
+            annotation_type=annotation.annotation_type,
+            importance=annotation.importance,
+            tags=annotation.tags,
+            raw_event_type=annotation.raw_event_type,
+        )
+
+        db.add(hierarchical_annotation)
+        await db.flush()
+
+        _logger.info(
+            "hierarchical_annotation_saved",
+            extra={
+                "annotation_id": hierarchical_annotation.id,
+                "project": project_name,
+                "category": category_name,
+                "subcategory": subcategory_name,
+                "file_path": file_path,
+            },
+        )
+
+        return hierarchical_annotation.id

@@ -45,6 +45,7 @@ class MemoryObserver:
         memory_facade: "MemoryFacade",
         session_id: str,
         project_root: str | None = None,
+        project_name: str | None = None,
     ) -> None:
         self._observer_id = observer_agent_id
         self._memory = memory_facade
@@ -58,6 +59,8 @@ class MemoryObserver:
 
         # Phase 2: Directory-aware categorization
         self._directory_mapper: DirectoryMapper | None = None
+        self._project_root = project_root
+        self._project_name = project_name or "Unknown"
         if project_root:
             self._directory_mapper = DirectoryMapper(project_root)
 
@@ -221,7 +224,12 @@ class MemoryObserver:
             return
 
         try:
-            await self._save_annotation(annotation)
+            await self._save_annotation(
+                annotation,
+                code_change_info=code_change_info,
+                category=category if code_change_info and self._directory_mapper else None,
+                subcategory=subcategory if code_change_info and self._directory_mapper else None,
+            )
             self._annotations_count += 1
             self._annotations_this_minute += 1
             logger.debug(
@@ -412,23 +420,48 @@ Context: This change was made during mission {event.get('mission_id')} in sessio
     # Memory save
     # ------------------------------------------------------------------
 
-    async def _save_annotation(self, annotation: MemoryAnnotation) -> None:
-        """Salva anotação via MemoryFacade."""
+    async def _save_annotation(
+        self,
+        annotation: MemoryAnnotation,
+        code_change_info: dict[str, Any] | None = None,
+        category: str | None = None,
+        subcategory: str | None = None,
+    ) -> None:
+        """Salva anotação via MemoryFacade.
+
+        Phase 3: Usa save_hierarchical_annotation quando code_change_info existe.
+        """
+        # Phase 3: Salvamento hierárquico para code changes
+        if code_change_info and self._project_root and hasattr(self._memory, "save_hierarchical_annotation"):
+            from mindflow_backend.infra.database.connection import get_db_session
+
+            async with get_db_session() as db:
+                await self._memory.save_hierarchical_annotation(
+                    db,
+                    annotation=annotation,
+                    project_name=self._project_name,
+                    project_root=self._project_root,
+                    category_name=category,
+                    subcategory_name=subcategory,
+                    file_path=code_change_info.get("file_path"),
+                    lines_modified=code_change_info.get("lines"),
+                    diff_summary=code_change_info.get("diff", "")[:1000],  # Limit to 1000 chars
+                )
+                await db.commit()
+            return
+
+        # Fallback: método antigo (save_annotation ou record_message)
         if hasattr(self._memory, "save_annotation"):
             await self._memory.save_annotation(annotation)
         else:
-            # Fallback: usa record_message se save_annotation não existir
-            content = annotation.to_memory_content()
-            # Cria um db session temporário
-            from mindflow_backend.infra.config import get_settings
-
-            settings = get_settings()
-            if hasattr(self._memory, "_session_service"):
-                # Usa session_id para salvar como evento de memória
-                from mindflow_backend.memory.facade import _get_db_session_factory
-
-                async with _get_db_session_factory()() as db:
-                    await self._memory.save_annotation(annotation)
+            # Último fallback: apenas log
+            logger.debug(
+                "observer_annotation_not_saved",
+                extra={
+                    "observer": self._observer_id,
+                    "reason": "no_save_method_available",
+                },
+            )
 
     # ------------------------------------------------------------------
     # Rate limit reset
