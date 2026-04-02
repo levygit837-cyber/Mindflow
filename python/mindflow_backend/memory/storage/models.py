@@ -272,3 +272,106 @@ class SessionRuntimeState(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ============================================================================
+# Hierarchical Memory Models (Phase 1 - Memory Observer Enhanced)
+# ============================================================================
+
+
+class ProjectMemory(Base):
+    """Root memory node for a project.
+
+    Represents the top-level container for all hierarchical memories
+    associated with a specific project/codebase.
+    """
+    __tablename__ = "project_memories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    root_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class MemoryCategory(Base):
+    """Category of memory within a project (e.g., API, Services, Features).
+
+    Provides the first level of organization below the project root.
+    Categories are typically mapped to major architectural areas or directories.
+    """
+    __tablename__ = "memory_categories"
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_memory_category_project_name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("project_memories.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    path_pattern: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class MemorySubCategory(Base):
+    """Sub-category within a memory category (e.g., API > Controllers, API > Middleware).
+
+    Provides the second level of organization for fine-grained memory threading.
+    """
+    __tablename__ = "memory_subcategories"
+    __table_args__ = (
+        UniqueConstraint("category_id", "name", name="uq_memory_subcategory_category_name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("memory_categories.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    path_pattern: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class HierarchicalAnnotation(Base):
+    """Memory annotation with hierarchical organization and code change tracking.
+
+    Extends the basic MemoryAnnotation concept with:
+    - Hierarchical categorization (project > category > subcategory)
+    - Code change tracking (file path, lines modified, diff)
+    - Rich natural language context (no 500 char limit)
+    - Cross-agent memory bridge support
+    """
+    __tablename__ = "hierarchical_annotations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Hierarchical organization
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("project_memories.id", ondelete="CASCADE"), nullable=False, index=True)
+    category_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("memory_categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    subcategory_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("memory_subcategories.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Observer metadata
+    observer_agent_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    source_agent_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    mission_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # Code change tracking
+    file_path: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
+    lines_modified: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    diff_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Content (rich natural language context - no length limit)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    annotation_type: Mapped[str] = mapped_column(String(50), default="observation", index=True)
+    importance: Mapped[float] = mapped_column(Float, default=0.5, index=True)
+
+    # Tags and metadata
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    raw_event_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
