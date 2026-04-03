@@ -548,3 +548,51 @@ class BrowserInstance(Base):
 
     # Relationships
     research_session: Mapped["ResearchSession"] = relationship("ResearchSession")
+
+
+class Task(Base):
+    """Task management model for persistent task storage."""
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_list_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    active_form: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    owner: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    task_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    # Relationships
+    blocks: Mapped[list["TaskDependency"]] = relationship(
+        "TaskDependency",
+        foreign_keys="TaskDependency.task_id",
+        back_populates="task",
+        cascade="all, delete-orphan"
+    )
+    blocked_by: Mapped[list["TaskDependency"]] = relationship(
+        "TaskDependency",
+        foreign_keys="TaskDependency.blocks_task_id",
+        back_populates="blocking_task",
+        cascade="all, delete-orphan"
+    )
+
+
+class TaskDependency(Base):
+    """Task dependency relationships for dependency graph."""
+    __tablename__ = "task_dependencies"
+    __table_args__ = (
+        UniqueConstraint("task_id", "blocks_task_id", name="task_deps_unique"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    blocks_task_id: Mapped[int] = mapped_column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    # Relationships
+    task: Mapped["Task"] = relationship("Task", foreign_keys=[task_id], back_populates="blocks")
+    blocking_task: Mapped["Task"] = relationship("Task", foreign_keys=[blocks_task_id], back_populates="blocked_by")

@@ -44,6 +44,8 @@ dependencies = [
   "PyPDF2>=3.0.0",
   "sentence-transformers>=2.2.0",
   "beautifulsoup4>=4.14.3",
+  "python-frontmatter>=1.1.0",
+  "pathspec>=0.12.1",
 ]
 
 [project.optional-dependencies]

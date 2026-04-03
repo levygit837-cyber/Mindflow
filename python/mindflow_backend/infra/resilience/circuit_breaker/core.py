@@ -86,7 +86,7 @@ class CircuitBreaker:
             if elapsed >= self.config.recovery_timeout:
                 self._state = CircuitState.HALF_OPEN
                 self._half_open_calls = 0
-                self._consecutive_successes = 0
+                self.stats.consecutive_successes = 0
                 _logger.info(
                     "circuit_half_open",
                     name=self.name,

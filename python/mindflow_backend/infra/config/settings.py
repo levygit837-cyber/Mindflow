@@ -171,6 +171,8 @@ class Settings(BaseSettings):
 
     # XMPP / SPADE Communication Configuration (Fase 4)
     use_xmpp_transport: bool = Field(default=False, alias="USE_XMPP_TRANSPORT")
+    use_decentralized_router: bool = Field(default=False, alias="USE_DECENTRALIZED_ROUTER")
+    proposal_timeout: float = Field(default=5.0, alias="PROPOSAL_TIMEOUT")
     xmpp_server: str = Field(default="localhost", alias="XMPP_SERVER")
     xmpp_port: int = Field(default=5222, alias="XMPP_PORT")
     xmpp_domain: str = Field(default="mindflow.local", alias="XMPP_DOMAIN")
