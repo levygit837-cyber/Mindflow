@@ -8,14 +8,16 @@ Loads commands from:
 - Plugins (future)
 """
 
-import importlib.util
 import inspect
+import importlib.util
 import logging
 from pathlib import Path
 from typing import Any
+import uuid
 
 from mindflow_backend.commands.registry import CommandRegistry, get_registry
 from mindflow_backend.commands.types import Command, CommandMetadata
+from mindflow_backend.plugins.commands import PluginPromptCommand, PluginSkillCommand
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,11 @@ class CommandLoader:
     - Plugins (future integration)
     """
 
-    def __init__(self, registry: CommandRegistry | None = None):
+    def __init__(
+        self,
+        registry: CommandRegistry | None = None,
+        plugin_manager: Any | None = None,
+    ):
         """
         Initialize command loader.
 
@@ -39,8 +45,9 @@ class CommandLoader:
             registry: Command registry (uses global if None)
         """
         self._registry = registry or get_registry()
+        self._plugin_manager = plugin_manager
 
-    async def load_all_commands(self) -> int:
+    async def load_all_commands(self, *, cwd: str | None = None) -> int:
         """
         Load commands from all sources.
 
@@ -59,8 +66,9 @@ class CommandLoader:
         total += custom_count
         logger.info(f"Loaded {custom_count} custom commands")
 
-        # TODO: Load skill commands (Phase 3.2)
-        # TODO: Load plugin commands (future)
+        plugin_count = await self.load_plugin_commands(cwd=cwd)
+        total += plugin_count
+        logger.info(f"Loaded {plugin_count} plugin commands")
 
         logger.info(f"Total commands loaded: {total}")
         return total
@@ -94,6 +102,50 @@ class CommandLoader:
             path = self._get_custom_commands_path()
 
         return await self._load_commands_from_directory(path, source="custom")
+
+    async def load_plugin_commands(self, *, cwd: str | None = None) -> int:
+        """
+        Load declarative plugin commands and skills.
+
+        Args:
+            cwd: Working directory used for project/local plugin resolution
+
+        Returns:
+            Number of plugin-backed commands loaded
+        """
+        if self._plugin_manager is None:
+            return 0
+
+        loader_session_id = f"command-loader-{uuid.uuid4()}"
+        loaded_count = 0
+
+        try:
+            snapshot = await self._plugin_manager.activate_session(
+                loader_session_id,
+                cwd=cwd,
+            )
+
+            for command_name, definition in snapshot.commands.items():
+                try:
+                    if command_name in snapshot.skills:
+                        command = PluginSkillCommand(
+                            definition=snapshot.skills[command_name],
+                            plugin_manager=self._plugin_manager,
+                        )
+                    else:
+                        command = PluginPromptCommand(definition=definition)
+                    self._registry.register(command)
+                    loaded_count += 1
+                except ValueError as exc:
+                    logger.warning(
+                        "Failed to register plugin command '%s': %s",
+                        command_name,
+                        exc,
+                    )
+        finally:
+            await self._plugin_manager.deactivate_session(loader_session_id)
+
+        return loaded_count
 
     async def _load_commands_from_directory(
         self, directory: str, source: str = "unknown"
