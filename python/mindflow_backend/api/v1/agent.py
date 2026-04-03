@@ -1,7 +1,4 @@
 import asyncio
-import contextlib
-import json
-import uuid
 from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException, Request
@@ -9,13 +6,11 @@ from fastapi.responses import StreamingResponse
 
 from mindflow_backend.api.controllers.agent_controller import AgentController
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.client import LocalAgentClient
 from mindflow_backend.infra.sanitizer import SanitizationError, sanitize_message
 from mindflow_backend.schemas.chat.agent import (
     AgentChatRequest,
     AgentExecutionMessageRequest,
     AgentExecutionResponse,
-    StreamEventMeta,
 )
 from mindflow_backend.schemas.tools.shell_tabs import ShellTabCreateRequest, ShellTabExecRequest
 from mindflow_backend.services import get_shell_tab_service
@@ -217,64 +212,3 @@ async def close_shell_tab(session_id: str, tab_id: str):
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return closed.model_dump(mode="json")
-
-
-# Legacy endpoints - maintained for backward compatibility
-@router.post("/chat/stream/legacy")
-async def stream_chat_legacy(payload: AgentChatRequest, request: Request) -> StreamingResponse:
-    """Legacy streaming endpoint - maintained for compatibility."""
-    try:
-        payload.message = sanitize_message(payload.message)
-    except SanitizationError as exc:
-        from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-    # Use session_id from payload if provided (from frontend), otherwise create new
-    session_id = payload.sessionId or f"sess-{uuid.uuid4()}"
-    turn_id = f"turn-{uuid.uuid4()}"
-    run_id = str(uuid.uuid4())
-    grpc_client = LocalAgentClient()
-
-    async def event_generator() -> AsyncGenerator[str, None]:
-        async for event in grpc_client.stream_chat(
-            session_id=session_id,
-            message=payload.message,
-            provider=payload.provider,
-            model=payload.model,
-            run_id=run_id,
-            orchestrate=payload.orchestrate,
-            agent_type=payload.agent_type,
-            folder_path=getattr(payload, "folder_path", None),
-            execution_id=getattr(payload, "execution_id", None),
-        ):
-            if await request.is_disconnected():
-                break
-
-            meta = event.meta or StreamEventMeta()
-            if not meta.runId:
-                meta.runId = run_id
-            if not meta.turnRunId:
-                meta.turnRunId = turn_id
-            event.meta = meta
-
-            # Keep tool payload validation side-effect free.
-            if event.type in {"tool_call", "tool_result"}:
-                with contextlib.suppress(Exception):
-                    json.loads(event.data)
-
-            yield format_sse(event.model_dump())
-            # Give the event loop a chance to flush the TCP write buffer.
-            await asyncio.sleep(0)
-
-            if event.type == "done":
-                break
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive",
-        },
-    )

@@ -1,4 +1,5 @@
 from mindflow_backend.runtime.output_categorizer import categorize_output
+from mindflow_backend.runtime.processing.output_categorizer import categorize_output as processing_categorize_output
 
 
 def test_decision_prefix() -> None:
@@ -16,3 +17,7 @@ def test_summary_prefix() -> None:
 def test_explanation_fallback() -> None:
     text = "x" * 100
     assert categorize_output(text) == "explanation"
+
+
+def test_processing_module_reexports_canonical_implementation() -> None:
+    assert processing_categorize_output is categorize_output

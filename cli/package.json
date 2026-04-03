@@ -1,10 +1,11 @@
 {
-  "name": "@mindflow/cli",
+  "name": "@mindflow/cli-legacy",
   "version": "0.1.0",
-  "description": "MindFlow Terminal CLI with multi-agent orchestration visualization",
+  "description": "Legacy MindFlow terminal CLI retained during migration to src/",
+  "private": true,
   "type": "module",
   "bin": {
-    "mindflow-cli": "./dist/index.js"
+    "mindflow-cli-legacy": "./dist/index.js"
   },
   "scripts": {
     "dev": "tsx src/index.tsx",

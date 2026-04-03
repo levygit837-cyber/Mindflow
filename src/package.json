@@ -1,6 +1,7 @@
 {
     "name": "@mindflow/cli",
     "version": "0.1.0",
+    "description": "Canonical MindFlow terminal CLI",
     "private": true,
     "type": "module",
     "bin": {

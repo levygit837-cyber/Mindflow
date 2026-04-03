@@ -1,22 +1,49 @@
-"""Output categorization helpers for streaming metadata.
-
-This module is used by the stream normalizer to tag response chunks with a
-high-level category. It is intentionally lightweight and dependency-free.
-"""
+"""Canonical output categorization for runtime streaming metadata."""
 
 from __future__ import annotations
 
+from typing import Literal
 
-def categorize_output(text: str) -> str:
-    """Categorize LLM output for UI/telemetry purposes."""
-    t = (text or "").strip().lower()
-    if not t:
-        return "empty"
-    if t.startswith("{") or t.startswith("["):
-        return "json_like"
-    if "```" in t:
-        return "code"
-    if t.startswith("error") or "exception" in t:
-        return "error"
-    return "text"
+OutputCategory = Literal["explanation", "decision", "code_result", "summary", "response"]
 
+
+def categorize_output(text: str) -> OutputCategory:
+    """Categorize LLM output for UI rendering and telemetry metadata."""
+    if not text or not text.strip():
+        return "response"
+
+    trimmed = text.lstrip()
+
+    decision_prefixes = (
+        "i'll",
+        "i will",
+        "let me",
+        "i'm going to",
+        "i am going to",
+        "vou",
+        "deixa eu",
+        "vou usar",
+    )
+    if trimmed.lower().startswith(decision_prefixes):
+        return "decision"
+
+    if "```" in text:
+        return "code_result"
+
+    summary_prefixes = (
+        "here's",
+        "here is",
+        "aqui está",
+        "aqui estão",
+        "the result",
+        "os resultados",
+        "o resultado",
+        "based on",
+    )
+    if trimmed.lower().startswith(summary_prefixes):
+        return "summary"
+
+    if len(text.strip()) >= 80:
+        return "explanation"
+
+    return "response"

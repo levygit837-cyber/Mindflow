@@ -1,34 +1,22 @@
-"""System tools for MindFlow agents.
-
-Provides tools for system interactions including sandbox execution,
-process management, and environment access.
-"""
+"""Compatibility export surface for specialist system tools."""
 
 from __future__ import annotations
 
-from .process_manager import ProcessManagerTool
-from .resource_monitor import (
-    ResourceMonitorTool,
-)
+from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+from mindflow_backend.agents.tools.system.process_manager import ProcessManagerTool
+from mindflow_backend.agents.tools.system.resource_monitor import ResourceMonitorTool
+from mindflow_backend.agents.tools.system.sandbox import SandboxTool
+from mindflow_backend.agents.tools.system.shell_executor import ShellExecutorTool
+from mindflow_backend.agents.tools.system.system_info import SystemInfoTool
 
-# Original system tools
-from .sandbox import MindFlowSandbox
-
-# System tools (unified from backend)
-from .shell_executor import (
-    ShellExecutorTool,
-)
-from .system_info import (
-    SystemInfoCollector,
-)
+SystemInfoCollector = SystemInfoTool
 
 __all__ = [
-    # System tools (unified)
     "ShellExecutorTool",
     "ResourceMonitorTool",
+    "SandboxTool",
+    "SystemInfoTool",
     "SystemInfoCollector",
-    
-    # Original system tools
     "MindFlowSandbox",
     "ProcessManagerTool",
 ]

@@ -52,6 +52,11 @@ python/*.egg-info/
 # backup files
 *.bak
 python/backups/
+*.old
+*.backup
+!archive/old/**
+!archive/backup/**
+!archive/legacy/**
 
 
 # IDE

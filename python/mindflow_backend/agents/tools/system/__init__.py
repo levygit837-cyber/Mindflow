@@ -23,10 +23,9 @@ from .shell_executor_v3 import (
 )
 
 # Shell executor v2 (Claude Code standard)
-# Temporarily commented out due to import error
-# from .shell_executor_v2 import (
-#     ShellExecutorToolV2,
-# )
+from .shell_executor_v2 import (
+    ShellExecutorToolV2,
+)
 
 # Shell executor v1 (backward compatibility - deprecated)
 from .shell_executor import (
@@ -62,7 +61,7 @@ __all__ = [
     "ShellExecutorToolV3",
 
     # Shell executor v2 (default)
-    # "ShellExecutorToolV2",  # Temporarily commented out
+    "ShellExecutorToolV2",
 
     # Shell executor v1 (deprecated)
     "ShellExecutorTool",

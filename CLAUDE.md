@@ -34,7 +34,7 @@ This project is indexed by GitNexus as **MindFlow** (93539 symbols, 234822 relat
 
 **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind v4 + Zustand
 
-**CLI:** React 18 + Ink 5 + Zustand (Terminal UI)
+**CLI:** React 18 + Ink 5 (canonical package in `src/`; legacy package retained in `cli/`)
 
 **Package Managers:** `uv` for Python (NOT pip/poetry), `npm` for frontend/CLI
 
@@ -55,11 +55,10 @@ This project is indexed by GitNexus as **MindFlow** (93539 symbols, 234822 relat
 - `npm run test` - Vitest unit tests
 - `npm run test:e2e` - Playwright e2e tests
 
-**CLI (from `/cli/`):**
+**CLI (from `/src/`):**
 - `npm run dev` - Start CLI in development mode
 - `npm run build` - Build CLI for production
-- `npm start` - Run built CLI
-- `npm run typecheck` - TypeScript type checking
+- `npm start` - Run CLI entrypoint
 
 **Full Stack (from root):**
 - `./start_dev.sh` - Start all services (Docker + API + Frontend + Worker)
@@ -72,7 +71,7 @@ This project is indexed by GitNexus as **MindFlow** (93539 symbols, 234822 relat
 cd python && uv run mindflow-api
 
 # Terminal 2: Start CLI
-cd cli && npm run dev
+cd src && npm run dev
 ```
 
 ## Critical Gotchas

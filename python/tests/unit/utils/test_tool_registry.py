@@ -10,7 +10,10 @@ def test_tool_registry_scopes():
     
     # Check all tool names
     all_tools = registry.get_all_tool_names()
-    assert "read_file" in all_tools
+    assert "file_read" in all_tools
+    assert "write_file" in all_tools
+    assert "shell_execute" in all_tools
+    assert "list_dir" in all_tools
     assert "ls_info" in all_tools
     
     # By default, create_default_registry registers tools for all agents
