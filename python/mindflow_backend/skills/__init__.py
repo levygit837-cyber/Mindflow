@@ -10,11 +10,12 @@ A comprehensive skill management system for agents with support for:
 
 from .base.executor import SkillExecutor
 from .base.skill import BaseSkill
-from .core.analysis import AnalysisSkill
-from .core.coding import CodingSkill
-from .core.research import ResearchSkill
+# from .core.analysis import AnalysisSkill
+# from .core.coding import CodingSkill
+# from .core.research import ResearchSkill
 from .registry.skill_registry import SkillRegistry
-from .utils.validation import SkillValidator
+# from .utils.validation import SkillValidator
+from .utils.dynamic_manager import DynamicSkillManager
 
 __version__ = "1.0.0"
 __author__ = "MindFlow Team"
@@ -32,6 +33,9 @@ __all__ = [
     # Registry
     "SkillRegistry",
     
+    # Managers
+    "DynamicSkillManager",
+    
     # Utilities
     "SkillValidator",
     
@@ -46,6 +50,7 @@ class SkillSystem:
         self._registry = None
         self._executor = None
         self._validator = None
+        self._dynamic_manager = None
         self._initialized = False
     
     async def initialize(self):
@@ -55,7 +60,7 @@ class SkillSystem:
         
         self._registry = SkillRegistry()
         self._executor = SkillExecutor(self._registry)
-        self._validator = SkillValidator()
+        self._dynamic_manager = DynamicSkillManager(self._registry)
         
         await self._registry.initialize()
         await self._executor.initialize()
@@ -92,6 +97,13 @@ class SkillSystem:
         if not self._initialized:
             raise RuntimeError("Skill system not initialized")
         return self._validator
+
+    @property
+    def dynamic_manager(self):
+        """Get dynamic skill manager."""
+        if not self._initialized:
+            raise RuntimeError("Skill system not initialized")
+        return self._dynamic_manager
 
 # Global instance
 _skill_system = SkillSystem()

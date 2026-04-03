@@ -30,6 +30,7 @@ class HookExecutionEvent:
     hook_id: str
     hook_name: str
     hook_event: str
+    session_id: str | None = None
     stdout: str | None = None
     stderr: str | None = None
     output: str | None = None
@@ -61,6 +62,10 @@ class HookEventBroadcaster:
         """Registra um handler para receber eventos."""
         self._handlers.append(handler)
 
+    def unregister(self, handler: Callable[[HookExecutionEvent], Awaitable[None]]) -> None:
+        """Remove um handler previamente registrado."""
+        self._handlers = [item for item in self._handlers if item is not handler]
+
     def enable_all_events(self) -> None:
         """Habilita emissão de todos os eventos (não apenas lifecycle)."""
         self._all_events_enabled = True
@@ -81,8 +86,26 @@ class HookEventBroadcaster:
                     error=str(exc),
                 )
 
-    def drain_pending(self) -> list[HookExecutionEvent]:
-        """Retorna e limpa eventos pendentes."""
-        events = self._pending_events.copy()
-        self._pending_events.clear()
-        return events
+    def drain_pending(
+        self,
+        predicate: Callable[[HookExecutionEvent], bool] | None = None,
+    ) -> list[HookExecutionEvent]:
+        """Retorna e limpa eventos pendentes.
+
+        Quando ``predicate`` é informado, apenas os eventos correspondentes são
+        drenados; os demais permanecem na fila.
+        """
+        if predicate is None:
+            events = self._pending_events.copy()
+            self._pending_events.clear()
+            return events
+
+        drained: list[HookExecutionEvent] = []
+        remaining: list[HookExecutionEvent] = []
+        for event in self._pending_events:
+            if predicate(event):
+                drained.append(event)
+            else:
+                remaining.append(event)
+        self._pending_events = remaining
+        return drained

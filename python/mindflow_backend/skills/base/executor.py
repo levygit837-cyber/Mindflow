@@ -23,7 +23,7 @@ from mindflow_backend.schemas.skills.execution import (
 )
 
 
-class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSkillExecutorInterface):
+class SkillExecutor(AsyncSkillExecutorInterface, BatchSkillExecutorInterface):
     """Implementation of skill executor."""
     
     def __init__(self, registry: SkillRegistryInterface):
@@ -59,8 +59,8 @@ class SkillExecutor(SkillExecutorInterface, AsyncSkillExecutorInterface, BatchSk
         start_time = datetime.now()
         
         try:
-            # Get the skill
-            skill = await self._registry.get_skill_by_name(context.skill_name)
+            # Get the skill instance
+            skill = self._registry.get_skill_instance_by_name(context.skill_name)
             if not skill:
                 raise ValueError(f"Skill not found: {context.skill_name}")
             

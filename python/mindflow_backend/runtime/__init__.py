@@ -8,7 +8,6 @@ from mindflow_backend.runtime.execution.safe_backend import (
     SafeBackend,
 )
 from mindflow_backend.runtime.memory.memory_integration import MemoryIntegration
-from mindflow_backend.runtime.monitoring.log_bus import AgentLogBus, log_bus
 from mindflow_backend.runtime.processing.output_categorizer import OutputCategory, categorize_output
 from mindflow_backend.runtime.providers.providers import get_model_for_provider
 from mindflow_backend.runtime.registry.node_registry import (
@@ -31,6 +30,12 @@ from mindflow_backend.runtime.utils.response_parser import (
     has_thinking_content,
     normalize_response_for_json,
 )
+
+try:
+    from mindflow_backend.runtime.monitoring.log_bus import AgentLogBus, log_bus
+except Exception:  # pragma: no cover - optional runtime dependency chain
+    AgentLogBus = None  # type: ignore[assignment]
+    log_bus = None  # type: ignore[assignment]
 
 __all__ = [
     # Modular runtime (new)

@@ -3,6 +3,7 @@ import contextlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -11,6 +12,10 @@ from mindflow_backend.agents.tools.search_web import search_web
 from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
     build_simple_orchestrator_flow,
 )
+from mindflow_backend.hooks.event_broadcaster import HookEventBroadcaster
+from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
+from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
+from mindflow_backend.hooks.handlers.user_prompt_submit import UserPromptSubmitHandler
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.indexing import is_continuation_prompt
@@ -26,6 +31,11 @@ from mindflow_backend.runtime.streaming.history_loader import (
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    WorkspaceBinding,
+    WorkspacePolicy,
+)
+from mindflow_backend.services.core import get_worktree_service
 
 try:
     from mindflow_backend.memory import get_memory_service as _get_memory_service
@@ -173,6 +183,120 @@ class AgentRuntime:
         self._memory_service = _get_memory_service() if _get_memory_service else None
         self._execution_memory = _get_execution_memory_service() if _get_execution_memory_service else None
         self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
+        self._worktree_service = get_worktree_service()
+
+    async def start_session(self, session_id: str, *, cwd: str | None = None) -> None:
+        """Executa SessionStart e InstructionsLoaded no runtime canônico."""
+        try:
+            async for result in SessionStartHandler.execute(session_id=session_id, cwd=cwd):
+                if result.add_context:
+                    _logger.debug(
+                        "session_start_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "session_start_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )
+
+    async def end_session(
+        self,
+        session_id: str,
+        reason: str = "other",
+        *,
+        cwd: str | None = None,
+    ) -> None:
+        """Executa SessionEnd no runtime canônico."""
+        try:
+            async for result in SessionEndHandler.execute(
+                session_id=session_id,
+                reason=reason,
+                cwd=cwd,
+            ):
+                if result.add_context:
+                    _logger.debug(
+                        "session_end_hook_context",
+                        session_id=session_id,
+                        reason=reason,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "session_end_hooks_error",
+                session_id=session_id,
+                reason=reason,
+                error=str(exc),
+            )
+
+    async def handle_user_prompt(
+        self,
+        session_id: str,
+        prompt: str,
+        *,
+        cwd: str | None = None,
+    ) -> None:
+        """Executa UserPromptSubmit no runtime canônico."""
+        del prompt
+        try:
+            async for result in UserPromptSubmitHandler.execute(
+                session_id=session_id,
+                cwd=cwd or get_settings().working_path,
+            ):
+                if result.add_context:
+                    _logger.debug(
+                        "user_prompt_submit_hook_context",
+                        session_id=session_id,
+                        context=result.add_context[:200],
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "user_prompt_submit_hooks_error",
+                session_id=session_id,
+                error=str(exc),
+            )
+
+    async def _attach_hook_event_bridge(
+        self,
+        *,
+        execution_id: str,
+        session_id: str,
+    ):
+        """Registra bridge de HookEventBroadcaster para execution events."""
+        if self._execution_memory is None or not execution_id:
+            return None
+
+        broadcaster = HookEventBroadcaster.get_instance()
+
+        async def _handler(event) -> None:
+            if event.session_id not in {None, session_id}:
+                return
+            await self._execution_memory.append_event(
+                execution_id,
+                "hook_execution",
+                {
+                    "hook_id": event.hook_id,
+                    "hook_name": event.hook_name,
+                    "hook_event": event.hook_event,
+                    "hook_state": event.state.value,
+                    "stdout": event.stdout,
+                    "stderr": event.stderr,
+                    "output": event.output,
+                    "exit_code": event.exit_code,
+                    "outcome": event.outcome,
+                    "visibility": "internal",
+                },
+                stage="hooking",
+            )
+
+        broadcaster.register(_handler)
+        for pending in broadcaster.drain_pending(
+            lambda event: event.session_id in {None, session_id},
+        ):
+            await _handler(pending)
+        return _handler
 
     async def _save_message_bg(
         self,
@@ -228,6 +352,65 @@ class AgentRuntime:
         if getattr(payload, "agent_type", None):
             return "direct"
         return "legacy"
+
+    def _requested_workspace_root(self, payload: AgentChatRequest) -> str:
+        configured_root = getattr(payload, "folder_path", None)
+        if configured_root:
+            return configured_root
+
+        settings = get_settings()
+        working_path = getattr(settings, "working_path", None)
+        if working_path:
+            return str(working_path)
+        return str(Path.cwd())
+
+    def _needs_workspace_isolation(self, payload: AgentChatRequest) -> bool:
+        policy = getattr(payload, "workspace_policy", WorkspacePolicy.AUTO)
+        if policy == WorkspacePolicy.WORKTREE:
+            return True
+        if policy == WorkspacePolicy.SHARED:
+            return False
+
+        if getattr(payload, "orchestrate", False) and bool(getattr(payload, "folder_path", None)):
+            return True
+
+        agent_type = (getattr(payload, "agent_type", None) or "").strip().lower()
+        return agent_type == "coder" and bool(getattr(payload, "folder_path", None))
+
+    async def _prepare_workspace_binding(
+        self,
+        *,
+        payload: AgentChatRequest,
+        session_id: str,
+        execution_id: str | None = None,
+    ) -> WorkspaceBinding | None:
+        if self._worktree_service is None:
+            return None
+
+        existing_binding = getattr(payload, "workspace_binding", None)
+        if isinstance(existing_binding, WorkspaceBinding):
+            return existing_binding
+
+        try:
+            binding = await self._worktree_service.ensure_workspace(
+                session_id=session_id,
+                execution_id=execution_id,
+                requested_root=self._requested_workspace_root(payload),
+                policy=getattr(payload, "workspace_policy", WorkspacePolicy.AUTO),
+                needs_isolation=self._needs_workspace_isolation(payload),
+            )
+        except Exception as exc:
+            _logger.warning(
+                "workspace_binding_resolution_failed",
+                session_id=session_id,
+                execution_id=execution_id,
+                error=str(exc),
+            )
+            return None
+
+        payload.workspace_binding = binding
+        payload.folder_path = binding.workspace_path
+        return binding
 
     @staticmethod
     def _snapshot_json(value: Any) -> Any:
@@ -285,6 +468,10 @@ class AgentRuntime:
                     ),
                 }
             }
+            metadata = getattr(root_execution, "metadata", {}) or {}
+            workspace = metadata.get("workspace")
+            if isinstance(workspace, dict):
+                state["workspace"] = {"session": workspace}
             await self._execution_memory.save_session_runtime_state(
                 session_id=session_id,
                 execution_id=root_execution_id,
@@ -327,14 +514,23 @@ class AgentRuntime:
             return None
 
         execution_mode = self._resolve_execution_mode(payload)
+        requested_folder_path = getattr(payload, "folder_path", None)
+        workspace_binding = await self._prepare_workspace_binding(
+            payload=payload,
+            session_id=session_id,
+            execution_id=execution_id,
+        )
         metadata: dict[str, Any] = {
             "provider": provider,
             "model": model,
             "agent_type": getattr(payload, "agent_type", None),
             "folder_path": getattr(payload, "folder_path", None),
+            "requested_folder_path": requested_folder_path,
             "orchestrate": bool(payload.orchestrate),
             "message": payload.message,
         }
+        if workspace_binding is not None:
+            metadata["workspace"] = workspace_binding.model_dump(mode="json")
 
         try:
             return await self._execution_memory.start_execution(
@@ -434,6 +630,16 @@ class AgentRuntime:
             orchestrate=True,
             agent_type=graph_input.get("agent_type"),
             folder_path=graph_input.get("folder_path"),
+            workspace_policy=graph_input.get("workspace_policy", WorkspacePolicy.AUTO),
+        )
+        workspace_payload = metadata.get("workspace")
+        if isinstance(workspace_payload, dict):
+            with contextlib.suppress(Exception):
+                payload.workspace_binding = WorkspaceBinding.model_validate(workspace_payload)
+        await self._prepare_workspace_binding(
+            payload=payload,
+            session_id=graph_input.get("session_id") or execution.session_id,
+            execution_id=execution_id,
         )
         await self._execution_memory.mark_status(execution_id, "resuming")
         await self._sync_session_runtime_state(
@@ -607,7 +813,9 @@ class AgentRuntime:
         run_id = run_id or str(uuid.uuid4())
         counter = [0]  # Initialize sequence counter for stream events
         memory_agent_id = self._resolve_memory_agent_id(payload)
+        execution_mode = self._resolve_execution_mode(payload)
         derived_from_recall = is_continuation_prompt(payload.message)
+        await self._prepare_workspace_binding(payload=payload, session_id=session_id)
         execution = None
         requested_execution_id = getattr(payload, "execution_id", None)
         if self._execution_memory is not None and requested_execution_id:
@@ -629,6 +837,12 @@ class AgentRuntime:
                 model=model,
                 execution_id=requested_execution_id,
             )
+        else:
+            await self._prepare_workspace_binding(
+                payload=payload,
+                session_id=session_id,
+                execution_id=requested_execution_id,
+            )
         execution_id = getattr(execution, "id", None)
 
         if self._execution_memory is not None and execution_id:
@@ -644,6 +858,18 @@ class AgentRuntime:
                     stage="routing",
                 )
             await self._sync_session_runtime_state(session_id=session_id, execution_id=execution_id)
+
+        hook_event_handler = None
+        if execution_id:
+            hook_event_handler = await self._attach_hook_event_bridge(
+                execution_id=execution_id,
+                session_id=session_id,
+            )
+
+        await self.handle_user_prompt(
+            session_id=session_id,
+            prompt=payload.message,
+        )
 
         # 1. Save user message in background — do NOT await before streaming starts
         asyncio.create_task(
@@ -751,6 +977,8 @@ class AgentRuntime:
                         derived_from_recall=derived_from_recall,
                     )
                 )
+            if hook_event_handler is not None:
+                HookEventBroadcaster.get_instance().unregister(hook_event_handler)
 
     async def _stream_chat_direct_agent(
         self,
@@ -1066,6 +1294,7 @@ class AgentRuntime:
                     lc_tools=lc_tools,
                     chunk_dispatcher=_chunk_dispatch,
                     event_dispatcher=_event_dispatch,
+                    session_id=session_id,
                 )
             except Exception as exc:
                 await queue.put(("error", exc))
@@ -1728,6 +1957,12 @@ class AgentRuntime:
             "execution_id": execution_id,
             "agent_type": getattr(payload, "agent_type", None),
             "folder_path": getattr(payload, "folder_path", None),
+            "workspace_policy": getattr(payload, "workspace_policy", WorkspacePolicy.AUTO).value,
+            "workspace": (
+                payload.workspace_binding.model_dump(mode="json")
+                if isinstance(getattr(payload, "workspace_binding", None), WorkspaceBinding)
+                else None
+            ),
             "conversation_history": history_dicts,
         }
 

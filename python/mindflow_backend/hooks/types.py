@@ -18,7 +18,9 @@ _logger = get_logger(__name__)
 class HookEvent(StrEnum):
     """Events that trigger hooks — Claude Code parity + MindFlow extensions.
 
-    Total: 27 eventos (paridade com Claude Code)
+    Total: 31 eventos suportados.
+    - 27 de paridade com Claude Code
+    - 4 extensões MindFlow (AgentStart/AgentStop, MissionStart/MissionStop)
     """
 
     # === Tool Lifecycle (4) ===

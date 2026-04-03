@@ -5,6 +5,8 @@ Mirrors Claude Code's QueryEngine architecture:
 - Enforces token budget during query execution
 - Handles query lifecycle (start, execute, complete)
 - Integrates with permission system for tool calls
+- Integrates with SessionFileCache for file caching
+- Integrates with AutoCompactService for context compaction
 
 Usage:
     engine = QueryEngine(
@@ -23,8 +25,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 from mindflow_backend.permissions.types import PermissionContext, PermissionMode
-
+from mindflow_backend.query.budget.auto_compact import AutoCompactService
 from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.cache.file_cache import SessionFileCache, create_session_cache
 
 if TYPE_CHECKING:
     from mindflow_backend.permissions.manager import PermissionManager
@@ -106,6 +109,8 @@ class QueryEngine:
     2. Assembling system prompt + context
     3. Executing queries (delegated to LLM client)
     4. Tracking token usage across the conversation
+    5. Caching files via SessionFileCache
+    6. Auto-compacting context when near limits
 
     This mirrors Claude Code's QueryEngine but is adapted for MindFlow's
     multi-agent architecture where each agent may have its own QueryEngine.
@@ -117,11 +122,28 @@ class QueryEngine:
         budget: TokenBudget | None = None,
         system_prompt: str = "",
         permission_manager: PermissionManager | None = None,
+        session_id: str | None = None,
+        use_file_cache: bool = True,
     ) -> None:
         self._providers = sorted(providers, key=lambda p: -p.priority)
         self._budget = budget or TokenBudget()
         self._system_prompt = system_prompt
         self._permission_manager = permission_manager
+
+        # File cache for avoiding re-reads
+        self._file_cache: SessionFileCache | None = None
+        if use_file_cache and session_id:
+            self._file_cache = create_session_cache(session_id)
+            logger.info(
+                "query_engine_file_cache_enabled",
+                session_id=session_id,
+            )
+
+        # Auto-compact service for context management
+        self._auto_compact = AutoCompactService(
+            file_cache=self._file_cache,
+            session_id=session_id,
+        )
 
     @property
     def budget(self) -> TokenBudget:
@@ -130,6 +152,54 @@ class QueryEngine:
     @property
     def system_prompt(self) -> str:
         return self._system_prompt
+
+    @property
+    def file_cache(self) -> SessionFileCache | None:
+        """Get the file cache instance."""
+        return self._file_cache
+
+    @property
+    def auto_compact(self) -> AutoCompactService:
+        """Get the auto-compact service instance."""
+        return self._auto_compact
+
+    async def read_file_with_cache(
+        self,
+        file_path: str,
+        encoding: str = "utf-8",
+    ) -> str | None:
+        """Read a file using the session cache.
+
+        Uses SessionFileCache to avoid re-reading unchanged files.
+
+        Args:
+            file_path: Path to the file.
+            encoding: File encoding (default: utf-8).
+
+        Returns:
+            File content as string, or None if file doesn't exist.
+        """
+        if self._file_cache:
+            return await self._file_cache.get_or_read(file_path, encoding)
+
+        # Fallback: read directly without cache
+        try:
+            with open(file_path, encoding=encoding) as f:
+                return f.read()
+        except (FileNotFoundError, PermissionError):
+            return None
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get cache statistics."""
+        stats: dict[str, Any] = {
+            "file_cache_enabled": self._file_cache is not None,
+            "auto_compact_enabled": True,
+        }
+
+        if self._file_cache:
+            stats["file_cache"] = self._file_cache.get_stats()
+
+        return stats
 
     async def build_context(
         self,

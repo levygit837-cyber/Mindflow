@@ -67,6 +67,30 @@ class SkillRegistryInterface(BaseComponentInterface):
             Optional[SkillRegistryEntry]: Skill entry if found
         """
         pass
+
+    @abstractmethod
+    def get_skill_instance(self, skill_id: str) -> Any:
+        """Get skill instance by ID.
+        
+        Args:
+            skill_id: ID of skill
+            
+        Returns:
+            Optional[SkillInterface]: Skill instance if found
+        """
+        pass
+
+    @abstractmethod
+    def get_skill_instance_by_name(self, skill_name: str) -> Any:
+        """Get skill instance by name.
+        
+        Args:
+            skill_name: Name of skill
+            
+        Returns:
+            Optional[SkillInterface]: Skill instance if found
+        """
+        pass
     
     @abstractmethod
     async def list_skills(

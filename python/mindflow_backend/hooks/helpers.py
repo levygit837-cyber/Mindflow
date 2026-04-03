@@ -121,7 +121,7 @@ def get_match_query_for_event(
         return context.get("tool_name")
     if event == HookEvent.POST_TOOL_USE:
         return context.get("tool_name")
-    if event == HookEvent.POST_TOOL_FAILURE:
+    if event == HookEvent.POST_TOOL_USE_FAILURE:
         return context.get("tool_name")
     if event == HookEvent.PERMISSION_DENIED:
         return context.get("tool_name")

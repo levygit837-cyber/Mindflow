@@ -15,15 +15,19 @@ from typing import Any, Callable
 import uuid
 
 from mindflow_backend.hooks.context import HookContext
+from mindflow_backend.hooks.event_broadcaster import (
+    HookEventBroadcaster,
+    HookExecutionEvent,
+    HookExecutionState,
+)
+from mindflow_backend.hooks.matcher import HookMatcher
 from mindflow_backend.hooks.registry import HookRegistry
-from mindflow_backend.hooks.result import AggregatedHookResult, HookCommand, HookMatcher, HookResult
+from mindflow_backend.hooks.result import AggregatedHookResult, HookCommand, HookMatcher as HookMatcherData, HookResult
+from mindflow_backend.hooks.timeout import TimeoutConfig, DEFAULT_HOOK_TIMEOUT
 from mindflow_backend.hooks.types import HookEvent, HookPermissionBehavior
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
-
-# Default timeout for hook commands (seconds)
-DEFAULT_HOOK_TIMEOUT = 30
 
 
 @dataclass(frozen=True)
@@ -99,6 +103,8 @@ class HookManager:
         self,
         plugin_name: str,
         hooks_config: dict[str, list[dict[str, Any]]],
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Registra hooks de plugin a partir da configuração.
 
@@ -122,12 +128,76 @@ class HookManager:
 
             for hook_dict in hook_list:
                 matcher = hook_dict.get("matcher")
-                cmd = HookCommand(
-                    type=hook_dict.get("type", "command"),
-                    command=hook_dict.get("command"),
-                    timeout=hook_dict.get("timeout"),
+                raw_hooks = hook_dict.get("hooks")
+                hook_items = raw_hooks if isinstance(raw_hooks, list) else [hook_dict]
+                for hook_item in hook_items:
+                    cmd = HookCommand(
+                        type=hook_item.get("type", "command"),
+                        command=hook_item.get("command"),
+                        timeout=hook_item.get("timeout"),
+                    )
+                    self._registry.register_plugin_hook(
+                        plugin_name,
+                        event,
+                        matcher,
+                        cmd,
+                        session_id=session_id,
+                    )
+
+    def unregister_plugin_commands(
+        self,
+        plugin_name: str,
+        *,
+        session_id: str | None = None,
+    ) -> None:
+        """Remove hooks de plugin."""
+        self._registry.unregister_plugin_hooks(plugin_name, session_id=session_id)
+
+    def register_skill_commands(
+        self,
+        skill_id: str,
+        hooks_config: dict[str, list[dict[str, Any]]],
+        *,
+        session_id: str | None = None,
+    ) -> None:
+        """Registra hooks de skill."""
+        for event_str, hook_list in hooks_config.items():
+            try:
+                event = HookEvent(event_str)
+            except ValueError:
+                _logger.warning(
+                    "unknown_hook_event_in_skill_config",
+                    skill_id=skill_id,
+                    event=event_str,
                 )
-                self._registry.register_plugin_hook(plugin_name, event, matcher, cmd)
+                continue
+
+            for hook_dict in hook_list:
+                matcher = hook_dict.get("matcher")
+                raw_hooks = hook_dict.get("hooks")
+                hook_items = raw_hooks if isinstance(raw_hooks, list) else [hook_dict]
+                for hook_item in hook_items:
+                    cmd = HookCommand(
+                        type=hook_item.get("type", "command"),
+                        command=hook_item.get("command"),
+                        timeout=hook_item.get("timeout"),
+                    )
+                    self._registry.register_skill_hook(
+                        skill_id,
+                        event,
+                        matcher,
+                        cmd,
+                        session_id=session_id,
+                    )
+
+    def unregister_skill_commands(
+        self,
+        skill_id: str,
+        *,
+        session_id: str | None = None,
+    ) -> None:
+        """Remove hooks de skill."""
+        self._registry.unregister_skill_hooks(skill_id, session_id=session_id)
 
     def register_agent_commands(
         self,
@@ -148,12 +218,15 @@ class HookManager:
 
             for hook_dict in hook_list:
                 matcher = hook_dict.get("matcher")
-                cmd = HookCommand(
-                    type=hook_dict.get("type", "command"),
-                    command=hook_dict.get("command"),
-                    timeout=hook_dict.get("timeout"),
-                )
-                self._registry.register_agent_hook(agent_id, event, matcher, cmd)
+                raw_hooks = hook_dict.get("hooks")
+                hook_items = raw_hooks if isinstance(raw_hooks, list) else [hook_dict]
+                for hook_item in hook_items:
+                    cmd = HookCommand(
+                        type=hook_item.get("type", "command"),
+                        command=hook_item.get("command"),
+                        timeout=hook_item.get("timeout"),
+                    )
+                    self._registry.register_agent_hook(agent_id, event, matcher, cmd)
 
     # ─── Métodos de Execução ───────────────────────────────────────
 
@@ -175,26 +248,31 @@ class HookManager:
         - behavior='allow': prosseguir com input atualizado
         - add_context: adicionar ao prompt do modelo
 
+        Args:
+            event: Evento de hook (PreToolUse, PostToolUse, etc.)
+            context: Contexto do hook com dados do evento
+            match_query: Query para filtrar hooks (ex: "Write", "Bash")
+            timeout: Timeout padrão em segundos
+            session_id: ID da sessão
+            agent_id: ID do agente
+
         Usage:
             async for hook_result in manager.execute(HookEvent.PRE_TOOL_USE, ctx):
-                if hook_result.behavior == "block":
+                if hook_result.behavior == "deny":
                     # Impedir execução
                     pass
         """
-        # 1. Buscar hook matchers para o evento
+        # 1. Buscar hook matchers para o evento (já filtrados por match_query no registry)
         matchers = self._registry.get_hooks_for_event(
             event,
             session_id=session_id,
             agent_id=agent_id,
+            match_query=match_query,
         )
 
         # 2. Executar cada hook command
-        for matcher in matchers:
-            # Filtrar por matcher (equivalente a matchQuery em getMatchingHooks)
-            if match_query and matcher.matcher and matcher.matcher != match_query:
-                continue
-
-            for hook_cmd in matcher.hooks:
+        for matcher_data in matchers:
+            for hook_cmd in matcher_data.hooks:
                 try:
                     if hook_cmd.type == "command":
                         result = await self._execute_command(
@@ -215,7 +293,7 @@ class HookManager:
                     yield HookResult(
                         event=event,
                         command=hook_cmd.command or "",
-                        status="error",
+                        status="timeout",
                         error=f"Hook timed out after {hook_cmd.timeout or timeout}s",
                     )
                 except Exception as exc:
@@ -232,9 +310,10 @@ class HookManager:
                         error=str(exc),
                     )
 
-        # 3. Executar function hooks
+        # 3. Executar function hooks (com pattern matching)
         for matcher_str, callback in self._registry.get_function_hooks(event):
-            if match_query and matcher_str and matcher_str != match_query:
+            # Usar HookMatcher.matches() para verificar se o callback deve ser executado
+            if match_query and not HookMatcher.matches(match_query, matcher_str):
                 continue
             try:
                 result = await self._execute_function(callback, context, timeout)
@@ -331,7 +410,7 @@ class HookManager:
     ) -> AsyncGenerator[HookResult, None]:
         """Executa hooks PostToolUseFailure — equivalente de executePostToolUseFailureHooks do TS."""
         context = HookContext(
-            hook_event_name=HookEvent.POST_TOOL_FAILURE,
+            hook_event_name=HookEvent.POST_TOOL_USE_FAILURE,
             session_id=session_id,
             cwd=cwd,
             tool_name=tool_name,
@@ -342,7 +421,7 @@ class HookManager:
             permission_mode=permission_mode,
         )
         async for result in self.execute(
-            HookEvent.POST_TOOL_FAILURE,
+            HookEvent.POST_TOOL_USE_FAILURE,
             context,
             match_query=tool_name,
             timeout=timeout,
@@ -362,7 +441,7 @@ class HookManager:
         timeout: float = DEFAULT_HOOK_TIMEOUT,
     ) -> AsyncGenerator[HookResult, None]:
         """Executa hooks Stop — equivalente de executeStopHooks do TS."""
-        event = HookEvent.AGENT_STOP if is_subagent else HookEvent.STOP
+        event = HookEvent.SUBAGENT_STOP if is_subagent else HookEvent.STOP
         context = HookContext(
             hook_event_name=event,
             session_id=session_id,
@@ -796,8 +875,35 @@ class HookManager:
         ctx: HookContext,
         timeout: float,
     ) -> HookResult:
-        """Executa hook como subprocess — equivalente de execCommandHook do TS."""
-        import shlex
+        """Executa hook como subprocess — equivalente de execCommandHook do TS.
+
+        Args:
+            cmd: Comando do hook com timeout opcional
+            ctx: Contexto do hook
+            timeout: Timeout padrão (usado se cmd.timeout não especificado)
+
+        Returns:
+            HookResult com status e output do comando
+        """
+        # Usa TimeoutConfig para obter timeout efetivo
+        # Precedência: cmd.timeout > event-specific > default
+        effective_timeout = TimeoutConfig.get_timeout(
+            event=str(ctx.hook_event_name),
+            hook_timeout=float(cmd.timeout) if cmd.timeout else None,
+        )
+
+        # Se timeout padrão foi passado explicitamente, usa ele
+        if timeout != DEFAULT_HOOK_TIMEOUT:
+            effective_timeout = timeout
+
+        hook_id = str(uuid.uuid4())
+        hook_name = cmd.command or "<command>"
+        await self._emit_hook_execution_event(
+            state=HookExecutionState.STARTED,
+            hook_id=hook_id,
+            hook_name=hook_name,
+            ctx=ctx,
+        )
 
         proc = await asyncio.create_subprocess_shell(
             cmd.command or "",
@@ -808,39 +914,97 @@ class HookManager:
 
         # Pass context via stdin (equivalente ao TypeScript json input)
         json_input = json.dumps(ctx.to_dict()).encode()
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(input=json_input),
-            timeout=timeout,
-        )
 
-        if proc.returncode != 0:
-            return HookResult(
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                proc.communicate(input=json_input),
+                timeout=effective_timeout,
+            )
+        except asyncio.TimeoutError:
+            # Kill process on timeout
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
+            result = HookResult(
                 event=ctx.hook_event_name,
                 command=cmd.command or "",
-                status="error",
-                error=stderr_bytes.decode() if stderr_bytes else f"Exit code {proc.returncode}",
+                status="timeout",
+                error=f"Hook timed out after {effective_timeout}s",
             )
+            await self._emit_hook_execution_event(
+                state=HookExecutionState.COMPLETED,
+                hook_id=hook_id,
+                hook_name=hook_name,
+                ctx=ctx,
+                outcome=result.status,
+            )
+            return result
 
         stdout_str = stdout_bytes.decode().strip()
+        stderr_str = stderr_bytes.decode().strip()
+
+        if proc.returncode != 0:
+            result = self._build_nonzero_exit_result(
+                ctx=ctx,
+                command=cmd.command or "",
+                returncode=proc.returncode,
+                stderr=stderr_str,
+            )
+            await self._emit_hook_execution_event(
+                state=HookExecutionState.COMPLETED,
+                hook_id=hook_id,
+                hook_name=hook_name,
+                ctx=ctx,
+                stdout=stdout_str or None,
+                stderr=stderr_str or None,
+                output=stdout_str or None,
+                exit_code=proc.returncode,
+                outcome=result.status,
+            )
+            return result
+
         if not stdout_str:
-            return HookResult(
+            result = HookResult(
                 event=ctx.hook_event_name,
                 command=cmd.command or "",
                 status="success",
             )
+            await self._emit_hook_execution_event(
+                state=HookExecutionState.COMPLETED,
+                hook_id=hook_id,
+                hook_name=hook_name,
+                ctx=ctx,
+                exit_code=proc.returncode,
+                outcome=result.status,
+            )
+            return result
 
         try:
             response = json.loads(stdout_str)
-            return HookResult.from_response(ctx.hook_event_name, cmd.command or "", response)
+            result = HookResult.from_response(ctx.hook_event_name, cmd.command or "", response)
         except json.JSONDecodeError:
             # Hook output is plain text — treat as add_context
-            return HookResult(
+            result = HookResult(
                 event=ctx.hook_event_name,
                 command=cmd.command or "",
                 status="success",
                 raw_output=stdout_str,
                 add_context=stdout_str,
             )
+        await self._emit_hook_execution_event(
+            state=HookExecutionState.COMPLETED,
+            hook_id=hook_id,
+            hook_name=hook_name,
+            ctx=ctx,
+            stdout=stdout_str or None,
+            stderr=stderr_str or None,
+            output=stdout_str or None,
+            exit_code=proc.returncode,
+            outcome=result.status,
+        )
+        return result
 
     async def _execute_function(
         self,
@@ -848,27 +1012,148 @@ class HookManager:
         ctx: HookContext,
         timeout: float,
     ) -> HookResult:
-        """Executa function hook — equivalente de function hook execution do TS."""
+        """Executa function hook — equivalente de function hook execution do TS.
+
+        Args:
+            callback: Função callback assíncrona
+            ctx: Contexto do hook
+            timeout: Timeout padrão
+
+        Returns:
+            HookResult com status e output da função
+        """
+        # Usa TimeoutConfig para obter timeout efetivo
+        effective_timeout = TimeoutConfig.get_timeout(
+            event=str(ctx.hook_event_name),
+            hook_timeout=None,  # Function hooks não têm timeout configurável individual
+        )
+
+        # Se timeout padrão foi passado explicitamente, usa ele
+        if timeout != DEFAULT_HOOK_TIMEOUT:
+            effective_timeout = timeout
+
+        hook_id = str(uuid.uuid4())
+        hook_name = getattr(callback, "__name__", "<function>")
+        await self._emit_hook_execution_event(
+            state=HookExecutionState.STARTED,
+            hook_id=hook_id,
+            hook_name=hook_name,
+            ctx=ctx,
+        )
+
         try:
-            result = await asyncio.wait_for(callback(ctx), timeout=timeout)
+            result = await asyncio.wait_for(callback(ctx), timeout=effective_timeout)
             if isinstance(result, HookResult):
-                return result
-            # Se callback retorna dict, converter
-            if isinstance(result, dict):
-                return HookResult.from_response(
+                final_result = result
+            elif isinstance(result, dict):
+                final_result = HookResult.from_response(
                     ctx.hook_event_name,
                     "<function>",
                     result,
                 )
-            return HookResult(
+            else:
+                final_result = HookResult(
+                    event=ctx.hook_event_name,
+                    command="<function>",
+                    status="success",
+                )
+        except asyncio.TimeoutError:
+            final_result = HookResult(
                 event=ctx.hook_event_name,
                 command="<function>",
-                status="success",
+                status="timeout",
+                error=f"Function hook timed out after {effective_timeout}s",
             )
-        except asyncio.TimeoutError:
-            return HookResult(
+        except Exception as exc:
+            final_result = HookResult(
                 event=ctx.hook_event_name,
                 command="<function>",
                 status="error",
-                error=f"Function hook timed out after {timeout}s",
+                error=str(exc),
             )
+        await self._emit_hook_execution_event(
+            state=HookExecutionState.COMPLETED,
+            hook_id=hook_id,
+            hook_name=hook_name,
+            ctx=ctx,
+            outcome=final_result.status,
+        )
+        return final_result
+
+    def _build_nonzero_exit_result(
+        self,
+        *,
+        ctx: HookContext,
+        command: str,
+        returncode: int,
+        stderr: str,
+    ) -> HookResult:
+        """Converte códigos de saída não-zero em HookResult com semântica por evento."""
+        message = stderr or f"Exit code {returncode}"
+        try:
+            event = HookEvent(str(ctx.hook_event_name))
+        except ValueError:
+            event = None
+
+        if returncode == 2 and event in {
+            HookEvent.PRE_TOOL_USE,
+            HookEvent.PERMISSION_REQUEST,
+        }:
+            return HookResult(
+                event=ctx.hook_event_name,
+                command=command,
+                status="blocked",
+                behavior=HookPermissionBehavior.DENY,
+                reason=message,
+                error=message,
+            )
+
+        if returncode == 2 and event in {
+            HookEvent.PRE_COMPACT,
+            HookEvent.STOP,
+            HookEvent.SUBAGENT_STOP,
+        }:
+            return HookResult(
+                event=ctx.hook_event_name,
+                command=command,
+                status="blocked",
+                error=message,
+                prevent_continuation=True,
+                stop_reason=message,
+            )
+
+        return HookResult(
+            event=ctx.hook_event_name,
+            command=command,
+            status="error",
+            error=message,
+        )
+
+    async def _emit_hook_execution_event(
+        self,
+        *,
+        state: HookExecutionState,
+        hook_id: str,
+        hook_name: str,
+        ctx: HookContext,
+        stdout: str | None = None,
+        stderr: str | None = None,
+        output: str | None = None,
+        exit_code: int | None = None,
+        outcome: str | None = None,
+    ) -> None:
+        """Emite evento de execução de hook para UI/transcript."""
+        await HookEventBroadcaster.get_instance().emit(
+            HookExecutionEvent(
+                state=state,
+                hook_id=hook_id,
+                hook_name=hook_name,
+                hook_event=str(ctx.hook_event_name),
+                session_id=ctx.session_id,
+                stdout=stdout,
+                stderr=stderr,
+                output=output,
+                exit_code=exit_code,
+                outcome=outcome,
+            )
+        )

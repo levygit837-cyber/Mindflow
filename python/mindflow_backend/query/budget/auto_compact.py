@@ -22,7 +22,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Awaitable
 
+from mindflow_backend.hooks.manager import HookManager
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.query.cache.file_cache import SessionFileCache, create_session_cache
 
 _logger = get_logger(__name__)
 
@@ -148,8 +150,18 @@ class AutoCompactService:
             use_compacted_messages(result.compacted_messages)
     """
 
-    def __init__(self, config: CompactConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: CompactConfig | None = None,
+        file_cache: SessionFileCache | None = None,
+        session_id: str | None = None,
+        cwd: str | None = None,
+    ) -> None:
         self.config = config or CompactConfig()
+        self._file_cache = file_cache
+        self._session_id = session_id
+        self._cwd = cwd
+        self._hook_manager = HookManager.get_instance()
 
     def should_compact(
         self,
@@ -446,35 +458,175 @@ class AutoCompactService:
         messages: list[dict[str, Any]],
         current_tokens: int,
     ) -> CompactResult:
-        """Summary compaction stub (would use LLM in production).
+        """Summary compaction using LLM.
 
-        In a full implementation, this would send the conversation history
-        to an LLM with a prompt like:
-        'Summarize this conversation, preserving all important context,
-        tool results, and the latest user request.'
+        Sends conversation history to LLM for intelligent summarization,
+        preserving important context, tool results, and the latest user request.
+        Falls back to snip-style compaction if LLM is unavailable.
         """
-        # Stub: just keep system + last 2 messages
+        # Separate system messages from conversation
         system_msgs = [m for m in messages if m.get("role") == "system"]
-        recent = messages[-2:] if len(messages) > 2 else messages
+        conversation_msgs = [m for m in messages if m.get("role") != "system"]
 
-        compacted = system_msgs + recent
-        estimated_tokens = current_tokens // 3  # Rough estimate
+        if len(conversation_msgs) <= 3:
+            return CompactResult(
+                original_tokens=current_tokens,
+                compacted_tokens=current_tokens,
+                strategy_used=CompactStrategy.SUMMARY,
+                success=False,
+                error="Not enough conversation messages to summarize",
+            )
+
+        # Build summarization prompt
+        conversation_text = self._format_messages_for_summary(conversation_msgs)
+
+        summary_prompt = (
+            "You are a conversation summarizer. Summarize the following conversation "
+            "between a user and an AI assistant. Preserve ALL important context including:\n"
+            "- Key decisions made\n"
+            "- Files read/written and their purposes\n"
+            "- Tool results that contain important information\n"
+            "- The latest user request and current task state\n"
+            "- Any errors or issues encountered\n\n"
+            "Be concise but comprehensive. Focus on actionable context.\n\n"
+            f"Conversation:\n{conversation_text}\n\n"
+            "Summary:"
+        )
+
+        # Try to get LLM response via provider
+        summary = self._call_llm_for_summary(summary_prompt)
+
+        if not summary:
+            # Fallback: keep system + last 3 messages + a placeholder
+            _logger.warning(
+                "auto_compact_summary_llm_fallback",
+                original_tokens=current_tokens,
+                reason="LLM unavailable or returned empty response",
+            )
+            recent = conversation_msgs[-3:] if len(conversation_msgs) > 3 else conversation_msgs
+            fallback_summary = (
+                f"[Conversation compacted. {len(conversation_msgs)} messages reduced. "
+                f"Previous context was summarized but LLM was unavailable. "
+                f"Key recent messages preserved below.]"
+            )
+            summary_message = {
+                "role": "user",
+                "content": fallback_summary,
+                "is_compact_summary": True,
+            }
+            compacted = system_msgs + [summary_message] + recent
+        else:
+            # Create summary message
+            summary_message = {
+                "role": "user",
+                "content": f"[Previous conversation summarized]\n\n{summary}",
+                "is_compact_summary": True,
+            }
+            # Keep system + summary + last 2 messages for continuity
+            recent = conversation_msgs[-2:] if len(conversation_msgs) > 2 else conversation_msgs
+            compacted = system_msgs + [summary_message] + recent
+
+        estimated_tokens = self._estimate_tokens(compacted)
+        messages_removed = max(0, len(messages) - len(compacted))
 
         _logger.info(
-            "auto_compact_summary_stub",
+            "auto_compact_summary",
             original_tokens=current_tokens,
             compacted_tokens=estimated_tokens,
+            tokens_saved=current_tokens - estimated_tokens,
+            messages_removed=messages_removed,
+            messages_kept=len(compacted),
+            summary_length=len(summary) if summary else 0,
         )
 
         return CompactResult(
             original_tokens=current_tokens,
             compacted_tokens=estimated_tokens,
             tokens_saved=current_tokens - estimated_tokens,
-            messages_removed=len(messages) - len(compacted),
+            messages_removed=messages_removed,
             messages_compacted=len(compacted),
+            compacted_messages=compacted,
             strategy_used=CompactStrategy.SUMMARY,
             success=True,
         )
+
+    def _format_messages_for_summary(
+        self, messages: list[dict[str, Any]]
+    ) -> str:
+        """Format messages for LLM summarization prompt."""
+        parts = []
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+
+            # Handle tool results
+            if role == "tool":
+                tool_name = msg.get("name", "unknown_tool")
+                parts.append(f"[Tool Result: {tool_name}]: {str(content)[:500]}")
+            elif role == "assistant":
+                # Check for tool calls
+                tool_calls = msg.get("tool_calls", [])
+                if tool_calls:
+                    tool_names = [tc.get("function", {}).get("name", "?") for tc in tool_calls]
+                    parts.append(f"Assistant: [Called tools: {', '.join(tool_names)}]")
+                else:
+                    parts.append(f"Assistant: {str(content)[:500]}")
+            elif role == "user":
+                parts.append(f"User: {str(content)[:500]}")
+            else:
+                parts.append(f"{role}: {str(content)[:300]}")
+
+        return "\n".join(parts)
+
+    def _call_llm_for_summary(self, prompt: str) -> str | None:
+        """Call LLM to generate conversation summary.
+
+        Tries to use the configured provider. Returns None if unavailable.
+        """
+        try:
+            from mindflow_backend.infra.config import get_settings
+            from mindflow_backend.runtime.providers import get_model_for_provider
+
+            settings = get_settings()
+            provider = settings.default_provider or "ollama"
+            model = settings.default_model or "qwen3:8b"
+
+            llm = get_model_for_provider(provider, model)
+
+            # Use synchronous invoke for simplicity in compact context
+            # The compact method is sync, so we use invoke instead of ainvoke
+            from langchain_core.messages import HumanMessage
+
+            response = llm.invoke([HumanMessage(content=prompt)])
+
+            if response and hasattr(response, "content"):
+                content = response.content
+                if isinstance(content, str) and content.strip():
+                    return content.strip()
+                elif isinstance(content, list):
+                    # Handle list of content blocks
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    return "\n".join(text_parts).strip()
+
+            return None
+
+        except ImportError as exc:
+            _logger.debug(
+                "auto_compact_summary_import_error",
+                error=str(exc),
+            )
+            return None
+        except Exception as exc:
+            _logger.warning(
+                "auto_compact_summary_llm_error",
+                error=str(exc),
+            )
+            return None
 
     def _cache_compact_stub(
         self,
@@ -509,10 +661,13 @@ class AutoCompactService:
         current_tokens: int,
         llm_summarize_fn: Callable[[list[dict[str, Any]]], Awaitable[str | None]],
     ) -> CompactResult:
-        """LLM-based summary compaction.
+        """LLM-based summary compaction with fact preservation.
 
-        Sends conversation history to LLM for intelligent summarization,
-        preserving important context, tool results, and latest user request.
+        Pipeline:
+        1. Extract SessionFacts via FactExtractor (preserve for future sessions)
+        2. Generate consolidated summary via LLM
+        3. Persist facts + embeddings
+        4. Build compacted message list: system + summary + recent messages
 
         Args:
             messages: List of conversation messages.
@@ -522,35 +677,89 @@ class AutoCompactService:
         Returns:
             CompactResult with compaction statistics.
         """
-        # Strip images before sending to LLM
-        messages_for_summary = self._strip_images(messages)
+        # Separate system messages from conversation
+        system_msgs = [m for m in messages if m.get("role") == "system"]
+        conversation_msgs = [m for m in messages if m.get("role") != "system"]
 
-        # Generate summary using LLM
-        summary = await llm_summarize_fn(messages_for_summary)
-
-        if not summary:
+        if not conversation_msgs:
             return CompactResult(
                 original_tokens=current_tokens,
                 compacted_tokens=current_tokens,
                 success=False,
+                error="No conversation messages to compact",
+            )
+
+        # Step 1: Extract SessionFacts (persisted separately for cross-session recall)
+        facts_count = 0
+        try:
+            from mindflow_backend.memory.session.fact_extractor import SessionFactExtractor
+            from mindflow_backend.infra.database.connection import get_db_session
+
+            session_id = self._extract_session_id(messages)
+            agent_id = self._extract_agent_id(messages)
+
+            if session_id:
+                fact_extractor = SessionFactExtractor()
+                facts = await fact_extractor.extract(conversation_msgs, session_id, agent_id)
+
+                if facts:
+                    # Persist facts with embeddings
+                    async with get_db_session() as db:
+                        facts_count = await fact_extractor.persist_facts(
+                            db,
+                            facts,
+                            generate_embeddings=True,
+                        )
+
+                    _logger.info(
+                        "compaction_facts_extracted",
+                        session_id=session_id,
+                        facts_count=facts_count,
+                    )
+        except Exception as exc:
+            _logger.warning(
+                "compaction_fact_extraction_failed",
+                error=str(exc),
+            )
+            # Continue with compaction even if fact extraction fails
+
+        # Step 2: Generate summary via LLM
+        messages_for_summary = self._strip_images(messages)
+        summary = await llm_summarize_fn(messages_for_summary)
+
+        if not summary:
+            _logger.warning("compaction_summary_failed")
+            return CompactResult(
+                original_tokens=current_tokens,
+                compacted_tokens=current_tokens,
+                strategy_used=CompactStrategy.SUMMARY,
+                success=False,
                 error="No summary generated",
             )
 
-        # Create summary message
+        # Step 3: Build compacted messages
+        recent_count = min(5, len(conversation_msgs))
+        recent_msgs = conversation_msgs[-recent_count:]
+
+        # Create summary message with fact preservation notice
+        summary_content = (
+            f"[Session compacted. {len(conversation_msgs)} messages → summary + "
+            f"{recent_count} recent."
+        )
+        if facts_count > 0:
+            summary_content += f" {facts_count} facts preserved for future sessions."
+        summary_content += f"]\n\n{summary}"
+
         summary_message = {
             "role": "user",
-            "content": f"[Previous conversation summarized]\n\n{summary}",
+            "content": summary_content,
             "is_compact_summary": True,
         }
 
-        # Keep system messages + summary + last few messages
-        system_msgs = [m for m in messages if m.get("role") == "system"]
-        recent = messages[-3:] if len(messages) > 3 else []
-
-        compacted = system_msgs + [summary_message] + recent
+        compacted = system_msgs + [summary_message] + recent_msgs
         estimated_tokens = self._estimate_tokens(compacted)
 
-        messages_removed = max(0, len(messages) - len(compacted))
+        messages_removed = len(conversation_msgs) - recent_count
 
         _logger.info(
             "auto_compact_summary",
@@ -558,6 +767,7 @@ class AutoCompactService:
             compacted_tokens=estimated_tokens,
             tokens_saved=current_tokens - estimated_tokens,
             messages_removed=messages_removed,
+            facts_preserved=facts_count,
         )
 
         return CompactResult(
@@ -569,6 +779,51 @@ class AutoCompactService:
             compacted_messages=compacted,
             strategy_used=CompactStrategy.SUMMARY,
             success=True,
+        )
+
+    async def _run_pre_compact_hooks(self, trigger: str) -> tuple[bool, str | None]:
+        """Executa PreCompact e retorna se a compactação pode prosseguir."""
+        if not self._session_id:
+            return True, None
+
+        async for result in self._hook_manager.execute_pre_compact(
+            session_id=self._session_id,
+            trigger=trigger,
+            cwd=self._cwd,
+        ):
+            if result.prevent_continuation:
+                return False, result.stop_reason or result.error or "Compaction blocked by hook"
+            if getattr(result, "behavior", None) == "deny":
+                return False, result.reason or result.error or "Compaction blocked by hook"
+
+        return True, None
+
+    async def _run_post_compact_hooks(
+        self,
+        trigger: str,
+        summary: str,
+    ) -> None:
+        """Executa PostCompact após compactação bem-sucedida."""
+        if not self._session_id:
+            return
+
+        async for _ in self._hook_manager.execute_post_compact(
+            session_id=self._session_id,
+            trigger=trigger,
+            summary=summary,
+            cwd=self._cwd,
+        ):
+            pass
+
+    @staticmethod
+    def _build_compact_summary(result: CompactResult) -> str:
+        """Resume a compactação para hooks PostCompact."""
+        return (
+            f"strategy={result.strategy_used.value}; "
+            f"original_tokens={result.original_tokens}; "
+            f"compacted_tokens={result.compacted_tokens}; "
+            f"tokens_saved={result.tokens_saved}; "
+            f"messages_removed={result.messages_removed}"
         )
 
     async def compact_with_retry(
@@ -590,6 +845,15 @@ class AutoCompactService:
         Returns:
             CompactResult with compaction statistics.
         """
+        allowed, block_reason = await self._run_pre_compact_hooks("auto")
+        if not allowed:
+            return CompactResult(
+                original_tokens=current_tokens,
+                compacted_tokens=current_tokens,
+                success=False,
+                error=block_reason or "Compaction blocked by hook",
+            )
+
         messages_to_summarize = list(messages)
         ptl_attempts = 0
 
@@ -601,6 +865,10 @@ class AutoCompactService:
             )
 
             if result.success:
+                await self._run_post_compact_hooks(
+                    "auto",
+                    self._build_compact_summary(result),
+                )
                 return result
 
             # Check if error is PTL-related
@@ -701,6 +969,69 @@ class AutoCompactService:
                         total_chars += len(str(text))
 
         return total_chars // 4
+
+    def _extract_session_id(self, messages: list[dict[str, Any]]) -> str:
+        """Extract session_id from messages metadata.
+
+        Args:
+            messages: List of conversation messages
+
+        Returns:
+            Session ID or generated fallback if not found
+        """
+        # Try to find session_id in message metadata
+        for msg in messages:
+            if isinstance(msg, dict):
+                # Check in metadata field
+                metadata = msg.get("metadata", {})
+                if isinstance(metadata, dict):
+                    session_id = metadata.get("session_id")
+                    if session_id:
+                        return str(session_id)
+
+                # Check in top-level fields
+                session_id = msg.get("session_id")
+                if session_id:
+                    return str(session_id)
+
+        # Fallback: generate from timestamp
+        import hashlib
+        import time
+        timestamp = str(time.time())
+        return hashlib.md5(timestamp.encode()).hexdigest()[:16]
+
+    def _extract_agent_id(self, messages: list[dict[str, Any]]) -> str:
+        """Extract agent_id from messages metadata.
+
+        Args:
+            messages: List of conversation messages
+
+        Returns:
+            Agent ID or "compaction" if not found
+        """
+        # Try to find agent_id in message metadata
+        for msg in messages:
+            if isinstance(msg, dict):
+                # Check in metadata field
+                metadata = msg.get("metadata", {})
+                if isinstance(metadata, dict):
+                    agent_id = metadata.get("agent_id")
+                    if agent_id:
+                        return str(agent_id)
+
+                # Check in top-level fields
+                agent_id = msg.get("agent_id")
+                if agent_id:
+                    return str(agent_id)
+
+                # Check role field for assistant messages
+                if msg.get("role") == "assistant":
+                    name = msg.get("name")
+                    if name:
+                        return str(name)
+
+        # Fallback
+        return "compaction"
 
     async def compact_with_cache_sharing(
         self,
@@ -808,6 +1139,11 @@ class AutoCompactService:
         Returns:
             List of attachment messages for restored files.
         """
+        # Use SessionFileCache if available (faster, avoids re-reading)
+        if self._file_cache:
+            return await self._restore_from_cache(max_files, token_budget)
+
+        # Fallback to legacy file_state dict
         if not file_state:
             return []
 
@@ -861,6 +1197,88 @@ class AutoCompactService:
                     path=path,
                     error=str(e),
                 )
+
+        return attachments
+
+    async def _restore_from_cache(
+        self,
+        max_files: int = POST_COMPACT_MAX_FILES_TO_RESTORE,
+        token_budget: int = POST_COMPACT_TOKEN_BUDGET,
+    ) -> list[dict[str, Any]]:
+        """Restore recently accessed files from SessionFileCache.
+
+        Uses the persistent file cache to restore context without re-reading files.
+
+        Args:
+            max_files: Maximum number of files to restore.
+            token_budget: Total token budget for file restoration.
+
+        Returns:
+            List of attachment messages for restored files.
+        """
+        if not self._file_cache:
+            return []
+
+        # Get recent files from cache
+        recent_files = self._file_cache.get_recent_files(
+            max_files=max_files,
+            max_tokens=token_budget,
+        )
+
+        attachments = []
+        used_tokens = 0
+
+        for cached in recent_files:
+            try:
+                file_tokens = cached.token_estimate
+
+                if used_tokens + file_tokens > token_budget:
+                    _logger.info(
+                        "file_restore_cache_budget_exhausted",
+                        path=cached.path,
+                        used_tokens=used_tokens,
+                        budget=token_budget,
+                    )
+                    break
+
+                # Limit content per file
+                content = cached.content
+                if file_tokens > POST_COMPACT_MAX_TOKENS_PER_FILE:
+                    content = content[: POST_COMPACT_MAX_TOKENS_PER_FILE * 4]
+                    content += "\n\n[... file truncated for compaction ...]"
+
+                attachments.append({
+                    "type": "file_restore",
+                    "path": cached.path,
+                    "content": content,
+                    "timestamp": cached.last_accessed,
+                    "from_cache": True,
+                })
+                used_tokens += file_tokens
+
+                _logger.info(
+                    "file_restore_cache_success",
+                    path=cached.path,
+                    tokens=file_tokens,
+                    used_tokens=used_tokens,
+                    access_count=cached.access_count,
+                )
+            except Exception as e:
+                _logger.warning(
+                    "file_restore_cache_failed",
+                    path=cached.path,
+                    error=str(e),
+                )
+
+        # Log cache stats
+        cache_stats = self._file_cache.get_stats()
+        _logger.info(
+            "file_restore_cache_stats",
+            cache_hits=cache_stats["hits"],
+            cache_misses=cache_stats["misses"],
+            hit_rate=cache_stats["hit_rate"],
+            entries=cache_stats["entries"],
+        )
 
         return attachments
 
@@ -926,6 +1344,7 @@ class AutoCompactService:
         """Get effective context window for a specific model.
 
         Deducts reserved tokens for compaction output.
+        Claude Code uses: effective_context_window - 13_000 (~93.5%)
 
         Args:
             model: Model identifier (e.g., "claude-3-sonnet", "gpt-4").
@@ -940,6 +1359,7 @@ class AutoCompactService:
         """Get auto-compact threshold for a specific model.
 
         Compaction triggers when context reaches this threshold.
+        Claude Code uses: effective_context_window - 13_000 (~93.5% of context)
 
         Args:
             model: Model identifier.
@@ -948,10 +1368,13 @@ class AutoCompactService:
             Auto-compact threshold in tokens.
         """
         effective_window = self.get_effective_context_window(model)
+        # Claude Code pattern: trigger at ~93.5% of effective window
         return effective_window - AUTOCOMPACT_BUFFER_TOKENS
 
     def get_warning_threshold(self, model: str) -> int:
         """Get warning threshold for approaching context limit.
+
+        Claude Code uses: effective_context_window - 20_000 (~90% of context)
 
         Args:
             model: Model identifier.
@@ -960,7 +1383,33 @@ class AutoCompactService:
             Warning threshold in tokens.
         """
         effective_window = self.get_effective_context_window(model)
-        return effective_window - 20_000  # 20k buffer for warning
+        # Claude Code pattern: warn at ~90% of effective window
+        return effective_window - 20_000
+
+    def get_token_budget_guidance(self, model: str, current_tokens: int) -> str:
+        """Get token budget guidance for system prompt.
+
+        Claude Code injects "Approximately X tokens remaining" in system prompt.
+
+        Args:
+            model: Model identifier.
+            current_tokens: Current token count.
+
+        Returns:
+            Token budget guidance string.
+        """
+        effective_window = self.get_effective_context_window(model)
+        remaining = max(0, effective_window - current_tokens)
+        warning_threshold = self.get_warning_threshold(model)
+
+        if current_tokens >= warning_threshold:
+            percentage = (current_tokens / effective_window) * 100
+            return (
+                f"⚠️ **Token Budget Warning**: Approximately {remaining:,} tokens remaining "
+                f"({percentage:.1f}% used). Consider compacting soon to avoid context overflow."
+            )
+        else:
+            return f"Approximately {remaining:,} tokens remaining in context window."
 
     def get_config_for_model(self, model: str) -> CompactConfig:
         """Get optimized config for a specific model.

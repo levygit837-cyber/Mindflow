@@ -22,6 +22,7 @@ from mindflow_backend.api.middleware.error_handler import ErrorHandlerMiddleware
 from mindflow_backend.api.middleware.performance import PerformanceMiddleware
 from mindflow_backend.api.middleware.validation import ValidationMiddleware
 from mindflow_backend.api.router import router
+from mindflow_backend.api.websocket import router as websocket_router
 from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
 from mindflow_backend.grpc.server import setup_signal_handlers, start_grpc_server, stop_grpc_server
 from mindflow_backend.infra.config import get_settings
@@ -158,6 +159,7 @@ if trusted_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
 app.include_router(router)
+app.include_router(websocket_router)
 
 # Add SlowAPI middleware for rate limiting (add first)
 app.add_middleware(SlowAPIMiddleware)

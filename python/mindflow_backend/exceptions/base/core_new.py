@@ -158,6 +158,59 @@ class ResourceError(SystemError):
         self.resource_type = resource_type
 
 
+class RetryableError(InfrastructureError):
+    """Erro que pode ser retentado com contexto de retry.
+    
+    Inspirado no CannotRetryError do Claude Code, mas invertido:
+    indica que o erro PODE ser retentado, com contexto rico sobre
+    o estado do retry.
+    
+    Usado pelo sistema de retry com fallback para tomar decisões
+    sobre quando e como tentar novamente.
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        *,
+        retry_count: int = 0,
+        max_retries: int = 3,
+        next_retry_delay: float = 1.0,
+        fallback_available: bool = False,
+        original_error: Exception | None = None,
+        **kwargs,
+    ):
+        super().__init__(message, service="retry", **kwargs)
+        self.retry_count = retry_count
+        self.max_retries = max_retries
+        self.next_retry_delay = next_retry_delay
+        self.fallback_available = fallback_available
+        self.original_error = original_error
+    
+    @property
+    def can_retry(self) -> bool:
+        """Verifica se ainda pode tentar novamente."""
+        return self.retry_count < self.max_retries
+    
+    @property
+    def attempts_remaining(self) -> int:
+        """Retorna quantas tentativas restam."""
+        return max(0, self.max_retries - self.retry_count)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Converte para dicionário incluindo contexto de retry."""
+        data = super().to_dict()
+        data.update({
+            "retry_count": self.retry_count,
+            "max_retries": self.max_retries,
+            "next_retry_delay": self.next_retry_delay,
+            "fallback_available": self.fallback_available,
+            "can_retry": self.can_retry,
+            "attempts_remaining": self.attempts_remaining,
+        })
+        return data
+
+
 # Factory methods for common error patterns following examples
 class ErrorFactory:
     """Factory methods for common error patterns."""

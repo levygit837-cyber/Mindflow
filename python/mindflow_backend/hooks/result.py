@@ -66,6 +66,15 @@ class HookResult:
     # ── Hook-specific output ──
     hook_specific_output: dict[str, Any] | None = None
 
+    # ── Tool output modification (PostToolUse) ──
+    updated_mcp_tool_output: dict[str, Any] | None = None  # Modified tool output
+
+    # ── Watch paths (FileChanged hooks) ──
+    watch_paths: list[str] | None = None  # Paths to watch for changes
+
+    # ── Initial user message (SessionStart) ──
+    initial_user_message: str | None = None  # Message to inject at session start
+
     # ── Controle de fluxo ──
     prevent_continuation: bool = False  # If True, stop processing remaining hooks
     stop_reason: str | None = None  # Message shown when prevent_continuation=True
@@ -90,6 +99,9 @@ class HookResult:
         updated_input = None
         add_context = None
         hook_specific_output = None
+        updated_mcp_tool_output = None
+        watch_paths = None
+        initial_user_message = None
         prevent_continuation = False
         stop_reason = None
         permission_request_result = None
@@ -118,10 +130,12 @@ class HookResult:
                 if "additionalContext" in hso:
                     add_context = hso["additionalContext"]
 
-            # PostToolUse-specific: additionalContext
+            # PostToolUse-specific: additionalContext, updatedMCPToolOutput
             elif hso.get("hookEventName") == "PostToolUse":
                 if "additionalContext" in hso:
                     add_context = hso["additionalContext"]
+                if "updatedMCPToolOutput" in hso:
+                    updated_mcp_tool_output = hso["updatedMCPToolOutput"]
 
             # UserPromptSubmit-specific: additionalContext
             elif hso.get("hookEventName") == "UserPromptSubmit":
@@ -159,6 +173,9 @@ class HookResult:
             updated_input=updated_input,
             add_context=add_context,
             hook_specific_output=hook_specific_output,
+            updated_mcp_tool_output=updated_mcp_tool_output,
+            watch_paths=watch_paths,
+            initial_user_message=initial_user_message,
             prevent_continuation=prevent_continuation,
             stop_reason=stop_reason,
             permission_request_result=permission_request_result,

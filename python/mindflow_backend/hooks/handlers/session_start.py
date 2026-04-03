@@ -12,6 +12,7 @@ from collections.abc import AsyncGenerator
 
 from mindflow_backend.hooks.manager import HookManager
 from mindflow_backend.hooks.result import HookResult
+from mindflow_backend.plugins.manager import get_plugin_manager
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class SessionStartHandler:
         timeout: float = 30.0,
     ) -> AsyncGenerator[HookResult, None]:
         manager = HookManager.get_instance()
+        plugin_manager = get_plugin_manager()
+
+        await plugin_manager.activate_session(session_id, cwd=cwd)
 
         # 1. Execute standard SessionStart hooks
         async for result in manager.execute_session_start(
