@@ -165,6 +165,7 @@ class MissionDAG:
         cls,
         chat_messages: list[Any],
         agent_ids: list[str],
+        session_id: str | None = None,
     ) -> "MissionDAG":
         """
         Extrai MissionDAG a partir das mensagens do team chat.
@@ -180,7 +181,7 @@ class MissionDAG:
 
         for agent_id in agent_ids:
             # Obter mission_type do agente via RuntimePolicy
-            mission_type = cls._resolve_mission_type(agent_id)
+            mission_type = cls._resolve_mission_type(agent_id, session_id=session_id)
             if mission_type is None:
                 continue
 
@@ -201,13 +202,19 @@ class MissionDAG:
         return dag
 
     @staticmethod
-    def _resolve_mission_type(agent_id: str) -> MissionGraphType | None:
+    def _resolve_mission_type(
+        agent_id: str,
+        session_id: str | None = None,
+    ) -> MissionGraphType | None:
         """Obter o primeiro mission_type disponível para o agente."""
         try:
             from mindflow_backend.agents.specialists.runtime_policy import (
                 get_agent_runtime_policy,
             )
-            policy = get_agent_runtime_policy(agent_id=agent_id)
+            policy = get_agent_runtime_policy(
+                agent_id=agent_id,
+                session_id=session_id,
+            )
             graphs = policy.available_mission_graphs
             return graphs[0] if graphs else None
         except (KeyError, IndexError, ValueError):

@@ -16,7 +16,12 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
+from mindflow_backend.hooks.handlers.permission_hook import (
+    PermissionDeniedHandler,
+    PermissionRequestHandler,
+)
 from mindflow_backend.hooks.manager import HookManager
+from mindflow_backend.hooks.processor import HookResultProcessor
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.error_handling import (
     classify_error,
@@ -69,12 +74,27 @@ class ToolCallable(Protocol):
 
 @dataclass
 class ToolDefinition:
-    """Definição de uma ferramenta disponível."""
+    """Definição de uma ferramenta disponível.
+
+    Attributes:
+        name: Nome único da ferramenta
+        callable: Função de execução
+        is_concurrency_safe: Se pode rodar em paralelo
+        description: Descrição da ferramenta
+        is_read_only: Se não modifica estado (não aborta irmãos)
+        interrupt_behavior: Como reagir a interrupções
+        max_result_size_chars: Tamanho máximo do resultado
+        timeout_seconds: Timeout de execução
+    """
 
     name: str
     callable: ToolCallable
     is_concurrency_safe: bool = True
     description: str | None = None
+    is_read_only: bool = False
+    interrupt_behavior: str = "block"  # "cancel" ou "block"
+    max_result_size_chars: int = 100_000
+    timeout_seconds: float = 30.0
 
 
 class ToolUseContext:
@@ -228,21 +248,59 @@ class StreamingToolExecutor:
 
         return tracked
 
-    def _start_execution(self, tool: TrackedTool) -> None:
-        """Inicia execução de uma ferramenta em background."""
+    def _start_execution(self, tool: TrackedTool) -> bool:
+        """Inicia execução de uma ferramenta em background.
+
+        Returns:
+            True quando a task foi agendada no loop atual, False quando não há
+            loop assíncrono ativo e a execução precisa ser diferida.
+        """
         if tool.id in self._running_tasks:
             _logger.warning(
                 "tool_already_running",
                 tool_id=tool.id,
                 tool_name=tool.tool_name,
             )
-            return
+            return False
 
-        task = asyncio.create_task(
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            _logger.debug(
+                "tool_execution_deferred_no_running_loop",
+                tool_id=tool.id,
+                tool_name=tool.tool_name,
+            )
+            return False
+
+        tool.mark_running()
+        task = loop.create_task(
             self._execute_tool_wrapper(tool),
             name=f"tool-{tool.id}",
         )
         self._running_tasks[tool.id] = task
+        return True
+
+    async def _schedule_pending_tools(self) -> None:
+        """Agenda ferramentas pendentes quando já existe um loop em execução."""
+        if self._has_errored or self._discarded:
+            return
+
+        async with self._lock:
+            for tool in self._tools:
+                if not tool.is_pending:
+                    continue
+
+                if tool.id in self._running_tasks:
+                    continue
+
+                if tool.is_concurrency_safe:
+                    self._start_execution(tool)
+                    continue
+
+                if not self.has_running:
+                    self._start_execution(tool)
+                break
 
     async def _execute_tool_wrapper(self, tool: TrackedTool) -> None:
         """Wrapper para execução com cleanup."""
@@ -278,6 +336,41 @@ class StreamingToolExecutor:
                     self._start_execution(tool)
                     break
 
+    @staticmethod
+    async def _collect_hook_results(
+        generator: AsyncGenerator[Any, None],
+    ) -> list[Any]:
+        """Materializa async generators de hooks em uma lista."""
+        return [item async for item in generator]
+
+    def _append_hook_context(self, contexts: list[str]) -> None:
+        """Acumula contexto adicional retornado por hooks."""
+        merged = HookResultProcessor.merge_additional_contexts(
+            [context for context in contexts if context],
+        )
+        if not merged:
+            return
+
+        existing = self._tool_use_context.metadata.get("hook_context")
+        if existing:
+            self._tool_use_context.metadata["hook_context"] = f"{existing}\n{merged}"
+        else:
+            self._tool_use_context.metadata["hook_context"] = merged
+
+    @staticmethod
+    def _apply_post_tool_output(
+        original_result: Any,
+        updated_output: Any,
+    ) -> Any:
+        """Aplica updated_mcp_tool_output preservando wrappers de ToolResult quando possível."""
+        if updated_output is original_result:
+            return original_result
+
+        if isinstance(original_result, ToolResult):
+            return original_result.model_copy(update={"data": updated_output})
+
+        return updated_output
+
     async def _execute_tool(self, tool: TrackedTool) -> None:
         """Executa uma ferramenta com controle de concorrência.
 
@@ -291,57 +384,95 @@ class StreamingToolExecutor:
         self._sibling_abort_controller.check_or_raise()
 
         async with self._semaphore:
-            tool.mark_running()
             await self._emit_result(tool)
 
             try:
-                # 1. Verifica permissão
+                # 1. Hooks de solicitação de permissão
+                permission_request_results = await self._collect_hook_results(
+                    PermissionRequestHandler.execute(
+                        tool_name=tool.tool_name,
+                        tool_input=tool.tool_input,
+                        tool_use_id=tool.id,
+                        description=f"Tool '{tool.tool_name}' requested execution.",
+                        session_id=self._tool_use_context.session_id,
+                    )
+                )
+                blocked, block_reason = HookResultProcessor.should_block_execution(
+                    permission_request_results,
+                )
+                if blocked:
+                    tool.mark_error(
+                        f"Permission blocked by hook: {block_reason or 'Permission denied'}",
+                    )
+                    await self._emit_result(tool)
+                    return
+
+                self._append_hook_context(
+                    [
+                        context
+                        for context in (
+                            result.add_context for result in permission_request_results
+                        )
+                        if context
+                    ],
+                )
+
+                # 2. Verifica permissão real
                 allowed, reason = await self._can_use_tool(
                     tool.tool_name,
                     tool.tool_input,
                 )
 
                 if not allowed:
+                    await self._collect_hook_results(
+                        PermissionDeniedHandler.execute(
+                            tool_name=tool.tool_name,
+                            tool_input=tool.tool_input,
+                            tool_use_id=tool.id,
+                            session_id=self._tool_use_context.session_id,
+                        )
+                    )
                     tool.mark_error(f"Permission denied: {reason}")
                     await self._emit_result(tool)
                     return
 
-                # 2. Executa hooks PreToolUse
-                pre_hook_blocked = False
-                async for hook_result in self._hook_manager.execute_pre_tool(
-                    tool_name=tool.tool_name,
-                    tool_input=tool.tool_input,
-                    tool_use_id=tool.id,
-                    session_id=self._tool_use_context.session_id,
-                    cwd=self._tool_use_context.cwd,
-                    permission_mode=self._tool_use_context.permission_mode,
-                ):
-                    # Corrigido: usar "deny" em vez de "block" (padrão Claude Code)
-                    if hook_result.behavior == "deny":
-                        pre_hook_blocked = True
-                        tool.mark_error(f"Blocked by hook: {hook_result.reason or hook_result.error}")
-                        await self._emit_result(tool)
-                        return
-
-                    # Aplicar input mutation se hook retornou updated_input
-                    if hook_result.updated_input:
-                        tool.tool_input = {**tool.tool_input, **hook_result.updated_input}
-
-                    # Adicionar contexto adicional se hook retornou add_context
-                    if hook_result.add_context:
-                        self._tool_use_context.metadata["hook_context"] = (
-                            self._tool_use_context.metadata.get("hook_context", "")
-                            + "\n"
-                            + hook_result.add_context
-                        )
-
-                if pre_hook_blocked:
+                # 3. Executa hooks PreToolUse
+                pre_tool_results = await self._collect_hook_results(
+                    self._hook_manager.execute_pre_tool(
+                        tool_name=tool.tool_name,
+                        tool_input=tool.tool_input,
+                        tool_use_id=tool.id,
+                        session_id=self._tool_use_context.session_id,
+                        cwd=self._tool_use_context.cwd,
+                        permission_mode=self._tool_use_context.permission_mode,
+                    )
+                )
+                pre_processed = HookResultProcessor.process_pre_tool_results(
+                    pre_tool_results,
+                    tool.tool_input,
+                )
+                if not pre_processed["allowed"]:
+                    tool.mark_error(
+                        f"Blocked by hook: {pre_processed['reason'] or 'Denied'}",
+                    )
+                    await self._emit_result(tool)
                     return
 
-                # 3. Verifica abort novamente
+                blocked, block_reason = HookResultProcessor.should_block_execution(
+                    pre_tool_results,
+                )
+                if blocked:
+                    tool.mark_error(f"Blocked by hook: {block_reason or 'Execution stopped'}")
+                    await self._emit_result(tool)
+                    return
+
+                tool.tool_input = pre_processed["updated_input"]
+                self._append_hook_context(pre_processed["additional_context"])
+
+                # 4. Verifica abort novamente
                 self._sibling_abort_controller.check_or_raise()
 
-                # 4. Executa ferramenta
+                # 5. Executa ferramenta
                 tool_def = self._tool_definitions.get(tool.tool_name)
                 if tool_def is None:
                     tool.mark_error(f"Tool not found: {tool.tool_name}")
@@ -353,18 +484,27 @@ class StreamingToolExecutor:
                     self._tool_use_context,
                 )
 
-                # 5. Executa hooks PostToolUse
-                async for hook_result in self._hook_manager.execute_post_tool(
-                    tool_name=tool.tool_name,
-                    tool_input=tool.tool_input,
-                    tool_use_id=tool.id,
-                    tool_response=result,
-                    session_id=self._tool_use_context.session_id,
-                    cwd=self._tool_use_context.cwd,
-                    permission_mode=self._tool_use_context.permission_mode,
-                ):
-                    if hook_result.modified_result:
-                        result = hook_result.modified_result
+                # 6. Executa hooks PostToolUse
+                post_tool_results = await self._collect_hook_results(
+                    self._hook_manager.execute_post_tool(
+                        tool_name=tool.tool_name,
+                        tool_input=tool.tool_input,
+                        tool_use_id=tool.id,
+                        tool_response=result,
+                        session_id=self._tool_use_context.session_id,
+                        cwd=self._tool_use_context.cwd,
+                        permission_mode=self._tool_use_context.permission_mode,
+                    )
+                )
+                post_processed = HookResultProcessor.process_post_tool_results(
+                    post_tool_results,
+                    result,
+                )
+                self._append_hook_context(post_processed["additional_context"])
+                result = self._apply_post_tool_output(
+                    result,
+                    post_processed["updated_output"],
+                )
 
                 tool.mark_completed(result)
                 await self._emit_result(tool)
@@ -388,15 +528,25 @@ class StreamingToolExecutor:
                 )
 
                 # Executa hooks PostToolFailure
-                async for _hook_result in self._hook_manager.execute_post_tool_failure(
-                    tool_name=tool.tool_name,
-                    tool_input=tool.tool_input,
-                    tool_use_id=tool.id,
-                    error=str(exc),
-                    session_id=self._tool_use_context.session_id,
-                    cwd=self._tool_use_context.cwd,
-                ):
-                    pass
+                post_failure_results = await self._collect_hook_results(
+                    self._hook_manager.execute_post_tool_failure(
+                        tool_name=tool.tool_name,
+                        tool_input=tool.tool_input,
+                        tool_use_id=tool.id,
+                        error=str(exc),
+                        session_id=self._tool_use_context.session_id,
+                        cwd=self._tool_use_context.cwd,
+                    )
+                )
+                self._append_hook_context(
+                    [
+                        context
+                        for context in (
+                            result.add_context for result in post_failure_results
+                        )
+                        if context
+                    ],
+                )
 
                 tool.mark_error(str(exc))
                 await self._emit_result(tool)
@@ -431,6 +581,8 @@ class StreamingToolExecutor:
         Yields:
             StreamingToolResult na ordem de conclusão
         """
+        await self._schedule_pending_tools()
+
         while not self.is_complete or not self._result_queue.empty():
             try:
                 # Aguarda resultado com timeout para verificar se completo
@@ -468,9 +620,25 @@ class StreamingToolExecutor:
         Returns:
             Lista de StreamingToolResult em ordem de conclusão
         """
+        while True:
+            await self._schedule_pending_tools()
+
+            running_tasks = list(self._running_tasks.values())
+            if running_tasks:
+                await asyncio.gather(*running_tasks, return_exceptions=True)
+                continue
+
+            if self.has_pending and not self._discarded and not self._has_errored:
+                await asyncio.sleep(0)
+                continue
+
+            break
+
         results: list[StreamingToolResult] = []
-        async for result in self.get_remaining_results():
-            results.append(result)
+        while not self._result_queue.empty():
+            results.append(self._result_queue.get_nowait())
+
+        results.sort(key=lambda result: result.order)
         return results
 
     def get_stats(self) -> dict[str, Any]:

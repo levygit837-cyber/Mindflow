@@ -238,6 +238,7 @@ class UnifiedExecutionEngine:
                 max_iterations=context.max_iterations,
                 event_dispatcher=self._make_event_dispatcher(state),
                 before_iteration=self._make_before_iteration(state),
+                session_id=context.session_id,
             )
 
             loop_result = await tool_loop.run(
@@ -299,6 +300,7 @@ class UnifiedExecutionEngine:
                         max_iterations=context.max_iterations,
                         event_dispatcher=event_dispatcher,
                         chunk_dispatcher=chunk_dispatcher,
+                        session_id=context.session_id,
                     )
                     await tool_loop.run(
                         llm=llm_with_tools,

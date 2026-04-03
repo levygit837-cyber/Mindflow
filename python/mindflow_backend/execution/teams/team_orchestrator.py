@@ -255,6 +255,7 @@ class TeamOrchestrator:
         session.mission_dag = MissionDAG.from_discussion(
             chat_messages=session.chat_history,
             agent_ids=session.agent_ids,
+            session_id=session.session_id,
         )
 
         # Validar DAG
@@ -265,7 +266,10 @@ class TeamOrchestrator:
                 extra={"session_id": session.session_id, "error": error_msg},
             )
             # Fallback: DAG sem dependências
-            session.mission_dag = self._build_fallback_dag(session.agent_ids)
+            session.mission_dag = self._build_fallback_dag(
+                session.agent_ids,
+                session.session_id,
+            )
 
         waves = session.mission_dag.get_execution_waves()
         logger.info(
@@ -482,7 +486,10 @@ class TeamOrchestrator:
         msgs: list[TeamMessage] = []
         for agent_id in session.agent_ids:
             try:
-                policy = get_agent_runtime_policy(agent_id=agent_id)
+                policy = get_agent_runtime_policy(
+                    agent_id=agent_id,
+                    session_id=session.session_id,
+                )
                 graphs = [g.value for g in policy.available_mission_graphs[:3]]
             except (KeyError, ValueError):
                 graphs = ["unknown"]
@@ -511,12 +518,18 @@ class TeamOrchestrator:
         return declaring_agents.issuperset(set(agent_ids))
 
     @staticmethod
-    def _build_fallback_dag(agent_ids: list[str]) -> MissionDAG:
+    def _build_fallback_dag(
+        agent_ids: list[str],
+        session_id: str | None = None,
+    ) -> MissionDAG:
         """Cria DAG sem dependências (todas missões em paralelo)."""
         dag = MissionDAG()
         for agent_id in agent_ids:
             try:
-                policy = get_agent_runtime_policy(agent_id=agent_id)
+                policy = get_agent_runtime_policy(
+                    agent_id=agent_id,
+                    session_id=session_id,
+                )
                 mission_type = policy.available_mission_graphs[0] if policy.available_mission_graphs else None
             except (KeyError, ValueError, IndexError):
                 mission_type = None
@@ -562,7 +575,10 @@ class TeamOrchestrator:
         from mindflow_backend.execution.observers.memory_observer import MemoryObserver
 
         try:
-            policy = get_agent_runtime_policy(agent_id=completed_agent_id)
+            policy = get_agent_runtime_policy(
+                agent_id=completed_agent_id,
+                session_id=session.session_id,
+            )
             if not policy.can_observe:
                 return None
 

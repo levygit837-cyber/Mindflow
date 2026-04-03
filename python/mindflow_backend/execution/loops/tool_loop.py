@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.runtime.execution.tool_orchestrator import ToolOrchestrator
 
 _logger = get_logger(__name__)
 
@@ -47,6 +48,7 @@ class ToolExecutionLoop:
         event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
         chunk_dispatcher: Callable[[str], Awaitable[None]] | None = None,
         before_iteration: Callable[[list[Any], int], Awaitable[None]] | None = None,
+        session_id: str | None = None,
     ):
         """Initialize the tool loop.
 
@@ -60,6 +62,7 @@ class ToolExecutionLoop:
         self.event_dispatcher = event_dispatcher
         self.chunk_dispatcher = chunk_dispatcher
         self.before_iteration = before_iteration
+        self.session_id = session_id
 
     async def run(
         self,
@@ -93,7 +96,6 @@ class ToolExecutionLoop:
         """Execute loop without streaming (invoke mode)."""
         from langchain_core.messages import ToolMessage
 
-        tools_by_name: dict[str, Any] = {t.name: t for t in lc_tools}
         working_messages: list[Any] = list(messages)
         tool_calls_log: list[dict[str, Any]] = []
         iteration = 0
@@ -141,38 +143,19 @@ class ToolExecutionLoop:
                     "iteration": iteration,
                 })
 
-                # Dispatch event
-                if self.event_dispatcher:
-                    await self.event_dispatcher("tool_call_start", {
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "tool_call_id": tool_id,
-                    })
+            orchestrator = ToolOrchestrator(
+                lc_tools=lc_tools,
+                event_dispatcher=self.event_dispatcher,
+                session_id=self.session_id,
+            )
+            orchestrated_results = await orchestrator.execute_tool_calls(tool_calls)
 
-                # Execute tool
-                tool = tools_by_name.get(tool_name)
-                if tool is None:
-                    result_str = f"Error: Tool '{tool_name}' not found"
-                else:
-                    try:
-                        result = await tool.ainvoke(tool_args)
-                        result_str = self._serialize_tool_result(result)
-                    except Exception as exc:
-                        result_str = f"Error executing {tool_name}: {exc}"
-                        _logger.error(f"tool_execution_error tool={tool_name} error={exc}")
-
-                # Dispatch result event
-                if self.event_dispatcher:
-                    await self.event_dispatcher("tool_call", {
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "tool_call_id": tool_id,
-                        "result_preview": result_str[:200],
-                    })
-
-                # Add tool result to messages
+            for result in orchestrated_results:
                 working_messages.append(
-                    ToolMessage(content=result_str, tool_call_id=tool_id)
+                    ToolMessage(
+                        content=result.serialized_result,
+                        tool_call_id=result.tool_call_id,
+                    )
                 )
 
             iteration += 1
@@ -197,7 +180,6 @@ class ToolExecutionLoop:
         from langchain_core.messages import ToolMessage
         from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 
-        tools_by_name: dict[str, Any] = {t.name: t for t in lc_tools}
         working_messages: list[Any] = list(messages)
         tool_calls_log: list[dict[str, Any]] = []
         full_response: list[str] = []
@@ -243,33 +225,19 @@ class ToolExecutionLoop:
                     "iteration": iteration,
                 })
 
-                if self.event_dispatcher:
-                    await self.event_dispatcher("tool_call_start", {
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "tool_call_id": tool_id,
-                    })
+            orchestrator = ToolOrchestrator(
+                lc_tools=lc_tools,
+                event_dispatcher=self.event_dispatcher,
+                session_id=self.session_id,
+            )
+            orchestrated_results = await orchestrator.execute_tool_calls(tool_calls)
 
-                tool = tools_by_name.get(tool_name)
-                if tool is None:
-                    result_str = f"Error: Tool '{tool_name}' not found"
-                else:
-                    try:
-                        result = await tool.ainvoke(tool_args)
-                        result_str = self._serialize_tool_result(result)
-                    except Exception as exc:
-                        result_str = f"Error executing {tool_name}: {exc}"
-
-                if self.event_dispatcher:
-                    await self.event_dispatcher("tool_call", {
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "tool_call_id": tool_id,
-                        "result_preview": result_str[:200],
-                    })
-
+            for result in orchestrated_results:
                 working_messages.append(
-                    ToolMessage(content=result_str, tool_call_id=tool_id)
+                    ToolMessage(
+                        content=result.serialized_result,
+                        tool_call_id=result.tool_call_id,
+                    )
                 )
 
             iteration += 1

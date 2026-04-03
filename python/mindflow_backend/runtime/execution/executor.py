@@ -715,6 +715,7 @@ class RuntimeExecutor:
                     lc_tools=lc_tools,
                     chunk_dispatcher=_chunk_dispatch,
                     event_dispatcher=_event_dispatch,
+                    session_id=session_id,
                 )
             except Exception as exc:
                 await queue.put(("error", exc))

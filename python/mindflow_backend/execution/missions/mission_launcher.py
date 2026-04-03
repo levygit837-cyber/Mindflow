@@ -65,7 +65,11 @@ class MissionLauncher:
         self._logger = get_logger(__name__)
 
     def can_agent_run(
-        self, agent_id: str, mission_type: MissionGraphType
+        self,
+        agent_id: str,
+        mission_type: MissionGraphType,
+        *,
+        session_id: str | None = None,
     ) -> bool:
         """Verifica se o agente pode executar o mission_type via RuntimePolicy."""
         # Lazy import to avoid circular import
@@ -73,7 +77,10 @@ class MissionLauncher:
             get_agent_runtime_policy,
         )
         try:
-            policy = get_agent_runtime_policy(agent_id=agent_id)
+            policy = get_agent_runtime_policy(
+                agent_id=agent_id,
+                session_id=session_id,
+            )
         except Exception:
             self._logger.warning(
                 "runtime_policy_not_found", extra={"agent_id": agent_id}
@@ -95,7 +102,7 @@ class MissionLauncher:
     ) -> MissionResult:
         """Lança uma missão autônoma e retorna o resultado."""
         # Validar agente
-        if not self.can_agent_run(agent_id, mission_type):
+        if not self.can_agent_run(agent_id, mission_type, session_id=session_id):
             self._logger.warning(
                 "agent_cannot_run_mission",
                 extra={"agent_id": agent_id, "mission_type": mission_type.value},
@@ -119,7 +126,10 @@ class MissionLauncher:
             )
 
             try:
-                policy = get_agent_runtime_policy(agent_id=agent_id)
+                policy = get_agent_runtime_policy(
+                    agent_id=agent_id,
+                    session_id=session_id,
+                )
 
                 # Route to SubTeamLauncher if agent supports sub-teams
                 if policy.supports_sub_team and policy.sub_team_config:

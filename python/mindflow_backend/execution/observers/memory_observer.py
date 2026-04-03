@@ -13,8 +13,8 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-from mindflow_backend.execution.observers.directory_mapper import DirectoryMapper
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.memory.classification.directory_mapper import DirectoryMapper
 from mindflow_backend.schemas.memory.annotation import (
     EVENT_IMPORTANCE_MAP,
     IMPORTANCE_THRESHOLDS,
@@ -26,8 +26,39 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Constants
 ANNOTATION_RATE_LIMIT = 10
 """Máximo de anotações por minuto por observer."""
+
+EVENT_QUEUE_MAXSIZE = 500
+"""Maximum size of the event queue before blocking."""
+
+MIN_IMPORTANCE_THRESHOLD = 0.3
+"""Minimum importance score for events to be annotated."""
+
+ERROR_LEVEL_IMPORTANCE = 0.9
+"""Importance boost for ERROR level events."""
+
+WARNING_LEVEL_IMPORTANCE = 0.7
+"""Importance boost for WARNING level events."""
+
+LATE_ITERATION_THRESHOLD = 10
+"""Iteration number after which importance is reduced."""
+
+LATE_ITERATION_PENALTY = 0.8
+"""Multiplier for importance of late iteration events."""
+
+MAX_RESULT_STRING_LENGTH = 1000
+"""Maximum length for result strings before truncation."""
+
+MAX_TRACEBACK_LENGTH = 500
+"""Maximum length for traceback in error events."""
+
+MAX_DIFF_PREVIEW_LENGTH = 500
+"""Maximum length for diff preview in rich context."""
+
+MAX_DIFF_SUMMARY_LENGTH = 1000
+"""Maximum length for diff summary when saving hierarchical annotations."""
 
 
 class MemoryObserver:
@@ -55,14 +86,12 @@ class MemoryObserver:
         self._annotations_count = 0
         self._annotations_this_minute = 0
         self._observed_missions: set[str] = set()
-        self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+        self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
 
         # Phase 2: Directory-aware categorization
-        self._directory_mapper: DirectoryMapper | None = None
+        self._directory_mapper = DirectoryMapper()
         self._project_root = project_root
         self._project_name = project_name or "Unknown"
-        if project_root:
-            self._directory_mapper = DirectoryMapper(project_root)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -168,11 +197,11 @@ class MemoryObserver:
             return
 
         importance = self._score_importance(event)
-        if importance < 0.3:
+        if importance < MIN_IMPORTANCE_THRESHOLD:
             return
 
         annotation_type = self._classify_event(event)
-        threshold = IMPORTANCE_THRESHOLDS.get(annotation_type, 0.3)
+        threshold = IMPORTANCE_THRESHOLDS.get(annotation_type, MIN_IMPORTANCE_THRESHOLD)
         if importance < threshold:
             return
 
@@ -182,7 +211,7 @@ class MemoryObserver:
         if code_change_info and self._directory_mapper:
             # Code change detectado - usar contexto rico e categorização automática
             content = self._generate_rich_context(event, code_change_info)
-            category, subcategory = self._directory_mapper.categorize_file(
+            category, subcategory = self._directory_mapper.classify(
                 code_change_info["file_path"]
             )
 
@@ -203,8 +232,8 @@ class MemoryObserver:
                 tags=tags,
             )
         else:
-            # Evento normal - usar summarize_event
-            content = self._summarize_event(event)
+            # Evento normal - usar summarize_event_rich (Phase 3)
+            content = self._summarize_event_rich(event)
             if not content:
                 return
 
@@ -261,13 +290,13 @@ class MemoryObserver:
 
         # Boosts por nível
         if level == "ERROR":
-            base_score = max(base_score, 0.9)
+            base_score = max(base_score, ERROR_LEVEL_IMPORTANCE)
         elif level == "WARNING":
-            base_score = max(base_score, 0.7)
+            base_score = max(base_score, WARNING_LEVEL_IMPORTANCE)
 
         # Eventos tardios têm menos novidade
-        if event.get("iteration", 1) > 10:
-            base_score *= 0.8
+        if event.get("iteration", 1) > LATE_ITERATION_THRESHOLD:
+            base_score *= LATE_ITERATION_PENALTY
 
         return min(base_score, 1.0)
 
@@ -308,9 +337,122 @@ class MemoryObserver:
 
         return summary[:500]  # Máximo 500 chars por anotação
 
-    @staticmethod
-    def _extract_tags(event: dict[str, Any]) -> list[str]:
-        """Extrai tags do evento para classificação."""
+    def _summarize_event_rich(self, event: dict[str, Any]) -> str:
+        """Gera contexto RICO em linguagem natural para qualquer tipo de evento.
+
+        Phase 3: Sem limite de caracteres, inclui diff_summary de tool_result events,
+        e fornece contexto detalhado sobre agente, missão e sessão.
+
+        Args:
+            event: Evento a ser resumido
+
+        Returns:
+            Descrição detalhada em linguagem natural (sem limite de caracteres)
+        """
+        agent_id = event.get("agent_id", "unknown")
+        event_type = event.get("type", "event")
+        level = event.get("level", "INFO")
+        message = event.get("message", "")
+        data = event.get("data", {})
+        mission_id = event.get("mission_id", "")
+        iteration = event.get("iteration", 1)
+
+        # Header com contexto básico
+        header = f"Agent {agent_id} [{event_type}]"
+        if level in ("ERROR", "WARNING"):
+            header += f" [{level}]"
+
+        # Corpo principal
+        body_parts = []
+
+        # Mensagem principal
+        if message:
+            body_parts.append(f"Event: {message}")
+
+        # Extrair informações específicas por tipo de evento
+        if event_type == "tool_result":
+            tool_name = data.get("tool_name", "unknown_tool")
+            tool_status = data.get("status", "unknown")
+            body_parts.append(f"\nTool: {tool_name} (status: {tool_status})")
+
+            # Extrair diff_summary se disponível
+            diff_summary = data.get("diff_summary") or data.get("diff")
+            if diff_summary:
+                body_parts.append(f"\nDiff Summary:\n```\n{diff_summary}\n```")
+
+            # Resultado do tool
+            result = data.get("result")
+            if result:
+                result_str = str(result)
+                if len(result_str) > MAX_RESULT_STRING_LENGTH:
+                    result_str = result_str[:MAX_RESULT_STRING_LENGTH] + "... (truncated)"
+                body_parts.append(f"\nResult: {result_str}")
+
+        elif event_type == "agent_decision":
+            decision = data.get("decision", "")
+            reasoning = data.get("reasoning", "")
+            if decision:
+                body_parts.append(f"\nDecision: {decision}")
+            if reasoning:
+                body_parts.append(f"\nReasoning: {reasoning}")
+
+        elif event_type == "finding":
+            finding = data.get("finding", "")
+            confidence = data.get("confidence", "")
+            if finding:
+                body_parts.append(f"\nFinding: {finding}")
+            if confidence:
+                body_parts.append(f"\nConfidence: {confidence}")
+
+        elif event_type in ("ERROR", "error"):
+            error_msg = data.get("error", "") or data.get("error_message", "")
+            traceback = data.get("traceback", "")
+            if error_msg:
+                body_parts.append(f"\nError: {error_msg}")
+            if traceback:
+                body_parts.append(f"\nTraceback:\n{traceback[:MAX_TRACEBACK_LENGTH]}")
+
+        elif event_type == "mission_complete":
+            status = data.get("status", "")
+            summary = data.get("summary", "")
+            if status:
+                body_parts.append(f"\nStatus: {status}")
+            if summary:
+                body_parts.append(f"\nSummary: {summary}")
+
+        # Dados adicionais relevantes
+        if data and isinstance(data, dict):
+            relevant_keys = {
+                k: v
+                for k, v in data.items()
+                if k not in ("tool_name", "status", "result", "diff_summary", "diff",
+                           "decision", "reasoning", "finding", "confidence",
+                           "error", "error_message", "traceback", "summary")
+                and v  # Apenas valores não vazios
+            }
+            if relevant_keys:
+                body_parts.append(f"\nAdditional Data: {relevant_keys}")
+
+        # Footer com contexto de execução
+        footer_parts = []
+        if mission_id:
+            footer_parts.append(f"Mission: {mission_id}")
+        if self._session_id:
+            footer_parts.append(f"Session: {self._session_id}")
+        if iteration > 1:
+            footer_parts.append(f"Iteration: {iteration}")
+
+        footer = "\n\nContext: " + " | ".join(footer_parts) if footer_parts else ""
+
+        # Montar contexto completo
+        context = header + "\n" + "\n".join(body_parts) + footer
+        return context.strip()
+
+    def _extract_tags(self, event: dict[str, Any]) -> list[str]:
+        """Extrai tags do evento para classificação.
+
+        Phase 3: Inclui session_id e source_agent_id para cross-agent queries.
+        """
         tags: list[str] = []
         if event.get("type"):
             tags.append(f"event:{event['type']}")
@@ -318,6 +460,13 @@ class MemoryObserver:
             tags.append(f"agent:{event['agent_id']}")
         if event.get("level") in ("ERROR", "WARNING"):
             tags.append(event["level"].lower())
+
+        # Phase 3: Cross-agent tags
+        if self._session_id:
+            tags.append(f"session:{self._session_id}")
+        if event.get("agent_id"):
+            tags.append(f"source_agent:{event['agent_id']}")
+
         return tags
 
     # ------------------------------------------------------------------
@@ -388,7 +537,7 @@ class MemoryObserver:
         # Categorizar automaticamente se DirectoryMapper disponível
         category_info = ""
         if self._directory_mapper:
-            category, subcategory = self._directory_mapper.categorize_file(file_path)
+            category, subcategory = self._directory_mapper.classify(file_path)
             category_info = f"\nCategory: {category}"
             if subcategory:
                 category_info += f" > {subcategory}"
@@ -404,7 +553,7 @@ class MemoryObserver:
         # Formatar diff preview
         diff_preview = ""
         if diff:
-            diff_preview = f"\n\nDiff preview:\n```\n{diff[:500]}\n```"
+            diff_preview = f"\n\nDiff preview:\n```\n{diff[:MAX_DIFF_PREVIEW_LENGTH]}\n```"
 
         context = f"""Agent {agent} {operation} file: {file_path}{category_info}{lines_info}
 
@@ -445,7 +594,7 @@ Context: This change was made during mission {event.get('mission_id')} in sessio
                     subcategory_name=subcategory,
                     file_path=code_change_info.get("file_path"),
                     lines_modified=code_change_info.get("lines"),
-                    diff_summary=code_change_info.get("diff", "")[:1000],  # Limit to 1000 chars
+                    diff_summary=code_change_info.get("diff", "")[:MAX_DIFF_SUMMARY_LENGTH],
                 )
                 await db.commit()
             return
