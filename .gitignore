@@ -136,3 +136,5 @@ vendor/
 coverage/
 .cache/
 tmp/
+.aidesigner/*
+!.aidesigner/.gitkeep

@@ -30,25 +30,30 @@
    - Estrutura de código proposta
    - Métricas de sucesso
 
-4. **[PHASE-1-IMPLEMENTATION-GUIDE.md](./PHASE-1-IMPLEMENTATION-GUIDE.md)**
+4. **[PLANO-IMPLEMENTACAO-SISTEMA-IA-CLAUDE-CODE-VS-MINDFLOW.md](./PLANO-IMPLEMENTACAO-SISTEMA-IA-CLAUDE-CODE-VS-MINDFLOW.md)**
+   - Plano focado nos gaps operacionais do sistema de IA
+   - Roadmap por fases e prioridades
+   - Arquivos-alvo, entregáveis e critérios de aceite
+
+5. **[PHASE-1-IMPLEMENTATION-GUIDE.md](./PHASE-1-IMPLEMENTATION-GUIDE.md)**
    - Guia passo a passo da Fase 1
    - Código de exemplo completo
    - Testes e validação
    - Checklist de conclusão
 
-5. **[ARCHITECTURE-COMPARISON.md](./ARCHITECTURE-COMPARISON.md)**
+6. **[ARCHITECTURE-COMPARISON.md](./ARCHITECTURE-COMPARISON.md)**
    - Comparação MindFlow vs Claude Code
    - Mapeamento de componentes
    - Decisões arquiteturais críticas
    - Padrões de migração
 
-6. **[SMOOTH-TRANSITION-GUIDE.md](./SMOOTH-TRANSITION-GUIDE.md)**
+7. **[SMOOTH-TRANSITION-GUIDE.md](./SMOOTH-TRANSITION-GUIDE.md)**
    - Estratégias de transição suave
    - Feature flags e rollout
    - Plano de rollback
    - Monitoramento durante transição
 
-7. **[FAQ.md](./FAQ.md)**
+8. **[FAQ.md](./FAQ.md)**
    - Perguntas frequentes
    - Respostas técnicas
    - Troubleshooting comum
