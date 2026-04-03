@@ -420,6 +420,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
                 lc_tools=lc_tools,
                 chunk_dispatcher=_chunk_dispatch,
                 event_dispatcher=_event_dispatch,
+                session_id=state.get("session_id"),
             )
 
             if not response_text.strip():
@@ -515,6 +516,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
         Implements adaptive recall (Phase 4):
         - Tries current session first via SessionMemoryService.
         - Falls back to cross-session if hits < 2 or best_score < 0.55.
+        - Includes SessionFacts from previous sessions for continuity.
         - Returns empty context string when no hits — never injects an empty block.
         """
         try:
@@ -532,6 +534,8 @@ class SimpleOrchestratorGraph(SimpleGraph):
                     top_k=getattr(recall_config, "top_k", 4),
                     top_k_messages=getattr(recall_config, "top_k", 4),
                     top_k_blocks=min(getattr(recall_config, "top_k", 4), 2),
+                    top_k_facts=getattr(recall_config, "top_k_facts", 5),
+                    include_session_facts=getattr(recall_config, "include_session_facts", True),
                     min_score=getattr(recall_config, "min_score", 0.35),
                     policy=getattr(recall_config, "policy", "adaptive"),
                     scope=getattr(recall_config, "scope", "current_then_cross"),
@@ -584,10 +588,16 @@ class SimpleOrchestratorGraph(SimpleGraph):
         from mindflow_backend.schemas.orchestration.decomposition.decomposition_v2 import (
             ValidatedTask,
         )
-        from mindflow_backend.services import get_todo_planning_service
+        from mindflow_backend.services import (
+            get_execution_task_service,
+            get_todo_planning_service,
+        )
         from mindflow_backend.services.orchestration.todo_planning_service import (
             build_todo_items_from_subtasks,
         )
+
+        pipeline_execution_id: str | None = None
+        task_id_str: str | None = None
 
         try:
             session_id_str = str(state.get("session_id", "unknown"))
@@ -605,9 +615,11 @@ class SimpleOrchestratorGraph(SimpleGraph):
             )
             _logger.info("task_decomposed_with_semantics", goal=main.goal, tasks=len(components))
             todo_service = get_todo_planning_service()
+            execution_service = get_execution_task_service()
+            task_id_str = str(main.main_task_id)
             await todo_service.replace_list(
                 session_id=session_id_str,
-                task_id=str(main.main_task_id),
+                task_id=task_id_str,
                 goal=main.goal,
                 items=build_todo_items_from_subtasks(
                     components,
@@ -615,6 +627,19 @@ class SimpleOrchestratorGraph(SimpleGraph):
                 ),
                 source="decomposition_pipeline",
             )
+            await execution_service.clear_task_cancellation(
+                session_id=session_id_str,
+                task_id=task_id_str,
+            )
+            pipeline_execution = await execution_service.start_execution(
+                session_id=session_id_str,
+                task_id=task_id_str,
+                execution_key="pipeline",
+                execution_type="workflow_step",
+                description="Execute decomposition pipeline",
+                metadata={"provider": provider, "model": model},
+            )
+            pipeline_execution_id = pipeline_execution.execution_task_id
 
             # Step B: Schedule
             scheduler = SchedulerV2()
@@ -638,6 +663,22 @@ class SimpleOrchestratorGraph(SimpleGraph):
             _sem_ctx_mgr = await get_semantic_context_manager()
 
             for contract in ordered:
+                if await execution_service.is_cancellation_requested(
+                    session_id=session_id_str,
+                    task_id=task_id_str,
+                ):
+                    if pipeline_execution_id is not None:
+                        await execution_service.kill_execution(
+                            session_id=session_id_str,
+                            execution_task_id=pipeline_execution_id,
+                            reason="Task cancellation requested before next step",
+                        )
+                    return {
+                        "response": "",
+                        "task_session": None,
+                        "error": "Task cancelled before executing the next step",
+                    }
+
                 _logger.info("task_resolving_with_context", task=contract.title)
 
                 # Orchestrator Reflection — retrieve semantically relevant Task/SubTask
@@ -672,9 +713,18 @@ class SimpleOrchestratorGraph(SimpleGraph):
                     focus_context = "\n".join(focus_lines)
                     reflection_ctx = f"{focus_context}\n\n{reflection_ctx}" if reflection_ctx else focus_context
 
+                current_execution = await execution_service.start_execution(
+                    session_id=session_id_str,
+                    task_id=task_id_str,
+                    item_id=str(contract.task_id),
+                    execution_key=f"item:{contract.task_id}",
+                    execution_type="agent_step",
+                    description=f"Resolve {contract.title}",
+                    metadata={"title": contract.title},
+                )
                 await todo_service.update_item_status(
                     session_id=session_id_str,
-                    task_id=str(main.main_task_id),
+                    task_id=task_id_str,
                     item_id=str(contract.task_id),
                     status="in_progress",
                     notes=f"Resolving {contract.title}",
@@ -692,9 +742,15 @@ class SimpleOrchestratorGraph(SimpleGraph):
                         reflection_context=reflection_ctx,
                     )
                 except Exception as exc:
+                    await execution_service.fail_execution(
+                        session_id=session_id_str,
+                        execution_task_id=current_execution.execution_task_id,
+                        error=str(exc),
+                        metadata={"stage": "resolve"},
+                    )
                     await todo_service.update_item_status(
                         session_id=session_id_str,
-                        task_id=str(main.main_task_id),
+                        task_id=task_id_str,
                         item_id=str(contract.task_id),
                         status="failed",
                         notes=str(exc),
@@ -703,6 +759,40 @@ class SimpleOrchestratorGraph(SimpleGraph):
                 
                 # Extract the actual task result
                 task_result = resolution_result.get("result", "")
+                if task_result:
+                    await execution_service.append_output(
+                        session_id=session_id_str,
+                        execution_task_id=current_execution.execution_task_id,
+                        chunk=str(task_result)[:1000],
+                    )
+
+                if await execution_service.is_cancellation_requested(
+                    session_id=session_id_str,
+                    task_id=task_id_str,
+                ):
+                    await execution_service.kill_execution(
+                        session_id=session_id_str,
+                        execution_task_id=current_execution.execution_task_id,
+                        reason="Task cancellation requested during execution",
+                    )
+                    if pipeline_execution_id is not None:
+                        await execution_service.kill_execution(
+                            session_id=session_id_str,
+                            execution_task_id=pipeline_execution_id,
+                            reason="Task cancellation requested during execution",
+                        )
+                    await todo_service.update_item_status(
+                        session_id=session_id_str,
+                        task_id=task_id_str,
+                        item_id=str(contract.task_id),
+                        status="blocked",
+                        notes="Cancellation requested during execution",
+                    )
+                    return {
+                        "response": "",
+                        "task_session": None,
+                        "error": "Task cancelled during execution",
+                    }
                 
                 # Update context statistics
                 context_info = resolution_result.get("context_used", {})
@@ -742,17 +832,27 @@ class SimpleOrchestratorGraph(SimpleGraph):
                             score=score,
                         )
                     )
+                    await execution_service.complete_execution(
+                        session_id=session_id_str,
+                        execution_task_id=current_execution.execution_task_id,
+                        metadata={"validation_score": score, "validated": True},
+                    )
                     await todo_service.update_item_status(
                         session_id=session_id_str,
-                        task_id=str(main.main_task_id),
+                        task_id=task_id_str,
                         item_id=str(contract.task_id),
                         status="completed",
                         notes=notes[:400],
                     )
                 else:
+                    await execution_service.complete_execution(
+                        session_id=session_id_str,
+                        execution_task_id=current_execution.execution_task_id,
+                        metadata={"validation_score": score, "validated": False},
+                    )
                     await todo_service.update_item_status(
                         session_id=session_id_str,
-                        task_id=str(main.main_task_id),
+                        task_id=task_id_str,
                         item_id=str(contract.task_id),
                         status="blocked",
                         notes=f"Validation score below threshold: {score:.2f}",
@@ -777,13 +877,22 @@ class SimpleOrchestratorGraph(SimpleGraph):
 
             # Step E: Mark MainTask as completed in the task registry
             await _sem_ctx_mgr.complete_main_task(
-                main_task_id=str(main.main_task_id),
+                main_task_id=task_id_str,
                 session_id=session_id_str,
                 final_answer=synthesis.final_answer,
             )
+            if pipeline_execution_id is not None:
+                await execution_service.complete_execution(
+                    session_id=session_id_str,
+                    execution_task_id=pipeline_execution_id,
+                    metadata={
+                        "context_summary": context_summary,
+                        "validated_tasks": len(validated),
+                    },
+                )
             await todo_service.close_list(
                 session_id=session_id_str,
-                task_id=str(main.main_task_id),
+                task_id=task_id_str,
             )
 
             # Log context usage summary
@@ -803,6 +912,20 @@ class SimpleOrchestratorGraph(SimpleGraph):
             }
 
         except Exception as exc:
+            if task_id_str and pipeline_execution_id is not None:
+                try:
+                    execution_service = get_execution_task_service()
+                    await execution_service.fail_execution(
+                        session_id=session_id_str,
+                        execution_task_id=pipeline_execution_id,
+                        error=str(exc),
+                    )
+                except Exception as execution_exc:
+                    _logger.warning(
+                        "task_pipeline_execution_state_failure",
+                        task_id=task_id_str,
+                        error=str(execution_exc),
+                    )
             _logger.error("task_pipeline_error", error=str(exc))
             return {"response": "", "error": f"Task failed: {exc}"}
     

@@ -56,6 +56,7 @@ class BaseAgent:
     agent_role: AgentType
     system_prompt: str
     specialist: SpecialistType | None = None
+    custom_agent_id: str | None = None
     tools: list[ToolScope] = field(default_factory=list)
     default_model: str | None = None
     thinking_level: ThinkingLevel = ThinkingLevel.MEDIUM
@@ -78,6 +79,8 @@ class BaseAgent:
     @property
     def agent_id(self) -> str:
         """Stable registry identity used for role + specialization lookups."""
+        if self.custom_agent_id:
+            return self.custom_agent_id
         if self.specialist is None:
             return self.agent_role.value
         return f"{self.agent_role.value}:{self.specialist.value}"

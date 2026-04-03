@@ -14,23 +14,25 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
+import re
 import time
 from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.agents.tools.security.bash_validators import (
+    get_command_security_issues,
+    is_command_safe,
+    validate_bash_command,
+)
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.runtime.execution.background_task_manager import BackgroundTaskManager
 from mindflow_backend.schemas.tools.shell_schemas_v2 import (
     BashSecurityLevel,
     CommandSemanticType,
     ShellExecutorInput,
 )
 from mindflow_backend.schemas.tools.tool_permissions import PermissionBehavior
-from mindflow_backend.agents.tools.security.bash_validators import (
-    validate_bash_command,
-    get_command_security_issues,
-    is_command_safe,
-)
+from mindflow_backend.services.orchestration import get_execution_task_service
 
 _logger = get_logger(__name__)
 
@@ -59,20 +61,32 @@ class ShellExecutorToolV2(AsyncToolInterface):
         "semantic analysis, background execution, and progress tracking."
     )
 
-    def __init__(self, root_dir: str | None = None):
+    def __init__(
+        self,
+        root_dir: str | None = None,
+        background_task_manager: BackgroundTaskManager | None = None,
+    ):
         """Initialize ShellExecutorTool v2.
 
         Args:
             root_dir: Root directory for command execution (workspace root)
         """
         self.root_dir = root_dir
-        self._background_processes: dict[str, subprocess.Popen] = {}
+        self._background_task_manager = background_task_manager or BackgroundTaskManager(
+            execution_task_service=get_execution_task_service(),
+        )
 
     async def execute(self, **kwargs) -> dict[str, Any]:
         """Execute shell command with full validation and security checks."""
+        execution_kwargs = dict(kwargs)
+        session_id = execution_kwargs.pop("session_id", None)
+        task_id = execution_kwargs.pop("task_id", None)
+        tool_call_id = execution_kwargs.pop("tool_call_id", None)
+        description = execution_kwargs.pop("description", None)
+
         # Parse and validate input
         try:
-            input_data = ShellExecutorInput(**kwargs)
+            input_data = ShellExecutorInput(**execution_kwargs)
         except Exception as e:
             return {
                 "success": False,
@@ -114,14 +128,29 @@ class ShellExecutorToolV2(AsyncToolInterface):
                 extra={"command": command[:100], "issues": security_issues}
             )
 
+        if security_decision.behavior == PermissionBehavior.ASK and self._should_block_ask_command(
+            command=command,
+            semantic_type=semantic_type,
+            security_issues=security_issues,
+            security_message=security_decision.message,
+            security_reason=getattr(security_decision, "reason", None),
+        ):
+            return {
+                "success": False,
+                "error": security_decision.message or "Command blocked by security policy",
+                "error_code": "SECURITY_VIOLATION",
+                "security_level": security_level.value,
+                "blocked_by": "bash_validators",
+            }
+
         # Determine working directory
-        cwd = input_data.cwd or self.root_dir or os.getcwd()
+        cwd = input_data.working_dir or self.root_dir or os.getcwd()
         cwd = os.path.abspath(cwd)
 
         # Prepare environment
         env = os.environ.copy()
-        if input_data.env:
-            env.update(input_data.env)
+        if input_data.environment:
+            env.update(input_data.environment)
 
         try:
             # Background execution
@@ -132,7 +161,11 @@ class ShellExecutorToolV2(AsyncToolInterface):
                     env=env,
                     timeout=input_data.timeout,
                     semantic_type=semantic_type,
-                    security_level=security_level
+                    security_level=security_level,
+                    session_id=session_id,
+                    task_id=task_id,
+                    tool_call_id=tool_call_id,
+                    description=description,
                 )
 
             # Foreground execution
@@ -229,36 +262,38 @@ class ShellExecutorToolV2(AsyncToolInterface):
         env: dict[str, str],
         timeout: int | None,
         semantic_type: CommandSemanticType,
-        security_level: BashSecurityLevel
+        security_level: BashSecurityLevel,
+        session_id: str | None,
+        task_id: str | None,
+        tool_call_id: str | None,
+        description: str | None,
     ) -> dict[str, Any]:
         """Execute command in background and return immediately."""
         try:
-            # Start process
-            process = subprocess.Popen(
-                command,
-                shell=True,
+            background_task = await self._background_task_manager.spawn(
+                command=command,
                 cwd=cwd,
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                description=description or f"Shell command: {command[:120]}",
+                session_id=session_id,
+                task_id=task_id,
+                tool_call_id=tool_call_id,
             )
-
-            # Generate process ID
-            process_id = f"bg_{process.pid}_{int(time.time())}"
-
-            # Store process
-            self._background_processes[process_id] = process
 
             return {
                 "success": True,
-                "process_id": process_id,
-                "pid": process.pid,
+                "background_task_id": background_task.background_task_id,
+                "process_id": background_task.background_task_id,
+                "pid": background_task.pid,
                 "command": command,
                 "cwd": cwd,
                 "background": True,
                 "semantic_type": semantic_type.value,
                 "security_level": security_level.value,
-                "message": f"Command started in background with PID {process.pid}"
+                "message": (
+                    f"Command started in background with PID {background_task.pid}"
+                ),
+                "timeout": timeout,
             }
 
         except Exception as e:
@@ -324,9 +359,16 @@ class ShellExecutorToolV2(AsyncToolInterface):
         if security_decision.behavior == PermissionBehavior.DENY:
             return BashSecurityLevel.CRITICAL
 
-        # If validators flagged it for review, it's dangerous
+        # Approval-required commands are not all equally risky.
         if security_decision.behavior == PermissionBehavior.ASK:
-            return BashSecurityLevel.DANGEROUS
+            if self._has_high_risk_security_signal(
+                command=command,
+                security_issues=get_command_security_issues(command),
+                security_message=getattr(security_decision, "message", None),
+                security_reason=getattr(security_decision, "reason", None),
+            ):
+                return BashSecurityLevel.DANGEROUS
+            return BashSecurityLevel.MODERATE
 
         # Check if command is safe according to validators
         if is_command_safe(command):
@@ -342,78 +384,85 @@ class ShellExecutorToolV2(AsyncToolInterface):
         # If has issues but not blocked, it's moderate
         return BashSecurityLevel.MODERATE
 
+    @classmethod
+    def _has_high_risk_security_signal(
+        cls,
+        *,
+        command: str,
+        security_issues: list[str],
+        security_message: str | None,
+        security_reason: str | None,
+    ) -> bool:
+        """Detect approval-required cases that should be treated as dangerous."""
+        haystack = " ".join(
+            filter(None, [command, security_message, security_reason, *security_issues])
+        ).lower()
+        high_risk_markers = (
+            "eval",
+            "command injection",
+            "newline",
+            "jq system",
+            "cannot write to system path",
+            "ifs",
+            "binary hijack",
+            "redirect binary execution",
+        )
+        if cls._is_literal_multiline_echo(command):
+            high_risk_markers = tuple(
+                marker
+                for marker in high_risk_markers
+                if marker not in {"command injection", "newline"}
+            )
+        return any(marker in haystack for marker in high_risk_markers)
+
+    @staticmethod
+    def _is_literal_multiline_echo(command: str) -> bool:
+        """Allow quoted multiline echo literals without downgrading other safeguards."""
+        stripped = command.strip()
+        if "\n" not in stripped:
+            return False
+        return bool(re.fullmatch(r"echo\s+'(?:[^']|\n)*'", stripped))
+
+    @classmethod
+    def _should_block_ask_command(
+        cls,
+        *,
+        command: str,
+        semantic_type: CommandSemanticType,
+        security_issues: list[str],
+        security_message: str | None,
+        security_reason: str | None,
+    ) -> bool:
+        """Convert high-risk ASK decisions into hard blocks for non-interactive runs."""
+        if semantic_type == CommandSemanticType.DANGEROUS:
+            return True
+        return cls._has_high_risk_security_signal(
+            command=command,
+            security_issues=security_issues,
+            security_message=security_message,
+            security_reason=security_reason,
+        )
+
     async def get_background_status(self, process_id: str) -> dict[str, Any]:
         """Get status of background process."""
-        if process_id not in self._background_processes:
-            return {
-                "success": False,
-                "error": f"Process not found: {process_id}",
-                "error_code": "PROCESS_NOT_FOUND"
-            }
-
-        process = self._background_processes[process_id]
-
-        # Check if process is still running
-        poll_result = process.poll()
-
-        if poll_result is None:
-            # Still running
-            return {
-                "success": True,
-                "process_id": process_id,
-                "pid": process.pid,
-                "status": "running"
-            }
-        else:
-            # Completed
-            stdout, stderr = process.communicate()
-            stdout_str = stdout.decode('utf-8', errors='replace') if stdout else ""
-            stderr_str = stderr.decode('utf-8', errors='replace') if stderr else ""
-
-            # Remove from tracking
-            del self._background_processes[process_id]
-
-            return {
-                "success": True,
-                "process_id": process_id,
-                "pid": process.pid,
-                "status": "completed",
-                "exit_code": poll_result,
-                "stdout": stdout_str,
-                "stderr": stderr_str
-            }
+        status = await self._background_task_manager.get_status(process_id)
+        if not status.get("success"):
+            status["error_code"] = "PROCESS_NOT_FOUND"
+        if status.get("success"):
+            status.setdefault("background_task_id", process_id)
+            status.setdefault("process_id", process_id)
+        return status
 
     async def kill_background_process(self, process_id: str) -> dict[str, Any]:
         """Kill a background process."""
-        if process_id not in self._background_processes:
-            return {
-                "success": False,
-                "error": f"Process not found: {process_id}",
-                "error_code": "PROCESS_NOT_FOUND"
-            }
-
-        process = self._background_processes[process_id]
-
-        try:
-            process.kill()
-            process.wait(timeout=5)
-
-            # Remove from tracking
-            del self._background_processes[process_id]
-
-            return {
-                "success": True,
-                "process_id": process_id,
-                "pid": process.pid,
-                "message": "Process killed successfully"
-            }
-
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to kill process: {e}",
-                "error_code": "KILL_ERROR"
-            }
+        result = await self._background_task_manager.kill(process_id)
+        if not result.get("success"):
+            result["error_code"] = "PROCESS_NOT_FOUND"
+        if result.get("success"):
+            result.setdefault("background_task_id", process_id)
+            result.setdefault("process_id", process_id)
+            result.setdefault("message", "Process killed successfully")
+        return result
 
     def get_schema(self) -> dict[str, Any]:
         """Return tool schema for LangChain adapter."""

@@ -13,6 +13,9 @@ from mindflow_backend.schemas.orchestration.orchestrator import (
     ThinkingLevel,
     ThinkingMode,
     ToolScope,
+    WorkspaceBinding,
+    WorkspaceKind,
+    WorkspacePolicy,
 )
 from mindflow_backend.schemas.orchestration.planning import (
     PlanConfirmationRequest,
@@ -31,6 +34,12 @@ from mindflow_backend.schemas.orchestration.communication import (
     MissionGraphType,
 )
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
+from mindflow_backend.schemas.orchestration.proposal import (
+    AgentProposal,
+    ProposalConfidence,
+    ProposalRequest,
+    ProposalResponse,
+)
 from mindflow_backend.schemas.orchestration.workflow import (
     WorkflowPlan,
     WorkflowRouteDecision,
@@ -49,6 +58,9 @@ __all__ = [
     "ThinkingLevel",
     "ThinkingMode",
     "ToolScope",
+    "WorkspaceBinding",
+    "WorkspaceKind",
+    "WorkspacePolicy",
     # Communication
     "CommRole",
     "MissionGraphType",
@@ -69,4 +81,9 @@ __all__ = [
     "PlanningDecision",
     "PlanningAnalysisRequest",
     "PlanningTriggerMetrics",
+    # Proposal
+    "AgentProposal",
+    "ProposalConfidence",
+    "ProposalRequest",
+    "ProposalResponse",
 ]

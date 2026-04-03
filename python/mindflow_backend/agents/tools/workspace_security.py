@@ -1,14 +1,28 @@
-"""Shared security helpers for sandboxed agent tools."""
+"""Shared security helpers for sandboxed agent tools.
+
+Provides Docker sandbox availability checking with graceful fallback
+to subprocess sandbox when Docker is not available.
+"""
 
 from __future__ import annotations
 
 import os
 import re
+import shutil
+import subprocess
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
+
+_logger = get_logger(__name__)
+
+# Cache for Docker availability check
+_docker_available_cache: bool | None = None
+_docker_checked: bool = False
 
 
 class WorkspaceSecurityError(ValueError):
@@ -194,3 +208,122 @@ def validate_shell_command(command: str, sandbox_mode: SandboxMode | str | None)
 def is_read_only_mode(value: SandboxMode | str | None) -> bool:
     """Convenience helper for filesystem tools."""
     return normalize_sandbox_mode(value) == SandboxMode.READ_ONLY
+
+
+def check_docker_available(*, force_recheck: bool = False) -> bool:
+    """Check if Docker is available and running on the system.
+
+    Uses cached result unless force_recheck is True.
+    Checks:
+    1. docker binary exists in PATH
+    2. docker daemon is responding (docker info)
+
+    Args:
+        force_recheck: If True, ignore cache and recheck.
+
+    Returns:
+        True if Docker is available and running, False otherwise.
+    """
+    global _docker_available_cache, _docker_checked
+
+    if _docker_checked and not force_recheck:
+        return _docker_available_cache or False
+
+    _docker_checked = True
+
+    # Check if docker binary exists
+    if not shutil.which("docker"):
+        _logger.info(
+            "docker_not_found_in_path",
+            message="Docker binary not found in PATH. Falling back to subprocess sandbox.",
+        )
+        _docker_available_cache = False
+        return False
+
+    # Check if docker daemon is running
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            _logger.info("docker_available", message="Docker is available and running.")
+            _docker_available_cache = True
+            return True
+        else:
+            _logger.warning(
+                "docker_daemon_not_running",
+                message="Docker daemon is not responding. Falling back to subprocess sandbox.",
+                stderr=result.stderr[:200] if result.stderr else "",
+            )
+            _docker_available_cache = False
+            return False
+    except subprocess.TimeoutExpired:
+        _logger.warning(
+            "docker_check_timeout",
+            message="Docker check timed out. Falling back to subprocess sandbox.",
+        )
+        _docker_available_cache = False
+        return False
+    except Exception as exc:
+        _logger.warning(
+            "docker_check_error",
+            message="Error checking Docker availability. Falling back to subprocess sandbox.",
+            error=str(exc),
+        )
+        _docker_available_cache = False
+        return False
+
+
+def get_sandbox_type() -> str:
+    """Determine which sandbox type to use based on Docker availability.
+
+    Returns:
+        "docker" if Docker is available, "subprocess" otherwise.
+    """
+    settings = get_settings()
+    force_subprocess = settings.get_feature_flag("sandbox_force_subprocess", False)
+
+    if force_subprocess:
+        _logger.info("sandbox_force_subprocess", message="Forced subprocess sandbox via feature flag.")
+        return "subprocess"
+
+    if check_docker_available():
+        return "docker"
+
+    _logger.info(
+        "sandbox_fallback_subprocess",
+        message="Docker unavailable. Using subprocess sandbox with security validators.",
+    )
+    return "subprocess"
+
+
+def get_docker_sandbox_config() -> dict[str, Any]:
+    """Get Docker sandbox configuration from settings.
+
+    Returns:
+        Dictionary with Docker sandbox configuration.
+    """
+    settings = get_settings()
+    return {
+        "image": settings.get_feature_flag("sandbox_docker_image", "mindflow-sandbox:latest"),
+        "memory_limit": settings.get_feature_flag("sandbox_memory_limit", "512m"),
+        "cpu_limit": settings.get_feature_flag("sandbox_cpu_limit", "1.0"),
+        "network_mode": settings.get_feature_flag("sandbox_network_mode", "none"),
+        "timeout_seconds": settings.get_feature_flag("sandbox_timeout_seconds", 120),
+        "read_only_root_fs": settings.get_feature_flag("sandbox_read_only_root_fs", True),
+        "tmpfs_size": settings.get_feature_flag("sandbox_tmpfs_size", "64m"),
+    }
+
+
+def reset_docker_cache() -> None:
+    """Reset the Docker availability cache.
+
+    Useful for testing or when Docker status may have changed.
+    """
+    global _docker_available_cache, _docker_checked
+    _docker_available_cache = None
+    _docker_checked = False
+    _logger.debug("docker_cache_reset")

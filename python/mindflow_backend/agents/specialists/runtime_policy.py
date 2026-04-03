@@ -63,6 +63,7 @@ class AgentRuntimePolicy:
     agent_role: AgentType
     system_prompt: str
     specialist: SpecialistType | None = None
+    custom_agent_id: str | None = None
     tools: tuple[ToolScope, ...] = ()
     sandbox: SandboxMode = SandboxMode.NONE
     thinking_level: ThinkingLevel = ThinkingLevel.MEDIUM
@@ -93,6 +94,8 @@ class AgentRuntimePolicy:
 
     @property
     def agent_id(self) -> str:
+        if self.custom_agent_id:
+            return self.custom_agent_id
         if self.specialist is None:
             return self.agent_role.value
         return f"{self.agent_role.value}:{self.specialist.value}"
@@ -107,6 +110,7 @@ class AgentRuntimePolicy:
         return BaseAgent(
             agent_role=self.agent_role,
             specialist=self.specialist,
+            custom_agent_id=self.custom_agent_id,
             system_prompt=enhanced_prompt,
             tools=list(self.tools),
             thinking_level=self.thinking_level,
@@ -159,6 +163,7 @@ class AgentRuntimePolicy:
         return BaseAgent(
             agent_role=self.agent_role,
             specialist=self.specialist,
+            custom_agent_id=self.custom_agent_id,
             system_prompt=assembled_prompt,
             tools=list(self.tools),
             sandbox=self.sandbox,
@@ -198,7 +203,7 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
     "analyst": AgentRuntimePolicy(
         agent_role=AgentType.ANALYST,
         system_prompt=ANALYST_SYSTEM_PROMPT,
-        tools=(ToolScope.CODE_ANALYSIS, ToolScope.FILESYSTEM, ToolScope.SHELL, ToolScope.MEMORY),
+        tools=(ToolScope.CODE_ANALYSIS, ToolScope.CONTEXTPLUS, ToolScope.FILESYSTEM, ToolScope.SHELL, ToolScope.MEMORY),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.MEDIUM,
         max_iterations=500,  # Unlimited for deep code investigation
@@ -380,12 +385,29 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
     ),
 }
 
+_SESSION_RUNTIME_POLICIES: dict[str, dict[str, AgentRuntimePolicy]] = {}
+
+
+def register_session_runtime_policy(
+    session_id: str,
+    policy: AgentRuntimePolicy,
+) -> None:
+    """Register a dynamic runtime policy for a session."""
+    session_key = str(session_id)
+    _SESSION_RUNTIME_POLICIES.setdefault(session_key, {})[policy.agent_id] = policy
+
+
+def unregister_session_runtime_policies(session_id: str) -> None:
+    """Remove all dynamic runtime policies for a session."""
+    _SESSION_RUNTIME_POLICIES.pop(str(session_id), None)
+
 
 def get_agent_runtime_policy(
     agent_role: AgentType | str | None = None,
     *,
     specialist: SpecialistType | str | None = None,
     agent_id: str | None = None,
+    session_id: str | None = None,
 ) -> AgentRuntimePolicy:
     """Return the canonical runtime policy for the given identity."""
     if agent_id:
@@ -398,12 +420,20 @@ def get_agent_runtime_policy(
             spec_value = specialist.value if isinstance(specialist, SpecialistType) else str(specialist).strip().lower()
             key = f"{role_value}:{spec_value}"
 
+    if session_id:
+        session_policies = _SESSION_RUNTIME_POLICIES.get(str(session_id), {})
+        if key in session_policies:
+            return session_policies[key]
+
     try:
         return AGENT_RUNTIME_POLICY[key]
     except KeyError as exc:
         raise KeyError(f"Unknown runtime policy for {key!r}") from exc
 
 
-def list_agent_runtime_policies() -> list[AgentRuntimePolicy]:
+def list_agent_runtime_policies(session_id: str | None = None) -> list[AgentRuntimePolicy]:
     """Return all registered runtime policies."""
-    return list(AGENT_RUNTIME_POLICY.values())
+    policies = list(AGENT_RUNTIME_POLICY.values())
+    if session_id:
+        policies.extend(_SESSION_RUNTIME_POLICIES.get(str(session_id), {}).values())
+    return policies

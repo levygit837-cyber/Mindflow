@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from datetime import UTC, datetime
+
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from mindflow_backend.schemas.memory.contracts import MemoryRecallPolicy, MemoryRecallScope
@@ -56,6 +58,7 @@ class ToolScope(StrEnum):
     PINCHTAB_FLEET = "pinchtab_fleet"
     PINCHTAB_BROWSER = "pinchtab_browser"
     CODE_ANALYSIS = "code_analysis"
+    CONTEXTPLUS = "contextplus"
     DATABASE = "database"
     MEMORY = "memory"
     PLANNING = "planning"
@@ -68,6 +71,22 @@ class SandboxMode(StrEnum):
     NONE = "none"
     READ_ONLY = "read_only"
     FULL = "full"
+
+
+class WorkspacePolicy(StrEnum):
+    """How the runtime should resolve the effective workspace."""
+
+    SHARED = "shared"
+    WORKTREE = "worktree"
+    AUTO = "auto"
+
+
+class WorkspaceKind(StrEnum):
+    """Concrete workspace backing selected by the runtime."""
+
+    SHARED = "shared"
+    GIT_WORKTREE = "git_worktree"
+    ISOLATED_COPY = "isolated_copy"
 
 
 class Priority(StrEnum):
@@ -147,6 +166,28 @@ class ChainStep(BaseModel):
     specialist: SpecialistType | None = None
     task: str
     tools: list[ToolScope] = Field(default_factory=list)
+
+
+class WorkspaceBinding(BaseModel):
+    """Resolved workspace assigned to a session or execution."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    session_id: str
+    execution_id: str | None = None
+    requested_root: str
+    workspace_root: str
+    workspace_path: str
+    checkout_root: str
+    workspace_kind: WorkspaceKind = WorkspaceKind.SHARED
+    policy: WorkspacePolicy = WorkspacePolicy.AUTO
+    repo_root: str | None = None
+    branch_name: str | None = None
+    head_sha: str | None = None
+    lifecycle_state: str = "active"
+    cleanup_policy: str = "remove_on_success_preserve_on_failure"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class OrchestratorDecision(BaseModel):

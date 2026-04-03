@@ -7,6 +7,7 @@ Inspired by Claude Code's buildEffectiveSystemPrompt():
 - Camada 4: Git Context (branch, staged files)
 - Camada 5: Memory/MCP Context
 - Camada 6: Additional Instructions
+- Cache: SystemContextCache for reducing API costs
 """
 
 from __future__ import annotations
@@ -16,6 +17,8 @@ import concurrent.futures
 import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+from mindflow_backend.query.cache.system_context_cache import SystemContextCache
 
 if TYPE_CHECKING:
     from mindflow_backend.agents._base import BaseAgent
@@ -45,8 +48,11 @@ class AssemblyContext:
 class PromptAssembler:
     """Pipeline multi-camada de montagem de system prompt."""
 
-    def __init__(self) -> None:
+    def __init__(self, use_cache: bool = True) -> None:
         self._layers: list[PromptLayer] = []
+        self._cache: SystemContextCache | None = None
+        if use_cache:
+            self._cache = SystemContextCache()
 
     def add_layer(self, layer: PromptLayer) -> "PromptAssembler":
         """Adiciona camada ao pipeline (builder pattern)."""
@@ -71,7 +77,13 @@ class PromptAssembler:
                     exc_info=True,
                 )
 
-        return "\n\n".join(parts)
+        full_prompt = "\n\n".join(parts)
+
+        # Update cache if enabled
+        if self._cache:
+            self._cache.set_static_prefix(full_prompt)
+
+        return full_prompt
 
     def assemble_sync(self, context: AssemblyContext | None = None) -> str:
         """Versão síncrona para backward compatibility."""
@@ -84,3 +96,42 @@ class PromptAssembler:
             return pool.submit(
                 lambda: asyncio.run(self.assemble(context))
             ).result()
+
+    def get_cached_messages(
+        self,
+        dynamic_content: str,
+        include_cache_control: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Get messages with cached static prefix + dynamic content.
+
+        Args:
+            dynamic_content: Dynamic content for this turn
+            include_cache_control: Whether to include cache_control for Anthropic API
+
+        Returns:
+            List of messages ready for API call
+        """
+        if not self._cache:
+            # No cache — return simple message
+            return [{"role": "system", "content": dynamic_content}]
+
+        return self._cache.build_messages(
+            dynamic_content,
+            include_cache_control=include_cache_control,
+        )
+
+    def set_dynamic_context(self, key: str, content: str) -> None:
+        """Set a dynamic context entry.
+
+        Args:
+            key: Context key (e.g., "git_status", "memory", "environment")
+            content: Dynamic content
+        """
+        if self._cache:
+            self._cache.set_dynamic_context(key, content)
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get cache statistics."""
+        if not self._cache:
+            return {"enabled": False}
+        return {"enabled": True, **self._cache.get_stats()}

@@ -42,8 +42,8 @@ async def run_workflow_step(
     """Execute a single step using canonical agent identity resolution."""
 
     settings = get_settings()
-    agent = get_agent(agent_id=step.agent_id)
-    policy = get_agent_runtime_policy(agent_id=step.agent_id)
+    agent = get_agent(agent_id=step.agent_id, session_id=session_id)
+    policy = get_agent_runtime_policy(agent_id=step.agent_id, session_id=session_id)
 
     messages: list[dict[str, str]] = [{"role": "system", "content": agent.system_prompt}]
 
@@ -179,6 +179,7 @@ async def run_workflow_step(
                             chunk_dispatcher=chunk_dispatcher,
                             event_dispatcher=event_dispatcher,
                             max_iterations=policy.max_iterations,
+                            session_id=session_id,
                         )
                     else:
                         response_text = await invoke_with_tools(
@@ -187,6 +188,7 @@ async def run_workflow_step(
                             lc_tools=lc_tools,
                             event_dispatcher=event_dispatcher,
                             max_iterations=policy.max_iterations,
+                            session_id=session_id,
                         )
             else:
                 response = await llm.ainvoke(messages)

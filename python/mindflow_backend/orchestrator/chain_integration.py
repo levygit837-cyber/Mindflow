@@ -499,6 +499,7 @@ def build_workflow_plan(
     message: str,
     route: WorkflowRouteDecision,
     folder_path: str | None = None,
+    session_id: str | None = None,
 ) -> WorkflowPlan:
     """Resolve router output into the final executor plan.
 
@@ -510,13 +511,26 @@ def build_workflow_plan(
     def _make_step(
         *,
         step_id: str,
-        agent_role: AgentType,
+        agent_role: AgentType | None,
         specialist: SpecialistType | None,
         objective: str,
+        agent_id: str | None = None,
         depends_on: list[str] | None = None,
         context_strategy: str = "maintain",
     ) -> WorkflowStep:
-        policy = get_agent_runtime_policy(agent_role, specialist=specialist)
+        if agent_id is not None:
+            policy = get_agent_runtime_policy(
+                agent_id=agent_id,
+                session_id=session_id,
+            )
+        else:
+            if agent_role is None:
+                raise ValueError("agent_role is required when agent_id is not provided")
+            policy = get_agent_runtime_policy(
+                agent_role,
+                specialist=specialist,
+                session_id=session_id,
+            )
         return WorkflowStep(
             step_id=step_id,
             agent_id=policy.agent_id,
@@ -539,6 +553,7 @@ def build_workflow_plan(
                 agent_role=route.agent_role,
                 specialist=route.specialist,
                 objective=route.task,
+                agent_id=route.agent_id,
             )
         ]
         plan.planner_rule = "graph_execution"
@@ -551,6 +566,7 @@ def build_workflow_plan(
                 agent_role=route.agent_role,
                 specialist=route.specialist,
                 objective=route.task,
+                agent_id=route.agent_id,
             )
         ]
         return plan
@@ -564,6 +580,7 @@ def build_workflow_plan(
                 agent_role=route.agent_role,
                 specialist=route.specialist,
                 objective=route.task,
+                agent_id=route.agent_id,
             )
         ]
         plan.planner_rule = "workspace_analysis"
@@ -587,6 +604,7 @@ def build_workflow_plan(
                 agent_role=AgentType.CODER,
                 specialist=implementation_specialist,
                 objective=route.task,
+                agent_id=route.agent_id if route.agent_id_override else None,
                 depends_on=["analysis"],
                 context_strategy="carry_summary",
             ),
@@ -610,6 +628,7 @@ def build_workflow_plan(
             agent_role=route.agent_role,
             specialist=route.specialist,
             objective=route.task,
+            agent_id=route.agent_id,
         )
     ]
     plan.planner_rule = "analysis_pipeline"
@@ -621,12 +640,14 @@ def plan_orchestrator_execution(
     message: str,
     route: WorkflowRouteDecision,
     folder_path: str | None = None,
+    session_id: str | None = None,
 ) -> OrchestratorDecision:
     """Compatibility adapter returning the executor-facing decision payload."""
     return build_workflow_plan(
         message=message,
         route=route,
         folder_path=folder_path,
+        session_id=session_id,
     ).to_decision()
 
 

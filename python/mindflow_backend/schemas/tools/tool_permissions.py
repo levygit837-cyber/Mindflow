@@ -6,11 +6,41 @@ and permission management.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+
+
+class PermissionBehavior(StrEnum):
+    """Compatibility enum for legacy validators."""
+
+    PASSTHROUGH = "passthrough"
+    ALLOW = "allow"
+    ASK = "ask"
+    DENY = "deny"
+
+
+class PermissionDecision(BaseModel):
+    """Compatibility decision model used by legacy security validators."""
+
+    behavior: PermissionBehavior
+    message: str | None = None
+    reason: str | None = None
+    is_security_check: bool = False
+    suggestions: list[str] = Field(default_factory=list)
+
+
+class PermissionResult(BaseModel):
+    """Permissive compatibility result model for legacy security helpers."""
+
+    model_config = {"extra": "allow"}
+
+    behavior: str
+    message: str | None = None
+    reason: str | None = None
 
 
 class ToolPermission(BaseModel):

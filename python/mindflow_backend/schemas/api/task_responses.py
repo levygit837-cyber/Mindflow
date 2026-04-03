@@ -49,3 +49,14 @@ class TaskSubtasksResponse(BaseModel):
     task_id: str = Field(..., description="Parent task identifier")
     subtasks: list[dict[str, Any]] = Field(..., description="List of subtasks")
     total: int = Field(..., description="Total number of subtasks")
+
+
+class TaskExecutionsResponse(BaseModel):
+    """Response for runtime execution task listing operations."""
+
+    success: bool = Field(..., description="Operation success status")
+    message: str = Field(..., description="Response message")
+    task_id: str = Field(..., description="Parent task identifier")
+    executions: list[dict[str, Any]] = Field(..., description="Runtime execution tasks")
+    summary: dict[str, Any] = Field(..., description="Aggregated execution summary")
+    total: int = Field(..., description="Total number of execution tasks")

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from mindflow_backend.schemas.core.common import LLMProvider
+from mindflow_backend.schemas.orchestration.orchestrator import WorkspacePolicy
 
 
 class AgentChatRequest(BaseModel):
@@ -22,6 +23,12 @@ class AgentChatRequest(BaseModel):
     orchestrate: bool = Field(default=False, description="Whether to use orchestration")
     debug_steps: bool = Field(default=False, alias="debugSteps", description="Enable debug steps")
     folder_path: str | None = Field(default=None, description="Working directory for filesystem tools")
+    workspace_policy: WorkspacePolicy = Field(
+        default=WorkspacePolicy.AUTO,
+        alias="workspacePolicy",
+        validation_alias=AliasChoices("workspace_policy", "workspacePolicy"),
+        description="Workspace isolation strategy for the request runtime",
+    )
 
 
 class SessionCreateRequest(BaseModel):

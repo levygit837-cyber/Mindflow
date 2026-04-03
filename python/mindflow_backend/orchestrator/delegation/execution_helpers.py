@@ -46,6 +46,11 @@ class ExecutionMemoryMixin:
                     "scope": list(task.scope or []),
                     "expected_output": task.expected_output,
                     "context_from_session": task.context_from_session,
+                    "workspace": (
+                        task.workspace_binding.model_dump(mode="json")
+                        if getattr(task, "workspace_binding", None) is not None
+                        else None
+                    ),
                 },
             )
         except Exception as exc:

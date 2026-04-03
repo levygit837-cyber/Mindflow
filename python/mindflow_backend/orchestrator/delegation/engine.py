@@ -20,8 +20,13 @@ from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.providers import get_model_for_provider
+from mindflow_backend.services.core import get_worktree_service
 from mindflow_backend.schemas.orchestration.delegation import DelegationResult, DelegationTask
-from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    SandboxMode,
+    WorkspaceBinding,
+    WorkspacePolicy,
+)
 
 from .execution_helpers import ExecutionMemoryMixin
 
@@ -34,6 +39,7 @@ class DelegationEngine(ExecutionMemoryMixin):
     def __init__(self, *, execution_memory: Any | None = None):
         self.settings = get_settings()
         self._execution_memory = execution_memory or get_execution_memory_service()
+        self._worktree_service = get_worktree_service()
 
         # Communication bus (optional, graceful degradation)
         self._comm_bus: CommunicationBus | None = None
@@ -65,6 +71,60 @@ class DelegationEngine(ExecutionMemoryMixin):
             self._mission_launcher = None  # Ensure not retried
 
         return self._mission_launcher
+
+    def _needs_workspace_isolation(self, task: DelegationTask) -> bool:
+        if task.workspace_policy == WorkspacePolicy.WORKTREE:
+            return True
+        if task.workspace_policy == WorkspacePolicy.SHARED:
+            return False
+        return bool(task.root_dir)
+
+    async def _resolve_task_workspace(
+        self,
+        task: DelegationTask,
+        *,
+        session_id: str | None,
+        execution_id: str | None,
+    ) -> DelegationTask:
+        if (
+            self._worktree_service is None
+            or not session_id
+            or not task.root_dir
+        ):
+            return task
+
+        if (
+            isinstance(task.workspace_binding, WorkspaceBinding)
+            and (
+                execution_id is None
+                or task.workspace_binding.execution_id == execution_id
+            )
+        ):
+            return task.model_copy(update={"root_dir": task.workspace_binding.workspace_path})
+
+        try:
+            binding = await self._worktree_service.ensure_workspace(
+                session_id=session_id,
+                execution_id=execution_id,
+                requested_root=task.root_dir,
+                policy=task.workspace_policy,
+                needs_isolation=self._needs_workspace_isolation(task),
+            )
+        except Exception as exc:
+            _logger.warning(
+                "delegation_workspace_resolution_failed",
+                session_id=session_id,
+                execution_id=execution_id,
+                error=str(exc),
+            )
+            return task
+
+        return task.model_copy(
+            update={
+                "root_dir": binding.workspace_path,
+                "workspace_binding": binding,
+            }
+        )
 
     async def delegate_task(
         self,
@@ -131,6 +191,12 @@ class DelegationEngine(ExecutionMemoryMixin):
                 )
                 # Fallback to regular delegation
 
+        task = await self._resolve_task_workspace(
+            task,
+            session_id=session_id,
+            execution_id=None,
+        )
+
         child_execution = await self._start_child_execution(
             task=task,
             session_id=session_id,
@@ -138,6 +204,11 @@ class DelegationEngine(ExecutionMemoryMixin):
             parent_execution_id=parent_execution_id,
         )
         child_execution_id = getattr(child_execution, "id", None)
+        task = await self._resolve_task_workspace(
+            task,
+            session_id=session_id,
+            execution_id=child_execution_id,
+        )
         await self._append_execution_event(
             child_execution_id,
             "delegation_started",
@@ -151,7 +222,12 @@ class DelegationEngine(ExecutionMemoryMixin):
         
         try:
             # Get the target agent
-            agent = get_agent(task.agent_role or task.agent, specialist=task.specialist, agent_id=task.agent_id)
+            agent = get_agent(
+                task.agent_role or task.agent,
+                specialist=task.specialist,
+                agent_id=task.agent_id,
+                session_id=session_id,
+            )
 
             # Inject P2P communication capability if bus is available
             if self._comm_bus and self._comm_bus.is_available:
@@ -296,6 +372,7 @@ class DelegationEngine(ExecutionMemoryMixin):
                             event_dispatcher=self._make_event_dispatcher(child_execution_id),
                             before_iteration=self._make_before_iteration(child_execution_id),
                             max_iterations=max(1, getattr(task, "max_iterations", 1) * 5),
+                            session_id=session_id,
                         )
 
             if not response_text:

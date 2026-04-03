@@ -24,24 +24,41 @@ class RouteNode(StatefulNode, BaseNode):
         self.config.outputs = {"decision", "complexity_score"}
     
     async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
-        """Route requests using IntelligentRouter with LLM-based intent analysis."""
+        """Route requests using DecentralizedRouter or IntelligentRouter."""
+        from mindflow_backend.infra.config import get_settings
         from mindflow_backend.infra.logging import get_logger
-        from mindflow_backend.orchestrator.routing.intelligent_router import get_intelligent_router
 
         _logger = get_logger(__name__)
-
-        # Use IntelligentRouter for LLM-based routing
-        router = get_intelligent_router()
+        settings = get_settings()
         folder_path = state.get("folder_path")
 
         _logger.info("route_node_starting", message=state["message"][:100], has_folder_path=bool(folder_path))
 
+        # Use DecentralizedRouter if enabled
+        use_decentralized = getattr(settings, "use_decentralized_router", False)
+
         try:
-            decision = await router.route_message_intelligently(
-                message=state["message"],
-                session=None,
-                folder_path=folder_path,
-            )
+            if use_decentralized:
+                from mindflow_backend.orchestrator.routing.decentralized_router import (
+                    get_decentralized_router,
+                )
+                router = get_decentralized_router()
+                _logger.info("route_node_using_decentralized_router")
+                decision = await router.route_message(
+                    message=state["message"],
+                    session=None,
+                    folder_path=folder_path,
+                )
+            else:
+                from mindflow_backend.orchestrator.routing.intelligent_router import (
+                    get_intelligent_router,
+                )
+                router = get_intelligent_router()
+                decision = await router.route_message_intelligently(
+                    message=state["message"],
+                    session=None,
+                    folder_path=folder_path,
+                )
 
             # Calculate complexity score based on strategy
             complexity_map = {

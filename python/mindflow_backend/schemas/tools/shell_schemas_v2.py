@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from mindflow_backend.schemas.tools.tool_config import ToolParameter, ToolSchema
 
@@ -44,14 +44,25 @@ class BashSecurityLevel(str, Enum):
 class ShellExecuteInput(BaseModel):
     """Input schema for ShellExecutorTool."""
 
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
     command: str = Field(..., description="Shell command to execute")
     timeout: int = Field(default=30, description="Timeout in seconds", ge=1, le=600)
-    working_dir: str | None = Field(None, description="Working directory")
-    environment: dict[str, str] = Field(default_factory=dict, description="Environment variables")
+    working_dir: str | None = Field(
+        None,
+        description="Working directory",
+        validation_alias=AliasChoices("working_dir", "cwd"),
+    )
+    environment: dict[str, str] = Field(
+        default_factory=dict,
+        description="Environment variables",
+        validation_alias=AliasChoices("environment", "env"),
+    )
     capture_output: bool = Field(default=True, description="Capture command output")
     shell: bool = Field(default=True, description="Use system shell")
     check_return_code: bool = Field(default=False, description="Check return code for success")
     run_in_background: bool = Field(default=False, description="Run command in background")
+    sandbox_mode: str | None = Field(default=None, description="Sandbox mode for security validation")
 
     @field_validator("command")
     @classmethod
@@ -82,6 +93,9 @@ class ShellExecuteOutput(BaseModel):
     semantic_type: CommandSemanticType | None = Field(None, description="Semantic type of command")
     security_level: BashSecurityLevel | None = Field(None, description="Security level")
     background_task_id: str | None = Field(None, description="Background task ID if run_in_background=True")
+
+
+ShellExecutorInput = ShellExecuteInput
 
 
 SHELL_EXECUTOR_SCHEMA_V2 = ToolSchema(

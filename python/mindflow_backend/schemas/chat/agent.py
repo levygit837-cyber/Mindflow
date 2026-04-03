@@ -6,6 +6,10 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from mindflow_backend.infra.sanitizer import sanitize_message
 from mindflow_backend.schemas.api.common import BaseResponse
 from mindflow_backend.schemas.core.common import LLMProvider
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    WorkspaceBinding,
+    WorkspacePolicy,
+)
 
 
 class AgentChatRequest(BaseModel):
@@ -25,6 +29,17 @@ class AgentChatRequest(BaseModel):
     folder_path: str | None = Field(
         default=None,
         description="Working directory for filesystem tools (root_dir for sandboxed operations)",
+    )
+    workspace_policy: WorkspacePolicy = Field(
+        default=WorkspacePolicy.AUTO,
+        validation_alias=AliasChoices("workspace_policy", "workspacePolicy"),
+        serialization_alias="workspace_policy",
+        description="Workspace isolation strategy for the request runtime.",
+    )
+    workspace_binding: WorkspaceBinding | None = Field(
+        default=None,
+        description="Resolved workspace binding attached by the runtime.",
+        exclude=True,
     )
     execution_id: str | None = Field(
         default=None,

@@ -150,6 +150,7 @@ async def _planner_node(state: PlanExecuteState) -> dict:
                 llm=llm.bind_tools(lc_tools),
                 messages=messages,
                 lc_tools=lc_tools,
+                session_id=session_id,
             )
         else:
             response = await llm.ainvoke(messages)
@@ -310,6 +311,7 @@ async def _executor_node(state: PlanExecuteState) -> dict:
                     llm=llm_with_tools,
                     messages=messages,
                     lc_tools=lc_tools,
+                    session_id=session_id,
                 )
             else:
                 response = await llm.ainvoke(messages)

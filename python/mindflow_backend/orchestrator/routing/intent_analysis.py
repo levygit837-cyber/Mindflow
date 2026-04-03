@@ -8,26 +8,21 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from mindflow_backend.agents.specialists.runtime_policy import (
-    list_agent_runtime_policies,
-)
+from mindflow_backend.agents.specialists.runtime_policy import list_agent_runtime_policies
 from mindflow_backend.schemas.orchestration.orchestrator import (
     AgentType,
     ExecutionStrategy,
 )
 
-# ---------------------------------------------------------------------------
-# Static capability descriptions for each agent_id (role or role:specialist).
-# These are used to build the dynamic routing prompt at request time.
-# ---------------------------------------------------------------------------
-
-_AGENT_CAPABILITIES: dict[str, tuple[str, str]] = {
-    policy.agent_id: (policy.summary, policy.use_when)
-    for policy in list_agent_runtime_policies()
-}
+def _get_agent_capabilities(session_id: str | None = None) -> dict[str, tuple[str, str]]:
+    """Build capability descriptions for every visible runtime policy."""
+    return {
+        policy.agent_id: (policy.summary, policy.use_when)
+        for policy in list_agent_runtime_policies(session_id=session_id)
+    }
 
 
-def _build_available_agents_section() -> str:
+def _build_available_agents_section(session_id: str | None = None) -> str:
     """Build dynamic agent roster section for the routing prompt.
 
     Reads from the global registry and generates a formatted description
@@ -38,7 +33,7 @@ def _build_available_agents_section() -> str:
         from mindflow_backend.agents._registry import get_registry
 
         registry = get_registry()
-        agents = registry.list_all()
+        agents = registry.list_all(session_id=session_id)
     except Exception:
         agents = []
 
@@ -60,10 +55,11 @@ def _build_available_agents_section() -> str:
 
     base_agents = [a for a in agents if a.specialist is None]
     specialist_agents = [a for a in agents if a.specialist is not None]
+    capabilities = _get_agent_capabilities(session_id=session_id)
 
     lines = ["### Base Agents (always available)"]
     for agent in base_agents:
-        caps = _AGENT_CAPABILITIES.get(
+        caps = capabilities.get(
             agent.agent_id, ("General purpose agent", "General tasks")
         )
         lines.append(
@@ -76,7 +72,7 @@ def _build_available_agents_section() -> str:
             "\n### Registered Specialists (set recommended_specialist + base agent)"
         )
         for agent in specialist_agents:
-            caps = _AGENT_CAPABILITIES.get(
+            caps = capabilities.get(
                 agent.agent_id, ("Domain specialist", "Domain-specific tasks")
             )
             base = agent.agent_role.value.upper()
@@ -89,7 +85,7 @@ def _build_available_agents_section() -> str:
     return "\n".join(lines)
 
 
-def _get_valid_agent_and_specialist_values() -> tuple[str, str]:
+def _get_valid_agent_and_specialist_values(session_id: str | None = None) -> tuple[str, str]:
     """Return pipe-separated valid values for recommended_agent and recommended_specialist.
 
     Used to make the JSON format hint in the routing prompt dynamic.
@@ -99,7 +95,7 @@ def _get_valid_agent_and_specialist_values() -> tuple[str, str]:
         from mindflow_backend.agents._registry import get_registry
 
         registry = get_registry()
-        agents = registry.list_all()
+        agents = registry.list_all(session_id=session_id)
     except Exception:
         agents = []
 
@@ -117,6 +113,19 @@ def _get_valid_agent_and_specialist_values() -> tuple[str, str]:
     )
 
     return "|".join(base_roles), "|".join(specialists) + "|null"
+
+
+def _get_valid_agent_id_values(session_id: str | None = None) -> str:
+    """Return pipe-separated valid agent identities for exact routing."""
+    agent_ids = sorted(
+        {
+            policy.agent_id
+            for policy in list_agent_runtime_policies(session_id=session_id)
+        }
+    )
+    if not agent_ids:
+        return "analyst|coder|researcher|orchestrator|null"
+    return "|".join(agent_ids) + "|null"
 
 
 class IntentAnalysis(BaseModel):
@@ -137,6 +146,10 @@ class IntentAnalysis(BaseModel):
     recommended_agent: AgentType = Field(
         description="Which agent should handle this"
     )
+    recommended_agent_id: str | None = Field(
+        default=None,
+        description="Exact agent identity when routing to a plugin or custom marketplace agent",
+    )
     recommended_specialist: str | None = Field(
         default=None, description="Optional specialist/profile identifier"
     )
@@ -151,6 +164,10 @@ class IntentAnalysis(BaseModel):
     )
     agent_sequence: list[AgentType] = Field(
         default_factory=list, description="Sequence of agents needed"
+    )
+    agent_sequence_ids: list[str] = Field(
+        default_factory=list,
+        description="Optional exact sequence of agent identities for marketplace or plugin agents",
     )
     execution_strategy: ExecutionStrategy = Field(
         default=ExecutionStrategy.DELEGATE,
@@ -167,6 +184,20 @@ class IntentAnalysis(BaseModel):
     @classmethod
     def normalize_agent_sequence(cls, v: list) -> list:
         """Normalize agent sequence names to lowercase."""
+        return [x.lower() if isinstance(x, str) else x for x in (v or [])]
+
+    @field_validator("recommended_agent_id", mode="before")
+    @classmethod
+    def nullify_agent_id(cls, v):
+        """Convert null-ish strings to Python None."""
+        if isinstance(v, str) and v.lower() in ("null", "none", ""):
+            return None
+        return v.lower() if isinstance(v, str) else v
+
+    @field_validator("agent_sequence_ids", mode="before")
+    @classmethod
+    def normalize_agent_sequence_ids(cls, v: list) -> list:
+        """Normalize explicit agent ids."""
         return [x.lower() if isinstance(x, str) else x for x in (v or [])]
 
     @field_validator("recommended_specialist", mode="before")

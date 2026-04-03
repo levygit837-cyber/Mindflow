@@ -12,4 +12,12 @@ from mindflow_backend.orchestrator.routing.intelligent_router import (
     route_message_intelligently as route_message,  # noqa: F401
 )
 
-__all__ = ["route_message", "route_message_intelligently", "IntelligentRouter"]
+__all__ = [
+    "route_message",
+    "route_message_intelligently",
+    "IntelligentRouter",
+    "DecentralizedRouter",
+    "route_message_decentralized",
+    "ProposalCollector",
+    "ProposalEvaluator",
+]

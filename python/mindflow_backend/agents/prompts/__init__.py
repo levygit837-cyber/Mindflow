@@ -16,9 +16,14 @@ from mindflow_backend.agents.prompts.layers import (
     BasePromptLayer,
     EnvironmentLayer,
     GitContextLayer,
+    MemdirLayer,
     MemoryFileLayer,
+    OutputStyleLayer,
     ToolDescriptionLayer,
 )
+
+# Output Styles system
+from mindflow_backend.agents.prompts.styles import OutputStyleManager
 
 # Composite prompts (pre-built combinations for backward compatibility)
 from mindflow_backend.agents.prompts.composite import (
@@ -66,6 +71,7 @@ __all__ = [
     "BasePromptLayer",
     "EnvironmentLayer",
     "GitContextLayer",
+    "MemdirLayer",
     "MemoryFileLayer",
     "ToolDescriptionLayer",
     # Core personalities

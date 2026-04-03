@@ -32,6 +32,7 @@ from mindflow_backend.schemas.orchestration.workflow import WorkflowRouteDecisio
 from .intent_analysis import (
     IntentAnalysis,
     _build_available_agents_section,
+    _get_valid_agent_id_values,
     _get_valid_agent_and_specialist_values,
 )
 
@@ -52,11 +53,15 @@ class IntelligentRouter:
         session_context: str = "",
         folder_path: str | None = None,
         has_folder_path: bool = False,
+        session_id: str | None = None,
     ) -> IntentAnalysis:
         """Use LLM to analyze user intent and decide execution strategy."""
 
-        available_agents_section = _build_available_agents_section()
-        valid_agents_str, valid_specialists_str = _get_valid_agent_and_specialist_values()
+        available_agents_section = _build_available_agents_section(session_id=session_id)
+        valid_agents_str, valid_specialists_str = _get_valid_agent_and_specialist_values(
+            session_id=session_id
+        )
+        valid_agent_ids_str = _get_valid_agent_id_values(session_id=session_id)
 
         analysis_prompt = f"""You are the MindFlow Orchestrator routing engine. Classify the user request into EXACTLY ONE execution strategy.
 
@@ -132,11 +137,13 @@ Specialist routing examples (based on the registered roster):
     "context_needed": "",
     "suggested_scope": [],
     "recommended_agent": "{valid_agents_str}",
+    "recommended_agent_id": "{valid_agent_ids_str}",
     "recommended_specialist": "{valid_specialists_str}",
     "formulated_objective": "precise objective for the specialist (empty if direct_response)",
     "confidence": 0.9,
     "is_multi_agent": false,
     "agent_sequence": [],
+    "agent_sequence_ids": [],
     "execution_strategy": "direct_response|delegate|chain|graph"
 }}
 
@@ -237,20 +244,35 @@ STRICT RULES:
             session = OrchestratorSession(user_intent=message)
 
         session_context = session.session_checkpoints[-1] if session.session_checkpoints else ""
+        session_id = str(session.session_id)
         if folder_path:
             intent = await self.analyze_intent_with_llm(
                 message,
                 session_context,
                 folder_path=folder_path,
                 has_folder_path=True,
+                session_id=session_id,
             )
         else:
-            intent = await self.analyze_intent_with_llm(message, session_context)
+            intent = await self.analyze_intent_with_llm(
+                message,
+                session_context,
+                session_id=session_id,
+            )
 
         specialist = None
+        agent_id_override = intent.recommended_agent_id
         with suppress(ValueError):
             if intent.recommended_specialist:
                 specialist = SpecialistType(intent.recommended_specialist)
+
+        if agent_id_override:
+            with suppress(KeyError, ValueError):
+                dynamic_policy = get_agent_runtime_policy(
+                    agent_id=agent_id_override,
+                    session_id=session_id,
+                )
+                specialist = dynamic_policy.specialist
 
         # --- AUTO-ACTIVATE TEAM_SESSION for complex multi-agent tasks ---
         # Check if we should automatically upgrade to team session
@@ -280,12 +302,17 @@ STRICT RULES:
             return WorkflowRouteDecision(
                 rationale="Orchestrator answering directly — no delegation needed.",
                 agent_role=AgentType.ORCHESTRATOR,
+                agent_id_override=agent_id_override,
                 specialist=specialist,
                 task=message,
                 thinking=ThinkingLevel.MEDIUM,
                 priority=Priority.NORMAL,
                 execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
-                tools=self._get_tools_for_agent(AgentType.ORCHESTRATOR),
+                tools=self._get_tools_for_agent(
+                    AgentType.ORCHESTRATOR,
+                    session_id=session_id,
+                    agent_id=agent_id_override,
+                ),
                 confidence=intent.confidence,
             )
 
@@ -300,10 +327,16 @@ STRICT RULES:
             return WorkflowRouteDecision(
                 rationale="Multi-step execution required; planner will resolve the concrete workflow.",
                 agent_role=target_role,
+                agent_id_override=agent_id_override,
                 specialist=specialist,
                 task=intent.formulated_objective or intent.user_intent or message,
                 thinking=ThinkingLevel.HIGH,
-                tools=self._get_tools_for_agent(target_role, specialist),
+                tools=self._get_tools_for_agent(
+                    target_role,
+                    specialist,
+                    session_id=session_id,
+                    agent_id=agent_id_override,
+                ),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.CHAIN,
                 confidence=intent.confidence,
@@ -319,10 +352,16 @@ STRICT RULES:
             return WorkflowRouteDecision(
                 rationale="Graph execution selected; planner will resolve the concrete graph runtime.",
                 agent_role=target_role,
+                agent_id_override=agent_id_override,
                 specialist=specialist,
                 task=intent.formulated_objective or intent.user_intent or message,
                 thinking=ThinkingLevel.HIGH,
-                tools=self._get_tools_for_agent(target_role, specialist),
+                tools=self._get_tools_for_agent(
+                    target_role,
+                    specialist,
+                    session_id=session_id,
+                    agent_id=agent_id_override,
+                ),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.GRAPH,
                 confidence=intent.confidence,
@@ -331,9 +370,13 @@ STRICT RULES:
         # --- TEAM_SESSION: create team of agents for collaborative missions ---
         if intent.execution_strategy == ExecutionStrategy.TEAM_SESSION:
             agent_ids = (
-                [a.value for a in intent.agent_sequence]
-                if intent.agent_sequence
-                else [intent.recommended_agent.value]
+                intent.agent_sequence_ids
+                if intent.agent_sequence_ids
+                else (
+                    [a.value for a in intent.agent_sequence]
+                    if intent.agent_sequence
+                    else [agent_id_override or intent.recommended_agent.value]
+                )
             )
             _logger.info(
                 "orchestrator_team_session",
@@ -346,10 +389,14 @@ STRICT RULES:
                     f"Agents: {', '.join(agent_ids)}"
                 ),
                 agent_role=AgentType.ORCHESTRATOR,
+                agent_id_override=agent_id_override,
                 specialist=specialist,
                 task=intent.formulated_objective or intent.user_intent or message,
                 thinking=ThinkingLevel.HIGH,
-                tools=self._get_tools_for_agent(AgentType.ORCHESTRATOR),
+                tools=self._get_tools_for_agent(
+                    AgentType.ORCHESTRATOR,
+                    session_id=session_id,
+                ),
                 priority=Priority.HIGH,
                 execution_strategy=ExecutionStrategy.TEAM_SESSION,
                 confidence=intent.confidence,
@@ -364,10 +411,31 @@ STRICT RULES:
                 f"Starting with {target_agent.value}. "
                 f"Sequence: {[a.value for a in intent.agent_sequence]}"
             )
-        else:
-            target_agent = intent.recommended_agent
+        elif intent.agent_sequence_ids:
+            agent_id_override = intent.agent_sequence_ids[0]
+            target_policy = get_agent_runtime_policy(
+                agent_id=agent_id_override,
+                session_id=session_id,
+            )
+            target_agent = target_policy.agent_role
+            specialist = target_policy.specialist
             rationale = (
-                f"Delegating to {target_agent.value} "
+                f"Multi-agent delegation: {len(intent.agent_sequence_ids)} agents. "
+                f"Starting with {agent_id_override}. "
+                f"Sequence: {intent.agent_sequence_ids}"
+            )
+        else:
+            if agent_id_override:
+                target_policy = get_agent_runtime_policy(
+                    agent_id=agent_id_override,
+                    session_id=session_id,
+                )
+                target_agent = target_policy.agent_role
+                specialist = target_policy.specialist
+            else:
+                target_agent = intent.recommended_agent
+            rationale = (
+                f"Delegating to {(agent_id_override or target_agent.value)} "
                 f"(confidence: {intent.confidence:.0%})"
             )
 
@@ -376,10 +444,16 @@ STRICT RULES:
         return WorkflowRouteDecision(
             rationale=rationale,
             agent_role=target_agent,
+            agent_id_override=agent_id_override,
             specialist=specialist,
             task=intent.formulated_objective or message,
             thinking=ThinkingLevel.HIGH,
-            tools=self._get_tools_for_agent(target_agent, specialist),
+            tools=self._get_tools_for_agent(
+                target_agent,
+                specialist,
+                session_id=session_id,
+                agent_id=agent_id_override,
+            ),
             priority=Priority.NORMAL,
             execution_strategy=ExecutionStrategy.DELEGATE,
             confidence=intent.confidence,
@@ -403,15 +477,24 @@ STRICT RULES:
             message=message,
             route=route,
             folder_path=folder_path,
+            session_id=str(session.session_id) if session else None,
         )
 
     def _get_tools_for_agent(
         self,
         agent_type: AgentType,
         specialist: SpecialistType | None = None,
+        *,
+        session_id: str | None = None,
+        agent_id: str | None = None,
     ) -> list[ToolScope]:
         """Get tool scopes from the canonical runtime policy."""
-        policy = get_agent_runtime_policy(agent_type, specialist=specialist)
+        policy = get_agent_runtime_policy(
+            agent_type,
+            specialist=specialist,
+            agent_id=agent_id,
+            session_id=session_id,
+        )
         return list(policy.tools)
 
 

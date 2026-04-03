@@ -29,6 +29,7 @@ class WorkflowRouteDecision(BaseModel):
     rationale: str = ""
     execution_strategy: ExecutionStrategy = ExecutionStrategy.DELEGATE
     agent_role: AgentType = AgentType.CODER
+    agent_id_override: str | None = None
     specialist: SpecialistType | None = None
     task: str = ""
     thinking: ThinkingLevel = ThinkingLevel.MEDIUM
@@ -39,6 +40,8 @@ class WorkflowRouteDecision(BaseModel):
 
     @property
     def agent_id(self) -> str:
+        if self.agent_id_override:
+            return self.agent_id_override
         if self.specialist is None:
             return self.agent_role.value
         return f"{self.agent_role.value}:{self.specialist.value}"

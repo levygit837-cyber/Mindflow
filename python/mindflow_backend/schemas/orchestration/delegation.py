@@ -14,9 +14,15 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from mindflow_backend.schemas.orchestration.orchestrator import AgentType, Priority, ToolScope
+from mindflow_backend.schemas.orchestration.orchestrator import (
+    AgentType,
+    Priority,
+    ToolScope,
+    WorkspaceBinding,
+    WorkspacePolicy,
+)
 from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 
 # ---------------------------------------------------------------------------
@@ -63,6 +69,8 @@ class DelegationTask(BaseModel):
     MUST go through this schema — no free-form task descriptions.
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     task_id: UUID = Field(default_factory=uuid4)
     agent: AgentType
     agent_role: AgentType | None = None
@@ -102,6 +110,8 @@ class DelegationTask(BaseModel):
         default=None,
         description="Working directory for filesystem tools (propagated from the calling orchestrator).",
     )
+    workspace_policy: WorkspacePolicy = WorkspacePolicy.AUTO
+    workspace_binding: WorkspaceBinding | None = None
     context_continuity: ContextContinuity = ContextContinuity.MAINTAIN
     max_iterations: int = Field(
         default=1,

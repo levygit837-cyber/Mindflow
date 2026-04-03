@@ -59,6 +59,7 @@ class AgentRegistry:
     def __init__(self) -> None:
         self._agents: dict[tuple[AgentType, SpecialistType | None], BaseAgent] = {}
         self._default_agents: dict[AgentType, BaseAgent] = {}
+        self._session_agents: dict[str, dict[str, BaseAgent]] = {}
 
     def register(self, agent: BaseAgent) -> None:
         """Register a personality.
@@ -68,12 +69,22 @@ class AgentRegistry:
         """
         key = (agent.agent_role, agent.specialist)
         self._agents[key] = agent
-        if agent.specialist is None:
+        if agent.specialist is None and agent.custom_agent_id is None:
             self._default_agents[agent.agent_role] = agent
         _logger.debug(
             "agent_registered",
             agent_role=str(agent.agent_role),
             specialist=getattr(agent.specialist, "value", None),
+            agent_id=agent.agent_id,
+        )
+
+    def register_session_agent(self, session_id: str, agent: BaseAgent) -> None:
+        """Register a session-scoped dynamic agent identity."""
+        session_key = str(session_id)
+        self._session_agents.setdefault(session_key, {})[agent.agent_id] = agent
+        _logger.debug(
+            "session_agent_registered",
+            session_id=session_key,
             agent_id=agent.agent_id,
         )
 
@@ -103,24 +114,54 @@ class AgentRegistry:
 
     def get_by_id(self, agent_id: str) -> BaseAgent:
         """Retrieve an agent by its stable composite identity."""
+        return self.get_by_id_for_session(agent_id)
+
+    def get_by_id_for_session(
+        self,
+        agent_id: str,
+        session_id: str | None = None,
+    ) -> BaseAgent:
+        """Retrieve an agent by identity, optionally scoped to a session."""
         normalized = agent_id.strip().lower()
+        if session_id:
+            session_agents = self._session_agents.get(str(session_id), {})
+            session_agent = session_agents.get(normalized)
+            if session_agent is not None:
+                return session_agent
         if ":" in normalized:
             role_value, specialist_value = normalized.split(":", 1)
-            return self.get(AgentType(role_value), SpecialistType(specialist_value))
-        return self.get(AgentType(normalized))
+            try:
+                return self.get(AgentType(role_value), SpecialistType(specialist_value))
+            except ValueError as exc:
+                raise KeyError(f"Unknown agent id: {agent_id!r}") from exc
+        try:
+            return self.get(AgentType(normalized))
+        except ValueError as exc:
+            raise KeyError(f"Unknown agent id: {agent_id!r}") from exc
 
-    def list_all(self) -> list[BaseAgent]:
+    def list_all(self, session_id: str | None = None) -> list[BaseAgent]:
         """Return all registered agents."""
-        return list(self._agents.values())
+        agents = list(self._agents.values())
+        if session_id:
+            agents.extend(self._session_agents.get(str(session_id), {}).values())
+        return agents
 
     @property
     def count(self) -> int:
-        return len(self._agents)
+        return len(self._agents) + sum(len(v) for v in self._session_agents.values())
+
+    def unregister_session_agents(self, session_id: str) -> None:
+        """Remove all dynamic agents for a session."""
+        session_key = str(session_id)
+        if session_key in self._session_agents:
+            del self._session_agents[session_key]
+            _logger.debug("session_agents_unregistered", session_id=session_key)
 
     def clear(self) -> None:
         """Remove all registrations (useful for testing)."""
         self._agents.clear()
         self._default_agents.clear()
+        self._session_agents.clear()
 
 
 # Module-level singleton
@@ -131,6 +172,7 @@ def get_agent(
     agent_type: AgentType | str | None = None,
     specialist: SpecialistType | str | None = None,
     agent_id: str | None = None,
+    session_id: str | None = None,
 ) -> BaseAgent:
     """Module-level shortcut to retrieve an agent from the global registry.
 
@@ -140,7 +182,7 @@ def get_agent(
     ``_SPECIALIST_AGENT_ID`` so callers don't have to know the base role.
     """
     if agent_id:
-        return _registry.get_by_id(agent_id)
+        return _registry.get_by_id_for_session(agent_id, session_id=session_id)
     if agent_type is None:
         raise TypeError("get_agent() requires 'agent_type' when 'agent_id' is not provided")
     # Resolve specialist short-names transparently so that

@@ -30,6 +30,7 @@ __all__ = [
     "OrchestratorState",
     "build_simple_orchestrator_flow",
     "route_message",
+    "route_message_decentralized",
     "context_validation",
     "planning_flow",
 ]
@@ -47,6 +48,11 @@ def __getattr__(name: str) -> object:
             route_message_intelligently as route_message,
         )
         return route_message
+    if name == "route_message_decentralized":
+        from mindflow_backend.orchestrator.routing.decentralized_router import (
+            route_message_decentralized,
+        )
+        return route_message_decentralized
     if name == "context_validation":
         from mindflow_backend.orchestrator import context_validation
         return context_validation

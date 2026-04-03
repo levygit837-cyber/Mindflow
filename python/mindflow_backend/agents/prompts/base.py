@@ -49,6 +49,7 @@ async def build_assembled_prompt(
     from mindflow_backend.agents.prompts.layers.base import BasePromptLayer
     from mindflow_backend.agents.prompts.layers.environment import EnvironmentLayer
     from mindflow_backend.agents.prompts.layers.git import GitContextLayer
+    from mindflow_backend.agents.prompts.layers.memdir_layer import MemdirLayer
     from mindflow_backend.agents.prompts.layers.memory import MemoryFileLayer
     from mindflow_backend.agents.prompts.layers.tools import ToolDescriptionLayer
 
@@ -66,6 +67,7 @@ async def build_assembled_prompt(
 
     if include_memory:
         assembler.add_layer(MemoryFileLayer())
+        assembler.add_layer(MemdirLayer())
 
     context = AssemblyContext(
         agent=agent,

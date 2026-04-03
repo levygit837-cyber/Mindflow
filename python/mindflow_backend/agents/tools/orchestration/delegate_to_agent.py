@@ -105,7 +105,7 @@ class DelegateToAgentTool(AsyncToolInterface):
                 DelegationTask,
                 OrchestratorSession,
             )
-            from mindflow_backend.schemas.orchestration.orchestrator import AgentType
+            from mindflow_backend.schemas.orchestration.orchestrator import AgentType, WorkspacePolicy
 
             # Parse agent_id into agent + specialist
             specialist = None
@@ -134,6 +134,7 @@ class DelegateToAgentTool(AsyncToolInterface):
                 expected_output=expected_output,
                 max_iterations=10,
                 root_dir=self.root_dir or None,
+                workspace_policy=WorkspacePolicy.WORKTREE if self.root_dir else WorkspacePolicy.AUTO,
             )
 
             # Inject folder_path into the task context hint if available

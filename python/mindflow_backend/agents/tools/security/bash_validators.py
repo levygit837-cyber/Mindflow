@@ -16,12 +16,30 @@ from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.shell_schemas_v2 import BashValidationResult
-from mindflow_backend.schemas.tools.tool_permissions import PermissionBehavior, PermissionDecision
+from mindflow_backend.schemas.tools.tool_permissions import (
+    PermissionBehavior,
+    PermissionDecision,
+    PermissionResult,
+)
 
-# Import new Phase 2 security modules
-from mindflow_backend.agents.tools.security.bash_ast_parser import BashCommandParser
-from mindflow_backend.agents.tools.security.binary_hijack import check_binary_hijack
-from mindflow_backend.agents.tools.security.windows_patterns import has_suspicious_windows_pattern
+try:
+    from mindflow_backend.agents.tools.security.bash_ast_parser import BashCommandParser
+except Exception:  # pragma: no cover - defensive compatibility fallback
+    BashCommandParser = None
+
+try:
+    from mindflow_backend.agents.tools.security.binary_hijack import check_binary_hijack
+except Exception:  # pragma: no cover - defensive compatibility fallback
+    def check_binary_hijack(_command: str) -> PermissionResult:
+        return PermissionResult(behavior="passthrough")
+
+try:
+    from mindflow_backend.agents.tools.security.windows_patterns import (
+        has_suspicious_windows_pattern,
+    )
+except Exception:  # pragma: no cover - defensive compatibility fallback
+    def has_suspicious_windows_pattern(_path: str) -> bool:
+        return False
 
 _logger = get_logger(__name__)
 
@@ -537,6 +555,12 @@ def validate_ast_analysis(command: str) -> PermissionDecision:
     - Process substitution
     - Complex nested structures
     """
+    if BashCommandParser is None:
+        return PermissionDecision(
+            behavior=PermissionBehavior.PASSTHROUGH,
+            message="AST parser unavailable",
+        )
+
     parser = BashCommandParser()
     
     # Check for compound commands

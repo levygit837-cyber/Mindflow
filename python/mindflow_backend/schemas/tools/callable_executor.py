@@ -1,35 +1,21 @@
-"""Streaming tool executor with concurrency control.
+"""[DEPRECATED] Streaming tool executor with concurrency control.
 
-This module provides the StreamingToolExecutor class that manages concurrent
-tool execution, mirroring Claude Code's StreamingToolExecutor pattern.
+.. deprecated::
+    This module is deprecated. Use ``mindflow_backend.runtime.execution.streaming_executor``
+    instead, which is the canonical StreamingToolExecutor with:
+    - Pre/Post tool hooks integration
+    - AbortController hierarchy
+    - TrackedTool state management
+    - Semaphore-based concurrency control
+    - HookEventBroadcaster integration
 
-Key features:
-- Concurrent-safe tools run in parallel
-- Non-concurrent tools run exclusively (wait for all others to finish)
-- Results emitted in order
-- Interrupt handling (cancel vs block)
-- Error propagation with sibling cancellation
-
-Design principles:
-- Concurrent-safe tools can run together (e.g., multiple file reads)
-- Non-concurrent tools must run alone (e.g., file writes, shell commands)
-- Errors in critical tools (like shell) cancel sibling tools
-- Interrupt behavior respects tool preferences (cancel vs block)
-
-Example:
-    executor = StreamingToolExecutor(tools, context)
-
-    # Execute tool calls as they arrive
-    result1 = await executor.execute_tool_call("file_read", {"file_path": "a.txt"})
-    result2 = await executor.execute_tool_call("file_read", {"file_path": "b.txt"})  # Runs in parallel
-
-    # Wait for all concurrent tools to finish
-    await executor.wait_all()
+This module will be removed in a future version.
 """
 
 from __future__ import annotations
 
 import asyncio
+import warnings
 from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
@@ -37,6 +23,18 @@ from mindflow_backend.schemas.tools.callable import CallableTool, ToolResult
 from mindflow_backend.schemas.tools.context import ToolContext
 
 _logger = get_logger(__name__)
+
+warnings.warn(
+    "schemas.tools.callable_executor is deprecated. "
+    "Use runtime.execution.streaming_executor instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+
+# Re-export for backward compatibility
+__all__ = ["StreamingToolExecutor", "ToolExecutionState"]
 
 
 class ToolExecutionState:

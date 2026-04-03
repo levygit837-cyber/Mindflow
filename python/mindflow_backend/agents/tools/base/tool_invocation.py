@@ -21,6 +21,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.runtime.execution.tool_orchestrator import ToolOrchestrator
 
 _logger = get_logger(__name__)
 
@@ -69,6 +70,7 @@ async def invoke_with_tools(
     event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
     before_iteration: Callable[[list[Any], int], Awaitable[None]] | None = None,
     max_iterations: int = 50,
+    session_id: str | None = None,
 ) -> str:
     """Execute ``llm`` in a ReAct loop with ``lc_tools``.
 
@@ -89,7 +91,6 @@ async def invoke_with_tools(
     """
     from langchain_core.messages import ToolMessage
 
-    tools_by_name: dict[str, Any] = {t.name: t for t in lc_tools}
     working_messages: list[Any] = list(messages)
     final_text: str = ""
     iteration = 0
@@ -125,77 +126,18 @@ async def invoke_with_tools(
         # own decision in the next turn.
         working_messages.append(_copy_response_with_sanitized_tool_calls(response, tool_calls))
 
-        # Execute each tool call and collect ToolMessage results
-        for tool_call in tool_calls:
-            tool_name: str = tool_call.get("name", "")
-            tool_args: dict = tool_call.get("args", {})
-            tool_call_id: str = tool_call.get("id", "")
+        orchestrator = ToolOrchestrator(
+            lc_tools=lc_tools,
+            event_dispatcher=event_dispatcher,
+            session_id=session_id,
+        )
+        orchestrated_results = await orchestrator.execute_tool_calls(tool_calls)
 
-            _logger.info(
-                "tool_invoked",
-                tool=tool_name,
-                args=str(tool_args)[:200],
-                iteration=iteration,
-            )
-
-            # Dispatch tool_call_start so the UI shows the tool as 'calling' immediately
-            if event_dispatcher is not None:
-                try:
-                    tool_meta = getattr(tools_by_name.get(tool_name), "metadata", None)
-                    await event_dispatcher(
-                        "tool_call_start",
-                        {
-                            "tool": tool_name,
-                            "args": tool_args,
-                            "tool_call_id": tool_call_id,
-                            "tool_meta": tool_meta,
-                        },
-                    )
-                except Exception:
-                    pass
-
-            if tool_name in tools_by_name:
-                try:
-                    tool = tools_by_name[tool_name]
-                    tool_meta = getattr(tool, "metadata", None)
-                    raw_result = await tool.ainvoke(tool_args)
-                    tool_result_str = (
-                        raw_result
-                        if isinstance(raw_result, str)
-                        else json.dumps(raw_result, ensure_ascii=False, default=str)
-                    )
-                except Exception as exc:
-                    tool_result_str = json.dumps(
-                        {"success": False, "error": f"Tool execution failed: {exc}"}
-                    )
-                    _logger.warning(f"tool_execution_error tool={tool_name} error={exc}")
-            else:
-                tool_meta = None
-                tool_result_str = json.dumps(
-                    {"success": False, "error": f"Unknown tool: {tool_name}"}
-                )
-                _logger.warning(f"tool_not_found name={tool_name}")
-
-            # Dispatch tool_call with result (tool_call_id included for matching in stream.py)
-            if event_dispatcher is not None:
-                try:
-                    await event_dispatcher(
-                        "tool_call",
-                        {
-                            "tool": tool_name,
-                            "args": tool_args,
-                            "result_preview": tool_result_str[:300],
-                            "tool_call_id": tool_call_id,
-                            "tool_meta": tool_meta,
-                        },
-                    )
-                except Exception:
-                    pass  # Non-critical — don't crash the loop
-
+        for result in orchestrated_results:
             working_messages.append(
                 ToolMessage(
-                    content=tool_result_str,
-                    tool_call_id=tool_call_id,
+                    content=result.serialized_result,
+                    tool_call_id=result.tool_call_id,
                 )
             )
 
@@ -236,6 +178,7 @@ async def stream_with_tools(
     event_dispatcher: Callable[[str, dict], Awaitable[None]] | None = None,
     before_iteration: Callable[[list[Any], int], Awaitable[None]] | None = None,
     max_iterations: int = 50,
+    session_id: str | None = None,
 ) -> str:
     """Like ``invoke_with_tools`` but streams the final LLM response.
 
@@ -258,7 +201,6 @@ async def stream_with_tools(
 
     from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 
-    tools_by_name: dict[str, Any] = {t.name: t for t in lc_tools}
     working_messages: list[Any] = list(messages)
     full_response: list[str] = []
 
@@ -284,63 +226,19 @@ async def stream_with_tools(
 
         working_messages.append(_copy_response_with_sanitized_tool_calls(response, tool_calls))
 
-        for tool_call in tool_calls:
-            tool_name: str = tool_call.get("name", "")
-            tool_args: dict = tool_call.get("args", {})
-            tool_call_id: str = tool_call.get("id", "")
+        orchestrator = ToolOrchestrator(
+            lc_tools=lc_tools,
+            event_dispatcher=event_dispatcher,
+            session_id=session_id,
+        )
+        orchestrated_results = await orchestrator.execute_tool_calls(tool_calls)
 
-            _logger.info("stream_tool_invoked", tool=tool_name, iteration=iteration)
-
-            # Notify UI that tool is starting (shows 'calling' state immediately)
-            if event_dispatcher is not None:
-                try:
-                    tool_meta = getattr(tools_by_name.get(tool_name), "metadata", None)
-                    await event_dispatcher(
-                        "tool_call_start",
-                        {
-                            "tool": tool_name,
-                            "args": tool_args,
-                            "tool_call_id": tool_call_id,
-                            "tool_meta": tool_meta,
-                        },
-                    )
-                except Exception:
-                    pass
-
-            if tool_name in tools_by_name:
-                try:
-                    tool = tools_by_name[tool_name]
-                    tool_meta = getattr(tool, "metadata", None)
-                    raw_result = await tool.ainvoke(tool_args)
-                    tool_result_str = (
-                        raw_result
-                        if isinstance(raw_result, str)
-                        else json.dumps(raw_result, ensure_ascii=False, default=str)
-                    )
-                except Exception as exc:
-                    tool_result_str = json.dumps({"success": False, "error": str(exc)})
-            else:
-                tool_meta = None
-                tool_result_str = json.dumps({"error": f"Unknown tool: {tool_name}"})
-
-            # Notify UI that tool completed (shows result)
-            if event_dispatcher is not None:
-                try:
-                    await event_dispatcher(
-                        "tool_call",
-                        {
-                            "tool": tool_name,
-                            "args": tool_args,
-                            "result_preview": tool_result_str[:300],
-                            "tool_call_id": tool_call_id,
-                            "tool_meta": tool_meta,
-                        },
-                    )
-                except Exception:
-                    pass
-
+        for result in orchestrated_results:
             working_messages.append(
-                ToolMessage(content=tool_result_str, tool_call_id=tool_call_id)
+                ToolMessage(
+                    content=result.serialized_result,
+                    tool_call_id=result.tool_call_id,
+                )
             )
 
         iteration += 1
