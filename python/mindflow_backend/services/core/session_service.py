@@ -16,10 +16,6 @@ from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractSer
 from mindflow_backend.services.interfaces.core_interfaces import SessionServiceInterface
 from mindflow_backend.storage import ChatMessage, ChatRepository, ChatSession
 
-# Hook handlers for session lifecycle
-from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
-from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
-
 
 class SessionService(BaseAbstractService, SessionServiceInterface):
     """Service for managing chat sessions, context, and memory.
@@ -36,6 +32,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         # Lazy load dependencies to avoid circular imports
         self._memory_service = None
         self._agent_service = None
+        self._runtime = None
     
     def _get_logger(self) -> Any:
         """Get logger instance for this service."""
@@ -54,6 +51,13 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             from mindflow_backend.services import get_agent_service
             self._agent_service = get_agent_service()
         return self._agent_service
+
+    def _get_runtime(self):
+        """Get canonical runtime instance for lifecycle hooks."""
+        if self._runtime is None:
+            from mindflow_backend.runtime.streaming.stream import AgentRuntime
+            self._runtime = AgentRuntime()
+        return self._runtime
     
     async def create_session(
         self,
@@ -114,13 +118,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     async def _fire_session_start_hook(self, session_id: str) -> None:
         """Fire SessionStart hook in background."""
         try:
-            async for result in SessionStartHandler.execute(session_id=session_id):
-                if result.add_context:
-                    self._logger.debug(
-                        "session_start_hook_context",
-                        session_id=session_id,
-                        context=result.add_context[:200],
-                    )
+            await self._get_runtime().start_session(session_id)
         except Exception as exc:
             self._logger.warning(
                 "session_start_hooks_error",
@@ -302,16 +300,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     async def _fire_session_end_hook(self, session_id: str) -> None:
         """Fire SessionEnd hook in background."""
         try:
-            async for result in SessionEndHandler.execute(
-                session_id=session_id,
-                reason="logout",
-            ):
-                if result.add_context:
-                    self._logger.debug(
-                        "session_end_hook_context",
-                        session_id=session_id,
-                        context=result.add_context[:200],
-                    )
+            await self._get_runtime().end_session(session_id, reason="logout")
         except Exception as exc:
             self._logger.warning(
                 "session_end_hooks_error",
@@ -510,3 +499,143 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             summary_parts.append(f"Active agents: {', '.join(memory_context['agent_types'])}")
         
         return " | ".join(summary_parts)
+    
+    # ─── Permission Mode Management ─────────────────────────────────────
+    
+    async def get_permission_mode(self, session_id: str) -> Any:
+        """Get current permission mode for session.
+        
+        Args:
+            session_id: Session identifier
+            
+        Returns:
+            Current PermissionMode for the session
+        """
+        from mindflow_backend.permissions.types import PermissionMode
+        
+        self.log_operation("get_permission_mode", session_id=session_id)
+        
+        try:
+            async with async_session_factory() as session:
+                chat_session = await self._chat_repo.get_session_async(session, session_id)
+                if not chat_session:
+                    self._logger.warning(f"Session {session_id} not found, returning DEFAULT mode")
+                    return PermissionMode.DEFAULT
+                
+                # Get mode from session metadata
+                metadata = chat_session.metadata or {}
+                mode_value = metadata.get("permission_mode", PermissionMode.DEFAULT.value)
+                
+                # Convert to PermissionMode enum
+                try:
+                    return PermissionMode(mode_value)
+                except ValueError:
+                    self._logger.warning(f"Invalid permission mode '{mode_value}', returning DEFAULT")
+                    return PermissionMode.DEFAULT
+                    
+        except Exception as exc:
+            self._logger.error(f"Error getting permission mode for session {session_id}: {str(exc)}")
+            return PermissionMode.DEFAULT
+    
+    async def set_permission_mode(
+        self,
+        session_id: str,
+        mode: Any,
+        pre_plan_mode: Any | None = None
+    ) -> None:
+        """Set permission mode for session with optional pre-plan snapshot.
+        
+        Args:
+            session_id: Session identifier
+            mode: New PermissionMode to set
+            pre_plan_mode: Optional snapshot of mode before entering Plan Mode
+        """
+        self.log_operation(
+            "set_permission_mode",
+            session_id=session_id,
+            mode=mode.value if hasattr(mode, "value") else str(mode),
+            pre_plan_mode=pre_plan_mode.value if pre_plan_mode and hasattr(pre_plan_mode, "value") else None
+        )
+        
+        try:
+            async with async_session_factory() as session:
+                chat_session = await self._chat_repo.get_session_async(session, session_id)
+                if not chat_session:
+                    raise ValueError(f"Session {session_id} not found")
+                
+                # Update metadata with new mode
+                metadata = chat_session.metadata or {}
+                metadata["permission_mode"] = mode.value if hasattr(mode, "value") else str(mode)
+                
+                # Save pre-plan mode snapshot if provided
+                if pre_plan_mode is not None:
+                    metadata["pre_plan_mode"] = pre_plan_mode.value if hasattr(pre_plan_mode, "value") else str(pre_plan_mode)
+                
+                chat_session.metadata = metadata
+                await session.commit()
+                
+                self._logger.info(
+                    f"Permission mode updated for session {session_id}: "
+                    f"mode={metadata['permission_mode']}, "
+                    f"pre_plan_mode={metadata.get('pre_plan_mode')}"
+                )
+                
+        except Exception as exc:
+            self._logger.error(f"Error setting permission mode for session {session_id}: {str(exc)}")
+            raise
+    
+    async def exit_plan_mode(
+        self,
+        session_id: str,
+        action: str
+    ) -> Any:
+        """Exit plan mode, restoring pre-plan mode or proceeding.
+        
+        Args:
+            session_id: Session identifier
+            action: "confirm" to execute plan, "reject" to restore previous mode
+            
+        Returns:
+            The PermissionMode to switch to after exiting Plan Mode
+        """
+        from mindflow_backend.permissions.types import PermissionMode
+        
+        self.log_operation("exit_plan_mode", session_id=session_id, action=action)
+        
+        try:
+            async with async_session_factory() as session:
+                chat_session = await self._chat_repo.get_session_async(session, session_id)
+                if not chat_session:
+                    raise ValueError(f"Session {session_id} not found")
+                
+                metadata = chat_session.metadata or {}
+                pre_plan_mode_value = metadata.get("pre_plan_mode", PermissionMode.DEFAULT.value)
+                
+                # Determine target mode based on action
+                if action == "confirm":
+                    # After confirming plan, switch to ACCEPT_EDITS for execution
+                    target_mode = PermissionMode.ACCEPT_EDITS
+                else:
+                    # After rejecting plan, restore previous mode
+                    try:
+                        target_mode = PermissionMode(pre_plan_mode_value)
+                    except ValueError:
+                        target_mode = PermissionMode.DEFAULT
+                
+                # Update metadata
+                metadata["permission_mode"] = target_mode.value
+                metadata.pop("pre_plan_mode", None)  # Clear pre-plan snapshot
+                
+                chat_session.metadata = metadata
+                await session.commit()
+                
+                self._logger.info(
+                    f"Exited Plan Mode for session {session_id}: "
+                    f"action={action}, target_mode={target_mode.value}"
+                )
+                
+                return target_mode
+                
+        except Exception as exc:
+            self._logger.error(f"Error exiting plan mode for session {session_id}: {str(exc)}")
+            return PermissionMode.DEFAULT

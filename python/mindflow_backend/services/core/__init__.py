@@ -81,6 +81,7 @@ def get_pinchtab_fleet_service():
 
 _shell_tab_service = None
 _session_runtime_state_service = None
+_worktree_service = None
 
 
 def get_shell_tab_service():
@@ -103,6 +104,18 @@ def get_session_runtime_state_service():
         _session_runtime_state_service = SessionRuntimeStateService()
     return _session_runtime_state_service
 
+
+def get_worktree_service():
+    """Factory function for the workspace isolation service."""
+    global _worktree_service
+    if _worktree_service is None:
+        from mindflow_backend.services.core.worktree_service import WorktreeService
+
+        _worktree_service = WorktreeService(
+            session_runtime_state_service=get_session_runtime_state_service(),
+        )
+    return _worktree_service
+
 # Public exports
 __all__ = [
     "get_agent_service",
@@ -115,4 +128,5 @@ __all__ = [
     "get_pinchtab_fleet_service",
     "get_shell_tab_service",
     "get_session_runtime_state_service",
+    "get_worktree_service",
 ]

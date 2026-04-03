@@ -337,6 +337,55 @@ class TodoPlanningService:
         await self._persist_session_state(session_id)
         return await self.get_list(session_id, task_id)
 
+    async def preview_retry_items(
+        self,
+        *,
+        session_id: str,
+        task_id: str,
+        retry_subtasks: bool = False,
+        retry_from_beginning: bool = False,
+    ) -> list[str]:
+        await self._ensure_session_loaded(session_id)
+        todo_list = self._get_required_list(session_id, task_id)
+        return self._select_retry_item_ids(
+            todo_list,
+            retry_subtasks=retry_subtasks,
+            retry_from_beginning=retry_from_beginning,
+        )
+
+    async def retry_items(
+        self,
+        *,
+        session_id: str,
+        task_id: str,
+        retry_subtasks: bool = False,
+        retry_from_beginning: bool = False,
+    ) -> TodoListReadResponse:
+        await self._ensure_session_loaded(session_id)
+        async with self._lock:
+            todo_list = self._get_required_list(session_id, task_id)
+            retry_item_ids = set(
+                self._select_retry_item_ids(
+                    todo_list,
+                    retry_subtasks=retry_subtasks,
+                    retry_from_beginning=retry_from_beginning,
+                )
+            )
+            now = self._now()
+            for item in todo_list.items:
+                if item.item_id not in retry_item_ids:
+                    continue
+                item.status = TodoItemStatus.PENDING
+                item.notes = None
+                item.completed_at = None
+                item.updated_at = now
+
+            todo_list.updated_at = now
+            todo_list.closed_at = None if todo_list.items else now
+
+        await self._persist_session_state(session_id)
+        return await self.get_list(session_id, task_id)
+
     def _extract_item_id(self, raw_item: dict[str, Any] | TodoItemContract) -> str:
         if isinstance(raw_item, TodoItemContract):
             return raw_item.item_id
@@ -387,6 +436,43 @@ class TodoPlanningService:
         if todo_list is None:
             raise ValueError(f"Todo list not found for session={session_id} task={task_id}")
         return todo_list
+
+    def _select_retry_item_ids(
+        self,
+        todo_list: TodoListContract,
+        *,
+        retry_subtasks: bool,
+        retry_from_beginning: bool,
+    ) -> list[str]:
+        if retry_from_beginning:
+            return [item.item_id for item in todo_list.items]
+
+        retry_ids = {
+            item.item_id
+            for item in todo_list.items
+            if item.status in {
+                TodoItemStatus.IN_PROGRESS,
+                TodoItemStatus.BLOCKED,
+                TodoItemStatus.FAILED,
+            }
+        }
+
+        if retry_subtasks and retry_ids:
+            expanded = True
+            while expanded:
+                expanded = False
+                for item in todo_list.items:
+                    if item.item_id in retry_ids:
+                        continue
+                    if any(dependency in retry_ids for dependency in item.dependencies):
+                        retry_ids.add(item.item_id)
+                        expanded = True
+
+        return [
+            item.item_id
+            for item in todo_list.items
+            if item.item_id in retry_ids
+        ]
 
     async def _ensure_session_loaded(self, session_id: str) -> None:
         if self._lists.get(session_id):

@@ -66,13 +66,16 @@ class ShellTabService:
         secure_mode: bool = False,
     ) -> ShellTabContract:
         await self._ensure_session_loaded(session_id)
+        default_workspace_root, default_cwd = await self._get_session_workspace_defaults(session_id)
+        effective_workspace_root = workspace_root or default_workspace_root
+        effective_cwd = cwd or default_cwd
         try:
-            if workspace_root or secure_mode:
-                resolved_workspace = str(resolve_workspace_root(workspace_root))
-                resolved_cwd = str(resolve_workspace_path(cwd or resolved_workspace, resolved_workspace))
+            if effective_workspace_root or secure_mode:
+                resolved_workspace = str(resolve_workspace_root(effective_workspace_root))
+                resolved_cwd = str(resolve_workspace_path(effective_cwd or resolved_workspace, resolved_workspace))
             else:
-                resolved_workspace = str(resolve_workspace_root(workspace_root)) if workspace_root else None
-                resolved_cwd = str(Path(cwd or Path.cwd()).resolve())
+                resolved_workspace = str(resolve_workspace_root(effective_workspace_root)) if effective_workspace_root else None
+                resolved_cwd = str(Path(effective_cwd or Path.cwd()).resolve())
         except WorkspaceSecurityError as exc:
             raise ValueError(f"cwd must remain inside the configured workspace: {exc}") from exc
 
@@ -256,6 +259,35 @@ class ShellTabService:
         if tab_id not in session_tabs:
             raise ValueError(f"Shell tab not found: {tab_id}")
         return session_tabs[tab_id]
+
+    async def _get_session_workspace_defaults(self, session_id: str) -> tuple[str | None, str | None]:
+        service = self._get_session_runtime_state_service()
+        if service is None:
+            return None, None
+
+        try:
+            snapshot = await service.load_session_state(session_id)
+        except Exception as exc:
+            _logger.warning("shell_workspace_state_load_failed", session_id=session_id, error=str(exc))
+            return None, None
+
+        if not isinstance(snapshot, dict):
+            return None, None
+
+        workspace_state = snapshot.get("workspace")
+        if not isinstance(workspace_state, dict):
+            return None, None
+
+        session_workspace = workspace_state.get("session")
+        if not isinstance(session_workspace, dict):
+            return None, None
+
+        workspace_root = session_workspace.get("workspace_root")
+        workspace_path = session_workspace.get("workspace_path")
+        return (
+            str(workspace_root) if isinstance(workspace_root, str) and workspace_root else None,
+            str(workspace_path) if isinstance(workspace_path, str) and workspace_path else None,
+        )
 
     async def _ensure_session_loaded(self, session_id: str) -> None:
         if self._tabs.get(session_id):

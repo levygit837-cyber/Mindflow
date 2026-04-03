@@ -92,9 +92,11 @@ from mindflow_backend.services.monitoring import (
 
 # Orchestration domain services
 from mindflow_backend.services.orchestration import (
+    get_execution_task_service,
     get_orchestration_service,
     get_planning_service,
     get_routing_service,
+    get_task_management_service,
     get_task_service,
     get_todo_planning_service,
 )
@@ -113,6 +115,7 @@ __all__ = [
     "get_task_service",
     "get_routing_service",
     "get_todo_planning_service",
+    "get_execution_task_service",
     "get_planning_service",
     
     # Context services
