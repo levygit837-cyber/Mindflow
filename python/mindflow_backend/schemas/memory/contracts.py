@@ -63,6 +63,7 @@ class MemorySourceType(StrEnum):
     SESSION_MESSAGE = "session_message"
     SESSION_BLOCK = "session_block"
     SESSION_EMBEDDING = "session_embedding"
+    SESSION_FACT = "session_fact"  # NEW: Facts extracted from sessions
     AGENT_EVENT = "agent_event"
     AGENT_WINDOW = "agent_window"
     TASK_MEMORY = "task_memory"
@@ -420,8 +421,17 @@ class MemoryRecallRequest(BaseModel):
     )
     include_messages: bool = Field(default=True, description="Whether message-level semantic hits are allowed")
     include_blocks: bool = Field(default=True, description="Whether categorical session block hits are allowed")
+    include_session_facts: bool = Field(
+        default=True,
+        description="Whether to include SessionFact hits in recall results"
+    )
     top_k_messages: int = Field(default=4, ge=0, description="Maximum message hits to return")
     top_k_blocks: int = Field(default=2, ge=0, description="Maximum session block hits to return")
+    top_k_facts: int = Field(
+        default=5,
+        ge=0,
+        description="Maximum SessionFact hits to return"
+    )
     cross_session_fallback: bool = Field(default=True, description="Whether adaptive recall may fallback cross-session")
     cross_session_min_hits: int = Field(default=2, ge=1, description="Minimum session hits before fallback is skipped")
     fallback_score_threshold: float = Field(

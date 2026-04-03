@@ -219,10 +219,12 @@ class MemoryFacade:
             async with _get_db_session_factory()() as db:
                 message_hits = await self._recall_message_hits(db, request)
                 block_hits = await self._recall_block_hits(db, request)
+                fact_hits = await self._recall_session_facts(db, request)
 
             candidate_hits = [
                 *[self._to_memory_hit(hit) for hit in message_hits],
                 *[self._to_memory_hit(hit) for hit in block_hits],
+                *[self._to_memory_hit(hit) for hit in fact_hits],
             ]
             all_hits, filtered_hits_count = self._filter_and_rerank_hits(
                 candidate_hits,
@@ -231,22 +233,37 @@ class MemoryFacade:
                     request.cross_session or request.scope == MemoryRecallScope.CROSS_SESSION
                 ),
             )
+
+            # Separate hits by type
             block_candidates = [
                 hit
                 for hit in all_hits
                 if str(hit.source_type) == MemorySourceType.SESSION_BLOCK.value
             ]
+            fact_candidates = [
+                hit
+                for hit in all_hits
+                if str(hit.source_type) == MemorySourceType.SESSION_FACT.value
+            ]
             message_candidates = [
                 hit
                 for hit in all_hits
-                if str(hit.source_type) != MemorySourceType.SESSION_BLOCK.value
+                if str(hit.source_type) not in (
+                    MemorySourceType.SESSION_BLOCK.value,
+                    MemorySourceType.SESSION_FACT.value,
+                )
             ]
+
+            # Select top hits per type
             selected_blocks = block_candidates[: request.top_k_blocks]
+            selected_facts = fact_candidates[: request.top_k_facts]
             selected_messages = message_candidates[: request.top_k_messages]
-            selected_hits = [*selected_blocks, *selected_messages]
+            selected_hits = [*selected_blocks, *selected_facts, *selected_messages]
+
             context = self._format_context(
                 selected_messages,
                 selected_blocks,
+                selected_facts,
             )
             best_score = max((hit.final_score for hit in selected_hits), default=0.0)
             grounding_recommended = (
@@ -268,8 +285,10 @@ class MemoryFacade:
                 metadata={
                     "message_hits": len(selected_messages),
                     "block_hits": len(selected_blocks),
+                    "fact_hits": len(selected_facts),
                     "include_messages": request.include_messages,
                     "include_blocks": request.include_blocks,
+                    "include_session_facts": request.include_session_facts,
                     "candidate_hits": len(candidate_hits),
                 },
             )
@@ -707,6 +726,121 @@ class MemoryFacade:
             ) >= request.min_score
         ]
 
+    async def _recall_session_facts(self, db: Any, request: MemoryRecallRequest):
+        """Retrieve SessionFacts via semantic search.
+
+        Args:
+            db: Database session
+            request: Memory recall request
+
+        Returns:
+            List of retrieval hits from SessionFacts
+        """
+        if not request.include_session_facts or request.top_k_facts <= 0:
+            return []
+
+        try:
+            from mindflow_backend.memory.storage.models import SessionEmbedding, SessionFact
+
+            # Build query for SessionFacts with embeddings
+            query = (
+                select(SessionFact, SessionEmbedding)
+                .join(
+                    SessionEmbedding,
+                    SessionFact.embedding_id == SessionEmbedding.id,
+                )
+                .where(SessionEmbedding.content_kind == "fact")
+            )
+
+            # Apply session filtering
+            if request.cross_session or request.scope == MemoryRecallScope.CROSS_SESSION:
+                if request.exclude_session_id:
+                    query = query.where(SessionFact.session_id != request.exclude_session_id)
+            else:
+                query = query.where(SessionFact.session_id == request.session_id)
+
+            # Apply importance threshold
+            query = query.where(SessionFact.importance >= request.min_score)
+
+            # Order by importance and limit
+            query = query.order_by(SessionFact.importance.desc()).limit(request.top_k_facts * 2)
+
+            result = await db.execute(query)
+            rows = result.all()
+
+            if not rows:
+                return []
+
+            # Generate embedding for query
+            query_embedding = await self._generate_embedding(request.query)
+
+            # Calculate semantic similarity and create hits
+            hits = []
+            for fact, embedding in rows:
+                if query_embedding and embedding.embedding:
+                    # Calculate cosine similarity
+                    similarity = self._cosine_similarity(query_embedding, embedding.embedding)
+                else:
+                    # Fallback to importance score
+                    similarity = fact.importance
+
+                if similarity >= request.min_score:
+                    hits.append({
+                        "content": fact.content,
+                        "score": similarity,
+                        "source_type": MemorySourceType.SESSION_FACT,
+                        "source_id": str(fact.id),
+                        "session_id": fact.session_id,
+                        "agent_id": fact.agent_id,
+                        "metadata": {
+                            "fact_type": fact.fact_type,
+                            "category": fact.category,
+                            "importance": fact.importance,
+                            "related_files": fact.related_files,
+                        },
+                    })
+
+            # Sort by score and limit
+            hits.sort(key=lambda h: h["score"], reverse=True)
+            return hits[:request.top_k_facts]
+
+        except Exception as exc:
+            _logger.warning(
+                "session_facts_recall_failed",
+                error=str(exc),
+            )
+            return []
+
+    def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
+        """Calculate cosine similarity between two vectors.
+
+        Args:
+            vec1: First vector
+            vec2: Second vector
+
+        Returns:
+            Cosine similarity score (0.0 to 1.0)
+        """
+        if not vec1 or not vec2 or len(vec1) != len(vec2):
+            return 0.0
+
+        try:
+            import math
+
+            dot_product = sum(a * b for a, b in zip(vec1, vec2))
+            magnitude1 = math.sqrt(sum(a * a for a in vec1))
+            magnitude2 = math.sqrt(sum(b * b for b in vec2))
+
+            if magnitude1 == 0 or magnitude2 == 0:
+                return 0.0
+
+            similarity = dot_product / (magnitude1 * magnitude2)
+            # Normalize to [0, 1] range
+            return (similarity + 1.0) / 2.0
+
+        except Exception:
+            return 0.0
+
     def _to_memory_hit(self, hit: Any) -> MemoryRecallHit:
         if isinstance(hit, MemoryRecallHit):
             return hit
@@ -734,25 +868,54 @@ class MemoryFacade:
         self,
         message_hits: list[MemoryRecallHit],
         block_hits: list[MemoryRecallHit],
+        fact_hits: list[MemoryRecallHit] | None = None,
     ) -> str:
-        if not message_hits and not block_hits:
+        if not message_hits and not block_hits and not fact_hits:
             return ""
 
         lines = ["Memory Context:"]
-        for hit in block_hits[:2]:
-            summary = (hit.summary_md or hit.content or "").strip()
-            title = hit.title or "Session block"
-            category = hit.category or "general"
-            if summary:
-                lines.append(f"- [session_block:{category}] {title}: {summary}")
-        assistant_hits = [hit for hit in message_hits if hit.answer_bearing]
-        framing_hits = [hit for hit in message_hits if not hit.answer_bearing]
-        for hit in assistant_hits[:4]:
-            if hit.content.strip():
-                lines.append(f"- [session_message:answer] {hit.content.strip()}")
-        for hit in framing_hits[:2]:
-            if hit.content.strip():
-                lines.append(f"- [session_message:query] {hit.content.strip()}")
+
+        # Format SessionFacts first (high-level consolidated information)
+        if fact_hits:
+            lines.append("\n## Context from Previous Sessions")
+            for hit in fact_hits[:5]:
+                # Handle both dict and object types
+                if isinstance(hit, dict):
+                    content = hit.get("content", "").strip()
+                    fact_type = hit.get("fact_type", "info")
+                    category = hit.get("category", "general")
+                else:
+                    content = hit.content.strip()
+                    metadata = getattr(hit, "metadata", {}) or {}
+                    fact_type = metadata.get("fact_type", "info")
+                    category = hit.category or metadata.get("category", "general")
+
+                if content:
+                    # Format: [fact_type:category] content
+                    lines.append(f"- [{fact_type}:{category}] {content}")
+
+        # Format session blocks
+        if block_hits:
+            for hit in block_hits[:2]:
+                summary = (hit.summary_md or hit.content or "").strip()
+                title = hit.title or "Session block"
+                category = hit.category or "general"
+                if summary:
+                    lines.append(f"- [session_block:{category}] {title}: {summary}")
+
+        # Format messages
+        if message_hits:
+            assistant_hits = [hit for hit in message_hits if hit.answer_bearing]
+            framing_hits = [hit for hit in message_hits if not hit.answer_bearing]
+
+            for hit in assistant_hits[:4]:
+                if hit.content.strip():
+                    lines.append(f"- [session_message:answer] {hit.content.strip()}")
+
+            for hit in framing_hits[:2]:
+                if hit.content.strip():
+                    lines.append(f"- [session_message:query] {hit.content.strip()}")
+
         return "\n".join(lines)
 
     def _to_session_block_schema(self, row: SessionBlock) -> SessionBlockSchema:

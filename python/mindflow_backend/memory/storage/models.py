@@ -375,3 +375,47 @@ class HierarchicalAnnotation(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ============================================================================
+# Session Facts (Phase 2 - Memory Session)
+# ============================================================================
+
+
+class SessionFact(Base):
+    """Consolidated fact extracted from a session by LLM analysis.
+
+    Unlike AgentMemoryFact (extractive, regex-based, window-scoped),
+    SessionFact is a semantically rich, LLM-generated consolidation
+    of an entire session's key outcomes.
+
+    Used for cross-session recall - when a new session starts, relevant
+    facts from previous sessions are retrieved and injected as context.
+    """
+    __tablename__ = "session_facts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    agent_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # Fact classification
+    fact_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # fact_type: "action" | "decision" | "discovery" | "error" | "state"
+
+    # Content and categorization
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    importance: Mapped[float] = mapped_column(Float, default=0.5, index=True)
+    related_files: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+    # Embedding for semantic retrieval
+    embedding_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("session_embeddings.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # Optional link to source window (if extracted from window review)
+    source_window_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("agent_memory_windows.id", ondelete="SET NULL"), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
