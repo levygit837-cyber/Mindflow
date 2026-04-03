@@ -123,16 +123,31 @@ class _FakeExecutionMemoryService:
 async def test_create_execution_returns_root_status(monkeypatch) -> None:
     from mindflow_backend.runtime.stream import AgentRuntime
     from mindflow_backend.schemas.agent import AgentChatRequest
+    from mindflow_backend.schemas.orchestration.orchestrator import WorkspacePolicy
+    from mindflow_backend.services.core.worktree_service import WorktreeService
 
     runtime = AgentRuntime()
     runtime._execution_memory = _FakeExecutionMemoryService()
+    runtime._worktree_service = WorktreeService(
+        session_runtime_state_service=SimpleNamespace(
+            save_session_state=lambda *args, **kwargs: None,
+            load_session_state=lambda *args, **kwargs: None,
+        )
+    )
 
     monkeypatch.setattr(
         "mindflow_backend.runtime.streaming.stream.get_settings",
         lambda: SimpleNamespace(default_provider="openai", default_model="gpt-test"),
     )
 
-    payload = AgentChatRequest(message="durable orchestration", orchestrate=True, provider="openai", model="gpt-test")
+    payload = AgentChatRequest(
+        message="durable orchestration",
+        orchestrate=True,
+        provider="openai",
+        model="gpt-test",
+        folder_path="/tmp",
+        workspace_policy=WorkspacePolicy.SHARED,
+    )
     status = await runtime.create_execution(payload, session_id="sess-durable")
 
     assert status["execution_id"] == "exec-root"
@@ -143,6 +158,8 @@ async def test_create_execution_returns_root_status(monkeypatch) -> None:
     assert runtime._execution_memory.started[0]["stage"] == "routing"
     assert runtime._execution_memory.session_runtime_state["sess-durable"]["execution_id"] == "exec-root"
     assert runtime._execution_memory.session_runtime_state["sess-durable"]["state_json"]["agent_runtime"]["root_execution_id"] == "exec-root"
+    assert runtime._execution_memory.started[0]["metadata"]["workspace"]["workspace_kind"] == "shared"
+    assert runtime._execution_memory.started[0]["metadata"]["workspace"]["workspace_root"] == "/tmp"
 
 
 @pytest.mark.asyncio

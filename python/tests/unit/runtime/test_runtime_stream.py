@@ -1,11 +1,26 @@
 import asyncio
 import json
+import sys
+import types
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+if "redis" not in sys.modules:
+    redis_module = types.ModuleType("redis")
+    redis_asyncio_module = types.ModuleType("redis.asyncio")
+    redis_module.asyncio = redis_asyncio_module
+    sys.modules["redis"] = redis_module
+    sys.modules["redis.asyncio"] = redis_asyncio_module
+
 import mindflow_backend.runtime.streaming.stream as runtime_stream_module
-from mindflow_backend.runtime.stream import AgentRuntime
+from mindflow_backend.hooks.event_broadcaster import (
+    HookEventBroadcaster,
+    HookExecutionEvent,
+    HookExecutionState,
+)
+from mindflow_backend.runtime.streaming.stream import AgentRuntime
 from mindflow_backend.schemas.agent import AgentChatRequest
 
 
@@ -43,10 +58,38 @@ class _DummyModelWithThinkingList:
         yield _ChunkWithThinkingList()
 
 
+class _FakeExecutionMemory:
+    def __init__(self) -> None:
+        self.events: list[dict] = []
+        self.executions: dict[str, dict] = {}
+
+    async def mark_status(self, execution_id: str, status: str, **kwargs):
+        record = self.executions.setdefault(
+            execution_id,
+            {"id": execution_id, "status": status, "current_stage": kwargs.get("stage")},
+        )
+        record["status"] = status
+        record.update(kwargs)
+        return SimpleNamespace(**record)
+
+    async def append_event(self, execution_id: str, event_type: str, payload: dict | None = None, **kwargs):
+        self.events.append(
+            {
+                "execution_id": execution_id,
+                "event_type": event_type,
+                "payload": payload or {},
+                **kwargs,
+            },
+        )
+
+    async def get_execution(self, execution_id: str):
+        record = self.executions.get(execution_id)
+        return SimpleNamespace(**record) if record else None
+
+
 
 @pytest.mark.asyncio
 async def test_stream_contract_has_ordered_seq_and_run_linkage(monkeypatch) -> None:
-    from unittest.mock import MagicMock
     monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
     monkeypatch.setattr(
         "mindflow_backend.runtime.streaming.stream.get_model_for_provider",
@@ -104,8 +147,6 @@ async def test_stream_contract_emits_tool_events_for_search(monkeypatch) -> None
 
 @pytest.mark.asyncio
 async def test_stream_contract_extracts_thought_and_response_from_list_content(monkeypatch) -> None:
-    from unittest.mock import MagicMock
-
     monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
     monkeypatch.setattr(
         "mindflow_backend.runtime.streaming.stream.get_model_for_provider",
@@ -125,8 +166,6 @@ async def test_stream_contract_extracts_thought_and_response_from_list_content(m
 
 @pytest.mark.asyncio
 async def test_direct_analyst_with_folder_path_uses_structured_flow(monkeypatch) -> None:
-    from unittest.mock import AsyncMock, MagicMock
-
     monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
 
     runtime = AgentRuntime()
@@ -175,8 +214,6 @@ async def test_direct_analyst_with_folder_path_uses_structured_flow(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_direct_agent_uses_tool_capable_fallback_model_when_requested_model_cannot_bind_tools(monkeypatch) -> None:
-    from unittest.mock import AsyncMock, MagicMock
-
     monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
     monkeypatch.setattr(runtime_stream_module, "get_settings", lambda: SimpleNamespace(default_provider="ollama", default_model="orch:latest"))
     monkeypatch.setattr(runtime_stream_module, "_load_history_messages", AsyncMock(return_value=[]))
@@ -238,6 +275,120 @@ async def test_direct_agent_uses_tool_capable_fallback_model_when_requested_mode
     events = [event async for event in runtime.stream_chat(payload, session_id="session-5", run_id="run-5")]
 
     assert captured == {"provider": "ollama", "model": "qwen3:8b"}
+
+
+@pytest.mark.asyncio
+async def test_stream_chat_calls_runtime_user_prompt_hook_once(monkeypatch) -> None:
+    monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
+    monkeypatch.setattr(
+        "mindflow_backend.runtime.streaming.stream.get_model_for_provider",
+        lambda _provider, _model: _DummyModel(),
+    )
+
+    runtime = AgentRuntime()
+    runtime._save_message_bg = AsyncMock()
+    runtime.handle_user_prompt = AsyncMock()
+
+    payload = AgentChatRequest(message="hook me", provider="openai", model="stub")
+    _ = [event async for event in runtime.stream_chat(payload, session_id="session-hook", run_id="run-hook")]
+
+    runtime.handle_user_prompt.assert_awaited_once_with(
+        session_id="session-hook",
+        prompt="hook me",
+    )
+
+
+@pytest.mark.asyncio
+async def test_stream_chat_bridges_hook_events_into_execution_events(monkeypatch) -> None:
+    broadcaster = HookEventBroadcaster.get_instance()
+    broadcaster._handlers.clear()
+    broadcaster._pending_events.clear()
+
+    monkeypatch.setattr("mindflow_backend.runtime.streaming.stream.db_session", MagicMock())
+
+    runtime = AgentRuntime()
+    fake_execution_memory = _FakeExecutionMemory()
+    fake_execution_memory.executions["exec-hook"] = {
+        "id": "exec-hook",
+        "status": "running",
+        "current_stage": "booting",
+    }
+    runtime._execution_memory = fake_execution_memory
+    runtime._save_message_bg = AsyncMock()
+    runtime._sync_session_runtime_state = AsyncMock()
+    runtime._start_execution = AsyncMock(
+        return_value=SimpleNamespace(
+            id="exec-hook",
+            root_execution_id="exec-hook",
+            parent_execution_id=None,
+            status="running",
+            current_stage="booting",
+        ),
+    )
+
+    async def _fake_handle_user_prompt(*, session_id: str, prompt: str, **kwargs) -> None:
+        del prompt, kwargs
+        await broadcaster.emit(
+            HookExecutionEvent(
+                state=HookExecutionState.STARTED,
+                hook_id="hook-1",
+                hook_name="prompt-hook",
+                hook_event="UserPromptSubmit",
+                session_id=session_id,
+            ),
+        )
+        await broadcaster.emit(
+            HookExecutionEvent(
+                state=HookExecutionState.COMPLETED,
+                hook_id="hook-1",
+                hook_name="prompt-hook",
+                hook_event="UserPromptSubmit",
+                session_id=session_id,
+                outcome="success",
+            ),
+        )
+
+    async def _fake_legacy(*args, **kwargs):
+        yield type(
+            "Evt",
+            (),
+            {
+                "id": "evt-response",
+                "seq": 1,
+                "type": "response",
+                "mode": "messages",
+                "data": "fallback-ok",
+                "meta": None,
+            },
+        )()
+        yield type(
+            "Evt",
+            (),
+            {
+                "id": "evt-done",
+                "seq": 2,
+                "type": "done",
+                "mode": "messages",
+                "data": "",
+                "meta": None,
+            },
+        )()
+
+    runtime.handle_user_prompt = _fake_handle_user_prompt
+    runtime._stream_chat_legacy = _fake_legacy
+
+    payload = AgentChatRequest(message="bridge hooks", provider="openai", model="stub")
+    events = [event async for event in runtime.stream_chat(payload, session_id="session-hook-events", run_id="run-hook-events")]
+
+    assert events[-1].type == "done"
+    hook_events = [
+        event
+        for event in fake_execution_memory.events
+        if event["event_type"] == "hook_execution"
+    ]
+    assert len(hook_events) == 2
+    assert hook_events[0]["payload"]["hook_name"] == "prompt-hook"
+    assert hook_events[1]["payload"]["hook_state"] == "completed"
     assert any(evt.type == "response" and "fallback-ok" in evt.data for evt in events)
     assert events[-1].type == "done"
 

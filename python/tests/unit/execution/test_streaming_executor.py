@@ -1,8 +1,22 @@
 """Testes unitários para StreamingToolExecutor."""
 
 import asyncio
-import pytest
+import sys
+import types
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from mindflow_backend.hooks.result import HookResult
+from mindflow_backend.hooks.types import HookEvent, HookPermissionBehavior
+
+if "redis" not in sys.modules:
+    redis_module = types.ModuleType("redis")
+    redis_asyncio_module = types.ModuleType("redis.asyncio")
+    redis_module.asyncio = redis_asyncio_module
+    sys.modules["redis"] = redis_module
+    sys.modules["redis.asyncio"] = redis_asyncio_module
 
 from mindflow_backend.runtime.execution.streaming_executor import (
     StreamingToolExecutor,
@@ -17,6 +31,11 @@ from mindflow_backend.schemas.tools.streaming_types import (
     StreamingToolResult,
 )
 from mindflow_backend.schemas.tools.result import ToolResult
+
+
+async def _empty_async_gen():
+    if False:
+        yield None
 
 
 @pytest.fixture
@@ -208,7 +227,8 @@ class TestStreamingToolExecutor:
         assert tool.tool_name == "test_tool"
         assert len(executor.tools) == 1
 
-    def test_add_concurrent_safe_tool_starts_immediately(
+    @pytest.mark.asyncio
+    async def test_add_concurrent_safe_tool_starts_immediately(
         self, tool_definitions, mock_can_use_tool, tool_context
     ):
         """Testa que ferramenta concurrent-safe inicia imediatamente."""
@@ -229,6 +249,10 @@ class TestStreamingToolExecutor:
         assert tool.is_concurrency_safe
         # Verifica que task foi criado
         assert "tool-1" in executor._running_tasks
+        pending_tasks = list(executor._running_tasks.values())
+        executor.discard()
+        if pending_tasks:
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
 
     @pytest.mark.asyncio
     async def test_execute_tool_success(
@@ -312,6 +336,162 @@ class TestStreamingToolExecutor:
 
         assert results[-1].status == ToolStatus.ERROR
         assert "Permission denied" in tool.error
+
+    @pytest.mark.asyncio
+    async def test_permission_request_hook_can_block_before_permission_check(
+        self,
+        tool_context,
+        monkeypatch,
+    ):
+        """PermissionRequest hooks devem bloquear antes do check real de permissão."""
+        called = False
+
+        async def can_use(tool_name: str, tool_input: dict) -> tuple[bool, str | None]:
+            nonlocal called
+            called = True
+            return True, None
+
+        async def tool_fn(tool_input: dict, context: Any) -> dict:
+            return {"ok": True}
+
+        async def permission_request_hook(*args, **kwargs):
+            yield HookResult(
+                event=HookEvent.PERMISSION_REQUEST,
+                command="permission-hook",
+                status="blocked",
+                behavior=HookPermissionBehavior.DENY,
+                reason="blocked by permission hook",
+            )
+
+        monkeypatch.setattr(
+            "mindflow_backend.runtime.execution.streaming_executor.PermissionRequestHandler.execute",
+            permission_request_hook,
+        )
+
+        executor = StreamingToolExecutor(
+            tool_definitions={
+                "test_tool": ToolDefinition(
+                    name="test_tool",
+                    callable=tool_fn,
+                    is_concurrency_safe=True,
+                ),
+            },
+            can_use_tool=can_use,
+            tool_use_context=tool_context,
+        )
+
+        tool = executor.add_tool(
+            tool_use_id="tool-1",
+            tool_name="test_tool",
+            tool_input={},
+        )
+
+        await executor.wait_all()
+
+        assert called is False
+        assert tool.status == ToolStatus.ERROR
+        assert "Permission blocked by hook" in (tool.error or "")
+
+    @pytest.mark.asyncio
+    async def test_pre_tool_hooks_use_processor_for_input_and_context(
+        self,
+        tool_context,
+        mock_can_use_tool,
+        monkeypatch,
+    ):
+        """PreToolUse deve usar HookResultProcessor para mutação de input e contexto."""
+
+        async def tool_fn(tool_input: dict, context: Any) -> dict:
+            return {"received": tool_input["path"]}
+
+        async def pre_tool_hook(*args, **kwargs):
+            yield HookResult(
+                event=HookEvent.PRE_TOOL_USE,
+                command="pre-hook",
+                status="success",
+                updated_input={"path": "/tmp/updated.txt"},
+                add_context="hook context",
+            )
+
+        monkeypatch.setattr(
+            "mindflow_backend.runtime.execution.streaming_executor.PermissionRequestHandler.execute",
+            lambda *args, **kwargs: _empty_async_gen(),
+        )
+        executor = StreamingToolExecutor(
+            tool_definitions={
+                "test_tool": ToolDefinition(
+                    name="test_tool",
+                    callable=tool_fn,
+                    is_concurrency_safe=True,
+                ),
+            },
+            can_use_tool=mock_can_use_tool,
+            tool_use_context=tool_context,
+        )
+        monkeypatch.setattr(executor._hook_manager, "execute_pre_tool", pre_tool_hook)
+
+        tool = executor.add_tool(
+            tool_use_id="tool-1",
+            tool_name="test_tool",
+            tool_input={"path": "/tmp/original.txt"},
+        )
+
+        await executor.wait_all()
+
+        assert tool.status == ToolStatus.COMPLETED
+        assert tool.result == {"received": "/tmp/updated.txt"}
+        assert executor._tool_use_context.metadata["hook_context"] == "hook context"
+
+    @pytest.mark.asyncio
+    async def test_post_tool_hooks_update_tool_result_data(
+        self,
+        tool_context,
+        mock_can_use_tool,
+        monkeypatch,
+    ):
+        """PostToolUse deve aplicar updated_mcp_tool_output sem acessar atributos inexistentes."""
+
+        async def tool_fn(tool_input: dict, context: Any) -> ToolResult:
+            return ToolResult(data={"formatted": False})
+
+        async def post_tool_hook(*args, **kwargs):
+            yield HookResult(
+                event=HookEvent.POST_TOOL_USE,
+                command="post-hook",
+                status="success",
+                updated_mcp_tool_output={"formatted": True},
+                add_context="post hook context",
+            )
+
+        monkeypatch.setattr(
+            "mindflow_backend.runtime.execution.streaming_executor.PermissionRequestHandler.execute",
+            lambda *args, **kwargs: _empty_async_gen(),
+        )
+        executor = StreamingToolExecutor(
+            tool_definitions={
+                "test_tool": ToolDefinition(
+                    name="test_tool",
+                    callable=tool_fn,
+                    is_concurrency_safe=True,
+                ),
+            },
+            can_use_tool=mock_can_use_tool,
+            tool_use_context=tool_context,
+        )
+        monkeypatch.setattr(executor._hook_manager, "execute_post_tool", post_tool_hook)
+
+        tool = executor.add_tool(
+            tool_use_id="tool-1",
+            tool_name="test_tool",
+            tool_input={},
+        )
+
+        await executor.wait_all()
+
+        assert tool.status == ToolStatus.COMPLETED
+        assert isinstance(tool.result, ToolResult)
+        assert tool.result.data == {"formatted": True}
+        assert "post hook context" in executor._tool_use_context.metadata["hook_context"]
 
     @pytest.mark.asyncio
     async def test_discard(self, tool_definitions, mock_can_use_tool, tool_context):

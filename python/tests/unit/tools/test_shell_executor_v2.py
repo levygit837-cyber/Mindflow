@@ -114,6 +114,7 @@ class TestShellExecutorToolV2:
 
         assert result["success"] is True
         assert result["background"] is True
+        assert "background_task_id" in result
         assert "process_id" in result
         assert "pid" in result
 
@@ -128,7 +129,7 @@ class TestShellExecutorToolV2:
             run_in_background=True
         )
 
-        process_id = start_result["process_id"]
+        process_id = start_result["background_task_id"]
 
         # Check status while running
         status = await tool.get_background_status(process_id)
@@ -146,7 +147,7 @@ class TestShellExecutorToolV2:
             run_in_background=True
         )
 
-        process_id = start_result["process_id"]
+        process_id = start_result["background_task_id"]
 
         # Kill process
         kill_result = await tool.kill_background_process(process_id)

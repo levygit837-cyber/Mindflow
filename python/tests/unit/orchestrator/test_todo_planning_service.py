@@ -187,3 +187,49 @@ async def test_todo_planning_service_persists_item_updates(monkeypatch: pytest.M
         fake_runtime_state.saved["update-session"]["todo_planning"]["tasks"]["update-task"]["todo_list"]["items"][0]["status"]
         == "completed"
     )
+
+
+@pytest.mark.asyncio
+async def test_todo_planning_service_retry_reopens_failed_items() -> None:
+    from mindflow_backend.services.orchestration.todo_planning_service import TodoPlanningService
+
+    service = TodoPlanningService()
+    await service.replace_list(
+        session_id="retry-session",
+        task_id="retry-task",
+        goal="Retry failed work",
+        source="planner",
+        items=[
+            {
+                "item_id": "done",
+                "title": "Completed item",
+                "status": "completed",
+                "complexity_score": 0.2,
+            },
+            {
+                "item_id": "failed",
+                "title": "Failed item",
+                "status": "failed",
+                "complexity_score": 0.8,
+            },
+            {
+                "item_id": "downstream",
+                "title": "Downstream item",
+                "status": "completed",
+                "dependencies": ["failed"],
+                "complexity_score": 0.5,
+            },
+        ],
+    )
+
+    retried = await service.retry_items(
+        session_id="retry-session",
+        task_id="retry-task",
+        retry_subtasks=True,
+        retry_from_beginning=False,
+    )
+    statuses = {item.item_id: item.status for item in retried.todo_list.items}
+
+    assert statuses["done"] == "completed"
+    assert statuses["failed"] == "pending"
+    assert statuses["downstream"] == "pending"

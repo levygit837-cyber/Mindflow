@@ -28,7 +28,7 @@ class TestHookEvent:
         """All expected hook events are defined."""
         assert HookEvent.PRE_TOOL_USE == "PreToolUse"
         assert HookEvent.POST_TOOL_USE == "PostToolUse"
-        assert HookEvent.POST_TOOL_FAILURE == "PostToolUseFailure"
+        assert HookEvent.POST_TOOL_USE_FAILURE == "PostToolUseFailure"
         assert HookEvent.STOP == "Stop"
         assert HookEvent.AGENT_START == "AgentStart"
         assert HookEvent.AGENT_STOP == "AgentStop"

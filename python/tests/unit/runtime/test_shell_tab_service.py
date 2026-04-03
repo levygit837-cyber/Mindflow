@@ -64,3 +64,40 @@ async def test_shell_tab_service_emits_lifecycle_events(tmp_path: Path) -> None:
     assert any(event["type"] == "shell_tab_created" for event in received)
     assert any(event["type"] == "shell_tab_running" for event in received)
     assert any(event["type"] == "shell_tab_completed" for event in received)
+
+
+@pytest.mark.asyncio
+async def test_shell_tab_service_uses_session_workspace_when_cwd_not_provided(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import mindflow_backend.services.core.shell_tab_service as module
+    from mindflow_backend.services.core.shell_tab_service import ShellTabService
+
+    session_workspace = tmp_path / "isolated-workspace"
+    session_workspace.mkdir()
+
+    class _FakeRuntimeStateService:
+        async def save_session_state(self, session_id: str, state: dict) -> dict:
+            return state
+
+        async def load_session_state(self, session_id: str) -> dict | None:
+            return {
+                "workspace": {
+                    "session": {
+                        "workspace_root": str(session_workspace),
+                        "workspace_path": str(session_workspace),
+                    }
+                }
+            }
+
+        async def list_session_states(self) -> list[dict]:
+            return []
+
+    monkeypatch.setattr(module, "_get_session_runtime_state_service", lambda: _FakeRuntimeStateService(), raising=False)
+
+    service = ShellTabService()
+    created = await service.create_tab(session_id="shell-default", title="default-shell")
+
+    assert created.cwd == str(session_workspace)
+    assert created.workspace_root == str(session_workspace)

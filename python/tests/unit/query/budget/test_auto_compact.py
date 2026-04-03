@@ -13,6 +13,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+from mindflow_backend.hooks.result import HookResult
 from mindflow_backend.query.budget.auto_compact import (
     AutoCompactService,
     AutoCompactTrackingState,
@@ -793,3 +794,75 @@ class TestAnalytics:
 
         # Should not raise (compression_ratio calculation)
         service.log_compaction_analytics(result, model="gpt-4")
+
+
+class TestCompactHooks:
+    """Tests hook integration for compaction flows."""
+
+    @staticmethod
+    def _messages() -> list[dict[str, str]]:
+        return [
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "msg-1"},
+            {"role": "assistant", "content": "msg-2"},
+            {"role": "user", "content": "msg-3"},
+            {"role": "assistant", "content": "msg-4"},
+            {"role": "user", "content": "msg-5"},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_compact_with_retry_respects_pre_compact_block(self, monkeypatch) -> None:
+        service = AutoCompactService(session_id="sess-compact")
+
+        async def pre_compact_hook(*args, **kwargs):
+            yield HookResult(
+                event="PreCompact",
+                command="pre-compact-hook",
+                status="blocked",
+                prevent_continuation=True,
+                stop_reason="blocked by pre-compact hook",
+            )
+
+        monkeypatch.setattr(service._hook_manager, "execute_pre_compact", pre_compact_hook)
+
+        result = await service.compact_with_retry(
+            self._messages(),
+            current_tokens=200_000,
+            llm_summarize_fn=AsyncMock(return_value="summary"),
+        )
+
+        assert result.success is False
+        assert result.error == "blocked by pre-compact hook"
+
+    @pytest.mark.asyncio
+    async def test_compact_with_retry_runs_post_compact_hook_after_success(self, monkeypatch) -> None:
+        service = AutoCompactService(session_id="sess-compact")
+        post_compact_calls: list[dict[str, str]] = []
+
+        async def empty_pre_compact(*args, **kwargs):
+            if False:
+                yield None
+
+        async def post_compact_hook(*args, **kwargs):
+            post_compact_calls.append(
+                {
+                    "trigger": kwargs["trigger"],
+                    "summary": kwargs["summary"],
+                },
+            )
+            if False:
+                yield None
+
+        monkeypatch.setattr(service._hook_manager, "execute_pre_compact", empty_pre_compact)
+        monkeypatch.setattr(service._hook_manager, "execute_post_compact", post_compact_hook)
+
+        result = await service.compact_with_retry(
+            self._messages(),
+            current_tokens=200_000,
+            llm_summarize_fn=AsyncMock(return_value="concise summary"),
+        )
+
+        assert result.success is True
+        assert post_compact_calls
+        assert post_compact_calls[0]["trigger"] == "auto"
+        assert "strategy=" in post_compact_calls[0]["summary"]

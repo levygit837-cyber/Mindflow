@@ -29,3 +29,11 @@ def test_agent_request_rejects_removed_codex_provider() -> None:
         assert "provider" in str(exc)
     else:
         raise AssertionError("AgentChatRequest should reject codex as a removed provider")
+
+
+def test_agent_request_accepts_workspace_policy() -> None:
+    request = AgentChatRequest.model_validate(
+        {"message": "implemente", "workspace_policy": "worktree"}
+    )
+
+    assert request.workspace_policy.value == "worktree"
