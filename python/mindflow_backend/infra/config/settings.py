@@ -171,6 +171,7 @@ class Settings(BaseSettings):
 
     # XMPP / SPADE Communication Configuration (Fase 4)
     use_xmpp_transport: bool = Field(default=False, alias="USE_XMPP_TRANSPORT")
+    # DEPRECATED — use routing_mode="hybrid" instead; kept for backward compatibility
     use_decentralized_router: bool = Field(default=False, alias="USE_DECENTRALIZED_ROUTER")
     proposal_timeout: float = Field(default=5.0, alias="PROPOSAL_TIMEOUT")
     xmpp_server: str = Field(default="localhost", alias="XMPP_SERVER")
@@ -188,6 +189,21 @@ class Settings(BaseSettings):
     queue_memory_pipeline: bool = Field(default=False, alias="QUEUE_MEMORY_PIPELINE")
     queue_session_review: bool = Field(default=False, alias="QUEUE_SESSION_REVIEW")
     queue_research_pipeline: bool = Field(default=False, alias="QUEUE_RESEARCH_PIPELINE")
+
+    # Hybrid Routing Configuration (Two-Tier Router)
+    # Confidence threshold: requests above this skip the auction and delegate directly
+    hybrid_confidence_threshold: float = Field(
+        default=0.6, alias="HYBRID_CONFIDENCE_THRESHOLD"
+    )
+    # Timeout for targeted auction (Tier 2 with hint_agents — shorter due to pre-filtering)
+    hybrid_auction_timeout: float = Field(
+        default=3.0, alias="HYBRID_AUCTION_TIMEOUT"
+    )
+    # Whether to use squad templates for known multi-agent patterns
+    hybrid_squad_templates_enabled: bool = Field(
+        default=True, alias="HYBRID_SQUAD_TEMPLATES_ENABLED"
+    )
+
 
     # Semantic Search Configuration
     enable_semantic_search: bool = Field(default=True, alias="ENABLE_SEMANTIC_SEARCH")

@@ -5,13 +5,15 @@ Search file contents with regex pattern matching.
 
 from __future__ import annotations
 
-import os
-import re
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.search_tools import GrepSearchTool
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
 
@@ -70,107 +72,28 @@ async def grep_execute(input: GrepInput, context: ToolContext) -> dict[str, Any]
     Returns:
         Dictionary with search results or error
     """
-    # 1. Resolve directory (support root_dir from context)
-    directory = input.directory
-    root_dir = context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory):
-        directory = os.path.join(root_dir, directory)
-
-    directory = os.path.abspath(directory)
-
-    # 2. Check directory exists
-    if not os.path.exists(directory):
-        return {
-            "success": False,
-            "error": f"Directory not found: {directory}",
-            "error_code": "DIRECTORY_NOT_FOUND"
-        }
-
-    if not os.path.isdir(directory):
-        return {
-            "success": False,
-            "error": f"Not a directory: {directory}",
-            "error_code": "NOT_A_DIRECTORY"
-        }
-
-    # 3. Compile regex pattern
-    try:
-        flags = 0 if input.case_sensitive else re.IGNORECASE
-        regex = re.compile(input.pattern, flags)
-    except re.error as e:
-        return {
-            "success": False,
-            "error": f"Invalid regex pattern: {e}",
-            "error_code": "INVALID_REGEX",
-            "pattern": input.pattern
-        }
-
-    # 4. Search files
-    matches = []
-    files_searched = 0
-    files_with_matches = 0
-
-    search_path = Path(directory)
-
-    # Get files to search
-    if input.recursive:
-        files = search_path.rglob(input.file_pattern)
-    else:
-        files = search_path.glob(input.file_pattern)
-
-    # 5. Search in each file
-    for file_path in files:
-        if not file_path.is_file():
-            continue
-
-        files_searched += 1
-        file_has_matches = False
-
-        # Search in file
-        try:
-            with open(file_path, encoding='utf-8', errors='ignore') as f:
-                for line_num, line in enumerate(f, 1):
-                    match = regex.search(line)
-                    if match:
-                        file_has_matches = True
-                        match_data = {
-                            "file": str(file_path.relative_to(search_path) if file_path.is_relative_to(search_path) else file_path),
-                            "line": line.rstrip(),
-                            "match": match.group()
-                        }
-
-                        if input.include_line_numbers:
-                            match_data["line_number"] = line_num
-
-                        matches.append(match_data)
-
-                        # Check max results
-                        if len(matches) >= input.max_results:
-                            break
-
-        except (UnicodeDecodeError, PermissionError, OSError):
-            # Skip files that can't be read
-            continue
-
-        if file_has_matches:
-            files_with_matches += 1
-
-        # Check if we've reached max results
-        if len(matches) >= input.max_results:
-            break
-
-    # 6. Return results
-    return {
-        "success": True,
-        "matches": matches,
-        "total_matches": len(matches),
-        "files_searched": files_searched,
-        "files_with_matches": files_with_matches,
-        "pattern": input.pattern,
-        "directory": directory,
-        "truncated": len(matches) >= input.max_results
-    }
+    tool = build_legacy_tool(GrepSearchTool, context)
+    result = await tool.execute(
+        pattern=input.pattern,
+        directory=input.directory,
+        file_pattern=input.file_pattern,
+        recursive=input.recursive,
+        case_sensitive=input.case_sensitive,
+        max_results=input.max_results,
+        include_line_numbers=input.include_line_numbers,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "not a directory": "NOT_A_DIRECTORY",
+            "invalid regex pattern": "INVALID_REGEX",
+        },
+        default_error_code="SEARCH_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("pattern", input.pattern)
+    return flattened
 
 
 # ---------------------------------------------------------------------------

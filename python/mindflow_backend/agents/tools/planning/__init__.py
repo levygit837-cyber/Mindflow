@@ -2,32 +2,40 @@
 
 from __future__ import annotations
 
-# Planning tools v3 (New Tool system - Phase 4 migration)
-from .todo_list_write_v3 import (
-    TodoListWriteToolV3,
-)
-from .todo_list_read_v3 import (
-    TodoListReadToolV3,
-)
-from .todo_list_focus_v3 import (
-    TodoListFocusToolV3,
-)
+import warnings
+from importlib import import_module
 
-# Planning tools v1 (backward compatibility)
-from .todo_list import (
-    FocusTodosTool,
-    ReadTodosTool,
-    WriteTodosTool,
-)
+from .scratchpad import ScratchpadReadTool, ScratchpadWriteTool
+from .todo_list import FocusTodosTool, ReadTodosTool, WriteTodosTool
+
+_COMPAT_EXPORTS = {
+    "TodoListWriteToolV3": (".todo_list_write_v3", "TodoListWriteToolV3"),
+    "TodoListReadToolV3": (".todo_list_read_v3", "TodoListReadToolV3"),
+    "TodoListFocusToolV3": (".todo_list_focus_v3", "TodoListFocusToolV3"),
+}
 
 __all__ = [
-    # Planning tools v3 (Phase 4 migration)
-    "TodoListWriteToolV3",
-    "TodoListReadToolV3",
-    "TodoListFocusToolV3",
-
-    # Planning tools v1 (backward compatibility)
+    "ScratchpadReadTool",
+    "ScratchpadWriteTool",
     "WriteTodosTool",
     "ReadTodosTool",
     "FocusTodosTool",
 ]
+
+
+def __getattr__(name: str):
+    if name not in _COMPAT_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attr_name = _COMPAT_EXPORTS[name]
+    warnings.warn(
+        (
+            f"{__name__}.{name} is a deprecated compatibility export. "
+            f"Import {attr_name} from {__name__}{module_name} instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    value = getattr(import_module(module_name, __name__), attr_name)
+    globals()[name] = value
+    return value

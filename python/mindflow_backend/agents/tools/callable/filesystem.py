@@ -9,11 +9,28 @@ All tools in this module use:
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    deny_if_permission_blocked,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.file_operations import (
+    DirectoryListTool,
+    FileDeleteTool,
+    FileEditTool,
+    FileReadTool,
+    FileWriteTool,
+)
+from mindflow_backend.agents.tools.filesystem.operations import DirectoryCreateTool
+from mindflow_backend.agents.tools.filesystem.search_tools import (
+    FileFinderTool,
+    GlobSearchTool,
+    GrepSearchTool,
+)
 from mindflow_backend.schemas.tools import (
     CallableToolResult,
     ProgressCallback,
@@ -22,7 +39,29 @@ from mindflow_backend.schemas.tools import (
     build_destructive_tool,
 )
 from mindflow_backend.schemas.tools.context import ToolContext
-from mindflow_backend.schemas.tools.permission import PermissionBehavior
+
+
+def _callable_result_from_flattened(
+    flattened: dict[str, Any],
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> CallableToolResult[dict[str, Any]]:
+    """Convert a flattened legacy result to a callable tool result."""
+    if flattened.get("success"):
+        data = dict(flattened)
+        data.pop("success", None)
+        return CallableToolResult(data=data, success=True, metadata=metadata or {})
+
+    result_metadata = dict(metadata or {})
+    error_code = flattened.get("error_code")
+    if error_code:
+        result_metadata.setdefault("error_code", error_code)
+    return CallableToolResult(
+        data=None,
+        success=False,
+        error=flattened.get("error") or "Unknown error",
+        metadata=result_metadata,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -62,148 +101,41 @@ async def file_read_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute file read with full validation and security checks.
+    """Execute file read through the canonical filesystem tool."""
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="file_read",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return _callable_result_from_flattened(permission_error)
 
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context (permissions, abort signal, etc.)
-        on_progress: Optional progress callback (not used for file read)
-
-    Returns:
-        CallableToolResult with file content or error
-    """
-    # 1. Resolve path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 2. Security validation: device files
-    if file_path.startswith("/dev/"):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="Device files are blocked for security",
-            metadata={
-                "error_code": "DEVICE_FILE_BLOCKED",
-                "file_path": file_path,
-            }
-        )
-
-    # 3. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="file_read",
-            input=input.dict(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=perm_result.reason or "Permission denied",
-                metadata={
-                    "error_code": "PERMISSION_DENIED",
-                    "file_path": file_path,
-                }
-            )
-
-    # 4. Check file exists
-    if not os.path.exists(file_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"File not found: {file_path}",
-            metadata={
-                "error_code": "FILE_NOT_FOUND",
-                "file_path": file_path,
-            }
-        )
-
-    if not os.path.isfile(file_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a file: {file_path}",
-            metadata={
-                "error_code": "NOT_A_FILE",
-                "file_path": file_path,
-            }
-        )
-
-    # 5. Read file with pagination
-    try:
-        with open(file_path, 'r', encoding=input.encoding) as f:
-            lines = f.readlines()
-
-        # Apply offset and limit
-        start = input.offset
-        end = start + input.limit
-        selected_lines = lines[start:end]
-
-        # Add line numbers if requested
-        if input.include_line_numbers:
-            selected_lines = [
-                f"{start + i + 1}\t{line}"
-                for i, line in enumerate(selected_lines)
-            ]
-
-        content = "".join(selected_lines)
-
-        return CallableToolResult(
-            data={
-                "content": content,
-                "file_path": file_path,
-                "total_lines": len(lines),
-                "lines_returned": len(selected_lines),
-                "lines_read": len(selected_lines),  # Alias for compatibility
-                "offset": input.offset,
-                "limit": input.limit,
-                "encoding": input.encoding,
-                "has_more": end < len(lines),
-                "truncated": end < len(lines),  # Alias for compatibility
-            },
-            success=True,
-            metadata={
-                "file_size_bytes": os.path.getsize(file_path),
-            }
-        )
-
-    except UnicodeDecodeError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Encoding error: {e}. Try different encoding (latin-1, ascii, etc.)",
-            metadata={
-                "error_code": "ENCODING_ERROR",
-                "file_path": file_path,
-                "attempted_encoding": input.encoding,
-            }
-        )
-    except PermissionError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Permission denied: {e}",
-            metadata={
-                "error_code": "OS_PERMISSION_ERROR",
-                "file_path": file_path,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=str(e),
-            metadata={
-                "error_code": "READ_ERROR",
-                "file_path": file_path,
-            }
-        )
+    tool = build_legacy_tool(FileReadTool, context)
+    result = await tool.execute(
+        file_path=input.file_path,
+        offset=input.offset,
+        limit=input.limit,
+        encoding=input.encoding,
+        include_line_numbers=input.include_line_numbers,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "cannot read from device file": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "file not found": "FILE_NOT_FOUND",
+            "path is not a file": "NOT_A_FILE",
+            "encoding error": "ENCODING_ERROR",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+        },
+        default_error_code="READ_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("file_path", input.file_path)
+    return _callable_result_from_flattened(flattened)
 
 
 FileReadCallable = build_readonly_tool(
@@ -257,156 +189,37 @@ async def directory_list_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """List directory contents with security controls.
+    """List directory contents through the canonical filesystem tool."""
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="list_dir",
+        input_data=input.model_dump(),
+        tool_content=input.directory_path,
+        content_key="directory_path",
+    )
+    if permission_error:
+        return _callable_result_from_flattened(permission_error)
 
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with directory listing or error
-    """
-    from pathlib import Path
-
-    # 1. Resolve directory path (support root_dir from context)
-    directory_path = input.directory_path
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory_path):
-        directory_path = os.path.join(root_dir, directory_path)
-
-    directory_path = os.path.abspath(directory_path)
-
-    # 2. Security validation: block device files
-    if directory_path.startswith("/dev/"):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="Device paths are not allowed",
-            metadata={
-                "error_code": "DEVICE_PATH_BLOCKED",
-                "directory_path": directory_path,
-            }
-        )
-
-    # 3. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="list_dir",
-            input=input.model_dump(),
-            tool_content=directory_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=perm_result.reason or "Permission denied",
-                metadata={
-                    "error_code": "PERMISSION_DENIED",
-                    "directory_path": directory_path,
-                }
-            )
-
-    # 4. Check directory exists
-    if not os.path.exists(directory_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Directory not found: {directory_path}",
-            metadata={
-                "error_code": "DIRECTORY_NOT_FOUND",
-                "directory_path": directory_path,
-            }
-        )
-
-    if not os.path.isdir(directory_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a directory: {directory_path}",
-            metadata={
-                "error_code": "NOT_A_DIRECTORY",
-                "directory_path": directory_path,
-            }
-        )
-
-    # 5. List directory contents
-    try:
-        entries = []
-        path_obj = Path(directory_path)
-
-        for item in path_obj.iterdir():
-            # Skip hidden files if not requested
-            if not input.include_hidden and item.name.startswith('.'):
-                continue
-
-            # Check max items limit
-            if len(entries) >= input.max_items:
-                break
-
-            entry = {
-                "name": item.name,
-                "path": str(item)
-            }
-
-            # Add type information
-            if input.include_type:
-                if item.is_file():
-                    entry["type"] = "file"
-                elif item.is_dir():
-                    entry["type"] = "directory"
-                elif item.is_symlink():
-                    entry["type"] = "symlink"
-                else:
-                    entry["type"] = "other"
-
-            # Add size information
-            if input.include_size:
-                try:
-                    if item.is_file():
-                        entry["size"] = item.stat().st_size
-                    elif item.is_dir():
-                        entry["size"] = 0  # Directories don't have meaningful size
-                except (OSError, PermissionError):
-                    entry["size"] = None
-
-            entries.append(entry)
-
-        return CallableToolResult(
-            data={
-                "directory_path": directory_path,
-                "entries": entries,
-                "total_count": len(entries),
-                "truncated": len(entries) >= input.max_items,
-            },
-            success=True,
-            metadata={
-                "items_returned": len(entries),
-            }
-        )
-
-    except PermissionError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Permission denied: {e}",
-            metadata={
-                "error_code": "OS_PERMISSION_ERROR",
-                "directory_path": directory_path,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Failed to list directory: {e}",
-            metadata={
-                "error_code": "LIST_ERROR",
-                "directory_path": directory_path,
-            }
-        )
+    tool = build_legacy_tool(DirectoryListTool, context)
+    result = await tool.execute(
+        directory_path=input.directory_path,
+        include_hidden=input.include_hidden,
+        include_size=input.include_size,
+        include_type=input.include_type,
+        max_items=input.max_items,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "restricted path denied: /dev": "DEVICE_PATH_BLOCKED",
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "path is not a directory": "NOT_A_DIRECTORY",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+        },
+        default_error_code="LIST_ERROR",
+    )
+    return _callable_result_from_flattened(flattened)
 
 
 DirectoryListCallable = build_readonly_tool(
@@ -474,151 +287,31 @@ async def file_finder_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Find files matching pattern with optional filters.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with found files or error
-    """
-    from datetime import datetime
-    from pathlib import Path
-
-    # 1. Resolve directory (support root_dir from context)
-    directory = input.directory
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory):
-        directory = os.path.join(root_dir, directory)
-
-    directory = os.path.abspath(directory)
-
-    # 2. Check directory exists
-    if not os.path.exists(directory):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Directory not found: {directory}",
-            metadata={
-                "error_code": "DIRECTORY_NOT_FOUND",
-                "directory": directory,
-            }
-        )
-
-    if not os.path.isdir(directory):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a directory: {directory}",
-            metadata={
-                "error_code": "NOT_A_DIRECTORY",
-                "directory": directory,
-            }
-        )
-
-    # 3. Parse date filters
-    min_timestamp = None
-    max_timestamp = None
-
-    if input.min_date:
-        try:
-            min_timestamp = datetime.strptime(input.min_date, "%Y-%m-%d").timestamp()
-        except ValueError as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Invalid min_date format: {e}. Use YYYY-MM-DD",
-                metadata={"error_code": "INVALID_DATE_FORMAT"}
-            )
-
-    if input.max_date:
-        try:
-            max_timestamp = datetime.strptime(input.max_date, "%Y-%m-%d").timestamp()
-        except ValueError as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Invalid max_date format: {e}. Use YYYY-MM-DD",
-                metadata={"error_code": "INVALID_DATE_FORMAT"}
-            )
-
-    # 4. Search for files
-    try:
-        files = []
-        search_path = Path(directory)
-
-        # Use rglob for recursive, glob for non-recursive
-        if input.recursive:
-            matches = search_path.rglob(input.pattern)
-        else:
-            matches = search_path.glob(input.pattern)
-
-        for file_path in matches:
-            # Only include files, not directories
-            if not file_path.is_file():
-                continue
-
-            try:
-                stat = file_path.stat()
-
-                # Apply size filters
-                if input.min_size is not None and stat.st_size < input.min_size:
-                    continue
-
-                if input.max_size is not None and stat.st_size > input.max_size:
-                    continue
-
-                # Apply date filters
-                if min_timestamp is not None and stat.st_mtime < min_timestamp:
-                    continue
-
-                if max_timestamp is not None and stat.st_mtime > max_timestamp:
-                    continue
-
-                # Add to results
-                files.append({
-                    "path": str(file_path),
-                    "name": file_path.name,
-                    "size": stat.st_size,
-                    "modified": stat.st_mtime,
-                    "modified_date": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-                })
-
-            except (OSError, PermissionError):
-                # Skip files we can't access
-                continue
-
-            # Check max results limit
-            if len(files) >= input.max_results:
-                break
-
-        return CallableToolResult(
-            data={
-                "files": files,
-                "total_count": len(files),
-                "truncated": len(files) >= input.max_results,
-                "pattern": input.pattern,
-                "directory": directory,
-            },
-            success=True,
-            metadata={
-                "files_found": len(files),
-            }
-        )
-
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"File finder error: {e}",
-            metadata={
-                "error_code": "SEARCH_ERROR",
-                "pattern": input.pattern,
-            }
-        )
+    """Find files through the canonical filesystem tool."""
+    tool = build_legacy_tool(FileFinderTool, context)
+    result = await tool.execute(
+        pattern=input.pattern,
+        directory=input.directory,
+        recursive=input.recursive,
+        min_size=input.min_size,
+        max_size=input.max_size,
+        min_date=input.min_date,
+        max_date=input.max_date,
+        max_results=input.max_results,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "not a directory": "NOT_A_DIRECTORY",
+            "does not match format": "INVALID_DATE_FORMAT",
+            "time data": "INVALID_DATE_FORMAT",
+        },
+        default_error_code="SEARCH_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("pattern", input.pattern)
+    return _callable_result_from_flattened(flattened)
 
 
 FileFinderCallable = build_readonly_tool(
@@ -680,136 +373,29 @@ async def grep_search_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute grep search with regex pattern matching.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with search results or error
-    """
-    import re
-    from pathlib import Path
-
-    # 1. Resolve directory (support root_dir from context)
-    directory = input.directory
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory):
-        directory = os.path.join(root_dir, directory)
-
-    directory = os.path.abspath(directory)
-
-    # 2. Check directory exists
-    if not os.path.exists(directory):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Directory not found: {directory}",
-            metadata={
-                "error_code": "DIRECTORY_NOT_FOUND",
-                "directory": directory,
-            }
-        )
-
-    if not os.path.isdir(directory):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a directory: {directory}",
-            metadata={
-                "error_code": "NOT_A_DIRECTORY",
-                "directory": directory,
-            }
-        )
-
-    # 3. Compile regex pattern
-    try:
-        flags = 0 if input.case_sensitive else re.IGNORECASE
-        regex = re.compile(input.pattern, flags)
-    except re.error as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Invalid regex pattern: {e}",
-            metadata={
-                "error_code": "INVALID_REGEX",
-                "pattern": input.pattern,
-            }
-        )
-
-    # 4. Search files
-    matches = []
-    files_searched = 0
-    files_with_matches = 0
-
-    search_path = Path(directory)
-
-    # Get files to search
-    if input.recursive:
-        files = search_path.rglob(input.file_pattern)
-    else:
-        files = search_path.glob(input.file_pattern)
-
-    # 5. Search in each file
-    for file_path in files:
-        if not file_path.is_file():
-            continue
-
-        files_searched += 1
-        file_has_matches = False
-
-        # Search in file
-        try:
-            with open(file_path, encoding='utf-8', errors='ignore') as f:
-                for line_num, line in enumerate(f, 1):
-                    match = regex.search(line)
-                    if match:
-                        file_has_matches = True
-                        match_data = {
-                            "file": str(file_path.relative_to(search_path) if file_path.is_relative_to(search_path) else file_path),
-                            "line": line.rstrip(),
-                            "match": match.group()
-                        }
-
-                        if input.include_line_numbers:
-                            match_data["line_number"] = line_num
-
-                        matches.append(match_data)
-
-                        # Check max results
-                        if len(matches) >= input.max_results:
-                            break
-
-        except (UnicodeDecodeError, PermissionError, OSError):
-            # Skip files that can't be read
-            continue
-
-        if file_has_matches:
-            files_with_matches += 1
-
-        # Check if we've reached max results
-        if len(matches) >= input.max_results:
-            break
-
-    # 6. Return results
-    return CallableToolResult(
-        data={
-            "matches": matches,
-            "total_matches": len(matches),
-            "files_searched": files_searched,
-            "files_with_matches": files_with_matches,
-            "pattern": input.pattern,
-            "directory": directory,
-            "truncated": len(matches) >= input.max_results,
-        },
-        success=True,
-        metadata={
-            "matches_found": len(matches),
-        }
+    """Execute grep through the canonical filesystem tool."""
+    tool = build_legacy_tool(GrepSearchTool, context)
+    result = await tool.execute(
+        pattern=input.pattern,
+        directory=input.directory,
+        file_pattern=input.file_pattern,
+        recursive=input.recursive,
+        case_sensitive=input.case_sensitive,
+        max_results=input.max_results,
+        include_line_numbers=input.include_line_numbers,
     )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "not a directory": "NOT_A_DIRECTORY",
+            "invalid regex pattern": "INVALID_REGEX",
+        },
+        default_error_code="SEARCH_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("pattern", input.pattern)
+    return _callable_result_from_flattened(flattened)
 
 
 GrepSearchCallable = build_readonly_tool(
@@ -863,115 +449,27 @@ async def glob_search_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute glob search to find files matching pattern.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with matched files or error
-    """
-    from pathlib import Path
-
-    # 1. Resolve directory (support root_dir from context)
-    directory = input.directory
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory):
-        directory = os.path.join(root_dir, directory)
-
-    directory = os.path.abspath(directory)
-
-    # 2. Check directory exists
-    if not os.path.exists(directory):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Directory not found: {directory}",
-            metadata={
-                "error_code": "DIRECTORY_NOT_FOUND",
-                "directory": directory,
-            }
-        )
-
-    if not os.path.isdir(directory):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a directory: {directory}",
-            metadata={
-                "error_code": "NOT_A_DIRECTORY",
-                "directory": directory,
-            }
-        )
-
-    # 3. Execute glob search
-    try:
-        base_path = Path(directory)
-
-        # Use glob (handles both recursive and non-recursive patterns)
-        matches = base_path.glob(input.pattern)
-
-        # 4. Filter and collect results
-        files = []
-        dirs = []
-
-        for match in matches:
-            # Check max results
-            if len(files) + len(dirs) >= input.max_results:
-                break
-
-            # Determine path format
-            if input.absolute_paths:
-                path_str = str(match.absolute())
-            else:
-                try:
-                    path_str = str(match.relative_to(base_path))
-                except ValueError:
-                    path_str = str(match)
-
-            # Categorize
-            if match.is_file():
-                files.append(path_str)
-            elif match.is_dir() and input.include_dirs:
-                dirs.append(path_str)
-
-        # 5. Build result data
-        result_data = {
-            "files": files,
-            "total_files": len(files),
-            "pattern": input.pattern,
-            "directory": directory,
-            "truncated": (len(files) + len(dirs)) >= input.max_results,
-        }
-
-        if input.include_dirs:
-            result_data["directories"] = dirs
-            result_data["total_directories"] = len(dirs)
-            result_data["total_matches"] = len(files) + len(dirs)
-        else:
-            result_data["total_matches"] = len(files)
-
-        return CallableToolResult(
-            data=result_data,
-            success=True,
-            metadata={
-                "matches_found": len(files) + (len(dirs) if input.include_dirs else 0),
-            }
-        )
-
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Glob search error: {e}",
-            metadata={
-                "error_code": "GLOB_ERROR",
-                "pattern": input.pattern,
-            }
-        )
+    """Execute glob search through the canonical filesystem tool."""
+    tool = build_legacy_tool(GlobSearchTool, context)
+    result = await tool.execute(
+        pattern=input.pattern,
+        directory=input.directory,
+        max_results=input.max_results,
+        include_dirs=input.include_dirs,
+        absolute_paths=input.absolute_paths,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "not a directory": "NOT_A_DIRECTORY",
+            "glob search error": "GLOB_ERROR",
+        },
+        default_error_code="GLOB_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("pattern", input.pattern)
+    return _callable_result_from_flattened(flattened)
 
 
 GlobSearchCallable = build_readonly_tool(
@@ -1022,183 +520,48 @@ async def file_write_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute file write with full validation and security checks.
+    """Execute file write through the canonical filesystem tool."""
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="write_file",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return _callable_result_from_flattened(permission_error)
 
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context (permissions, abort signal, etc.)
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with file metadata or error
-    """
-    # 1. Check sandbox mode for read-only enforcement
-    if context.sandbox_mode and hasattr(context.sandbox_mode, 'value'):
-        if context.sandbox_mode.value == "READ_ONLY":
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="Write operation blocked in read-only mode",
-                metadata={
-                    "error_code": "READ_ONLY_MODE",
-                    "file_path": input.file_path,
-                }
-            )
-
-    # 2. Resolve path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 3. Security validation: device files
-    if file_path.startswith("/dev/"):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="Cannot write to device files",
-            metadata={
-                "error_code": "DEVICE_FILE_BLOCKED",
-                "file_path": file_path,
-            }
-        )
-
-    # 4. Security validation: system paths
-    restricted_paths = ["/etc", "/usr", "/bin", "/sbin", "/boot", "/sys", "/proc"]
-    for restricted in restricted_paths:
-        if file_path.startswith(restricted):
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Cannot write to system path: {restricted}",
-                metadata={
-                    "error_code": "SYSTEM_PATH_BLOCKED",
-                    "file_path": file_path,
-                }
-            )
-
-    # 5. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="write_file",
-            input=input.dict(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=perm_result.reason or "Permission denied",
-                metadata={
-                    "error_code": "PERMISSION_DENIED",
-                    "file_path": file_path,
-                }
-            )
-
-    # 6. Check if file exists and overwrite flag
-    file_exists = os.path.exists(file_path)
-    if file_exists and not input.overwrite:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"File already exists and overwrite=False: {file_path}",
-            metadata={
-                "error_code": "FILE_EXISTS",
-                "file_path": file_path,
-            }
-        )
-
-    # 7. Create parent directories if needed
-    if input.create_dirs:
-        parent_dir = os.path.dirname(file_path)
-        if parent_dir and not os.path.exists(parent_dir):
-            try:
-                os.makedirs(parent_dir, exist_ok=True)
-            except Exception as e:
-                return CallableToolResult(
-                    data=None,
-                    success=False,
-                    error=f"Failed to create parent directories: {e}",
-                    metadata={
-                        "error_code": "MKDIR_ERROR",
-                        "file_path": file_path,
-                    }
-                )
-
-    # 8. Write file
-    try:
-        # Check if parent directory exists when create_dirs=False
-        if not input.create_dirs:
-            parent_dir = os.path.dirname(file_path)
-            if parent_dir and not os.path.exists(parent_dir):
-                return CallableToolResult(
-                    data=None,
-                    success=False,
-                    error=f"Parent directory does not exist: {parent_dir}",
-                    metadata={
-                        "error_code": "DIRECTORY_NOT_FOUND",
-                        "file_path": file_path,
-                    }
-                )
-
-        with open(file_path, 'w', encoding=input.encoding) as f:
-            f.write(input.content)
-
-        # Get file stats
-        file_size = os.path.getsize(file_path)
-        line_count = input.content.count('\n') + 1 if input.content else 0
-
-        return CallableToolResult(
-            data={
-                "file_path": file_path,
-                "file_size": file_size,
-                "bytes_written": file_size,  # Alias for compatibility
-                "line_count": line_count,
-                "encoding": input.encoding,
-                "created": not file_exists,
-                "overwritten": file_exists,
-            },
-            success=True,
-            metadata={
-                "operation": "create" if not file_exists else "overwrite",
-            }
-        )
-
-    except UnicodeEncodeError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Encoding error: {e}. Try different encoding.",
-            metadata={
-                "error_code": "ENCODING_ERROR",
-                "file_path": file_path,
-                "attempted_encoding": input.encoding,
-            }
-        )
-    except PermissionError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Permission denied: {e}",
-            metadata={
-                "error_code": "OS_PERMISSION_ERROR",
-                "file_path": file_path,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=str(e),
-            metadata={
-                "error_code": "WRITE_ERROR",
-                "file_path": file_path,
-            }
-        )
+    tool = build_legacy_tool(FileWriteTool, context)
+    result = await tool.execute(
+        file_path=input.file_path,
+        content=input.content,
+        encoding=input.encoding,
+        create_dirs=input.create_dirs,
+        overwrite=input.overwrite,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "cannot write to device file": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /etc": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /usr": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /bin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sbin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /boot": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sys": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /proc": "SYSTEM_PATH_BLOCKED",
+            "overwrite=false": "FILE_EXISTS",
+            "parent directory does not exist": "DIRECTORY_NOT_FOUND",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+            "encoding error": "ENCODING_ERROR",
+        },
+        default_error_code="WRITE_ERROR",
+    )
+    if flattened.get("success") and "file_size" not in flattened and "bytes_written" in flattened:
+        flattened["file_size"] = flattened["bytes_written"]
+    return _callable_result_from_flattened(flattened)
 
 
 FileWriteCallable = build_callable_tool(
@@ -1251,216 +614,47 @@ async def file_edit_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute file edit with full validation and security checks.
+    """Execute file edit through the canonical filesystem tool."""
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="edit_file",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return _callable_result_from_flattened(permission_error)
 
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context (permissions, abort signal, etc.)
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with replacement count or error
-    """
-    # 1. Check sandbox mode for read-only enforcement
-    if context.sandbox_mode and hasattr(context.sandbox_mode, 'value'):
-        if context.sandbox_mode.value == "READ_ONLY":
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="Edit operation blocked in read-only mode",
-                metadata={
-                    "error_code": "READ_ONLY_MODE",
-                    "file_path": input.file_path,
-                }
-            )
-
-    # 2. Resolve path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 3. Security validation: device files
-    if file_path.startswith("/dev/"):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="Cannot edit device files",
-            metadata={
-                "error_code": "DEVICE_FILE_BLOCKED",
-                "file_path": file_path,
-            }
-        )
-
-    # 4. Security validation: system paths
-    restricted_paths = ["/etc", "/usr", "/bin", "/sbin", "/boot", "/sys", "/proc"]
-    for restricted in restricted_paths:
-        if file_path.startswith(restricted):
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Cannot edit system path: {restricted}",
-                metadata={
-                    "error_code": "SYSTEM_PATH_BLOCKED",
-                    "file_path": file_path,
-                }
-            )
-
-    # 5. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="edit_file",
-            input=input.dict(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=perm_result.reason or "Permission denied",
-                metadata={
-                    "error_code": "PERMISSION_DENIED",
-                    "file_path": file_path,
-                }
-            )
-
-    # 6. Check file exists
-    if not os.path.exists(file_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"File not found: {file_path}",
-            metadata={
-                "error_code": "FILE_NOT_FOUND",
-                "file_path": file_path,
-            }
-        )
-
-    if not os.path.isfile(file_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a file: {file_path}",
-            metadata={
-                "error_code": "NOT_A_FILE",
-                "file_path": file_path,
-            }
-        )
-
-    # 7. Read file content
-    try:
-        with open(file_path, 'r', encoding=input.encoding) as f:
-            content = f.read()
-    except UnicodeDecodeError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Encoding error reading file: {e}. Try different encoding.",
-            metadata={
-                "error_code": "ENCODING_ERROR",
-                "file_path": file_path,
-                "attempted_encoding": input.encoding,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Failed to read file: {e}",
-            metadata={
-                "error_code": "READ_ERROR",
-                "file_path": file_path,
-            }
-        )
-
-    # 8. Check if old_string exists in content
-    if input.old_string not in content:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="old_string not found in file",
-            metadata={
-                "error_code": "STRING_NOT_FOUND",
-                "file_path": file_path,
-                "old_string": input.old_string[:50] + "..." if len(input.old_string) > 50 else input.old_string,
-            }
-        )
-
-    # 9. Perform replacement
-    count_occurrences = content.count(input.old_string)
-
-    if input.count == -1:
-        # Replace all occurrences
-        new_content = content.replace(input.old_string, input.new_string)
-        replacements_made = count_occurrences
-    else:
-        # Replace specific number of occurrences
-        new_content = content.replace(input.old_string, input.new_string, input.count)
-        replacements_made = min(input.count, count_occurrences)
-
-    # 10. Write modified content back
-    original_size = os.path.getsize(file_path)
-
-    try:
-        with open(file_path, 'w', encoding=input.encoding) as f:
-            f.write(new_content)
-
-        new_size = os.path.getsize(file_path)
-
-        return CallableToolResult(
-            data={
-                "file_path": file_path,
-                "replacements_made": replacements_made,
-                "occurrences_replaced": replacements_made,  # Alias for compatibility
-                "total_occurrences": count_occurrences,
-                "encoding": input.encoding,
-                "old_string_length": len(input.old_string),
-                "new_string_length": len(input.new_string),
-                "size_before": original_size,
-                "size_after": new_size,
-                "size_change": len(new_content) - len(content),
-            },
-            success=True,
-            metadata={
-                "operation": "edit",
-            }
-        )
-
-    except UnicodeEncodeError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Encoding error writing file: {e}. Try different encoding.",
-            metadata={
-                "error_code": "ENCODING_ERROR",
-                "file_path": file_path,
-                "attempted_encoding": input.encoding,
-            }
-        )
-    except PermissionError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Permission denied: {e}",
-            metadata={
-                "error_code": "OS_PERMISSION_ERROR",
-                "file_path": file_path,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=str(e),
-            metadata={
-                "error_code": "WRITE_ERROR",
-                "file_path": file_path,
-            }
-        )
+    tool = build_legacy_tool(FileEditTool, context)
+    result = await tool.execute(
+        file_path=input.file_path,
+        old_string=input.old_string,
+        new_string=input.new_string,
+        count=input.count,
+        encoding=input.encoding,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "cannot edit device file": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /etc": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /usr": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /bin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sbin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /boot": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sys": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /proc": "SYSTEM_PATH_BLOCKED",
+            "file not found": "FILE_NOT_FOUND",
+            "path is not a file": "NOT_A_FILE",
+            "old_string not found": "STRING_NOT_FOUND",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+            "encoding error": "ENCODING_ERROR",
+        },
+        default_error_code="WRITE_ERROR",
+    )
+    return _callable_result_from_flattened(flattened)
 
 
 FileEditCallable = build_callable_tool(
@@ -1502,157 +696,38 @@ async def file_delete_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Delete a file with security controls.
+    """Delete a file through the canonical filesystem tool."""
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="delete_file",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return _callable_result_from_flattened(permission_error)
 
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with deletion result or error
-    """
-    # 1. Check sandbox mode for read-only enforcement
-    if context.sandbox_mode and hasattr(context.sandbox_mode, 'value'):
-        if context.sandbox_mode.value == "READ_ONLY":
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="Delete operation blocked in read-only mode",
-                metadata={
-                    "error_code": "READ_ONLY_MODE",
-                    "file_path": input.file_path,
-                }
-            )
-
-    # 2. Resolve file path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 3. Security validation: block device files
-    if file_path.startswith("/dev/"):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="Device files cannot be deleted",
-            metadata={
-                "error_code": "DEVICE_FILE_BLOCKED",
-                "file_path": file_path,
-            }
-        )
-
-    # 4. Security validation: block system paths
-    system_paths = ["/etc", "/usr", "/bin", "/sbin", "/boot", "/sys", "/proc"]
-    if any(file_path.startswith(path) for path in system_paths):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"System paths cannot be deleted: {file_path}",
-            metadata={
-                "error_code": "SYSTEM_PATH_BLOCKED",
-                "file_path": file_path,
-            }
-        )
-
-    # 5. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="delete_file",
-            input=input.model_dump(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=perm_result.reason or "Permission denied",
-                metadata={
-                    "error_code": "PERMISSION_DENIED",
-                    "file_path": file_path,
-                }
-            )
-
-    # 6. Check file exists
-    if not os.path.exists(file_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"File not found: {file_path}",
-            metadata={
-                "error_code": "FILE_NOT_FOUND",
-                "file_path": file_path,
-            }
-        )
-
-    if not os.path.isfile(file_path):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Not a file: {file_path}",
-            metadata={
-                "error_code": "NOT_A_FILE",
-                "file_path": file_path,
-            }
-        )
-
-    # 7. Get file info before deletion
-    try:
-        file_size = os.path.getsize(file_path)
-        file_name = os.path.basename(file_path)
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Failed to get file info: {e}",
-            metadata={
-                "error_code": "STAT_ERROR",
-                "file_path": file_path,
-            }
-        )
-
-    # 8. Delete file
-    try:
-        os.unlink(file_path)
-
-        return CallableToolResult(
-            data={
-                "file_path": file_path,
-                "file_name": file_name,
-                "file_size": file_size,
-                "deleted": True,
-            },
-            success=True,
-            metadata={
-                "operation": "delete",
-            }
-        )
-
-    except PermissionError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Permission denied: {e}",
-            metadata={
-                "error_code": "OS_PERMISSION_ERROR",
-                "file_path": file_path,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Failed to delete file: {e}",
-            metadata={
-                "error_code": "DELETE_ERROR",
-                "file_path": file_path,
-            }
-        )
+    tool = build_legacy_tool(FileDeleteTool, context)
+    result = await tool.execute(file_path=input.file_path, confirm=input.confirm)
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /etc": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /usr": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /bin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sbin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /boot": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sys": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /proc": "SYSTEM_PATH_BLOCKED",
+            "path not found": "FILE_NOT_FOUND",
+            "path is neither file nor directory": "NOT_A_FILE",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+        },
+        default_error_code="DELETE_ERROR",
+    )
+    return _callable_result_from_flattened(flattened)
 
 
 FileDeleteCallable = build_destructive_tool(
@@ -1700,168 +775,40 @@ async def directory_create_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Create a directory with security controls.
+    """Create a directory through the canonical filesystem tool."""
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="mkdir",
+        input_data=input.model_dump(),
+        tool_content=input.directory_path,
+        content_key="directory_path",
+    )
+    if permission_error:
+        return _callable_result_from_flattened(permission_error)
 
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with creation result or error
-    """
-    from pathlib import Path
-
-    # 1. Check sandbox mode for read-only enforcement
-    if context.sandbox_mode and hasattr(context.sandbox_mode, 'value'):
-        if context.sandbox_mode.value == "READ_ONLY":
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="Directory creation blocked in read-only mode",
-                metadata={
-                    "error_code": "READ_ONLY_MODE",
-                    "directory_path": input.directory_path,
-                }
-            )
-
-    # 2. Resolve directory path (support root_dir from context)
-    directory_path = input.directory_path
-    root_dir = context.root_dir or context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory_path):
-        directory_path = os.path.join(root_dir, directory_path)
-
-    directory_path = os.path.abspath(directory_path)
-
-    # 3. Security validation: block device paths
-    if directory_path.startswith("/dev/"):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error="Cannot create directories in /dev",
-            metadata={
-                "error_code": "DEVICE_PATH_BLOCKED",
-                "directory_path": directory_path,
-            }
-        )
-
-    # 4. Security validation: block system paths
-    system_paths = ["/etc", "/usr", "/bin", "/sbin", "/boot", "/sys", "/proc"]
-    if any(directory_path.startswith(path) for path in system_paths):
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Cannot create directories in system paths: {directory_path}",
-            metadata={
-                "error_code": "SYSTEM_PATH_BLOCKED",
-                "directory_path": directory_path,
-            }
-        )
-
-    # 5. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="mkdir",
-            input=input.model_dump(),
-            tool_content=directory_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=perm_result.reason or "Permission denied",
-                metadata={
-                    "error_code": "PERMISSION_DENIED",
-                    "directory_path": directory_path,
-                }
-            )
-
-    # 6. Check if directory already exists
-    if os.path.exists(directory_path):
-        if not input.exist_ok:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Directory already exists: {directory_path}",
-                metadata={
-                    "error_code": "DIRECTORY_EXISTS",
-                    "directory_path": directory_path,
-                }
-            )
-
-        if not os.path.isdir(directory_path):
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Path exists but is not a directory: {directory_path}",
-                metadata={
-                    "error_code": "NOT_A_DIRECTORY",
-                    "directory_path": directory_path,
-                }
-            )
-
-        return CallableToolResult(
-            data={
-                "directory_path": directory_path,
-                "created": False,
-                "already_existed": True,
-            },
-            success=True,
-            metadata={
-                "operation": "exists",
-            }
-        )
-
-    # 7. Create directory
-    try:
-        path_obj = Path(directory_path)
-        path_obj.mkdir(parents=input.parents, exist_ok=input.exist_ok, mode=input.mode)
-
-        return CallableToolResult(
-            data={
-                "directory_path": directory_path,
-                "created": True,
-                "parents_created": input.parents,
-                "mode": oct(input.mode),
-            },
-            success=True,
-            metadata={
-                "operation": "create",
-            }
-        )
-
-    except FileNotFoundError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Parent directory not found: {e}",
-            metadata={
-                "error_code": "PARENT_NOT_FOUND",
-                "directory_path": directory_path,
-            }
-        )
-    except PermissionError as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Permission denied: {e}",
-            metadata={
-                "error_code": "OS_PERMISSION_ERROR",
-                "directory_path": directory_path,
-            }
-        )
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Failed to create directory: {e}",
-            metadata={
-                "error_code": "CREATE_ERROR",
-                "directory_path": directory_path,
-            }
-        )
+    tool = build_legacy_tool(DirectoryCreateTool, context)
+    result = await tool.execute(
+        directory_path=input.directory_path,
+        parents=input.parents,
+        exist_ok=input.exist_ok,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "create directory blocked in read-only sandbox mode": "READ_ONLY_MODE",
+            "workspace security error": "PERMISSION_DENIED",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "file exists": "DIRECTORY_EXISTS",
+            "not a directory": "NOT_A_DIRECTORY",
+        },
+        default_error_code="CREATE_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("directory_path", input.directory_path)
+        flattened.setdefault("created", True)
+        flattened.setdefault("parents_created", input.parents)
+        flattened.setdefault("mode", oct(input.mode))
+    return _callable_result_from_flattened(flattened)
 
 
 DirectoryCreateCallable = build_callable_tool(

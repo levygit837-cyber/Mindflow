@@ -325,7 +325,7 @@ All v1 tools are deprecated and will be removed in v3.0.0.
    from mindflow_backend.agents.tools.filesystem import FileReadTool
 
    # New (v2)
-   from mindflow_backend.agents.tools.filesystem import FileReadToolV2
+   from mindflow_backend.agents.tools.filesystem.file_operations_v2 import FileReadToolV2
    ```
 
 2. **Update tool instantiation:**

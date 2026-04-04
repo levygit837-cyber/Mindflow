@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -118,6 +119,14 @@ class DelegationTask(BaseModel):
         ge=1,
         le=100,
         description="How many iteration rounds the agent may perform.",
+    )
+    session_id: str | None = Field(
+        default=None,
+        description="Optional session ID this task belongs to."
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional custom orchestration metadata."
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

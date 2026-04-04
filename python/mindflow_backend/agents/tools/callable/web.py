@@ -9,15 +9,17 @@ All tools in this module use:
 
 from __future__ import annotations
 
-import base64
-import time
-import urllib.parse
 from typing import Any
-from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
-from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.web.api_client import ApiClientTool
+from mindflow_backend.agents.tools.web.http_client import HttpClientTool
+from mindflow_backend.agents.tools.web.web_scraper import WebScraperTool
 from mindflow_backend.schemas.tools import (
     CallableToolResult,
     ProgressCallback,
@@ -25,7 +27,28 @@ from mindflow_backend.schemas.tools import (
 )
 from mindflow_backend.schemas.tools.context import ToolContext
 
-_logger = get_logger(__name__)
+
+def _callable_result_from_flattened(
+    flattened: dict[str, Any],
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> CallableToolResult[dict[str, Any]]:
+    """Convert a flattened legacy result to a callable tool result."""
+    if flattened.get("success"):
+        data = dict(flattened)
+        data.pop("success", None)
+        return CallableToolResult(data=data, success=True, metadata=metadata or {})
+
+    result_metadata = dict(metadata or {})
+    error_code = flattened.get("error_code")
+    if error_code:
+        result_metadata.setdefault("error_code", error_code)
+    return CallableToolResult(
+        data=None,
+        success=False,
+        error=flattened.get("error") or "Unknown error",
+        metadata=result_metadata,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -85,204 +108,38 @@ async def http_client_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute HTTP request with comprehensive features.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with HTTP response data or error
-    """
-    MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # 10MB
-
-    try:
-        method = input.method.upper()
-
-        # Validate URL
-        parsed_url = urlparse(input.url)
-        if not parsed_url.scheme or not parsed_url.netloc:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Invalid URL: {input.url}",
-                metadata={
-                    "error_code": "INVALID_URL",
-                    "url": input.url,
-                }
-            )
-
-        # Log request start
-        _logger.info(
-            "http_request_started",
-            method=method,
-            url=input.url,
-            timeout=input.timeout
-        )
-
-        # Execute request using requests library
-        try:
-            import requests
-            from requests.adapters import HTTPAdapter
-            from urllib3.util.retry import Retry
-
-            # Prepare session with retry strategy
-            session = requests.Session()
-            retry_strategy = Retry(
-                total=3,
-                backoff_factor=1,
-                status_forcelist=[429, 500, 502, 503, 504],
-            )
-            adapter = HTTPAdapter(max_retries=retry_strategy)
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
-
-            # Prepare request arguments
-            request_kwargs = {
-                "method": method,
-                "url": input.url,
-                "headers": input.headers,
-                "params": input.params,
-                "timeout": input.timeout,
-                "verify": input.verify_ssl,
-                "allow_redirects": input.follow_redirects
-            }
-
-            # Add data
-            if input.data:
-                request_kwargs["json"] = input.data
-            elif input.form_data:
-                request_kwargs["data"] = input.form_data
-
-            # Execute request
-            start_time = time.time()
-            response = session.request(**request_kwargs)
-            response.raise_for_status()
-
-            # Check response size
-            content = response.text
-            truncated = False
-            if len(content.encode('utf-8')) > MAX_RESPONSE_SIZE:
-                content = content[:MAX_RESPONSE_SIZE]
-                content += "\n... Response truncated due to size limit."
-                truncated = True
-
-            elapsed = time.time() - start_time
-
-            result = {
-                "status_code": response.status_code,
-                "headers": dict(response.headers),
-                "body": content,
-                "url": response.url,
-                "elapsed": elapsed,
-                "content_type": response.headers.get("content-type"),
-                "content_length": len(content),
-                "truncated": truncated,
-                "method": method,
-            }
-
-            _logger.info(
-                "http_request_completed",
-                method=method,
-                url=input.url,
-                status_code=response.status_code,
-                elapsed=elapsed
-            )
-
-            return CallableToolResult(
-                data=result,
-                success=True,
-                metadata={
-                    "operation": "http_request",
-                }
-            )
-
-        except ImportError:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="requests library not available. Install with: pip install requests",
-                metadata={
-                    "error_code": "MISSING_DEPENDENCY",
-                    "method": method,
-                    "url": input.url,
-                }
-            )
-        except requests.exceptions.Timeout:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Request timeout after {input.timeout} seconds",
-                metadata={
-                    "error_code": "TIMEOUT",
-                    "method": method,
-                    "url": input.url,
-                }
-            )
-        except requests.exceptions.SSLError as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"SSL verification failed: {e}",
-                metadata={
-                    "error_code": "SSL_ERROR",
-                    "method": method,
-                    "url": input.url,
-                }
-            )
-        except requests.exceptions.ConnectionError as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Connection failed: {e}",
-                metadata={
-                    "error_code": "CONNECTION_ERROR",
-                    "method": method,
-                    "url": input.url,
-                }
-            )
-        except requests.exceptions.HTTPError as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"HTTP error: {e}",
-                metadata={
-                    "error_code": "HTTP_ERROR",
-                    "method": method,
-                    "url": input.url,
-                    "status_code": e.response.status_code if e.response else None,
-                }
-            )
-        except requests.exceptions.RequestException as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"HTTP request failed: {e}",
-                metadata={
-                    "error_code": "REQUEST_ERROR",
-                    "method": method,
-                    "url": input.url,
-                }
-            )
-
-    except Exception as e:
-        _logger.error(
-            "http_request_unexpected_error",
-            method=input.method,
-            url=input.url,
-            error=str(e)
-        )
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Unexpected error: {e}",
-            metadata={
-                "error_code": "UNEXPECTED_ERROR",
-                "method": input.method,
-                "url": input.url,
-            }
-        )
+    """Execute an HTTP request through the canonical web tool."""
+    tool = build_legacy_tool(HttpClientTool, context)
+    result = await tool.execute(
+        method=input.method,
+        url=input.url,
+        headers=input.headers,
+        params=input.params,
+        data=input.data,
+        form_data=input.form_data,
+        timeout=input.timeout,
+        verify_ssl=input.verify_ssl,
+        follow_redirects=input.follow_redirects,
+        max_redirects=input.max_redirects,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "invalid url": "INVALID_URL",
+            "no http library available": "MISSING_DEPENDENCY",
+            "timeout": "TIMEOUT",
+            "ssl": "SSL_ERROR",
+            "certificate": "SSL_ERROR",
+            "connection failed": "CONNECTION_ERROR",
+        },
+        default_error_code="REQUEST_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("method", input.method.upper())
+    return _callable_result_from_flattened(
+        flattened,
+        metadata={"operation": "http_request"},
+    )
 
 
 HttpClientCallable = build_readonly_tool(
@@ -345,177 +202,32 @@ async def web_scraper_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Scrape web page content with CSS selectors.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with scraped content or error
-    """
-    try:
-        # Check BeautifulSoup availability
-        try:
-            from bs4 import BeautifulSoup
-        except ImportError:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="BeautifulSoup not available. Install with: pip install beautifulsoup4",
-                metadata={
-                    "error_code": "MISSING_DEPENDENCY",
-                    "url": input.url,
-                }
-            )
-
-        # Fetch page content using HTTP client
-        try:
-            import requests
-            from requests.adapters import HTTPAdapter
-            from urllib3.util.retry import Retry
-
-            session = requests.Session()
-            retry_strategy = Retry(
-                total=3,
-                backoff_factor=1,
-                status_forcelist=[429, 500, 502, 503, 504],
-            )
-            adapter = HTTPAdapter(max_retries=retry_strategy)
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
-
-            response = session.get(
-                input.url,
-                headers=input.headers,
-                timeout=input.timeout,
-                verify=True
-            )
-            response.raise_for_status()
-
-        except ImportError:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="requests library not available. Install with: pip install requests",
-                metadata={
-                    "error_code": "MISSING_DEPENDENCY",
-                    "url": input.url,
-                }
-            )
-        except requests.exceptions.RequestException as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Failed to fetch page: {e}",
-                metadata={
-                    "error_code": "FETCH_ERROR",
-                    "url": input.url,
-                }
-            )
-
-        # Parse HTML
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Extract data
-        result = {
-            "url": input.url,
-            "title": soup.title.string if soup.title else "",
-            "extracted_data": {},
-            "links": [],
-            "images": [],
-            "metadata": {
-                "content_type": response.headers.get("content-type"),
-                "content_length": len(response.text),
-                "status_code": response.status_code
-            }
-        }
-
-        # Extract text content
-        if input.extract_text:
-            # Remove script and style elements
-            for script in soup(["script", "style"]):
-                script.decompose()
-
-            # Get clean text
-            text = soup.get_text(separator=' ', strip=True)
-            # Limit text size
-            if len(text) > 50000:
-                text = text[:50000] + "\n... Text truncated due to size limit."
-            result["content"] = text
-
-        # Extract data by selectors
-        for selector in input.selectors:
-            elements = soup.select(selector)
-            extracted = []
-            for element in elements:
-                data = {
-                    "text": element.get_text(strip=True),
-                    "html": str(element)[:1000],  # Limit HTML size
-                    "attributes": dict(element.attrs)
-                }
-                extracted.append(data)
-            result["extracted_data"][selector] = extracted
-
-        # Extract links
-        if input.extract_links:
-            links = []
-            for link in soup.find_all('a', href=True):
-                href = link['href']
-                text = link.get_text(strip=True)
-
-                # Convert relative URLs to absolute
-                absolute_url = urllib.parse.urljoin(input.url, href)
-
-                links.append({
-                    "url": absolute_url,
-                    "text": text,
-                    "title": link.get('title', ''),
-                    "target": link.get('target', '')
-                })
-            result["links"] = links
-            result["links_count"] = len(links)
-
-        # Extract images
-        if input.extract_images:
-            images = []
-            for img in soup.find_all('img', src=True):
-                src = img['src']
-                alt = img.get('alt', '')
-                title = img.get('title', '')
-
-                # Convert relative URLs to absolute
-                absolute_url = urllib.parse.urljoin(input.url, src)
-
-                images.append({
-                    "url": absolute_url,
-                    "alt": alt,
-                    "title": title,
-                    "width": img.get('width'),
-                    "height": img.get('height')
-                })
-            result["images"] = images
-            result["images_count"] = len(images)
-
-        return CallableToolResult(
-            data=result,
-            success=True,
-            metadata={
-                "operation": "web_scraper",
-            }
-        )
-
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Web scraping failed: {e}",
-            metadata={
-                "error_code": "SCRAPING_ERROR",
-                "url": input.url,
-            }
-        )
+    """Scrape web content through the canonical web scraper."""
+    tool = build_legacy_tool(WebScraperTool, context)
+    result = await tool.execute(
+        url=input.url,
+        selectors=input.selectors,
+        headers=input.headers,
+        timeout=input.timeout,
+        extract_links=input.extract_links,
+        extract_images=input.extract_images,
+        extract_text=input.extract_text,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "no http library available": "MISSING_DEPENDENCY",
+            "requests library not available": "MISSING_DEPENDENCY",
+            "invalid url": "FETCH_ERROR",
+            "http request failed": "FETCH_ERROR",
+            "failed to fetch page": "FETCH_ERROR",
+        },
+        default_error_code="SCRAPING_ERROR",
+    )
+    return _callable_result_from_flattened(
+        flattened,
+        metadata={"operation": "web_scraper"},
+    )
 
 
 WebScraperCallable = build_readonly_tool(
@@ -597,160 +309,36 @@ async def api_client_impl(
     context: ToolContext,
     on_progress: ProgressCallback | None = None,
 ) -> CallableToolResult[dict[str, Any]]:
-    """Execute API request with authentication.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-        on_progress: Optional progress callback
-
-    Returns:
-        CallableToolResult with API response or error
-    """
-    try:
-        # Construct full URL
-        endpoint = input.endpoint
-        if not endpoint.startswith('/'):
-            endpoint = '/' + endpoint
-        full_url = f"{input.api_url.rstrip('/')}{endpoint}"
-
-        # Prepare authentication
-        auth_headers = {}
-        if input.auth_type and input.auth_token:
-            auth_type_lower = input.auth_type.lower()
-
-            if auth_type_lower == "bearer":
-                auth_headers["Authorization"] = f"Bearer {input.auth_token}"
-            elif auth_type_lower == "api_key":
-                auth_headers[input.api_key_header] = input.auth_token
-            elif auth_type_lower == "basic":
-                if input.username and input.password:
-                    credentials = base64.b64encode(
-                        f"{input.username}:{input.password}".encode()
-                    ).decode()
-                    auth_headers["Authorization"] = f"Basic {credentials}"
-                else:
-                    return CallableToolResult(
-                        data=None,
-                        success=False,
-                        error="Basic auth requires username and password",
-                        metadata={
-                            "error_code": "MISSING_CREDENTIALS",
-                            "url": full_url,
-                        }
-                    )
-
-        # Merge headers
-        final_headers = {**input.headers, **auth_headers}
-
-        # Execute request
-        try:
-            import requests
-            from requests.adapters import HTTPAdapter
-            from urllib3.util.retry import Retry
-
-            # Prepare session with retry strategy
-            session = requests.Session()
-            retry_strategy = Retry(
-                total=3,
-                backoff_factor=1,
-                status_forcelist=[429, 500, 502, 503, 504],
-            )
-            adapter = HTTPAdapter(max_retries=retry_strategy)
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
-
-            # Prepare request arguments
-            request_kwargs = {
-                "method": input.method.upper(),
-                "url": full_url,
-                "headers": final_headers,
-                "params": input.params,
-                "timeout": input.timeout
-            }
-
-            # Add data
-            if input.data:
-                request_kwargs["json"] = input.data
-
-            # Execute request
-            response = session.request(**request_kwargs)
-
-            # Try to parse JSON response
-            try:
-                response_data = response.json()
-            except ValueError:
-                response_data = response.text
-
-            api_success = 200 <= response.status_code < 300
-
-            return CallableToolResult(
-                data={
-                    "api_success": api_success,
-                    "status_code": response.status_code,
-                    "data": response_data,
-                    "headers": dict(response.headers),
-                    "url": response.url,
-                    "method": input.method.upper(),
-                },
-                success=True,
-                metadata={
-                    "operation": "api_client",
-                }
-            )
-
-        except ImportError:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error="requests library not available. Install with: pip install requests",
-                metadata={
-                    "error_code": "MISSING_DEPENDENCY",
-                    "url": full_url,
-                }
-            )
-        except requests.exceptions.Timeout:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"API request timeout after {input.timeout} seconds",
-                metadata={
-                    "error_code": "TIMEOUT",
-                    "url": full_url,
-                }
-            )
-        except requests.exceptions.ConnectionError as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"Connection failed: {e}",
-                metadata={
-                    "error_code": "CONNECTION_ERROR",
-                    "url": full_url,
-                }
-            )
-        except requests.exceptions.RequestException as e:
-            return CallableToolResult(
-                data=None,
-                success=False,
-                error=f"API request failed: {e}",
-                metadata={
-                    "error_code": "REQUEST_ERROR",
-                    "url": full_url,
-                }
-            )
-
-    except Exception as e:
-        return CallableToolResult(
-            data=None,
-            success=False,
-            error=f"Unexpected error: {e}",
-            metadata={
-                "error_code": "UNEXPECTED_ERROR",
-                "api_url": input.api_url,
-                "endpoint": input.endpoint,
-            }
-        )
+    """Execute an authenticated API request through the canonical tool."""
+    tool = build_legacy_tool(ApiClientTool, context)
+    result = await tool.execute(
+        api_url=input.api_url,
+        endpoint=input.endpoint,
+        method=input.method,
+        headers=input.headers,
+        auth_type=input.auth_type,
+        auth_token=input.auth_token,
+        username=input.username,
+        password=input.password,
+        api_key_header=input.api_key_header,
+        data=input.data,
+        params=input.params,
+        timeout=input.timeout,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "basic auth requires username and password": "MISSING_CREDENTIALS",
+            "requests library not available": "MISSING_DEPENDENCY",
+            "timeout": "TIMEOUT",
+            "connection failed": "CONNECTION_ERROR",
+        },
+        default_error_code="REQUEST_ERROR",
+    )
+    return _callable_result_from_flattened(
+        flattened,
+        metadata={"operation": "api_client"},
+    )
 
 
 ApiClientCallable = build_readonly_tool(

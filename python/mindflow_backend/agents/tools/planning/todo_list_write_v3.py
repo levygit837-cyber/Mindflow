@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.planning import todo_list as canonical_planning
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
 from mindflow_backend.services import get_todo_planning_service
@@ -58,44 +59,29 @@ async def todo_list_write_execute(input: TodoListWriteInput, context: ToolContex
         Dictionary with todo list snapshot or error
     """
     try:
-        # Resolve session_id
-        session_id = input.session_id
-        if not session_id:
-            # Try to get from context metadata
-            session_id = context.metadata.get("session_id")
-
-        if not session_id:
-            return {
-                "success": False,
-                "error": "session_id is required for planning operations",
-                "error_code": "MISSING_SESSION_ID",
-                "task_id": input.task_id
-            }
-
-        # Get planning service
-        service = get_todo_planning_service()
-
-        # Replace todo list
-        snapshot = await service.replace_list(
-            session_id=str(session_id),
+        session_id, snapshot = await canonical_planning.write_todo_snapshot(
             task_id=input.task_id,
-            goal=input.goal,
+            goal=str(input.goal),
             items=input.items,
             source=input.source,
+            session_id=input.session_id,
+            context_session_id=context.session_id,
+            context_metadata=context.metadata,
+            service=get_todo_planning_service(),
         )
 
         return {
             "success": True,
             "task_id": input.task_id,
-            "session_id": str(session_id),
-            "snapshot": snapshot.model_dump(mode="json")
+            "session_id": session_id,
+            "snapshot": snapshot,
         }
 
     except ValueError as e:
         return {
             "success": False,
-            "error": f"Validation error: {e}",
-            "error_code": "VALIDATION_ERROR",
+            "error": str(e),
+            "error_code": "MISSING_SESSION_ID",
             "task_id": input.task_id
         }
     except Exception as e:

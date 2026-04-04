@@ -8,6 +8,7 @@ that drives agent selection and execution configuration.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any
 
 from datetime import UTC, datetime
 
@@ -218,6 +219,7 @@ class OrchestratorDecision(BaseModel):
     graph_type: GraphType | None = None
     complexity_score: float = Field(default=0.0, ge=0.0, le=1.0)
     memory_recall: MemoryRecallConfig = Field(default_factory=MemoryRecallConfig)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _normalize_identity(self) -> OrchestratorDecision:

@@ -5,15 +5,18 @@ Write file contents with security validation and permission checking.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    deny_if_permission_blocked,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.file_operations import FileWriteTool
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
-from mindflow_backend.schemas.tools.permission import PermissionBehavior
 
 
 # ---------------------------------------------------------------------------
@@ -59,128 +62,47 @@ async def file_write_execute(input: FileWriteInput, context: ToolContext) -> dic
     Returns:
         Dictionary with success status and file metadata or error
     """
-    # 1. Resolve path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.metadata.get("root_dir")
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="write_file",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return permission_error
 
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 2. Security validation: device files
-    if file_path.startswith("/dev/"):
-        return {
-            "success": False,
-            "error": "Cannot write to device files",
-            "error_code": "DEVICE_FILE_BLOCKED",
-            "file_path": file_path
-        }
-
-    # 3. Security validation: system paths
-    restricted_paths = ["/etc", "/usr", "/bin", "/sbin", "/boot", "/sys", "/proc"]
-    for restricted in restricted_paths:
-        if file_path.startswith(restricted):
-            return {
-                "success": False,
-                "error": f"Cannot write to system path: {restricted}",
-                "error_code": "SYSTEM_PATH_BLOCKED",
-                "file_path": file_path
-            }
-
-    # 4. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="write_file",
-            input=input.dict(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return {
-                "success": False,
-                "error": perm_result.reason or "Permission denied",
-                "error_code": "PERMISSION_DENIED",
-                "file_path": file_path
-            }
-
-    # 5. Check if file exists and overwrite flag
-    file_exists = os.path.exists(file_path)
-    if file_exists and not input.overwrite:
-        return {
-            "success": False,
-            "error": f"File already exists and overwrite=False: {file_path}",
-            "error_code": "FILE_EXISTS",
-            "file_path": file_path
-        }
-
-    # 6. Create parent directories if needed
-    if input.create_dirs:
-        parent_dir = os.path.dirname(file_path)
-        if parent_dir and not os.path.exists(parent_dir):
-            try:
-                os.makedirs(parent_dir, exist_ok=True)
-            except Exception as e:
-                return {
-                    "success": False,
-                    "error": f"Failed to create parent directories: {e}",
-                    "error_code": "MKDIR_ERROR",
-                    "file_path": file_path
-                }
-
-    # 7. Write file
-    try:
-        # Check if parent directory exists when create_dirs=False
-        if not input.create_dirs:
-            parent_dir = os.path.dirname(file_path)
-            if parent_dir and not os.path.exists(parent_dir):
-                return {
-                    "success": False,
-                    "error": f"Parent directory does not exist: {parent_dir}",
-                    "error_code": "DIRECTORY_NOT_FOUND",
-                    "file_path": file_path
-                }
-
-        with open(file_path, 'w', encoding=input.encoding) as f:
-            f.write(input.content)
-
-        # Get file stats
-        file_size = os.path.getsize(file_path)
-        line_count = input.content.count('\n') + 1 if input.content else 0
-
-        return {
-            "success": True,
-            "file_path": file_path,
-            "file_size": file_size,
-            "bytes_written": file_size,  # Alias for compatibility
-            "line_count": line_count,
-            "encoding": input.encoding,
-            "created": not file_exists,
-            "overwritten": file_exists
-        }
-
-    except UnicodeEncodeError as e:
-        return {
-            "success": False,
-            "error": f"Encoding error: {e}. Try different encoding.",
-            "error_code": "ENCODING_ERROR",
-            "file_path": file_path,
-            "attempted_encoding": input.encoding
-        }
-    except PermissionError as e:
-        return {
-            "success": False,
-            "error": f"Permission denied: {e}",
-            "error_code": "OS_PERMISSION_ERROR",
-            "file_path": file_path
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "error_code": "WRITE_ERROR",
-            "file_path": file_path
-        }
+    tool = build_legacy_tool(FileWriteTool, context)
+    result = await tool.execute(
+        file_path=input.file_path,
+        content=input.content,
+        encoding=input.encoding,
+        create_dirs=input.create_dirs,
+        overwrite=input.overwrite,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "cannot write to device file": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /etc": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /usr": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /bin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sbin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /boot": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sys": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /proc": "SYSTEM_PATH_BLOCKED",
+            "overwrite=false": "FILE_EXISTS",
+            "parent directory does not exist": "DIRECTORY_NOT_FOUND",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+            "encoding error": "ENCODING_ERROR",
+        },
+        default_error_code="WRITE_ERROR",
+    )
+    if flattened.get("success") and "file_size" not in flattened and "bytes_written" in flattened:
+        flattened["file_size"] = flattened["bytes_written"]
+    return flattened
 
 
 # ---------------------------------------------------------------------------

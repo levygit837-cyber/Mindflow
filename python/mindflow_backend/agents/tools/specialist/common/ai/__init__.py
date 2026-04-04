@@ -1,19 +1,10 @@
-"""AI tools for MindFlow agents.
-
-Provides local model management, embedding generation,
-and AI-powered text processing capabilities.
-"""
+"""Compatibility export surface for specialist AI tools."""
 
 from __future__ import annotations
 
-# AI tools
-from .model_tools import (
+from mindflow_backend.agents.tools.ai.model_tools import (
     EmbeddingTool,
     LocalModelTool,
 )
 
-__all__ = [
-    # AI tools
-    "LocalModelTool",
-    "EmbeddingTool",
-]
+__all__ = ["LocalModelTool", "EmbeddingTool"]

@@ -15,15 +15,18 @@ Features:
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    deny_if_permission_blocked,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.file_operations import FileReadTool
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
-from mindflow_backend.schemas.tools.permission import PermissionBehavior
 
 
 # ---------------------------------------------------------------------------
@@ -73,112 +76,40 @@ async def file_read_execute(input: FileReadInput, context: ToolContext) -> dict[
     Returns:
         Dictionary with success status and file content or error
     """
-    # 1. Resolve path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.metadata.get("root_dir")
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="read_file",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return permission_error
 
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 2. Security validation: device files
-    if file_path.startswith("/dev/"):
-        return {
-            "success": False,
-            "error": "Device files are blocked for security",
-            "error_code": "DEVICE_FILE_BLOCKED",
-            "file_path": file_path
-        }
-
-    # 3. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="read_file",
-            input=input.dict(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return {
-                "success": False,
-                "error": perm_result.reason or "Permission denied",
-                "error_code": "PERMISSION_DENIED",
-                "file_path": file_path
-            }
-
-    # 4. Check file exists
-    if not os.path.exists(file_path):
-        return {
-            "success": False,
-            "error": f"File not found: {file_path}",
-            "error_code": "FILE_NOT_FOUND",
-            "file_path": file_path
-        }
-
-    if not os.path.isfile(file_path):
-        return {
-            "success": False,
-            "error": f"Not a file: {file_path}",
-            "error_code": "NOT_A_FILE",
-            "file_path": file_path
-        }
-
-    # 5. Read file with pagination
-    try:
-        with open(file_path, 'r', encoding=input.encoding) as f:
-            lines = f.readlines()
-
-        # Apply offset and limit
-        start = input.offset
-        end = start + input.limit
-        selected_lines = lines[start:end]
-
-        # Add line numbers if requested
-        if input.include_line_numbers:
-            selected_lines = [
-                f"{start + i + 1}\t{line}"
-                for i, line in enumerate(selected_lines)
-            ]
-
-        content = "".join(selected_lines)
-
-        return {
-            "success": True,
-            "content": content,
-            "file_path": file_path,
-            "total_lines": len(lines),
-            "lines_returned": len(selected_lines),
-            "lines_read": len(selected_lines),  # Alias for compatibility
-            "offset": input.offset,
-            "limit": input.limit,
-            "encoding": input.encoding,
-            "has_more": end < len(lines),
-            "truncated": end < len(lines)  # Alias for compatibility
-        }
-
-    except UnicodeDecodeError as e:
-        return {
-            "success": False,
-            "error": f"Encoding error: {e}. Try different encoding (latin-1, ascii, etc.)",
-            "error_code": "ENCODING_ERROR",
-            "file_path": file_path,
-            "attempted_encoding": input.encoding
-        }
-    except PermissionError as e:
-        return {
-            "success": False,
-            "error": f"Permission denied: {e}",
-            "error_code": "OS_PERMISSION_ERROR",
-            "file_path": file_path
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "error_code": "READ_ERROR",
-            "file_path": file_path
-        }
+    tool = build_legacy_tool(FileReadTool, context)
+    result = await tool.execute(
+        file_path=input.file_path,
+        offset=input.offset,
+        limit=input.limit,
+        encoding=input.encoding,
+        include_line_numbers=input.include_line_numbers,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "cannot read from device file": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "file not found": "FILE_NOT_FOUND",
+            "path is not a file": "NOT_A_FILE",
+            "encoding error": "ENCODING_ERROR",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+        },
+        default_error_code="READ_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("file_path", input.file_path)
+    return flattened
 
 
 # ---------------------------------------------------------------------------

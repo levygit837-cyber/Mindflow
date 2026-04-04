@@ -30,10 +30,12 @@ _logger = get_logger(__name__)
 
 def _resolve_tool_path(tool: AsyncToolInterface, raw_path: str) -> Path:
     """Resolve paths relative to the configured workspace when present."""
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path.resolve()
     if tool.root_dir or tool.secure_mode:
         return resolve_workspace_path(raw_path, tool.root_dir)
-    path = Path(raw_path)
-    if tool.root_dir and not path.is_absolute():
+    if tool.root_dir:
         path = Path(tool.root_dir) / path
     return path.resolve()
 
@@ -94,7 +96,12 @@ class FileReadTool(AsyncToolInterface):
         try:
             file_path = kwargs["file_path"]
             encoding = kwargs.get("encoding", "utf-8")
+            offset = int(kwargs.get("offset", 0))
+            limit = kwargs.get("limit")
+            include_line_numbers = bool(kwargs.get("include_line_numbers", False))
             max_lines = kwargs.get("max_lines")
+            if limit is None and max_lines is not None:
+                limit = int(max_lines)
 
             path_obj = _resolve_tool_path(self, file_path)
 
@@ -128,28 +135,38 @@ class FileReadTool(AsyncToolInterface):
                     error=f"File too large: {file_size} bytes (max: {self.max_file_size})"
                 )
 
-            # Read file
             with open(path_obj, encoding=encoding) as file:
-                if max_lines:
-                    lines = []
-                    for i, line in enumerate(file):
-                        if i >= max_lines:
-                            break
-                        lines.append(line.rstrip('\n\r'))
-                    content = '\n'.join(lines)
-                    line_count = len(lines)
-                else:
-                    content = file.read()
-                    line_count = content.count('\n') + 1 if content else 0
+                lines = file.readlines()
+
+            total_lines = len(lines)
+            start = max(offset, 0)
+            end = total_lines if limit is None else min(total_lines, start + max(int(limit), 0))
+            selected_lines = lines[start:end]
+
+            if include_line_numbers:
+                selected_lines = [
+                    f"{start + i + 1}\t{line}"
+                    for i, line in enumerate(selected_lines)
+                ]
+
+            content = "".join(selected_lines)
+            lines_returned = len(selected_lines)
 
             return self._format_result(
                 success=True,
                 result={
                     "content": content,
-                    "line_count": line_count,
+                    "line_count": total_lines,
+                    "total_lines": total_lines,
+                    "lines_returned": lines_returned,
+                    "lines_read": lines_returned,
                     "file_size": file_size,
                     "encoding": encoding,
-                    "file_path": str(path_obj.absolute())
+                    "file_path": str(path_obj.absolute()),
+                    "offset": start,
+                    "limit": limit,
+                    "has_more": end < total_lines,
+                    "truncated": end < total_lines,
                 }
             )
 
@@ -188,9 +205,14 @@ class FileReadTool(AsyncToolInterface):
             # Check restricted paths
             for restricted in self.restricted_paths:
                 if str(path_obj).startswith(restricted):
+                    if restricted == "/dev":
+                        return {
+                            "valid": False,
+                            "error": f"Cannot read from device file: {path_obj}"
+                        }
                     return {
                         "valid": False,
-                        "error": f"Access to restricted path denied: {restricted}"
+                        "error": f"Restricted path denied: {restricted}"
                     }
 
             # Check file extension
@@ -239,6 +261,7 @@ class FileEditTool(AsyncToolInterface):
         new_string = kwargs["new_string"]
         count = int(kwargs.get("count", 1))
         encoding = kwargs.get("encoding", "utf-8")
+        dry_run = bool(kwargs.get("dry_run", False))
 
         try:
             if is_read_only_mode(self.sandbox_mode):
@@ -264,18 +287,56 @@ class FileEditTool(AsyncToolInterface):
         if old_string not in content:
             return self._format_result(success=False, error="old_string not found in file")
 
-        new_content = content.replace(old_string, new_string, count)
-        replacements = 1 if count == 1 else content.count(old_string)
+        total_occurrences = content.count(old_string)
+        if count == -1:
+            new_content = content.replace(old_string, new_string)
+            replacements = total_occurrences
+        else:
+            new_content = content.replace(old_string, new_string, count)
+            replacements = min(count, total_occurrences)
+
+        size_before = len(content.encode(encoding))
+        size_after = len(new_content.encode(encoding))
+
+        if dry_run:
+            return self._format_result(
+                success=True,
+                result={
+                    "dry_run": True,
+                    "preview": new_content[:500] + "..." if len(new_content) > 500 else new_content,
+                    "replacements": replacements,
+                    "replacements_made": replacements,
+                    "occurrences_replaced": replacements,
+                    "total_occurrences": total_occurrences,
+                    "file_path": str(path_obj.absolute()),
+                },
+            )
+
         path_obj.write_text(new_content, encoding=encoding)
 
-        return self._format_result(success=True, result={"replacements": replacements})
+        return self._format_result(
+            success=True,
+            result={
+                "replacements": replacements,
+                "replacements_made": replacements,
+                "occurrences_replaced": replacements,
+                "total_occurrences": total_occurrences,
+                "file_path": str(path_obj.absolute()),
+                "encoding": encoding,
+                "size_before": size_before,
+                "size_after": size_after,
+                "size_change": size_after - size_before,
+            },
+        )
 
     def _validate_path(self, file_path: str) -> dict[str, Any]:
         try:
             path_obj = Path(file_path).resolve()
             for restricted in self.restricted_paths:
                 if str(path_obj).startswith(restricted):
-                    return {"valid": False, "error": f"Access denied: {restricted}"}
+                    if restricted == "/dev":
+                        return {"valid": False, "error": f"Cannot edit device file: {path_obj}"}
+                    return {"valid": False, "error": f"Restricted path denied: {restricted}"}
             return {"valid": True}
         except Exception as e:
             return {"valid": False, "error": f"Path validation error: {e}"}
@@ -343,6 +404,7 @@ class FileWriteTool(AsyncToolInterface):
             content = kwargs["content"]
             encoding = kwargs.get("encoding", "utf-8")
             create_dirs = kwargs.get("create_dirs", True)
+            overwrite = kwargs.get("overwrite", True)
 
             if is_read_only_mode(self.sandbox_mode):
                 return self._format_result(
@@ -368,9 +430,21 @@ class FileWriteTool(AsyncToolInterface):
                     error=f"Content too large: {content_size} bytes (max: {self.max_file_size})"
                 )
 
+            file_exists = path_obj.exists()
+            if file_exists and not overwrite:
+                return self._format_result(
+                    success=False,
+                    error=f"File already exists and overwrite=False: {path_obj}"
+                )
+
             # Create parent directories if needed
             if create_dirs:
                 path_obj.parent.mkdir(parents=True, exist_ok=True)
+            elif not path_obj.parent.exists():
+                return self._format_result(
+                    success=False,
+                    error=f"Parent directory does not exist: {path_obj.parent}"
+                )
 
             # Write file
             with open(path_obj, 'w', encoding=encoding) as file:
@@ -381,7 +455,10 @@ class FileWriteTool(AsyncToolInterface):
                 result={
                     "bytes_written": bytes_written,
                     "file_path": str(path_obj.absolute()),
-                    "encoding": encoding
+                    "encoding": encoding,
+                    "line_count": content.count('\n') + (1 if content else 0),
+                    "created": not file_exists,
+                    "overwritten": file_exists,
                 }
             )
 
@@ -415,9 +492,14 @@ class FileWriteTool(AsyncToolInterface):
             # Check restricted paths
             for restricted in self.restricted_paths:
                 if str(path_obj).startswith(restricted):
+                    if restricted == "/dev":
+                        return {
+                            "valid": False,
+                            "error": f"Cannot write to device file: {path_obj}"
+                        }
                     return {
                         "valid": False,
-                        "error": f"Access to restricted path denied: {restricted}"
+                        "error": f"Restricted path denied: {restricted}"
                     }
 
             # Check file extension
@@ -473,9 +555,12 @@ class DirectoryListTool(AsyncToolInterface):
         """
         try:
             directory_path = kwargs["directory_path"]
-            show_hidden = kwargs.get("show_hidden", False)
+            show_hidden = kwargs.get("include_hidden", kwargs.get("show_hidden", False))
+            include_size = kwargs.get("include_size", True)
+            include_type = kwargs.get("include_type", True)
             recursive = kwargs.get("recursive", False)
             pattern = kwargs.get("pattern")
+            max_items = int(kwargs.get("max_items", 10000))
 
             path_obj = _resolve_tool_path(self, directory_path)
 
@@ -504,6 +589,7 @@ class DirectoryListTool(AsyncToolInterface):
             # List directory
             files = []
             directories = []
+            entries = []
 
             if recursive:
                 items = path_obj.rglob("*") if not pattern else path_obj.rglob(pattern)
@@ -515,27 +601,48 @@ class DirectoryListTool(AsyncToolInterface):
                 if not show_hidden and item.name.startswith('.'):
                     continue
 
+                if len(entries) >= max_items:
+                    break
+
+                modified = datetime.fromtimestamp(item.stat().st_mtime).isoformat()
+                entry = {
+                    "name": item.name,
+                    "path": str(item),
+                    "modified": modified,
+                }
+
+                if include_type:
+                    if item.is_file():
+                        entry["type"] = "file"
+                    elif item.is_dir():
+                        entry["type"] = "directory"
+                    elif item.is_symlink():
+                        entry["type"] = "symlink"
+                    else:
+                        entry["type"] = "other"
+
+                if include_size:
+                    try:
+                        entry["size"] = item.stat().st_size if item.is_file() else 0
+                    except (OSError, PermissionError):
+                        entry["size"] = None
+
                 if item.is_file():
-                    files.append({
-                        "name": item.name,
-                        "path": str(item),
-                        "size": item.stat().st_size,
-                        "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
-                    })
+                    files.append(dict(entry))
                 elif item.is_dir():
-                    directories.append({
-                        "name": item.name,
-                        "path": str(item),
-                        "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
-                    })
+                    directories.append(dict(entry))
+
+                entries.append(entry)
 
             return self._format_result(
                 success=True,
                 result={
+                    "entries": entries,
                     "files": files,
                     "directories": directories,
-                    "total_count": len(files) + len(directories),
-                    "directory_path": str(path_obj.absolute())
+                    "total_count": len(entries),
+                    "directory_path": str(path_obj.absolute()),
+                    "truncated": len(entries) >= max_items,
                 }
             )
 
@@ -571,7 +678,7 @@ class DirectoryListTool(AsyncToolInterface):
                 if str(path_obj).startswith(restricted):
                     return {
                         "valid": False,
-                        "error": f"Access to restricted path denied: {restricted}"
+                        "error": f"Restricted path denied: {restricted}"
                     }
 
             return {"valid": True}
@@ -645,6 +752,8 @@ class FileDeleteTool(AsyncToolInterface):
                 )
 
             # Delete file or directory
+            file_name = path_obj.name
+            file_size = path_obj.stat().st_size if path_obj.is_file() else None
             if path_obj.is_file():
                 path_obj.unlink()
                 deleted_type = "file"
@@ -672,7 +781,9 @@ class FileDeleteTool(AsyncToolInterface):
                 result={
                     "deleted": True,
                     "file_path": str(path_obj.absolute()),
-                    "deleted_type": deleted_type
+                    "deleted_type": deleted_type,
+                    "file_name": file_name,
+                    "file_size": file_size,
                 }
             )
 

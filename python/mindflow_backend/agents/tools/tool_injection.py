@@ -45,6 +45,10 @@ class ToolPromptInjector:
                 ])
             if ToolScope.SHELL in tool_scopes:
                 items.append("Use Bash for system commands that require shell execution.")
+            if ToolScope.PLANNING in tool_scopes:
+                items.extend([
+                    "You have a personal Scratchpad (blank board) for notes and scratch work. Use read_scratchpad and write_scratchpad to maintain intermediate context or document findings.",
+                ])
         except ImportError:
             pass
         if not items:

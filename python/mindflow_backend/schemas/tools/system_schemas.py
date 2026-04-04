@@ -219,6 +219,13 @@ SHELL_EXECUTOR_SCHEMA = ToolSchema(
             description="Check return code for success",
             required=False,
             default=False
+        ),
+        ToolParameter(
+            name="run_in_background",
+            type="boolean",
+            description="Run command in the background and return a task handle",
+            required=False,
+            default=False
         )
     ],
     returns={
@@ -229,8 +236,14 @@ SHELL_EXECUTOR_SCHEMA = ToolSchema(
             "stderr": {"type": "string", "description": "Standard error"},
             "return_code": {"type": "integer", "description": "Process return code"},
             "pid": {"type": "integer", "description": "Process ID"},
+            "background": {"type": "boolean", "description": "Whether the command is running in the background"},
+            "background_task_id": {"type": "string", "description": "Background task identifier when background execution is used"},
+            "process_id": {"type": "string", "description": "Background process identifier when background execution is used"},
             "execution_time": {"type": "float", "description": "Execution time in seconds"},
-            "timeout": {"type": "boolean", "description": "Whether command timed out"}
+            "timeout": {"type": "boolean", "description": "Whether command timed out"},
+            "sandbox_type": {"type": "string", "description": "Execution backend used (subprocess, docker, background_task)"},
+            "semantic_type": {"type": "string", "description": "Semantic classification of the command"},
+            "security_level": {"type": "string", "description": "Security classification for the command"}
         }
     }
 )

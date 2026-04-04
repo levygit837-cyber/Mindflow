@@ -1,26 +1,17 @@
-"""HttpClientTool v3 - New Tool System Implementation.
-
-HTTP client for web requests with retry logic, SSL verification, and response handling.
-"""
+"""HttpClientTool v3 - Adapter to the canonical HTTP client implementation."""
 
 from __future__ import annotations
 
-import time
 from typing import Any
-from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
 
-_logger = get_logger(__name__)
+from .http_client import HttpClientTool
 
-
-# ---------------------------------------------------------------------------
-# Input Schema
-# ---------------------------------------------------------------------------
+_TRUNCATION_MARKER = "\n... Response truncated due to size limit."
 
 
 class HttpClientInput(BaseModel):
@@ -34,232 +25,120 @@ class HttpClientInput(BaseModel):
     )
     headers: dict[str, str] = Field(
         default={},
-        description="HTTP headers as key-value pairs"
+        description="HTTP headers as key-value pairs",
     )
     params: dict[str, str] = Field(
         default={},
-        description="Query parameters as key-value pairs"
+        description="Query parameters as key-value pairs",
     )
     data: dict[str, Any] | None = Field(
         default=None,
-        description="Request body data (JSON)"
+        description="Request body data (JSON)",
     )
     form_data: dict[str, str] | None = Field(
         default=None,
-        description="Form data (application/x-www-form-urlencoded)"
+        description="Form data (application/x-www-form-urlencoded)",
     )
     timeout: int = Field(
         default=30,
         ge=1,
         le=300,
-        description="Request timeout in seconds"
+        description="Request timeout in seconds",
     )
     verify_ssl: bool = Field(
         default=True,
-        description="Verify SSL certificates"
+        description="Verify SSL certificates",
     )
     follow_redirects: bool = Field(
         default=True,
-        description="Follow HTTP redirects"
+        description="Follow HTTP redirects",
     )
     max_redirects: int = Field(
         default=5,
         ge=0,
         le=20,
-        description="Maximum number of redirects to follow"
+        description="Maximum number of redirects to follow",
     )
 
 
-# ---------------------------------------------------------------------------
-# Execute Function
-# ---------------------------------------------------------------------------
+def _map_http_error_code(error_code: str | None, error: str) -> str:
+    if error_code:
+        return error_code
+    if "Invalid URL" in error:
+        return "INVALID_URL"
+    if "timeout" in error.lower():
+        return "TIMEOUT"
+    if "SSL" in error:
+        return "SSL_ERROR"
+    if "Connection failed" in error:
+        return "CONNECTION_ERROR"
+    if "HTTP error" in error:
+        return "HTTP_ERROR"
+    if "No HTTP library available" in error or "No module named" in error:
+        return "MISSING_DEPENDENCY"
+    return "REQUEST_ERROR"
 
 
 async def http_client_execute(input: HttpClientInput, context: ToolContext) -> dict[str, Any]:
-    """Execute HTTP request with comprehensive features.
-
-    Args:
-        input: Validated input (Pydantic model)
-        context: Tool execution context
-
-    Returns:
-        Dictionary with HTTP response data or error
-    """
-    MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # 10MB
-
+    """Execute HTTP request using the canonical V1 implementation."""
     try:
-        method = input.method.upper()
-
-        # Validate URL
-        parsed_url = urlparse(input.url)
-        if not parsed_url.scheme or not parsed_url.netloc:
-            return {
-                "success": False,
-                "error": f"Invalid URL: {input.url}",
-                "error_code": "INVALID_URL",
-                "url": input.url
-            }
-
-        # Log request start
-        _logger.info(
-            "http_request_started",
-            method=method,
-            url=input.url,
-            timeout=input.timeout
-        )
-
-        # Execute request using requests library
-        try:
-            import requests
-            from requests.adapters import HTTPAdapter
-            from urllib3.util.retry import Retry
-
-            # Prepare session with retry strategy
-            session = requests.Session()
-            retry_strategy = Retry(
-                total=3,
-                backoff_factor=1,
-                status_forcelist=[429, 500, 502, 503, 504],
-            )
-            adapter = HTTPAdapter(max_retries=retry_strategy)
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
-
-            # Prepare request arguments
-            request_kwargs = {
-                "method": method,
-                "url": input.url,
-                "headers": input.headers,
-                "params": input.params,
-                "timeout": input.timeout,
-                "verify": input.verify_ssl,
-                "allow_redirects": input.follow_redirects
-            }
-
-            # Add data
-            if input.data:
-                request_kwargs["json"] = input.data
-            elif input.form_data:
-                request_kwargs["data"] = input.form_data
-
-            # Execute request
-            start_time = time.time()
-            response = session.request(**request_kwargs)
-            response.raise_for_status()
-
-            # Check response size
-            content = response.text
-            truncated = False
-            if len(content.encode('utf-8')) > MAX_RESPONSE_SIZE:
-                content = content[:MAX_RESPONSE_SIZE]
-                content += "\n... Response truncated due to size limit."
-                truncated = True
-
-            elapsed = time.time() - start_time
-
-            result = {
-                "status_code": response.status_code,
-                "headers": dict(response.headers),
-                "body": content,
-                "url": response.url,
-                "elapsed": elapsed,
-                "content_type": response.headers.get("content-type"),
-                "content_length": len(content),
-                "truncated": truncated
-            }
-
-            _logger.info(
-                "http_request_completed",
-                method=method,
-                url=input.url,
-                status_code=response.status_code,
-                elapsed=elapsed
-            )
-
-            return {
-                "success": True,
-                "method": method,
-                **result
-            }
-
-        except ImportError:
-            return {
-                "success": False,
-                "error": "requests library not available. Install with: pip install requests",
-                "error_code": "MISSING_DEPENDENCY",
-                "method": method,
-                "url": input.url
-            }
-        except requests.exceptions.Timeout:
-            return {
-                "success": False,
-                "error": f"Request timeout after {input.timeout} seconds",
-                "error_code": "TIMEOUT",
-                "method": method,
-                "url": input.url
-            }
-        except requests.exceptions.SSLError as e:
-            return {
-                "success": False,
-                "error": f"SSL verification failed: {e}",
-                "error_code": "SSL_ERROR",
-                "method": method,
-                "url": input.url
-            }
-        except requests.exceptions.ConnectionError as e:
-            return {
-                "success": False,
-                "error": f"Connection failed: {e}",
-                "error_code": "CONNECTION_ERROR",
-                "method": method,
-                "url": input.url
-            }
-        except requests.exceptions.HTTPError as e:
-            return {
-                "success": False,
-                "error": f"HTTP error: {e}",
-                "error_code": "HTTP_ERROR",
-                "method": method,
-                "url": input.url,
-                "status_code": e.response.status_code if e.response else None
-            }
-        except requests.exceptions.RequestException as e:
-            return {
-                "success": False,
-                "error": f"HTTP request failed: {e}",
-                "error_code": "REQUEST_ERROR",
-                "method": method,
-                "url": input.url
-            }
-
-    except Exception as e:
-        _logger.error(
-            "http_request_unexpected_error",
+        response = await HttpClientTool().execute(
             method=input.method,
             url=input.url,
-            error=str(e)
+            headers=input.headers,
+            params=input.params,
+            data=input.data,
+            form_data=input.form_data,
+            timeout=input.timeout,
+            verify_ssl=input.verify_ssl,
+            follow_redirects=input.follow_redirects,
+            max_redirects=input.max_redirects,
         )
+    except ImportError as exc:
         return {
             "success": False,
-            "error": f"Unexpected error: {e}",
-            "error_code": "UNEXPECTED_ERROR",
-            "method": input.method,
-            "url": input.url
+            "error": str(exc),
+            "error_code": "MISSING_DEPENDENCY",
+            "method": input.method.upper(),
+            "url": input.url,
         }
 
+    if not response["success"]:
+        error = response.get("error", "HTTP request failed")
+        error_result = response.get("result") or {}
+        result_url = error_result.get("url", input.url)
+        result = {
+            "success": False,
+            "error": error,
+            "error_code": _map_http_error_code(response.get("error_code"), error),
+            "method": input.method.upper(),
+            "url": result_url,
+        }
+        if response.get("status_code") is not None:
+            result["status_code"] = response["status_code"]
+        return result
 
-# ---------------------------------------------------------------------------
-# Build Tool
-# ---------------------------------------------------------------------------
+    payload = response["result"]
+    body = payload["body"]
+    return {
+        "success": True,
+        "method": input.method.upper(),
+        "status_code": payload["status_code"],
+        "headers": payload["headers"],
+        "body": body,
+        "url": payload["url"],
+        "elapsed": payload["elapsed"],
+        "content_type": payload["content_type"],
+        "content_length": payload["content_length"],
+        "truncated": body.endswith(_TRUNCATION_MARKER),
+    }
 
 
 HttpClientToolV3 = build_tool(
     name="http_client",
     description=(
-        "HTTP client for web requests with advanced features. "
-        "Supports all HTTP methods, custom headers, query parameters, JSON/form data, "
-        "SSL verification, redirect handling, and automatic retry on transient failures. "
-        "Includes response size limits and comprehensive error handling."
+        "HTTP client for web requests with retry logic, SSL verification, "
+        "and response handling."
     ),
     input_schema=HttpClientInput,
     execute=http_client_execute,

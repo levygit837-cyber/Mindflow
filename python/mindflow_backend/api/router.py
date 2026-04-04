@@ -16,6 +16,7 @@ from mindflow_backend.api.v1.providers import router as providers_router
 from mindflow_backend.api.v1.resilience import router as resilience_router
 from mindflow_backend.api.v1.tasks import router as tasks_router
 from mindflow_backend.memory.api.routes import router as memory_router
+from mindflow_backend.api.v1.a2a import router as a2a_router
 
 router = APIRouter(prefix="/v1")
 router.include_router(agent_router)
@@ -34,3 +35,6 @@ router.include_router(modes_router)
 router.include_router(autocomplete_router)
 router.include_router(feature_flags_router)
 router.include_router(output_styles_router)
+
+# A2A endpoints are usually in /v1/a2a logic or direct /a2a. Since we defined them in the router:
+router.include_router(a2a_router)

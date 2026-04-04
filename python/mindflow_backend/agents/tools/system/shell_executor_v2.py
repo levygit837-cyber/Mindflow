@@ -1,21 +1,14 @@
-"""Shell executor tool v2 - Enhanced with Claude Code standards.
+"""Shell executor tool v2 compatibility adapter.
 
-This module implements ShellExecutorTool v2 with full integration of:
-- Schemas v2 (shell_schemas_v2.py)
-- All 11 bash security validators (bash_validators.py)
-- Command semantic analysis
-- Background execution support
-- Permission system integration
-
-Matching Claude Code's BashTool feature set and security standards.
+The v2 surface still owns validator-heavy compatibility behavior, but the
+actual shell execution lifecycle now delegates to the canonical unsuffixed
+shell tool.
 """
 
 from __future__ import annotations
 
-import asyncio
 import os
 import re
-import time
 from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
@@ -24,6 +17,7 @@ from mindflow_backend.agents.tools.security.bash_validators import (
     is_command_safe,
     validate_bash_command,
 )
+from mindflow_backend.agents.tools.system.shell_executor import ShellExecutorTool
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.execution.background_task_manager import BackgroundTaskManager
 from mindflow_backend.schemas.tools.shell_schemas_v2 import (
@@ -71,9 +65,13 @@ class ShellExecutorToolV2(AsyncToolInterface):
         Args:
             root_dir: Root directory for command execution (workspace root)
         """
+        super().__init__()
         self.root_dir = root_dir
         self._background_task_manager = background_task_manager or BackgroundTaskManager(
             execution_task_service=get_execution_task_service(),
+        )
+        self._canonical_tool = ShellExecutorTool(
+            background_task_manager=self._background_task_manager,
         )
 
     async def execute(self, **kwargs) -> dict[str, Any]:
@@ -198,62 +196,25 @@ class ShellExecutorToolV2(AsyncToolInterface):
         semantic_type: CommandSemanticType,
         security_level: BashSecurityLevel
     ) -> dict[str, Any]:
-        """Execute command in foreground with output capture."""
-        start_time = time.time()
-
-        try:
-            # Run command
-            process = await asyncio.create_subprocess_shell(
-                command,
-                cwd=cwd,
-                env=env,
-                stdout=asyncio.subprocess.PIPE if capture_output else None,
-                stderr=asyncio.subprocess.PIPE if capture_output else None
-            )
-
-            # Wait for completion with timeout
-            try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
-                    timeout=timeout
-                )
-            except asyncio.TimeoutError:
-                process.kill()
-                await process.wait()
-                return {
-                    "success": False,
-                    "error": f"Command timed out after {timeout}s",
-                    "error_code": "TIMEOUT",
-                    "command": command[:100],
-                    "timeout": timeout
-                }
-
-            execution_time = time.time() - start_time
-
-            # Decode output
-            stdout_str = stdout.decode('utf-8', errors='replace') if stdout else ""
-            stderr_str = stderr.decode('utf-8', errors='replace') if stderr else ""
-
-            return {
-                "success": process.returncode == 0,
-                "exit_code": process.returncode,
-                "stdout": stdout_str,
-                "stderr": stderr_str,
-                "command": command,
-                "cwd": cwd,
-                "execution_time": execution_time,
-                "semantic_type": semantic_type.value,
-                "security_level": security_level.value,
-                "output_lines": stdout_str.count('\n') if stdout_str else 0
-            }
-
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Execution failed: {e}",
-                "error_code": "EXECUTION_ERROR",
-                "command": command[:100]
-            }
+        """Execute command through the canonical shell tool and normalize v2 output."""
+        canonical_tool = self._get_canonical_tool()
+        result = await canonical_tool.execute(
+            command=command,
+            timeout=timeout,
+            working_dir=cwd,
+            environment=env,
+            capture_output=capture_output,
+            shell=True,
+            check_return_code=False,
+        )
+        return self._normalize_canonical_execution(
+            result,
+            command=command,
+            cwd=cwd,
+            timeout=timeout,
+            semantic_type=semantic_type,
+            security_level=security_level,
+        )
 
     async def _execute_background(
         self,
@@ -268,41 +229,41 @@ class ShellExecutorToolV2(AsyncToolInterface):
         tool_call_id: str | None,
         description: str | None,
     ) -> dict[str, Any]:
-        """Execute command in background and return immediately."""
-        try:
-            background_task = await self._background_task_manager.spawn(
-                command=command,
-                cwd=cwd,
-                env=env,
-                description=description or f"Shell command: {command[:120]}",
-                session_id=session_id,
-                task_id=task_id,
-                tool_call_id=tool_call_id,
-            )
-
-            return {
-                "success": True,
-                "background_task_id": background_task.background_task_id,
-                "process_id": background_task.background_task_id,
-                "pid": background_task.pid,
-                "command": command,
-                "cwd": cwd,
-                "background": True,
-                "semantic_type": semantic_type.value,
-                "security_level": security_level.value,
-                "message": (
-                    f"Command started in background with PID {background_task.pid}"
-                ),
-                "timeout": timeout,
-            }
-
-        except Exception as e:
+        """Execute command in background via the canonical shell tool."""
+        canonical_tool = self._get_canonical_tool()
+        result = await canonical_tool.execute(
+            command=command,
+            timeout=timeout,
+            working_dir=cwd,
+            environment=env,
+            run_in_background=True,
+            session_id=session_id,
+            task_id=task_id,
+            tool_call_id=tool_call_id,
+            description=description,
+        )
+        if not result.get("success"):
             return {
                 "success": False,
-                "error": f"Failed to start background process: {e}",
+                "error": result.get("error") or "Failed to start background process",
                 "error_code": "BACKGROUND_START_ERROR",
-                "command": command[:100]
+                "command": command[:100],
             }
+
+        payload = result.get("result", {})
+        return {
+            "success": True,
+            "background_task_id": payload.get("background_task_id"),
+            "process_id": payload.get("process_id"),
+            "pid": payload.get("pid"),
+            "command": command,
+            "cwd": cwd,
+            "background": True,
+            "semantic_type": semantic_type.value,
+            "security_level": security_level.value,
+            "message": payload.get("message") or f"Command started in background with PID {payload.get('pid')}",
+            "timeout": timeout,
+        }
 
     def _analyze_command_semantics(self, command: str) -> CommandSemanticType:
         """Analyze command to determine semantic type.
@@ -445,7 +406,7 @@ class ShellExecutorToolV2(AsyncToolInterface):
 
     async def get_background_status(self, process_id: str) -> dict[str, Any]:
         """Get status of background process."""
-        status = await self._background_task_manager.get_status(process_id)
+        status = await self._get_canonical_tool().get_background_status(process_id)
         if not status.get("success"):
             status["error_code"] = "PROCESS_NOT_FOUND"
         if status.get("success"):
@@ -455,7 +416,7 @@ class ShellExecutorToolV2(AsyncToolInterface):
 
     async def kill_background_process(self, process_id: str) -> dict[str, Any]:
         """Kill a background process."""
-        result = await self._background_task_manager.kill(process_id)
+        result = await self._get_canonical_tool().kill_background_process(process_id)
         if not result.get("success"):
             result["error_code"] = "PROCESS_NOT_FOUND"
         if result.get("success"):
@@ -463,6 +424,68 @@ class ShellExecutorToolV2(AsyncToolInterface):
             result.setdefault("process_id", process_id)
             result.setdefault("message", "Process killed successfully")
         return result
+
+    def _get_canonical_tool(self) -> ShellExecutorTool:
+        """Return the configured canonical shell tool."""
+        self._canonical_tool.root_dir = self.root_dir
+        self._canonical_tool.sandbox_mode = self.sandbox_mode
+        return self._canonical_tool
+
+    @staticmethod
+    def _normalize_canonical_execution(
+        result: dict[str, Any],
+        *,
+        command: str,
+        cwd: str,
+        timeout: int | None,
+        semantic_type: CommandSemanticType,
+        security_level: BashSecurityLevel,
+    ) -> dict[str, Any]:
+        """Convert canonical shell results to the v2 response contract."""
+        if not result.get("success"):
+            return {
+                "success": False,
+                "error": result.get("error") or "Execution failed",
+                "error_code": "EXECUTION_ERROR",
+                "command": command[:100],
+            }
+
+        payload = result.get("result", {}) or {}
+        if payload.get("timeout"):
+            return {
+                "success": False,
+                "error": f"Command timed out after {timeout}s",
+                "error_code": "TIMEOUT",
+                "command": command[:100],
+                "timeout": timeout,
+            }
+
+        stdout = payload.get("output", "")
+        stderr = payload.get("stderr", "")
+        exit_code = payload.get("return_code", -1)
+        success = exit_code == 0
+        response = {
+            "success": success,
+            "exit_code": exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+            "command": command,
+            "cwd": cwd,
+            "execution_time": payload.get("execution_time", 0.0),
+            "semantic_type": semantic_type.value,
+            "security_level": security_level.value,
+            "output_lines": stdout.count("\n") if stdout else 0,
+        }
+
+        combined_output = f"{stdout}\n{stderr}".lower()
+        if exit_code == 127 and "not found" in combined_output:
+            response["success"] = False
+            response["error"] = stderr or stdout or "Command not found"
+            response["error_code"] = "COMMAND_NOT_FOUND"
+        elif not success:
+            response["error"] = stderr or stdout or f"Command exited with code {exit_code}"
+
+        return response
 
     def get_schema(self) -> dict[str, Any]:
         """Return tool schema for LangChain adapter."""

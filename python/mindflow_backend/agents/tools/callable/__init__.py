@@ -58,6 +58,10 @@ from .planning import (
     TodoListWriteCallable,
     TodoListFocusCallable,
 )
+from .scratchpad import (
+    ScratchpadReadCallable,
+    ScratchpadWriteCallable,
+)
 
 # Registration
 from .registration import (
@@ -96,6 +100,8 @@ __all__ = [
     "TodoListReadCallable",
     "TodoListWriteCallable",
     "TodoListFocusCallable",
+    "ScratchpadReadCallable",
+    "ScratchpadWriteCallable",
     # Registration
     "register_all_callable_tools",
     "unregister_all_callable_tools",

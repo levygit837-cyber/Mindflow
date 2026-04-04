@@ -9,14 +9,21 @@ Tests the complete integration of tools v2 with the MindFlow system:
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+from mindflow_backend.agents.tools.filesystem.file_operations_v2 import (
+    FileEditToolV2,
+    FileReadToolV2,
+    FileWriteToolV2,
+)
+from mindflow_backend.agents.tools.filesystem.search_tools_v2 import (
+    GlobToolV2,
+    GrepToolV2,
+)
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+from mindflow_backend.agents.tools.system.shell_executor_v2 import ShellExecutorToolV2
 from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
 
 
@@ -27,7 +34,7 @@ class TestToolsV2RegistryIntegration:
     def sandbox(self, tmp_path):
         """Create test sandbox."""
         return MindFlowSandbox(
-            cwd=str(tmp_path),
+            root_dir=str(tmp_path),
             mode=SandboxMode.FULL
         )
 
@@ -37,52 +44,53 @@ class TestToolsV2RegistryIntegration:
         return create_default_registry(sandbox)
 
     def test_registry_loads_v2_tools(self, registry):
-        """Test that registry loads v2 tools by default."""
+        """Test that registry loads callable filesystem tools by default."""
         from mindflow_backend.schemas.orchestration.orchestrator import ToolScope
+        from mindflow_backend.schemas.tools import CallableTool
 
         # Get filesystem tools
         tools = registry._get_tools_for_scope(ToolScope.FILESYSTEM)
 
-        # Check that v2 tools are loaded
+        # Check that callable tools are loaded for the public scope surface
         tool_names = [tool.name for tool in tools]
 
-        assert "read_file" in tool_names
+        assert "file_read" in tool_names
         assert "write_file" in tool_names
         assert "edit_file" in tool_names
         assert "grep_search" in tool_names
         assert "glob_search" in tool_names
 
-        # Verify tools are v2 instances
-        read_tool = next(t for t in tools if t.name == "read_file")
-        assert hasattr(read_tool, "root_dir")  # v2 feature
+        read_tool = next(t for t in tools if t.name == "file_read")
+        assert isinstance(read_tool, CallableTool)
 
-    def test_registry_loads_shell_v2(self, registry):
-        """Test that registry loads shell executor v2."""
+    def test_registry_loads_canonical_shell(self, registry):
+        """Test that registry exposes the canonical shell through callable scope tools."""
         from mindflow_backend.schemas.orchestration.orchestrator import ToolScope
+        from mindflow_backend.schemas.tools import CallableTool
 
         # Get shell tools
         tools = registry._get_tools_for_scope(ToolScope.SHELL)
 
-        # Check that shell executor v2 is loaded
+        # Check that the callable shell surface is loaded
         tool_names = [tool.name for tool in tools]
-        assert "shell_execute_v2" in tool_names
+        assert "shell_execute" in tool_names
 
-        # Verify it's v2 instance
-        shell_tool = next(t for t in tools if t.name == "shell_execute_v2")
-        assert hasattr(shell_tool, "_background_processes")  # v2 feature
+        shell_tool = next(t for t in tools if t.name == "shell_execute")
+        assert isinstance(shell_tool, CallableTool)
 
     def test_backward_compatibility_v1_tools_available(self, registry):
-        """Test that v1 tools are still available for backward compatibility."""
-        from mindflow_backend.schemas.orchestration.orchestrator import ToolScope
+        """Test that legacy filesystem tools remain available as fallback compatibility."""
 
-        # Get filesystem tools
-        tools = registry._get_tools_for_scope(ToolScope.FILESYSTEM)
+        tools = registry._get_filesystem_tools()
 
-        # Check that some v1 tools are still available
         tool_names = [tool.name for tool in tools]
 
-        # FindFilesTool is v1 only
-        assert "find_files" in tool_names
+        assert "read_file_v2" in tool_names
+        assert "write_file_v2" in tool_names
+        assert "edit_file_v2" in tool_names
+        assert "grep_v2" in tool_names
+        assert "glob_v2" in tool_names
+        assert "file_finder" in tool_names
 
 
 class TestToolsV2LangChainAdapter:
@@ -91,14 +99,6 @@ class TestToolsV2LangChainAdapter:
     @pytest.fixture
     def v2_tools(self, tmp_path):
         """Create v2 tool instances."""
-        from mindflow_backend.agents.tools.filesystem import (
-            FileReadToolV2,
-            FileWriteToolV2,
-            FileEditToolV2,
-            GrepToolV2,
-            GlobToolV2,
-        )
-
         return [
             FileReadToolV2(root_dir=str(tmp_path)),
             FileWriteToolV2(root_dir=str(tmp_path)),
@@ -115,18 +115,18 @@ class TestToolsV2LangChainAdapter:
 
         # Check tool names
         tool_names = [tool.name for tool in lc_tools]
-        assert "read_file" in tool_names
-        assert "write_file" in tool_names
-        assert "edit_file" in tool_names
-        assert "grep_search" in tool_names
-        assert "glob_search" in tool_names
+        assert "read_file_v2" in tool_names
+        assert "write_file_v2" in tool_names
+        assert "edit_file_v2" in tool_names
+        assert "grep_v2" in tool_names
+        assert "glob_v2" in tool_names
 
     def test_adapter_preserves_v2_schemas(self, v2_tools):
         """Test that adapter preserves v2 parameter schemas."""
         lc_tools = to_langchain_tools(v2_tools)
 
         # Get read_file tool
-        read_tool = next(t for t in lc_tools if t.name == "read_file")
+        read_tool = next(t for t in lc_tools if t.name == "read_file_v2")
 
         # Check that v2 parameters are present in schema
         if hasattr(read_tool, 'args_schema') and read_tool.args_schema:
@@ -149,10 +149,10 @@ class TestToolsV2LangChainAdapter:
         lc_tools = to_langchain_tools(v2_tools)
 
         # Get read_file tool
-        read_tool = next(t for t in lc_tools if t.name == "read_file")
+        read_tool = next(t for t in lc_tools if t.name == "read_file_v2")
 
         # Execute tool
-        result = await read_tool.arun(file_path=str(test_file))
+        result = await read_tool.ainvoke({"file_path": str(test_file)})
 
         # Parse result (it's JSON string)
         import json
@@ -173,8 +173,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_file_read_v2_pagination(self, tmp_workspace):
         """Test FileReadToolV2 pagination feature."""
-        from mindflow_backend.agents.tools.filesystem import FileReadToolV2
-
         # Create test file with multiple lines
         test_file = tmp_workspace / "large.txt"
         test_file.write_text("\n".join([f"Line {i}" for i in range(1, 101)]))
@@ -196,8 +194,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_file_write_v2_atomic(self, tmp_workspace):
         """Test FileWriteToolV2 atomic write feature."""
-        from mindflow_backend.agents.tools.filesystem import FileWriteToolV2
-
         test_file = tmp_workspace / "atomic.txt"
 
         tool = FileWriteToolV2(root_dir=str(tmp_workspace))
@@ -216,8 +212,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_file_edit_v2_dry_run(self, tmp_workspace):
         """Test FileEditToolV2 dry run feature."""
-        from mindflow_backend.agents.tools.filesystem import FileEditToolV2
-
         test_file = tmp_workspace / "edit.txt"
         original_content = "Hello World"
         test_file.write_text(original_content)
@@ -242,8 +236,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_glob_v2_exclude_patterns(self, tmp_workspace):
         """Test GlobToolV2 exclude patterns feature."""
-        from mindflow_backend.agents.tools.filesystem import GlobToolV2
-
         # Create test files
         (tmp_workspace / "include.py").write_text("include")
         (tmp_workspace / "exclude.py").write_text("exclude")
@@ -265,8 +257,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_grep_v2_context_lines(self, tmp_workspace):
         """Test GrepToolV2 context lines feature."""
-        from mindflow_backend.agents.tools.filesystem import GrepToolV2
-
         test_file = tmp_workspace / "context.txt"
         test_file.write_text("Line 1\nLine 2\nMatch here\nLine 4\nLine 5\n")
 
@@ -289,8 +279,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_shell_v2_semantic_analysis(self, tmp_workspace):
         """Test ShellExecutorToolV2 semantic analysis."""
-        from mindflow_backend.agents.tools.system import ShellExecutorToolV2
-
         tool = ShellExecutorToolV2(root_dir=str(tmp_workspace))
 
         # Execute git command
@@ -302,8 +290,6 @@ class TestToolsV2Features:
     @pytest.mark.asyncio
     async def test_shell_v2_security_classification(self, tmp_workspace):
         """Test ShellExecutorToolV2 security classification."""
-        from mindflow_backend.agents.tools.system import ShellExecutorToolV2
-
         tool = ShellExecutorToolV2(root_dir=str(tmp_workspace))
 
         # Execute safe command
@@ -319,9 +305,7 @@ class TestIntegrationFeatures:
     @pytest.mark.asyncio
     async def test_git_integration_diff(self, tmp_path):
         """Test git integration diff generation."""
-        from mindflow_backend.agents.tools.integrations import (
-            fetch_single_file_git_diff
-        )
+        from mindflow_backend.agents.tools.integrations import fetch_single_file_git_diff
 
         # This test requires a git repository
         # Skip if not in git repo
@@ -352,10 +336,7 @@ class TestIntegrationFeatures:
 
     def test_analytics_tracking(self):
         """Test analytics tracking."""
-        from mindflow_backend.agents.tools.analytics import (
-            log_file_operation,
-            get_tool_stats
-        )
+        from mindflow_backend.agents.tools.analytics import get_tool_stats, log_file_operation
 
         # Log operation
         log_file_operation(
@@ -373,10 +354,7 @@ class TestIntegrationFeatures:
 
     def test_result_caching(self):
         """Test result caching."""
-        from mindflow_backend.agents.tools.caching import (
-            get_global_cache,
-            clear_global_cache
-        )
+        from mindflow_backend.agents.tools.caching import clear_global_cache, get_global_cache
 
         cache = get_global_cache()
 

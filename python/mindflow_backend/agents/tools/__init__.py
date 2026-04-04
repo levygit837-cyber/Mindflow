@@ -11,22 +11,13 @@ Provides modular, extensible tool architecture with:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from mindflow_backend.agents.specialists.runtime_policy import AGENT_RUNTIME_POLICY
+from mindflow_backend.agents.tools.contextplus_fallback import ContextPlusFallbackEngine
+from mindflow_backend.agents.tools.contextplus_validator import ContextPlusValidator
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
-
-from mindflow_backend.agents.tools.contextplus_fallback import (
-    ContextPlusFallbackEngine,
-    FallbackConfig,
-    FALLBACK_CHAINS,
-)
-from mindflow_backend.agents.tools.contextplus_validator import (
-    ContextPlusValidator,
-    ValidationConfig,
-)
 
 # Core components
 from .base.tool_registry import ToolRegistry
@@ -55,8 +46,6 @@ class _DefaultRegistry:
     def _build_tool_mapping(self) -> dict[Any, list[Any]]:
         """Build mapping from AgentType to ToolScope based on canonical policy."""
         try:
-            from mindflow_backend.schemas.orchestration.orchestrator import AgentType, ToolScope
-
             mapping: dict[Any, list[Any]] = {}
             for policy in AGENT_RUNTIME_POLICY.values():
                 if policy.specialist is None:
@@ -142,21 +131,23 @@ class _DefaultRegistry:
         tools = []
 
         try:
-            # Import v2 tools (Claude Code standard)
-            from .filesystem import (
-                FileReadToolV2,
-                FileWriteToolV2,
-                FileEditToolV2,
-                GrepToolV2,
-                GlobToolV2,
-            )
-
             # Import v1 tools for backward compatibility
             from .filesystem import (
                 DirectoryCreateTool,
                 DirectoryListTool,
                 FileDeleteTool,
                 FindFilesTool,
+            )
+
+            # Import v2 tools (Claude Code standard)
+            from .filesystem.file_operations_v2 import (
+                FileEditToolV2,
+                FileReadToolV2,
+                FileWriteToolV2,
+            )
+            from .filesystem.search_tools_v2 import (
+                GlobToolV2,
+                GrepToolV2,
             )
 
             tools = [
@@ -181,17 +172,15 @@ class _DefaultRegistry:
         return tools
 
     def _get_shell_tools(self) -> list[Any]:
-        """Get shell/system tools (v2 by default, v1 for backward compatibility)."""
+        """Get shell/system tools with the canonical shell as the default runtime."""
         tools = []
 
         try:
-            # Import v2 tools (Claude Code standard)
-            from .system import ShellExecutorToolV2
-
-            # Import v1 and other system tools
+            # Import the canonical shell tool and the remaining system tools.
             from .system import (
                 ProcessManagerTool,
                 ResourceMonitorTool,
+                ShellExecutorTool,
                 ShellTabCloseTool,
                 ShellTabExecTool,
                 ShellTabListTool,
@@ -202,8 +191,8 @@ class _DefaultRegistry:
             )
 
             tools = [
-                # v2 tools (default)
-                ShellExecutorToolV2(),
+                # Canonical shell tool (default)
+                ShellExecutorTool(),
 
                 # Other system tools
                 ResourceMonitorTool(),
@@ -216,7 +205,7 @@ class _DefaultRegistry:
                 ShellTabReadTool(),
                 ShellTabCloseTool(),
             ]
-            _logger.info(f"Loaded {len(tools)} shell tools (1 v2 + 9 other)")
+            _logger.info(f"Loaded {len(tools)} shell tools (1 canonical + 8 other)")
 
         except ImportError as e:
             _logger.warning(f"Could not import shell tools: {e}")
@@ -345,8 +334,10 @@ class _DefaultRegistry:
                 GitNexusQueryTool,
                 GitNexusStatusTool,
             )
-            from .filesystem import (
+            from .filesystem.file_operations_v2 import (
                 FileReadToolV2,
+            )
+            from .filesystem.search_tools_v2 import (
                 GlobToolV2,
                 GrepToolV2,
             )

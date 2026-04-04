@@ -5,13 +5,15 @@ Find files by name pattern with size and date filters.
 
 from __future__ import annotations
 
-import os
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.search_tools import FileFinderTool
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
 
@@ -76,120 +78,30 @@ async def file_finder_execute(input: FileFinderInput, context: ToolContext) -> d
     Returns:
         Dictionary with found files or error
     """
-    # 1. Resolve directory (support root_dir from context)
-    directory = input.directory
-    root_dir = context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory):
-        directory = os.path.join(root_dir, directory)
-
-    directory = os.path.abspath(directory)
-
-    # 2. Check directory exists
-    if not os.path.exists(directory):
-        return {
-            "success": False,
-            "error": f"Directory not found: {directory}",
-            "error_code": "DIRECTORY_NOT_FOUND"
-        }
-
-    if not os.path.isdir(directory):
-        return {
-            "success": False,
-            "error": f"Not a directory: {directory}",
-            "error_code": "NOT_A_DIRECTORY"
-        }
-
-    # 3. Parse date filters
-    min_timestamp = None
-    max_timestamp = None
-
-    if input.min_date:
-        try:
-            min_timestamp = datetime.strptime(input.min_date, "%Y-%m-%d").timestamp()
-        except ValueError as e:
-            return {
-                "success": False,
-                "error": f"Invalid min_date format: {e}. Use YYYY-MM-DD",
-                "error_code": "INVALID_DATE_FORMAT"
-            }
-
-    if input.max_date:
-        try:
-            max_timestamp = datetime.strptime(input.max_date, "%Y-%m-%d").timestamp()
-        except ValueError as e:
-            return {
-                "success": False,
-                "error": f"Invalid max_date format: {e}. Use YYYY-MM-DD",
-                "error_code": "INVALID_DATE_FORMAT"
-            }
-
-    # 4. Search for files
-    try:
-        files = []
-        search_path = Path(directory)
-
-        # Use rglob for recursive, glob for non-recursive
-        if input.recursive:
-            matches = search_path.rglob(input.pattern)
-        else:
-            matches = search_path.glob(input.pattern)
-
-        for file_path in matches:
-            # Only include files, not directories
-            if not file_path.is_file():
-                continue
-
-            try:
-                stat = file_path.stat()
-
-                # Apply size filters
-                if input.min_size is not None and stat.st_size < input.min_size:
-                    continue
-
-                if input.max_size is not None and stat.st_size > input.max_size:
-                    continue
-
-                # Apply date filters
-                if min_timestamp is not None and stat.st_mtime < min_timestamp:
-                    continue
-
-                if max_timestamp is not None and stat.st_mtime > max_timestamp:
-                    continue
-
-                # Add to results
-                files.append({
-                    "path": str(file_path),
-                    "name": file_path.name,
-                    "size": stat.st_size,
-                    "modified": stat.st_mtime,
-                    "modified_date": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-                })
-
-            except (OSError, PermissionError):
-                # Skip files we can't access
-                continue
-
-            # Check max results limit
-            if len(files) >= input.max_results:
-                break
-
-        return {
-            "success": True,
-            "files": files,
-            "total_count": len(files),
-            "truncated": len(files) >= input.max_results,
-            "pattern": input.pattern,
-            "directory": directory
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"File finder error: {e}",
-            "error_code": "SEARCH_ERROR",
-            "pattern": input.pattern
-        }
+    tool = build_legacy_tool(FileFinderTool, context)
+    result = await tool.execute(
+        pattern=input.pattern,
+        directory=input.directory,
+        recursive=input.recursive,
+        min_size=input.min_size,
+        max_size=input.max_size,
+        min_date=input.min_date,
+        max_date=input.max_date,
+        max_results=input.max_results,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "not a directory": "NOT_A_DIRECTORY",
+            "does not match format": "INVALID_DATE_FORMAT",
+            "time data": "INVALID_DATE_FORMAT",
+        },
+        default_error_code="SEARCH_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("pattern", input.pattern)
+    return flattened
 
 
 # ---------------------------------------------------------------------------

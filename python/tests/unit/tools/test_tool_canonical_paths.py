@@ -101,4 +101,5 @@ def test_shell_registry_returns_shell_tools() -> None:
     shell_tools = registry._get_shell_tools()
 
     assert shell_tools
-    assert any(isinstance(tool, ShellExecutorToolV2) for tool in shell_tools)
+    assert any(isinstance(tool, ShellExecutorTool) for tool in shell_tools)
+    assert not any(isinstance(tool, ShellExecutorToolV2) for tool in shell_tools)

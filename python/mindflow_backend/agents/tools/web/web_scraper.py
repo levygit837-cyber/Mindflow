@@ -1,268 +1,125 @@
 """
-Web tools for MindFlow backend. Provides HTTP client, API communication, and web scraping capabilities 
-with advanced features and security controls. 
+Web tools for MindFlow backend.
 """
 
 from __future__ import annotations
 
-import json
+import re
 import urllib.parse
+from html.parser import HTMLParser
 from typing import Any
 
-try:
-    import aiohttp
-    import aiohttp.web
-    AIOHTTP_AVAILABLE = True
-except ImportError:
-    AIOHTTP_AVAILABLE = False
-    aiohttp = None
-
-try:
-    import requests
-    from requests.adapters import HTTPAdapter
-    from urllib3.util.retry import Retry
-    REQUESTS_AVAILABLE = True
-except ImportError:
-    REQUESTS_AVAILABLE = False
-    requests = None
-
-from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.schemas.tools.web_schemas import (
-    API_CLIENT_SCHEMA,
-    HTTP_CLIENT_SCHEMA,
-    WEB_SCRAPER_SCHEMA,
-)
+from mindflow_backend.schemas.tools.web_schemas import WEB_SCRAPER_SCHEMA
 
 from ..base.tool_interface import AsyncToolInterface
+from .api_client import ApiClientTool
+from .http_client import HttpClientTool
 
-_logger = get_logger(__name__)
+
+def _collapse_whitespace(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
 
 
-class HttpClientTool(AsyncToolInterface):
-    """
-    HTTP client with advanced features.
-    """
+def _parse_simple_selector(selector: str) -> tuple[str, str | None]:
+    if "." in selector:
+        tag, class_name = selector.split(".", 1)
+        return tag, class_name
+    return selector, None
 
-    def __init__(self, backend: Any | None = None):
-        """
-        Initialize the HTTP client tool.
-        Args:
-            backend: Optional backend for compatibility
-        """
+
+class _FallbackWebParser(HTMLParser):
+    def __init__(self, selectors: list[str]):
         super().__init__()
-        self.backend = backend
-        self.name = "http_client"
-        self.description = "HTTP client with advanced features"
-        self.default_timeout = 30
-        self.max_response_size = 10 * 1024 * 1024  # 10MB
-        
-        self._schema = HTTP_CLIENT_SCHEMA
+        self._selector_specs = {
+            selector: _parse_simple_selector(selector) for selector in selectors
+        }
+        self._stack: list[dict[str, Any]] = []
+        self._ignored_depth = 0
+        self.title = ""
+        self.content_parts: list[str] = []
+        self.extracted_data: dict[str, list[dict[str, Any]]] = {
+            selector: [] for selector in selectors
+        }
+        self.links: list[dict[str, Any]] = []
+        self.images: list[dict[str, Any]] = []
 
-    async def execute(self, **kwargs) -> dict[str, Any]:
-        """
-        Execute HTTP request with features.
-        Args:
-            method: HTTP method
-            url: Target URL
-            headers: HTTP headers
-            params: Query parameters
-            data: Request body data
-            form_data: Form data
-            timeout: Request timeout
-            verify_ssl: Verify SSL certificates
-            follow_redirects: Follow redirects
-            max_redirects: Maximum redirects
-        Returns:
-            Dictionary with HTTP response
-        """
-        try:
-            method = kwargs["method"].upper()
-            url = kwargs["url"]
-            headers = kwargs.get("headers", {})
-            params = kwargs.get("params", {})
-            data = kwargs.get("data")
-            form_data = kwargs.get("form_data")
-            timeout = kwargs.get("timeout", self.default_timeout)
-            verify_ssl = kwargs.get("verify_ssl", True)
-            follow_redirects = kwargs.get("follow_redirects", True)
-            max_redirects = kwargs.get("max_redirects", 5)
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {key: value or "" for key, value in attrs}
+        node = {
+            "tag": tag,
+            "attrs": attr_map,
+            "text_parts": [],
+            "start_tag": self.get_starttag_text() or f"<{tag}>",
+        }
+        self._stack.append(node)
 
-            # Validate URL
-            parsed_url = urllib.parse.urlparse(url)
-            if not parsed_url.scheme or not parsed_url.netloc:
-                return self._format_result(
-                    success=False,
-                    error=f"Invalid URL: {url}"
-                )
+        if tag in {"script", "style"}:
+            self._ignored_depth += 1
 
-            # Choose backend based on availability
-            if AIOHTTP_AVAILABLE:
-                return await self._execute_aiohttp(
-                    method, url, headers, params, data, form_data,
-                    timeout, verify_ssl, follow_redirects, max_redirects
-                )
-            elif REQUESTS_AVAILABLE:
-                return await self._execute_requests(
-                    method, url, headers, params, data, form_data,
-                    timeout, verify_ssl, follow_redirects, max_redirects
-                )
-            else:
-                return self._format_result(
-                    success=False,
-                    error="No HTTP library available. Install aiohttp or requests."
-                )
-        except Exception as e:
-            return self._format_result(
-                success=False,
-                error=f"HTTP request failed: {str(e)}"
-            )
-
-    async def _execute_aiohttp(
-        self,
-        method: str,
-        url: str,
-        headers: dict,
-        params: dict,
-        data: dict | None,
-        form_data: dict | None,
-        timeout: int,
-        verify_ssl: bool,
-        follow_redirects: bool,
-        max_redirects: int
-    ) -> dict[str, Any]:
-        """
-        Execute request using aiohttp.
-        """
-        import time
-        start_time = time.time()
-
-        # Configure SSL
-        ssl = None if verify_ssl else False
-
-        # Configure timeout
-        timeout_obj = aiohttp.ClientTimeout(total=timeout)
-
-        # Prepare request data
-        request_data = None
-        if data:
-            request_data = json.dumps(data)
-            headers.setdefault("Content-Type", "application/json")
-        elif form_data:
-            request_data = aiohttp.FormData(form_data)
-
-        async with aiohttp.ClientSession(timeout=timeout_obj) as session, session.request(
-            method=method,
-            url=url,
-            headers=headers,
-            params=params,
-            data=request_data,
-            ssl=ssl,
-            allow_redirects=follow_redirects,
-            max_redirects=max_redirects
-        ) as response:
-            # Read response with size limit
-            content = await response.text()
-            if len(content.encode('utf-8')) > self.max_response_size:
-                content = content[:self.max_response_size]
-                content += "\n... Response truncated due to size limit."
-
-            elapsed = time.time() - start_time
-
-            return self._format_result(
-                success=True,
-                result={
-                    "status_code": response.status,
-                    "headers": dict(response.headers),
-                    "body": content,
-                    "url": str(response.url),
-                    "elapsed": elapsed,
-                    "content_type": response.headers.get("content-type"),
-                    "content_length": len(content)
+        if tag == "img":
+            self.images.append(
+                {
+                    "url": attr_map.get("src", ""),
+                    "alt": attr_map.get("alt", ""),
+                    "title": attr_map.get("title", ""),
+                    "width": attr_map.get("width"),
+                    "height": attr_map.get("height"),
                 }
             )
 
-    async def _execute_requests(
-        self,
-        method: str,
-        url: str,
-        headers: dict,
-        params: dict,
-        data: dict | None,
-        form_data: dict | None,
-        timeout: int,
-        verify_ssl: bool,
-        follow_redirects: bool,
-        max_redirects: int
-    ) -> dict[str, Any]:
-        """
-        Execute request using requests (synchronous).
-        """
-        import time
-        start_time = time.time()
+    def handle_data(self, data: str) -> None:
+        if not data:
+            return
 
-        # Prepare session with retry strategy
-        session = requests.Session()
-        
-        # Configure retry strategy
-        retry_strategy = Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
+        for node in self._stack:
+            node["text_parts"].append(data)
 
-        try:
-            # Prepare request arguments
-            request_kwargs = {
-                "method": method,
-                "url": url,
-                "headers": headers,
-                "params": params,
-                "timeout": timeout,
-                "verify": verify_ssl,
-                "allow_redirects": follow_redirects
-            }
+        if self._ignored_depth == 0:
+            normalized = _collapse_whitespace(data)
+            if normalized:
+                self.content_parts.append(normalized)
 
-            # Add data
-            if data:
-                request_kwargs["json"] = data
-            elif form_data:
-                request_kwargs["data"] = form_data
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"} and self._ignored_depth > 0:
+            self._ignored_depth -= 1
 
-            # Execute request
-            response = session.request(**request_kwargs)
-            response.raise_for_status()
+        while self._stack:
+            node = self._stack.pop()
+            self._finalize_node(node)
+            if node["tag"] == tag:
+                break
 
-            # Check response size
-            content = response.text
-            if len(content.encode('utf-8')) > self.max_response_size:
-                content = content[:self.max_response_size]
-                content += "\n... Response truncated due to size limit."
+    def _finalize_node(self, node: dict[str, Any]) -> None:
+        text = _collapse_whitespace(" ".join(node["text_parts"]))
+        tag = node["tag"]
+        attrs = node["attrs"]
 
-            elapsed = time.time() - start_time
+        if tag == "title" and text and not self.title:
+            self.title = text
 
-            return self._format_result(
-                success=True,
-                result={
-                    "status_code": response.status_code,
-                    "headers": dict(response.headers),
-                    "body": content,
-                    "url": response.url,
-                    "elapsed": elapsed,
-                    "content_type": response.headers.get("content-type"),
-                    "content_length": len(content)
+        if tag == "a" and attrs.get("href"):
+            self.links.append(
+                {
+                    "url": attrs["href"],
+                    "text": text,
+                    "title": attrs.get("title", ""),
+                    "target": attrs.get("target", ""),
                 }
             )
-        finally:
-            session.close()
 
-    def get_schema(self) -> dict[str, Any]:
-        """
-        Get tool schema.
-        """
-        return self._schema.dict()
+        class_names = set(attrs.get("class", "").split())
+        for selector, (selector_tag, selector_class) in self._selector_specs.items():
+            if selector_tag != tag:
+                continue
+            if selector_class and selector_class not in class_names:
+                continue
+            self.extracted_data[selector].append(
+                {
+                    "text": text,
+                    "html": f"{node['start_tag']}{text}</{tag}>",
+                    "attributes": attrs,
+                }
+            )
 
 
 class WebScraperTool(AsyncToolInterface):
@@ -271,11 +128,6 @@ class WebScraperTool(AsyncToolInterface):
     """
 
     def __init__(self, backend: Any | None = None):
-        """
-        Initialize the web scraper tool.
-        Args:
-            backend: Optional backend for compatibility
-        """
         super().__init__()
         self.backend = backend
         self.name = "web_scraper"
@@ -283,6 +135,7 @@ class WebScraperTool(AsyncToolInterface):
 
         try:
             from bs4 import BeautifulSoup
+
             self.BEAUTIFULSOUP_AVAILABLE = True
             self.BeautifulSoup = BeautifulSoup
         except ImportError:
@@ -294,138 +147,135 @@ class WebScraperTool(AsyncToolInterface):
     async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Scrape web page content.
-        Args:
-            url: URL to scrape
-            selectors: CSS selectors to extract
-            headers: HTTP headers
-            timeout: Request timeout
-            wait_for_selector: CSS selector to wait for
-            extract_links: Extract links
-            extract_images: Extract images
-            extract_text: Extract text
-        Returns:
-            Dictionary with scraped content
         """
         try:
             url = kwargs["url"]
             selectors = kwargs.get("selectors", [])
             headers = kwargs.get("headers", {})
             timeout = kwargs.get("timeout", 30)
-            wait_for_selector = kwargs.get("wait_for_selector")
             extract_links = kwargs.get("extract_links", False)
             extract_images = kwargs.get("extract_images", False)
             extract_text = kwargs.get("extract_text", True)
 
-            if not self.BEAUTIFULSOUP_AVAILABLE:
-                return self._format_result(
-                    success=False,
-                    error="BeautifulSoup not available. Install with: pip install beautifulsoup4"
-                )
-
-            # Fetch page content
-            http_client = HttpClientTool()
-            response = await http_client.execute(
+            response = await HttpClientTool(backend=self.backend).execute(
                 method="GET",
                 url=url,
                 headers=headers,
-                timeout=timeout
+                timeout=timeout,
             )
-
             if not response["success"]:
                 return response
 
-            # Parse HTML
-            soup = self.BeautifulSoup(response["result"]["body"], 'html.parser')
-
-            # Extract data
+            html = response["result"]["body"]
             result = {
                 "url": url,
-                "title": soup.title.string if soup.title else "",
+                "title": "",
                 "extracted_data": {},
                 "links": [],
                 "images": [],
                 "metadata": {
                     "content_type": response["result"]["content_type"],
                     "content_length": response["result"]["content_length"],
-                    "status_code": response["result"]["status_code"]
-                }
+                    "status_code": response["result"]["status_code"],
+                },
             }
 
-            # Extract text content
-            if extract_text:
-                # Remove script and style elements
-                for script in soup(["script", "style"]):
-                    script.decompose()
-                
-                # Get clean text
-                text = soup.get_text(separator=' ', strip=True)
-                result["content"] = text
+            if self.BEAUTIFULSOUP_AVAILABLE:
+                soup = self.BeautifulSoup(html, "html.parser")
+                result["title"] = soup.title.string if soup.title else ""
 
-            # Extract data by selectors
-            for selector in selectors:
-                elements = soup.select(selector)
-                extracted = []
-                for element in elements:
-                    data = {
-                        "text": element.get_text(strip=True),
-                        "html": str(element),
-                        "attributes": dict(element.attrs)
-                    }
-                    extracted.append(data)
-                result["extracted_data"][selector] = extracted
+                if extract_text:
+                    for script in soup(["script", "style"]):
+                        script.decompose()
+                    text = soup.get_text(separator=" ", strip=True)
+                    if len(text) > 50000:
+                        text = text[:50000] + "\n... Text truncated due to size limit."
+                    result["content"] = text
 
-            # Extract links
-            if extract_links:
-                links = []
-                for link in soup.find_all('a', href=True):
-                    href = link['href']
-                    text = link.get_text(strip=True)
-                    
-                    # Convert relative URLs to absolute
-                    if href.startswith('/'):
-                        base_url = urllib.parse.urljoin(url, href)
-                    else:
-                        base_url = urllib.parse.urljoin(url, href)
-                    
-                    links.append({
-                        "url": base_url,
-                        "text": text,
-                        "title": link.get('title', ''),
-                        "target": link.get('target', '')
-                    })
-                result["links"] = links
+                for selector in selectors:
+                    elements = soup.select(selector)
+                    extracted = []
+                    for element in elements:
+                        extracted.append(
+                            {
+                                "text": element.get_text(strip=True),
+                                "html": str(element),
+                                "attributes": dict(element.attrs),
+                            }
+                        )
+                    result["extracted_data"][selector] = extracted
 
-            # Extract images
-            if extract_images:
-                images = []
-                for img in soup.find_all('img', src=True):
-                    src = img['src']
-                    alt = img.get('alt', '')
-                    title = img.get('title', '')
-                    
-                    # Convert relative URLs to absolute
-                    if src.startswith('/'):
-                        base_url = urllib.parse.urljoin(url, src)
-                    else:
-                        base_url = urllib.parse.urljoin(url, src)
-                    
-                    images.append({
-                        "url": base_url,
-                        "alt": alt,
-                        "title": title,
-                        "width": img.get('width'),
-                        "height": img.get('height')
-                    })
-                result["images"] = images
+                if extract_links:
+                    links = []
+                    for link in soup.find_all("a", href=True):
+                        href = urllib.parse.urljoin(url, link["href"])
+                        links.append(
+                            {
+                                "url": href,
+                                "text": link.get_text(strip=True),
+                                "title": link.get("title", ""),
+                                "target": link.get("target", ""),
+                            }
+                        )
+                    result["links"] = links
+                    result["links_count"] = len(links)
 
-            return self._format_result(
-                success=True,
-                result=result
-            )
-        except Exception as e:
+                if extract_images:
+                    images = []
+                    for img in soup.find_all("img", src=True):
+                        src = urllib.parse.urljoin(url, img["src"])
+                        images.append(
+                            {
+                                "url": src,
+                                "alt": img.get("alt", ""),
+                                "title": img.get("title", ""),
+                                "width": img.get("width"),
+                                "height": img.get("height"),
+                            }
+                        )
+                    result["images"] = images
+                    result["images_count"] = len(images)
+            else:
+                fallback = _FallbackWebParser(selectors)
+                fallback.feed(html)
+                result["title"] = fallback.title
+                result["extracted_data"] = fallback.extracted_data
+
+                if extract_text:
+                    text = _collapse_whitespace(" ".join(fallback.content_parts))
+                    if len(text) > 50000:
+                        text = text[:50000] + "\n... Text truncated due to size limit."
+                    result["content"] = text
+
+                if extract_links:
+                    links = []
+                    for link in fallback.links:
+                        links.append(
+                            {
+                                **link,
+                                "url": urllib.parse.urljoin(url, link["url"]),
+                            }
+                        )
+                    result["links"] = links
+                    result["links_count"] = len(links)
+
+                if extract_images:
+                    images = []
+                    for image in fallback.images:
+                        images.append(
+                            {
+                                **image,
+                                "url": urllib.parse.urljoin(url, image["url"]),
+                            }
+                        )
+                    result["images"] = images
+                    result["images_count"] = len(images)
+
+            return self._format_result(success=True, result=result)
+        except Exception as exc:
             return self._format_result(
                 success=False,
-                error=f"Web scraping failed: {str(e)}"
+                error=f"Web scraping failed: {str(exc)}",
             )
 
     def get_schema(self) -> dict[str, Any]:
@@ -435,113 +285,4 @@ class WebScraperTool(AsyncToolInterface):
         return self._schema.dict()
 
 
-class ApiClientTool(AsyncToolInterface):
-    """
-    API client for REST APIs.
-    """
-
-    def __init__(self, backend: Any | None = None):
-        """
-        Initialize the API client tool.
-        Args:
-            backend: Optional backend for compatibility
-        """
-        super().__init__()
-        self.backend = backend
-        self.name = "api_client"
-        self.description = "REST API client with authentication and retry logic"
-
-        self._schema = API_CLIENT_SCHEMA
-
-    async def execute(self, **kwargs) -> dict[str, Any]:
-        """
-        Execute API request with authentication.
-        Args:
-            api_url: Base API URL
-            endpoint: API endpoint
-            method: HTTP method
-            headers: API headers
-            auth_type: Authentication type
-            auth_token: Authentication token
-            username: Username for basic auth
-            password: Password for basic auth
-            api_key_header: API key header name
-            data: Request data
-            params: Query parameters
-        Returns:
-            Dictionary with API response
-        """
-        try:
-            api_url = kwargs["api_url"]
-            endpoint = kwargs["endpoint"]
-            method = kwargs.get("method", "GET")
-            headers = kwargs.get("headers", {})
-            auth_type = kwargs.get("auth_type")
-            auth_token = kwargs.get("auth_token")
-            username = kwargs.get("username")
-            password = kwargs.get("password")
-            api_key_header = kwargs.get("api_key_header", "X-API-Key")
-            data = kwargs.get("data")
-            params = kwargs.get("params", {})
-
-            # Construct full URL
-            if not endpoint.startswith('/'):
-                endpoint = '/' + endpoint
-            full_url = f"{api_url.rstrip('/')}{endpoint}"
-
-            # Prepare authentication
-            auth_headers = {}
-            if auth_type and auth_token:
-                if auth_type.lower() == "bearer":
-                    auth_headers["Authorization"] = f"Bearer {auth_token}"
-                elif auth_type.lower() == "api_key":
-                    auth_headers[api_key_header] = auth_token
-                elif auth_type.lower() == "basic" and username and password:
-                    import base64
-                    credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
-                    auth_headers["Authorization"] = f"Basic {credentials}"
-
-            # Merge headers
-            final_headers = {**headers, **auth_headers}
-
-            # Execute request
-            http_client = HttpClientTool()
-            response = await http_client.execute(
-                method=method,
-                url=full_url,
-                headers=final_headers,
-                data=data,
-                params=params
-            )
-
-            if not response["success"]:
-                return response
-
-            # Try to parse JSON response
-            try:
-                json_data = json.loads(response["result"]["body"])
-                response_data = json_data
-            except json.JSONDecodeError:
-                response_data = response["result"]["body"]
-
-            return self._format_result(
-                success=True,
-                result={
-                    "status_code": response["result"]["status_code"],
-                    "data": response_data,
-                    "headers": response["result"]["headers"],
-                    "url": response["result"]["url"],
-                    "success": 200 <= response["result"]["status_code"] < 300
-                }
-            )
-        except Exception as e:
-            return self._format_result(
-                success=False,
-                error=f"API request failed: {str(e)}"
-            )
-
-    def get_schema(self) -> dict[str, Any]:
-        """
-        Get tool schema.
-        """
-        return self._schema.dict()
+__all__ = ["HttpClientTool", "WebScraperTool", "ApiClientTool"]

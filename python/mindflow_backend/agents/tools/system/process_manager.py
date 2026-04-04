@@ -33,11 +33,11 @@ class ProcessManagerTool(AsyncToolInterface):
             'rm -rf /', 'dd if=', 'mkfs', 'fdisk', 'format',
             'shutdown', 'reboot', 'halt', 'poweroff'
         }
-        self.allowed_users = {'root', 'admin', 'mindflow'}  # Configurable
+        self.allowed_users = {'root', 'admin', 'mindflow', os.getenv('USER', 'unknown')}  # Configurable
 
         self._schema = PROCESS_MANAGER_SCHEMA
 
-    def execute(self, **kwargs) -> dict[str, Any]:
+    async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute process management operation.
         Args:
@@ -171,7 +171,7 @@ class ProcessManagerTool(AsyncToolInterface):
                 proc = psutil.Process(pid)
                 
                 # Security check - don't allow killing critical system processes
-                if proc.name() in ['init', 'kthreadd', 'ksoftirqd']:
+                if proc.name() in ['init', 'kthreadd', 'ksoftirqd', 'systemd']:
                     return self._format_result(
                         success=False,
                         error=f"Cannot kill critical system process: {proc.name()}"

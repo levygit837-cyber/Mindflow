@@ -6,6 +6,7 @@ with pattern matching, content search, and filtering capabilities.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,17 @@ from mindflow_backend.schemas.tools.filesystem_schemas import (
 )
 
 _logger = get_logger(__name__)
+
+
+def _resolve_search_path(tool: AsyncToolInterface, raw_path: str) -> Path:
+    """Resolve paths relative to root_dir while preserving absolute paths."""
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path.resolve()
+    root_dir = getattr(tool, "root_dir", None)
+    if root_dir:
+        return (Path(root_dir) / path).resolve()
+    return path.resolve()
 
 
 class GrepSearchTool(AsyncToolInterface):
@@ -66,12 +78,18 @@ class GrepSearchTool(AsyncToolInterface):
             # Search files
             matches = []
             files_searched = 0
+            truncated = False
 
-            search_path = Path(directory)
+            search_path = _resolve_search_path(self, directory)
             if not search_path.exists():
                 return self._format_result(
                     success=False,
                     error=f"Directory not found: {directory}"
+                )
+            if not search_path.is_dir():
+                return self._format_result(
+                    success=False,
+                    error=f"Not a directory: {directory}"
                 )
 
             # Get files to search
@@ -98,6 +116,7 @@ class GrepSearchTool(AsyncToolInterface):
                                     
                                     # Check max results
                                     if len(matches) >= max_results:
+                                        truncated = True
                                         break
                     
                     except (UnicodeDecodeError, PermissionError):
@@ -111,7 +130,8 @@ class GrepSearchTool(AsyncToolInterface):
                 result={
                     "matches": matches,
                     "total_files": files_searched,
-                    "total_matches": len(matches)
+                    "total_matches": len(matches),
+                    "truncated": truncated,
                 }
             )
 
@@ -142,13 +162,51 @@ class GlobSearchTool(AsyncToolInterface):
             pattern = kwargs["pattern"]
             directory = kwargs.get("directory", ".")
             max_results = int(kwargs.get("max_results", 200))
+            include_dirs = bool(kwargs.get("include_dirs", False))
+            absolute_paths = bool(kwargs.get("absolute_paths", True))
 
-            base = Path(directory)
-            files = [str(p) for p in base.glob(pattern)]
-            if len(files) > max_results:
-                files = files[:max_results]
+            base = _resolve_search_path(self, directory)
+            if not base.exists():
+                return self._format_result(success=False, error=f"Directory not found: {directory}")
+            if not base.is_dir():
+                return self._format_result(success=False, error=f"Not a directory: {directory}")
+            files: list[str] = []
+            directories: list[str] = []
+            truncated = False
 
-            return self._format_result(success=True, result={"files": files, "total_count": len(files)})
+            for match in base.glob(pattern):
+                total_so_far = len(files) + len(directories)
+                if total_so_far >= max_results:
+                    truncated = True
+                    break
+
+                if absolute_paths:
+                    path_str = str(match.absolute())
+                else:
+                    try:
+                        path_str = str(match.relative_to(base))
+                    except ValueError:
+                        path_str = str(match)
+
+                if match.is_file():
+                    files.append(path_str)
+                elif match.is_dir() and include_dirs:
+                    directories.append(path_str)
+
+            result = {
+                "files": files,
+                "total_files": len(files),
+                "total_count": len(files) + len(directories),
+                "total_matches": len(files) + len(directories),
+                "pattern": pattern,
+                "directory": str(base.absolute()),
+                "truncated": truncated,
+            }
+            if include_dirs:
+                result["directories"] = directories
+                result["total_directories"] = len(directories)
+
+            return self._format_result(success=True, result=result)
         except Exception as e:
             return self._format_result(success=False, error=f"Glob search error: {e}")
 
@@ -185,6 +243,7 @@ class FileFinderTool(AsyncToolInterface):
         try:
             pattern = kwargs["pattern"]
             directory = kwargs.get("directory", ".")
+            recursive = kwargs.get("recursive", True)
             min_size = kwargs.get("min_size")
             max_size = kwargs.get("max_size")
             min_date = kwargs.get("min_date")
@@ -196,23 +255,29 @@ class FileFinderTool(AsyncToolInterface):
             max_timestamp = None
             
             if min_date:
-                from datetime import datetime
                 min_timestamp = datetime.strptime(min_date, "%Y-%m-%d").timestamp()
             
             if max_date:
-                from datetime import datetime
                 max_timestamp = datetime.strptime(max_date, "%Y-%m-%d").timestamp()
 
             # Search for files
-            search_path = Path(directory)
+            search_path = _resolve_search_path(self, directory)
             if not search_path.exists():
                 return self._format_result(
                     success=False,
                     error=f"Directory not found: {directory}"
                 )
+            if not search_path.is_dir():
+                return self._format_result(
+                    success=False,
+                    error=f"Not a directory: {directory}"
+                )
 
             files = []
-            for file_path in search_path.rglob(pattern):
+            truncated = False
+            matches = search_path.rglob(pattern) if recursive else search_path.glob(pattern)
+
+            for file_path in matches:
                 if not file_path.is_file():
                     continue
 
@@ -237,7 +302,8 @@ class FileFinderTool(AsyncToolInterface):
                         "path": str(file_path),
                         "name": file_path.name,
                         "size": stat.st_size,
-                        "modified": stat.st_mtime,
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "modified_date": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d"),
                         "is_directory": False
                     })
 
@@ -245,13 +311,16 @@ class FileFinderTool(AsyncToolInterface):
                     continue
 
                 if len(files) >= max_results:
+                    truncated = True
                     break
 
             return self._format_result(
                 success=True,
                 result={
                     "files": files,
-                    "total_count": len(files)
+                    "total_count": len(files),
+                    "directory": str(search_path.absolute()),
+                    "truncated": truncated,
                 }
             )
 

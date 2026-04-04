@@ -31,6 +31,16 @@ from mindflow_backend.agents.tools.security.filesystem_validators import (
 _logger = get_logger(__name__)
 
 
+def _resolve_search_path(root_dir: str | None, raw_path: str | None) -> str:
+    """Resolve search path relative to root_dir while preserving absolute inputs."""
+    path = Path(raw_path or root_dir or os.getcwd())
+    if path.is_absolute():
+        return str(path.resolve())
+    if root_dir:
+        return str((Path(root_dir) / path).resolve())
+    return str(path.resolve())
+
+
 # ============================================================================
 # GlobTool v2
 # ============================================================================
@@ -73,10 +83,8 @@ class GlobToolV2(AsyncToolInterface):
             }
 
         pattern = input_data.pattern
-        path = input_data.path or self.root_dir or os.getcwd()
-
-        # Convert to absolute path
-        path = os.path.abspath(path)
+        path = _resolve_search_path(self.root_dir, input_data.path)
+        case_sensitive = kwargs.get("case_sensitive", True)
 
         # Security validation: path traversal
         traversal_decision = validate_path_traversal_filesystem(path, self.root_dir)
@@ -108,7 +116,7 @@ class GlobToolV2(AsyncToolInterface):
                 pattern=pattern,
                 exclude_patterns=input_data.exclude_patterns,
                 max_depth=input_data.max_depth,
-                case_sensitive=input_data.case_sensitive
+                case_sensitive=case_sensitive,
             )
 
             # Sort by mtime if requested
@@ -164,9 +172,12 @@ class GlobToolV2(AsyncToolInterface):
             current_depth = len(current_path.parts) - base_depth
 
             # Check max depth
-            if max_depth is not None and current_depth >= max_depth:
-                dirs.clear()  # Don't recurse deeper
-                continue
+            if max_depth is not None:
+                if current_depth > max_depth:
+                    dirs.clear()
+                    continue
+                if current_depth >= max_depth:
+                    dirs.clear()  # Include this level, but don't recurse deeper
 
             # Filter directories by exclude patterns
             if exclude_patterns:
@@ -304,10 +315,12 @@ class GrepToolV2(AsyncToolInterface):
             }
 
         pattern = input_data.pattern
-        path = input_data.path or self.root_dir or os.getcwd()
-
-        # Convert to absolute path
-        path = os.path.abspath(path)
+        path = _resolve_search_path(self.root_dir, input_data.path)
+        glob_pattern = kwargs.get("glob_pattern") or getattr(input_data, "glob_pattern", None) or getattr(input_data, "glob", None)
+        show_line_numbers = getattr(input_data, "show_line_numbers", None)
+        if show_line_numbers is None:
+            show_line_numbers = getattr(input_data, "line_numbers", True)
+        output_mode = input_data.output_mode
 
         # Security validation: path traversal
         traversal_decision = validate_path_traversal_filesystem(path, self.root_dir)
@@ -353,12 +366,12 @@ class GrepToolV2(AsyncToolInterface):
             if os.path.isfile(path):
                 files_to_search = [path]
             else:
-                files_to_search = self._find_files(path, input_data.glob_pattern)
+                files_to_search = self._find_files(path, glob_pattern)
 
             # Perform search based on output mode
-            if input_data.output_mode == "files_with_matches":
+            if output_mode in {"files", "files_with_matches"}:
                 results = self._search_files_mode(files_to_search, regex)
-            elif input_data.output_mode == "count":
+            elif output_mode == "count":
                 results = self._search_count_mode(files_to_search, regex)
             else:  # CONTENT mode
                 results = self._search_content_mode(
@@ -366,7 +379,7 @@ class GrepToolV2(AsyncToolInterface):
                     regex,
                     context_before=input_data.context_before,
                     context_after=input_data.context_after,
-                    show_line_numbers=input_data.show_line_numbers
+                    show_line_numbers=show_line_numbers
                 )
 
             # Apply pagination
@@ -385,7 +398,7 @@ class GrepToolV2(AsyncToolInterface):
                 "returned_results": len(results),
                 "pattern": pattern,
                 "path": path,
-                "output_mode": input_data.output_mode.value,
+                "output_mode": output_mode,
                 "offset": input_data.offset,
                 "truncated": input_data.head_limit is not None and len(results) < (total_results - input_data.offset)
             }
@@ -469,7 +482,24 @@ class GrepToolV2(AsyncToolInterface):
         for file_path in files:
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines = f.readlines()
+                    content = f.read()
+
+                if regex.flags & re.DOTALL:
+                    match = regex.search(content)
+                    if match:
+                        lines = content.splitlines()
+                        start_line = content[:match.start()].count("\n") + 1
+                        results.append(
+                            {
+                                "file": file_path,
+                                "line_number": start_line,
+                                "line": match.group(),
+                                "context": match.group(),
+                            }
+                        )
+                        continue
+
+                lines = content.splitlines(keepends=True)
 
                 # Find matching lines
                 for line_num, line in enumerate(lines):

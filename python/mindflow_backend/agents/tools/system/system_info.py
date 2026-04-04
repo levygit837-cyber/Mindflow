@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import os
 import socket
+import platform
+import time
 from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
@@ -41,7 +43,7 @@ class SystemInfoTool(AsyncToolInterface):
             info_type = kwargs.get("info_type", "all")
             include_sensitive = kwargs.get("include_sensitive", False)
 
-            result = {"timestamp": platform.time.time()}
+            result = {"timestamp": time.time()}
 
             if info_type in ["all", "hardware"]:
                 result["hardware"] = await self._get_hardware_info()

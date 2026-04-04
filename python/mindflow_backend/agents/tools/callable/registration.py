@@ -37,6 +37,10 @@ from .planning import (
     TodoListWriteCallable,
     TodoListFocusCallable,
 )
+from .scratchpad import (
+    ScratchpadReadCallable,
+    ScratchpadWriteCallable,
+)
 
 _logger = get_logger(__name__)
 
@@ -86,6 +90,8 @@ def register_all_callable_tools() -> int:
         (TodoListReadCallable, "planning"),
         (TodoListWriteCallable, "planning"),
         (TodoListFocusCallable, "planning"),
+        (ScratchpadReadCallable, "planning"),
+        (ScratchpadWriteCallable, "planning"),
     ]
 
     # Combine all tools
@@ -141,6 +147,7 @@ def unregister_all_callable_tools() -> int:
         "http_client", "web_scraper", "api_client",
         # Planning
         "read_todos", "write_todos", "focus_todos",
+        "read_scratchpad", "write_scratchpad",
     ]
 
     for name in tool_names:

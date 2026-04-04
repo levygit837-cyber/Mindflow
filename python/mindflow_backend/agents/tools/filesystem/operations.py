@@ -1,7 +1,8 @@
 """Legacy filesystem tools (compatibility layer).
 
-The unified filesystem tools live in `file_operations.py` and `search_tools.py`.
-Some modules still import basic tools from `operations.py`.
+`file_operations.py` and `search_tools.py` own the canonical filesystem
+implementations. This module keeps import compatibility for older paths
+that still expect the basic operations here.
 """
 
 from __future__ import annotations
@@ -11,6 +12,10 @@ from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
 from mindflow_backend.agents.tools.base.tool_schemas import create_tool_schema
+from mindflow_backend.agents.tools.filesystem.file_operations import (
+    DirectoryListTool as CanonicalDirectoryListTool,
+    FileDeleteTool as CanonicalFileDeleteTool,
+)
 from mindflow_backend.agents.tools.workspace_security import (
     WorkspaceSecurityError,
     is_read_only_mode,
@@ -43,14 +48,20 @@ class DirectoryListTool(AsyncToolInterface):
         )
 
     async def execute(self, **kwargs) -> dict[str, Any]:
-        raw_path = kwargs["path"]
-        try:
-            path = _resolve_tool_path(self, raw_path)
-        except WorkspaceSecurityError as e:
-            return {"success": False, "error": f"Workspace security error: {str(e)}"}
-        if not path.exists() or not path.is_dir():
-            return {"success": False, "error": f"Not a directory: {path}"}
-        return {"success": True, "entries": [p.name for p in path.iterdir()]}
+        tool = CanonicalDirectoryListTool()
+        tool.root_dir = self.root_dir
+        tool.sandbox_mode = self.sandbox_mode
+        result = await tool.execute(
+            directory_path=kwargs["path"],
+            include_hidden=kwargs.get("include_hidden", False),
+            include_size=kwargs.get("include_size", True),
+            include_type=kwargs.get("include_type", True),
+            max_items=kwargs.get("max_items", 10000),
+        )
+        if not result.get("success"):
+            return {"success": False, "error": result.get("error")}
+        payload = result.get("result") or {}
+        return {"success": True, "entries": payload.get("entries", [])}
 
     def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
@@ -72,15 +83,12 @@ class FileDeleteTool(AsyncToolInterface):
         )
 
     async def execute(self, **kwargs) -> dict[str, Any]:
-        try:
-            if is_read_only_mode(self.sandbox_mode):
-                return {"success": False, "error": "Delete operation blocked in read-only sandbox mode"}
-            path = _resolve_tool_path(self, kwargs["path"])
-        except WorkspaceSecurityError as e:
-            return {"success": False, "error": f"Workspace security error: {str(e)}"}
-        if not path.exists() or not path.is_file():
-            return {"success": False, "error": f"Not a file: {path}"}
-        path.unlink()
+        tool = CanonicalFileDeleteTool()
+        tool.root_dir = self.root_dir
+        tool.sandbox_mode = self.sandbox_mode
+        result = await tool.execute(file_path=kwargs["path"])
+        if not result.get("success"):
+            return {"success": False, "error": result.get("error")}
         return {"success": True}
 
     def get_schema(self) -> dict[str, Any]:
@@ -108,7 +116,10 @@ class DirectoryCreateTool(AsyncToolInterface):
         try:
             if is_read_only_mode(self.sandbox_mode):
                 return {"success": False, "error": "Create directory blocked in read-only sandbox mode"}
-            path = _resolve_tool_path(self, kwargs["path"])
+            raw_path = kwargs.get("directory_path", kwargs.get("path"))
+            if not raw_path:
+                return {"success": False, "error": "Directory path is required"}
+            path = _resolve_tool_path(self, raw_path)
         except WorkspaceSecurityError as e:
             return {"success": False, "error": f"Workspace security error: {str(e)}"}
         parents = bool(kwargs.get("parents", True))

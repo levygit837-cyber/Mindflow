@@ -17,7 +17,10 @@ from pathlib import Path
 from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.permissions.types import PermissionBehavior, PermissionResult
+from mindflow_backend.schemas.tools.tool_permissions import (
+    PermissionBehavior,
+    PermissionDecision,
+)
 
 _logger = get_logger(__name__)
 

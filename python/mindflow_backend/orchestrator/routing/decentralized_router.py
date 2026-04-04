@@ -60,6 +60,7 @@ class DecentralizedRouter:
         message: str,
         session: OrchestratorSession | None = None,
         folder_path: str | None = None,
+        hint_agents: list[str] | None = None,
     ) -> OrchestratorDecision:
         """Route message using decentralized proposal system.
 
@@ -67,25 +68,35 @@ class DecentralizedRouter:
             message: User message
             session: Current orchestrator session
             folder_path: Working directory
+            hint_agents: Optional list of agent IDs suggested by Tier 1 triage.
+                If provided, only these agents are consulted (targeted multicast
+                with reduced timeout). If None, full broadcast is used.
 
         Returns:
             OrchestratorDecision with routing info
         """
         settings = get_settings()
-        timeout = getattr(settings, "proposal_timeout", 5.0)
+        # Adaptive timeout: shorter when we have agent hints (Tier 1 pre-filtered)
+        if hint_agents:
+            timeout = getattr(settings, "hybrid_auction_timeout", 3.0)
+        else:
+            timeout = getattr(settings, "proposal_timeout", 5.0)
 
         _logger.info(
             "decentralized_router_start",
             message_preview=message[:100],
             timeout=timeout,
+            mode="targeted" if hint_agents else "broadcast",
+            hint_agents=hint_agents,
         )
 
-        # 1. Collect proposals from agents
+        # 1. Collect proposals from agents (targeted or broadcast)
         proposals = await self.collector.collect(
             message=message,
             session_id=session.session_id if session else "",
             folder_path=folder_path,
             timeout=timeout,
+            target_agents=hint_agents,
         )
 
         # 2. If proposals received, evaluate them
@@ -116,12 +127,14 @@ class DecentralizedRouter:
         message: str,
         session: OrchestratorSession | None = None,
         folder_path: str | None = None,
+        hint_agents: list[str] | None = None,
     ) -> WorkflowRouteDecision:
         """Route message and return WorkflowRouteDecision.
 
         Wraps route_message to match IntelligentRouter interface.
+        Accepts optional hint_agents for targeted auction support.
         """
-        decision = await self.route_message(message, session, folder_path)
+        decision = await self.route_message(message, session, folder_path, hint_agents=hint_agents)
 
         return WorkflowRouteDecision(
             agent_role=decision.agent,

@@ -144,6 +144,14 @@ class DelegationEngine(ExecutionMemoryMixin):
             objective=task.objective,
         )
 
+        # Fase C: Intercept calls mapped to an external A2A address
+        if task.agent_id and task.agent_id.startswith("a2a://"):
+            from mindflow_backend.communication.a2a.a2a_client import A2AClient
+            _logger.info("delegating_to_a2a_external_agent", target=task.agent_id)
+            # The A2A Target URL is basically the agent_id, replacing "a2a://" with "http://" for mapping purposes or kept as original depending on network resolution
+            target_url = task.agent_id.replace("a2a://", "http://")
+            return await A2AClient.call_external_agent(task, target_url)
+
         # Phase 2B: Check if task has mission_type and launcher is available
         mission_type = getattr(task, "metadata", {}).get("mission_type") if getattr(task, "metadata", None) else None
         launcher = self._get_mission_launcher()

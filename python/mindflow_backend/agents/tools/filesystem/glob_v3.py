@@ -5,12 +5,15 @@ Find files matching glob patterns.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.search_tools import GlobSearchTool
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
 
@@ -61,92 +64,26 @@ async def glob_execute(input: GlobInput, context: ToolContext) -> dict[str, Any]
     Returns:
         Dictionary with matched files or error
     """
-    # 1. Resolve directory (support root_dir from context)
-    directory = input.directory
-    root_dir = context.metadata.get("root_dir")
-
-    if root_dir and not os.path.isabs(directory):
-        directory = os.path.join(root_dir, directory)
-
-    directory = os.path.abspath(directory)
-
-    # 2. Check directory exists
-    if not os.path.exists(directory):
-        return {
-            "success": False,
-            "error": f"Directory not found: {directory}",
-            "error_code": "DIRECTORY_NOT_FOUND"
-        }
-
-    if not os.path.isdir(directory):
-        return {
-            "success": False,
-            "error": f"Not a directory: {directory}",
-            "error_code": "NOT_A_DIRECTORY"
-        }
-
-    # 3. Execute glob search
-    try:
-        base_path = Path(directory)
-
-        # Use glob or rglob based on pattern
-        if "**" in input.pattern:
-            # Recursive glob
-            matches = base_path.glob(input.pattern)
-        else:
-            # Non-recursive glob
-            matches = base_path.glob(input.pattern)
-
-        # 4. Filter and collect results
-        files = []
-        dirs = []
-
-        for match in matches:
-            # Check max results
-            if len(files) + len(dirs) >= input.max_results:
-                break
-
-            # Determine path format
-            if input.absolute_paths:
-                path_str = str(match.absolute())
-            else:
-                try:
-                    path_str = str(match.relative_to(base_path))
-                except ValueError:
-                    path_str = str(match)
-
-            # Categorize
-            if match.is_file():
-                files.append(path_str)
-            elif match.is_dir() and input.include_dirs:
-                dirs.append(path_str)
-
-        # 5. Return results
-        result = {
-            "success": True,
-            "files": files,
-            "total_files": len(files),
-            "pattern": input.pattern,
-            "directory": directory,
-            "truncated": (len(files) + len(dirs)) >= input.max_results
-        }
-
-        if input.include_dirs:
-            result["directories"] = dirs
-            result["total_directories"] = len(dirs)
-            result["total_matches"] = len(files) + len(dirs)
-        else:
-            result["total_matches"] = len(files)
-
-        return result
-
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Glob search error: {e}",
-            "error_code": "GLOB_ERROR",
-            "pattern": input.pattern
-        }
+    tool = build_legacy_tool(GlobSearchTool, context)
+    result = await tool.execute(
+        pattern=input.pattern,
+        directory=input.directory,
+        max_results=input.max_results,
+        include_dirs=input.include_dirs,
+        absolute_paths=input.absolute_paths,
+    )
+    flattened = flatten_legacy_result(
+        result,
+        error_map={
+            "directory not found": "DIRECTORY_NOT_FOUND",
+            "not a directory": "NOT_A_DIRECTORY",
+            "glob search error": "GLOB_ERROR",
+        },
+        default_error_code="GLOB_ERROR",
+    )
+    if flattened.get("success"):
+        flattened.setdefault("pattern", input.pattern)
+    return flattened
 
 
 # ---------------------------------------------------------------------------

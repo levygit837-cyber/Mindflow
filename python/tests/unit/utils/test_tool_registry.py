@@ -1,3 +1,5 @@
+import warnings
+
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
 from mindflow_backend.schemas.orchestrator import AgentType
@@ -41,3 +43,37 @@ def test_sandbox_filesystem(tmp_path):
     # Read via sandbox
     content = sandbox.read("test.txt")
     assert "content" in content
+
+
+def test_registry_internal_filesystem_fallback_avoids_package_compat_warnings(tmp_path):
+    sandbox = MindFlowSandbox(root_dir=tmp_path)
+    registry = create_default_registry(sandbox)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        registry._get_filesystem_tools()
+
+    compat_messages = [
+        str(warning.message)
+        for warning in caught
+        if issubclass(warning.category, DeprecationWarning)
+    ]
+
+    assert not any("deprecated compatibility export" in message for message in compat_messages)
+
+
+def test_registry_internal_code_analysis_fallback_avoids_package_compat_warnings(tmp_path):
+    sandbox = MindFlowSandbox(root_dir=tmp_path)
+    registry = create_default_registry(sandbox)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        registry._get_code_analysis_tools()
+
+    compat_messages = [
+        str(warning.message)
+        for warning in caught
+        if issubclass(warning.category, DeprecationWarning)
+    ]
+
+    assert not any("deprecated compatibility export" in message for message in compat_messages)

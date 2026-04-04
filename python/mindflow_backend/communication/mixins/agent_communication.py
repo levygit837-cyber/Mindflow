@@ -225,6 +225,51 @@ class AgentCommunicationMixin:
             data={"pct": percentage, "step": current_step, "agent": self._agent_id},
         )
 
+    async def request_specialist_help(
+        self,
+        task_description: str,
+        specialist_hint: str | None = None,
+        timeout: float = 60.0,
+    ) -> str | None:
+        """Agent-initiated collaboration (Tier-2).
+
+        Permite que um agente em execução solicite ajuda de outro durante uma missão.
+        Envia uma requisição ao Orchestrator que utilizará o DecentralizedRouter (Tier 2)
+        para encontrar o agente adequado (opcionalmente restrito pelo specialist_hint).
+
+        Args:
+            task_description: Descrição do que precisa ser feito pelo especialista.
+            specialist_hint: Opcional. Dica do tipo de especialista (ex: "coder", "security").
+            timeout: Tempo máximo aguardando a resposta com a resolução.
+
+        Returns:
+            O resultado da tarefa realizada pelo especialista, ou None se falhar/timeout.
+        """
+        if not self._bus.is_available:
+            logger.debug("comm_specialist_help_skipped_no_bus")
+            return None
+
+        logger.info(
+            "comm_requesting_specialist_help",
+            extra={
+                "from": self._agent_id,
+                "hint": specialist_hint,
+                "task_preview": task_description[:50],
+            },
+        )
+
+        payload = json.dumps({
+            "action": "delegate_subtask",
+            "task": task_description,
+            "specialist_hint": specialist_hint,
+        })
+
+        return await self.request_from(
+            to_agent="orchestrator",
+            content=payload,
+            timeout=timeout,
+        )
+
     def get_stats(self) -> dict[str, Any]:
         """Estatísticas de comunicação deste agente."""
         return {

@@ -1,19 +1,17 @@
 """
-API client tool for REST API interactions. Provides tools for making authenticated 
-API requests with various authentication methods and response handling.
+API client tool for REST API interactions.
 """
 
 from __future__ import annotations
 
 import base64
+import json
 from typing import Any
 
-from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools.web_schemas import API_CLIENT_SCHEMA
 
 from ..base.tool_interface import AsyncToolInterface
-
-_logger = get_logger(__name__)
+from .http_client import HttpClientTool
 
 
 class ApiClientTool(AsyncToolInterface):
@@ -21,30 +19,16 @@ class ApiClientTool(AsyncToolInterface):
     API client tool for REST API interactions with authentication.
     """
 
-    def __init__(self):
+    def __init__(self, backend: Any | None = None):
         super().__init__()
+        self.backend = backend
         self.name = "api_client"
         self.description = "REST API client with authentication and retry logic"
-
         self._schema = API_CLIENT_SCHEMA
 
     async def execute(self, **kwargs) -> dict[str, Any]:
         """
         Execute API request with authentication.
-        Args:
-            api_url: Base API URL
-            endpoint: API endpoint
-            method: HTTP method
-            headers: API headers
-            auth_type: Authentication type
-            auth_token: Authentication token
-            username: Username for basic auth
-            password: Password for basic auth
-            api_key_header: API key header name
-            data: Request data
-            params: Query parameters
-        Returns:
-            Dictionary with API response
         """
         try:
             api_url = kwargs["api_url"]
@@ -58,89 +42,73 @@ class ApiClientTool(AsyncToolInterface):
             api_key_header = kwargs.get("api_key_header", "X-API-Key")
             data = kwargs.get("data")
             params = kwargs.get("params", {})
+            timeout = kwargs.get("timeout", 30)
+            verify_ssl = kwargs.get("verify_ssl", True)
+            follow_redirects = kwargs.get("follow_redirects", True)
+            max_redirects = kwargs.get("max_redirects", 5)
 
-            # Construct full URL
-            if not endpoint.startswith('/'):
-                endpoint = '/' + endpoint
+            if not endpoint.startswith("/"):
+                endpoint = "/" + endpoint
             full_url = f"{api_url.rstrip('/')}{endpoint}"
 
-            # Prepare authentication
-            auth_headers = {}
-            if auth_type and auth_token:
-                if auth_type.lower() == "bearer":
+            auth_headers: dict[str, str] = {}
+            if auth_type:
+                normalized_auth_type = auth_type.lower()
+                if normalized_auth_type == "bearer" and auth_token:
                     auth_headers["Authorization"] = f"Bearer {auth_token}"
-                elif auth_type.lower() == "api_key":
+                elif normalized_auth_type == "api_key" and auth_token:
                     auth_headers[api_key_header] = auth_token
-                elif auth_type.lower() == "basic" and username and password:
-                    credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
+                elif normalized_auth_type == "basic":
+                    if not username or not password:
+                        result = self._format_result(
+                            success=False,
+                            error="Basic auth requires username and password",
+                        )
+                        result["error_code"] = "MISSING_CREDENTIALS"
+                        return result
+                    credentials = base64.b64encode(
+                        f"{username}:{password}".encode()
+                    ).decode()
                     auth_headers["Authorization"] = f"Basic {credentials}"
 
-            # Merge headers
-            final_headers = {**headers, **auth_headers}
-
-            # Execute request
-            try:
-                import requests
-                from requests.adapters import HTTPAdapter
-                from urllib3.util.retry import Retry
-                
-                # Prepare session with retry strategy
-                session = requests.Session()
-                retry_strategy = Retry(
-                    total=3,
-                    backoff_factor=1,
-                    status_forcelist=[429, 500, 502, 503, 504],
-                )
-                adapter = HTTPAdapter(max_retries=retry_strategy)
-                session.mount("http://", adapter)
-                session.mount("https://", adapter)
-
-                # Prepare request arguments
-                request_kwargs = {
-                    "method": method,
-                    "url": full_url,
-                    "headers": final_headers,
-                    "params": params,
-                    "timeout": 30
-                }
-
-                # Add data
-                if data:
-                    request_kwargs["json"] = data
-
-                # Execute request
-                response = session.request(**request_kwargs)
-
-                # Try to parse JSON response
-                try:
-                    response_data = response.json()
-                except ValueError:
-                    response_data = response.text
-
-                success = 200 <= response.status_code < 300
-
-                return self._format_result(
-                    success=True,
-                    result={
-                        "status_code": response.status_code,
-                        "data": response_data,
-                        "headers": dict(response.headers),
-                        "url": response.url,
-                        "success": success
-                    }
-                )
-
-            except ImportError:
-                return self._format_result(
-                    success=False,
-                    error="requests library not available. Install with: pip install requests"
-                )
-
-        except Exception as e:
-            return self._format_result(
-                success=False,
-                error=f"API request failed: {str(e)}"
+            response = await HttpClientTool(backend=self.backend).execute(
+                method=method,
+                url=full_url,
+                headers={**headers, **auth_headers},
+                data=data,
+                params=params,
+                timeout=timeout,
+                verify_ssl=verify_ssl,
+                follow_redirects=follow_redirects,
+                max_redirects=max_redirects,
             )
+
+            if not response["success"]:
+                return response
+
+            body = response["result"]["body"]
+            try:
+                response_data = json.loads(body)
+            except json.JSONDecodeError:
+                response_data = body
+
+            return self._format_result(
+                success=True,
+                result={
+                    "status_code": response["result"]["status_code"],
+                    "data": response_data,
+                    "headers": response["result"]["headers"],
+                    "url": response["result"]["url"],
+                    "success": 200 <= response["result"]["status_code"] < 300,
+                },
+            )
+        except Exception as exc:
+            result = self._format_result(
+                success=False,
+                error=f"API request failed: {str(exc)}",
+            )
+            result["error_code"] = "REQUEST_ERROR"
+            return result
 
     def get_schema(self) -> dict[str, Any]:
         """

@@ -1,47 +1,46 @@
-"""Web tools for MindFlow agents.
-
-Provides tools for web interactions including browser automation,
-HTTP requests, API interactions, and content extraction.
-"""
+"""Web tools for MindFlow agents."""
 
 from __future__ import annotations
 
-# Web tools v3 (New Tool system - Phase 3 migration)
-from .http_client_v3 import (
-    HttpClientToolV3,
-)
-from .web_scraper_v3 import (
-    WebScraperToolV3,
-)
-from .api_client_v3 import (
-    ApiClientToolV3,
-)
+import warnings
+from importlib import import_module
 
-# Web tools v1 (backward compatibility)
 from .api_client import ApiClientTool
-from .http_client import HttpClientTool
-from .web_scraper import (
-    WebScraperTool,
-)
-
-# Browser tools
 from .browser_search import BrowserSearchTool
+from .http_client import HttpClientTool
 from .pinchtab_browser import PinchTabBrowserTool
 from .pinchtab_fleet import PinchTabFleetTool
+from .web_scraper import WebScraperTool
+
+_COMPAT_EXPORTS = {
+    "HttpClientToolV3": (".http_client_v3", "HttpClientToolV3"),
+    "WebScraperToolV3": (".web_scraper_v3", "WebScraperToolV3"),
+    "ApiClientToolV3": (".api_client_v3", "ApiClientToolV3"),
+}
 
 __all__ = [
-    # Web tools v3 (Phase 3 migration)
-    "HttpClientToolV3",
-    "WebScraperToolV3",
-    "ApiClientToolV3",
-
-    # Web tools v1 (backward compatibility)
     "WebScraperTool",
     "HttpClientTool",
     "ApiClientTool",
-
-    # Browser tools
     "PinchTabFleetTool",
     "PinchTabBrowserTool",
     "BrowserSearchTool",
 ]
+
+
+def __getattr__(name: str):
+    if name not in _COMPAT_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attr_name = _COMPAT_EXPORTS[name]
+    warnings.warn(
+        (
+            f"{__name__}.{name} is a deprecated compatibility export. "
+            f"Import {attr_name} from {__name__}{module_name} instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    value = getattr(import_module(module_name, __name__), attr_name)
+    globals()[name] = value
+    return value

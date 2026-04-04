@@ -1,114 +1,59 @@
-"""Filesystem tools for MindFlow agents.
-
-Provides tools for file operations, directory management,
-and file system interactions with proper validation and
-error handling.
-"""
+"""Filesystem tools for MindFlow agents."""
 
 from __future__ import annotations
 
-# File operations v3 (New Tool system - migrated)
-from .file_operations_v3 import (
-    FileReadToolV3,
-)
-from .file_write_v3 import (
-    FileWriteToolV3,
-)
-from .file_edit_v3 import (
-    FileEditToolV3,
-)
-from .grep_v3 import (
-    GrepToolV3,
-)
-from .glob_v3 import (
-    GlobToolV3,
-)
+import warnings
+from importlib import import_module
 
-# Directory and file management v3 (New Tool system - Phase 1 migration)
-from .directory_list_v3 import (
-    DirectoryListToolV3,
-)
-from .directory_create_v3 import (
-    DirectoryCreateToolV3,
-)
-from .file_delete_v3 import (
-    FileDeleteToolV3,
-)
-from .file_finder_v3 import (
-    FileFinderToolV3,
-    FindFilesToolV3,
-)
+from .file_operations import FileEditTool, FileReadTool, FileWriteTool
+from .operations import DirectoryCreateTool, DirectoryListTool, FileDeleteTool
+from .search_tools import FileFinderTool, FindFilesTool, GlobSearchTool, GrepSearchTool
 
-# File operations v2 (Claude Code standard)
-from .file_operations_v2 import (
-    FileEditToolV2,
-    FileReadToolV2,
-    FileWriteToolV2,
-)
-
-# Search tools v2 (Claude Code standard)
-from .search_tools_v2 import (
-    GlobToolV2,
-    GrepToolV2,
-)
-
-# File operations v1 (backward compatibility - deprecated)
-from .file_operations import (
-    FileEditTool,
-    FileReadTool,
-    FileWriteTool,
-)
-
-# Original tools (backward compatibility)
-from .operations import (
-    DirectoryCreateTool,
-    DirectoryListTool,
-    FileDeleteTool,
-)
-
-# Search tools v1 (backward compatibility - deprecated)
-from .search_tools import (
-    FindFilesTool,
-    GlobSearchTool,
-    GrepSearchTool,
-)
+_COMPAT_EXPORTS = {
+    "FileReadToolV3": (".file_operations_v3", "FileReadToolV3"),
+    "FileWriteToolV3": (".file_write_v3", "FileWriteToolV3"),
+    "FileEditToolV3": (".file_edit_v3", "FileEditToolV3"),
+    "GrepToolV3": (".grep_v3", "GrepToolV3"),
+    "GlobToolV3": (".glob_v3", "GlobToolV3"),
+    "DirectoryListToolV3": (".directory_list_v3", "DirectoryListToolV3"),
+    "DirectoryCreateToolV3": (".directory_create_v3", "DirectoryCreateToolV3"),
+    "FileDeleteToolV3": (".file_delete_v3", "FileDeleteToolV3"),
+    "FileFinderToolV3": (".file_finder_v3", "FileFinderToolV3"),
+    "FindFilesToolV3": (".file_finder_v3", "FindFilesToolV3"),
+    "FileReadToolV2": (".file_operations_v2", "FileReadToolV2"),
+    "FileWriteToolV2": (".file_operations_v2", "FileWriteToolV2"),
+    "FileEditToolV2": (".file_operations_v2", "FileEditToolV2"),
+    "GlobToolV2": (".search_tools_v2", "GlobToolV2"),
+    "GrepToolV2": (".search_tools_v2", "GrepToolV2"),
+}
 
 __all__ = [
-    # File operations v3 (New Tool system - migrated)
-    "FileReadToolV3",
-    "FileWriteToolV3",
-    "FileEditToolV3",
-    "GrepToolV3",
-    "GlobToolV3",
-
-    # Directory and file management v3 (Phase 1 migration)
-    "DirectoryListToolV3",
-    "DirectoryCreateToolV3",
-    "FileDeleteToolV3",
-    "FileFinderToolV3",
-    "FindFilesToolV3",
-
-    # File operations v2 (default)
-    "FileReadToolV2",
-    "FileWriteToolV2",
-    "FileEditToolV2",
-
-    # Search tools v2 (default)
-    "GrepToolV2",
-    "GlobToolV2",
-
-    # File operations v1 (deprecated)
     "FileReadTool",
     "FileWriteTool",
     "FileEditTool",
-
-    # Search tools v1 (deprecated)
+    "DirectoryListTool",
+    "DirectoryCreateTool",
+    "FileDeleteTool",
     "GrepSearchTool",
     "GlobSearchTool",
+    "FileFinderTool",
     "FindFilesTool",
-
-    # Original tools (backward compatibility)
-    "DirectoryListTool",
-    "FileDeleteTool",
-    "DirectoryCreateTool",
 ]
+
+
+def __getattr__(name: str):
+    if name not in _COMPAT_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attr_name = _COMPAT_EXPORTS[name]
+    warnings.warn(
+        (
+            f"{__name__}.{name} is a deprecated compatibility export. "
+            f"Import {attr_name} from {__name__}{module_name} instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    value = getattr(import_module(module_name, __name__), attr_name)
+    globals()[name] = value
+    return value

@@ -5,15 +5,18 @@ Delete files with security controls and validation.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mindflow_backend.agents.tools.filesystem._legacy_adapter import (
+    build_legacy_tool,
+    deny_if_permission_blocked,
+    flatten_legacy_result,
+)
+from mindflow_backend.agents.tools.filesystem.file_operations import FileDeleteTool
 from mindflow_backend.schemas.tools import build_tool
 from mindflow_backend.schemas.tools.context import ToolContext
-from mindflow_backend.schemas.tools.permission import PermissionBehavior
 
 
 # ---------------------------------------------------------------------------
@@ -48,105 +51,36 @@ async def file_delete_execute(input: FileDeleteInput, context: ToolContext) -> d
     Returns:
         Dictionary with deletion result or error
     """
-    # 1. Resolve file path (support root_dir from context)
-    file_path = input.file_path
-    root_dir = context.metadata.get("root_dir")
+    permission_error = await deny_if_permission_blocked(
+        context,
+        tool_name="delete_file",
+        input_data=input.model_dump(),
+        tool_content=input.file_path,
+        content_key="file_path",
+    )
+    if permission_error:
+        return permission_error
 
-    if root_dir and not os.path.isabs(file_path):
-        file_path = os.path.join(root_dir, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    # 2. Security validation: block device files
-    if file_path.startswith("/dev/"):
-        return {
-            "success": False,
-            "error": "Device files cannot be deleted",
-            "error_code": "DEVICE_FILE_BLOCKED",
-            "file_path": file_path
-        }
-
-    # 3. Security validation: block system paths
-    system_paths = ["/etc", "/usr", "/bin", "/sbin", "/boot", "/sys", "/proc"]
-    if any(file_path.startswith(path) for path in system_paths):
-        return {
-            "success": False,
-            "error": f"System paths cannot be deleted: {file_path}",
-            "error_code": "SYSTEM_PATH_BLOCKED",
-            "file_path": file_path
-        }
-
-    # 4. Check permissions (if manager available)
-    if context.permission_manager:
-        perm_result = await context.check_permission_async(
-            tool_name="delete_file",
-            input=input.model_dump(),
-            tool_content=file_path
-        )
-
-        if perm_result.behavior == PermissionBehavior.DENY:
-            return {
-                "success": False,
-                "error": perm_result.message or "Permission denied",
-                "error_code": "PERMISSION_DENIED",
-                "file_path": file_path
-            }
-
-    # 5. Check file exists
-    if not os.path.exists(file_path):
-        return {
-            "success": False,
-            "error": f"File not found: {file_path}",
-            "error_code": "FILE_NOT_FOUND",
-            "file_path": file_path
-        }
-
-    if not os.path.isfile(file_path):
-        return {
-            "success": False,
-            "error": f"Not a file: {file_path}",
-            "error_code": "NOT_A_FILE",
-            "file_path": file_path
-        }
-
-    # 6. Get file info before deletion
-    try:
-        file_size = os.path.getsize(file_path)
-        file_name = os.path.basename(file_path)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to get file info: {e}",
-            "error_code": "STAT_ERROR",
-            "file_path": file_path
-        }
-
-    # 7. Delete file
-    try:
-        os.unlink(file_path)
-
-        return {
-            "success": True,
-            "file_path": file_path,
-            "file_name": file_name,
-            "file_size": file_size,
-            "deleted": True
-        }
-
-    except PermissionError as e:
-        return {
-            "success": False,
-            "error": f"Permission denied: {e}",
-            "error_code": "OS_PERMISSION_ERROR",
-            "file_path": file_path
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to delete file: {e}",
-            "error_code": "DELETE_ERROR",
-            "file_path": file_path
-        }
+    tool = build_legacy_tool(FileDeleteTool, context)
+    result = await tool.execute(file_path=input.file_path, confirm=input.confirm)
+    return flatten_legacy_result(
+        result,
+        error_map={
+            "restricted path denied: /dev": "DEVICE_FILE_BLOCKED",
+            "restricted path denied: /etc": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /usr": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /bin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sbin": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /boot": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /sys": "SYSTEM_PATH_BLOCKED",
+            "restricted path denied: /proc": "SYSTEM_PATH_BLOCKED",
+            "path not found": "FILE_NOT_FOUND",
+            "path is neither file nor directory": "NOT_A_FILE",
+            "permission denied": "OS_PERMISSION_ERROR",
+            "workspace security error": "PERMISSION_DENIED",
+        },
+        default_error_code="DELETE_ERROR",
+    )
 
 
 # ---------------------------------------------------------------------------

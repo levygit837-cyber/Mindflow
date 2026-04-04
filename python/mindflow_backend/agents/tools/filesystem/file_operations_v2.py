@@ -47,6 +47,16 @@ from mindflow_backend.agents.tools.security.filesystem_validators import (
 _logger = get_logger(__name__)
 
 
+def _resolve_input_path(root_dir: str | None, raw_path: str) -> str:
+    """Resolve paths relative to root_dir while preserving absolute inputs."""
+    path = Path(raw_path)
+    if path.is_absolute():
+        return str(path.resolve())
+    if root_dir:
+        return str((Path(root_dir) / path).resolve())
+    return str(path.resolve())
+
+
 # ============================================================================
 # FileReadTool v2
 # ============================================================================
@@ -93,11 +103,7 @@ class FileReadToolV2(AsyncToolInterface):
         file_path = input_data.file_path
 
         # Resolve path relative to root_dir if provided
-        if self.root_dir:
-            file_path = os.path.join(self.root_dir, file_path.lstrip("/"))
-
-        # Convert to absolute path
-        file_path = os.path.abspath(file_path)
+        file_path = _resolve_input_path(self.root_dir, file_path)
 
         # Security validation: device file blocking
         device_decision = validate_device_file(file_path)
@@ -180,7 +186,7 @@ class FileReadToolV2(AsyncToolInterface):
     async def _read_text_file(
         self,
         file_path: str,
-        offset: int,
+        offset: int | None,
         limit: int | None,
         include_line_numbers: bool,
         encoding: str
@@ -190,6 +196,7 @@ class FileReadToolV2(AsyncToolInterface):
             lines = f.readlines()
 
         total_lines = len(lines)
+        offset = offset or 0
 
         # Apply offset
         if offset > 0:
@@ -437,16 +444,14 @@ class FileWriteToolV2(AsyncToolInterface):
 
         file_path = input_data.file_path
         content = input_data.content
+        check_secrets = kwargs.get("check_secrets", True)
+        generate_git_diff = kwargs.get("generate_git_diff", False)
 
         # Resolve path relative to root_dir if provided
-        if self.root_dir:
-            file_path = os.path.join(self.root_dir, file_path.lstrip("/"))
-
-        # Convert to absolute path
-        file_path = os.path.abspath(file_path)
+        file_path = _resolve_input_path(self.root_dir, file_path)
 
         # Security validation: secret detection
-        if input_data.check_secrets:
+        if check_secrets:
             secret_decision = validate_secrets(content, file_path)
             if secret_decision.behavior == PermissionBehavior.DENY:
                 return {
@@ -461,7 +466,7 @@ class FileWriteToolV2(AsyncToolInterface):
             operation="write",
             content=content,
             workspace_root=self.root_dir,
-            check_secrets=input_data.check_secrets
+            check_secrets=check_secrets
         )
 
         if fs_decision.behavior == PermissionBehavior.DENY:
@@ -508,7 +513,7 @@ class FileWriteToolV2(AsyncToolInterface):
 
             # Generate git diff if requested
             git_diff = None
-            if input_data.generate_git_diff and file_existed:
+            if generate_git_diff and file_existed:
                 git_diff = await self._generate_git_diff(file_path)
 
             return {
@@ -673,13 +678,14 @@ class FileEditToolV2(AsyncToolInterface):
         file_path = input_data.file_path
         old_string = input_data.old_string
         new_string = input_data.new_string
+        explicit_replace_all = "replace_all" in kwargs
+        encoding = kwargs.get("encoding", "utf-8")
+        fuzzy_threshold = kwargs.get("fuzzy_threshold", 0.85)
+        check_secrets = kwargs.get("check_secrets", True)
+        generate_git_diff = kwargs.get("generate_git_diff", False)
 
         # Resolve path relative to root_dir if provided
-        if self.root_dir:
-            file_path = os.path.join(self.root_dir, file_path.lstrip("/"))
-
-        # Convert to absolute path
-        file_path = os.path.abspath(file_path)
+        file_path = _resolve_input_path(self.root_dir, file_path)
 
         # Check file exists
         if not os.path.exists(file_path):
@@ -694,7 +700,7 @@ class FileEditToolV2(AsyncToolInterface):
 
         try:
             # Read file content
-            with open(file_path, 'r', encoding=input_data.encoding) as f:
+            with open(file_path, 'r', encoding=encoding) as f:
                 original_content = f.read()
 
             # TOCTOU protection: validate mtime hasn't changed
@@ -708,8 +714,9 @@ class FileEditToolV2(AsyncToolInterface):
                 }
 
             # Find matches
-            if input_data.fuzzy_match:
-                matches = self._fuzzy_find(original_content, old_string, input_data.fuzzy_threshold)
+            use_fuzzy_match = bool(kwargs.get("fuzzy_match", False))
+            if use_fuzzy_match:
+                matches = self._fuzzy_find(original_content, old_string, fuzzy_threshold)
             else:
                 matches = self._exact_find(original_content, old_string)
 
@@ -722,7 +729,7 @@ class FileEditToolV2(AsyncToolInterface):
                 }
 
             # Check for multiple matches if not replace_all
-            if len(matches) > 1 and not input_data.replace_all:
+            if len(matches) > 1 and explicit_replace_all and not input_data.replace_all:
                 clear_file_mtime(file_path)
                 return {
                     "success": False,
@@ -757,7 +764,7 @@ class FileEditToolV2(AsyncToolInterface):
                 }
 
             # Secret detection on new content
-            if input_data.check_secrets:
+            if check_secrets:
                 secret_decision = validate_secrets(new_content, file_path)
                 if secret_decision.behavior == PermissionBehavior.DENY:
                     clear_file_mtime(file_path)
@@ -768,7 +775,7 @@ class FileEditToolV2(AsyncToolInterface):
                     }
 
             # Write new content
-            with open(file_path, 'w', encoding=input_data.encoding) as f:
+            with open(file_path, 'w', encoding=encoding) as f:
                 f.write(new_content)
 
             # Clear TOCTOU tracking
@@ -776,7 +783,7 @@ class FileEditToolV2(AsyncToolInterface):
 
             # Generate git diff if requested
             git_diff = None
-            if input_data.generate_git_diff:
+            if generate_git_diff:
                 git_diff = await self._generate_git_diff(file_path)
 
             return {
