@@ -16,7 +16,8 @@ from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.orchestrator.step_runner import run_workflow_step
+from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.schemas.orchestration.workflow import WorkflowPlan, WorkflowStep
 
 _logger = get_logger(__name__)
@@ -27,6 +28,23 @@ class CodingTaskChainConfig:
     chain_id: str = "coding_task"
     use_deep_analysis: bool = False
     max_context_chars_for_coder: int = 6_000
+
+
+# Global QueryEngine instance for workflow step execution
+_query_engine: QueryEngine | None = None
+
+
+def _get_query_engine() -> QueryEngine:
+    """Get or create the global QueryEngine instance."""
+    global _query_engine
+    if _query_engine is None:
+        _query_engine = QueryEngine(
+            providers=[],  # No context providers needed for workflow steps
+            budget=TokenBudget(),
+            session_id="coding_task_chain",
+            use_file_cache=False,
+        )
+    return _query_engine
 
 
 class CodingTaskChain:
@@ -147,8 +165,9 @@ class CodingTaskChain:
         folder_path: str | None = None,
     ) -> dict[str, Any]:
         """Run a canonical workflow step and return DelegationResult-like output."""
+        engine = _get_query_engine()
 
-        result = await run_workflow_step(
+        result = await engine.execute_workflow_step(
             step=step,
             user_message=user_message,
             provider=provider,

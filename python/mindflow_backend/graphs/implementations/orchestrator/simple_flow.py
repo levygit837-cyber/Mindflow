@@ -184,7 +184,8 @@ class SimpleOrchestratorGraph(SimpleGraph):
         session_id = str(state.get("session_id", ""))
         from langchain_core.callbacks.manager import adispatch_custom_event
 
-        from mindflow_backend.orchestrator.step_runner import run_workflow_step
+        from mindflow_backend.query.budget.token_counter import TokenBudget
+        from mindflow_backend.query.engine import QueryEngine
         from mindflow_backend.schemas.orchestration.orchestrator import (
             ExecutionStrategy,
             ThinkingMode,
@@ -318,7 +319,13 @@ class SimpleOrchestratorGraph(SimpleGraph):
         async def _event_dispatch(event_name: str, payload: dict) -> None:
             await adispatch_custom_event(event_name, payload)
 
-        result = await run_workflow_step(
+        engine = QueryEngine(
+            providers=[],  # No context providers needed for workflow steps
+            budget=TokenBudget(max_tokens=200_000),
+            session_id=session_id,
+            use_file_cache=False,
+        )
+        result = await engine.execute_workflow_step(
             step=primary_step,
             user_message=state["message"],
             provider=provider,

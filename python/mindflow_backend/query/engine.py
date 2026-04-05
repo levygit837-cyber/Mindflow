@@ -56,10 +56,12 @@ from mindflow_backend.query.cache.file_cache import SessionFileCache, create_ses
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.schemas.orchestration.delegation import DelegationResult, DelegationTask
 from mindflow_backend.schemas.orchestration.orchestrator import (
+    Priority,
     SandboxMode,
     WorkspaceBinding,
     WorkspacePolicy,
 )
+from mindflow_backend.schemas.orchestration.workflow import WorkflowStep
 from mindflow_backend.services.core import get_worktree_service
 
 if TYPE_CHECKING:
@@ -1202,3 +1204,129 @@ Use this context to inform your work, but focus on the current objective.
             "cannot determine",
         )
         return any(marker in normalized for marker in insufficiency_markers)
+
+    # ---------------------------------------------------------------------------
+    # Workflow Step Execution (from StepRunner)
+    # ---------------------------------------------------------------------------
+
+    async def execute_workflow_step(
+        self,
+        *,
+        step: WorkflowStep,
+        user_message: str,
+        provider: str,
+        model: str,
+        session_id: str,
+        folder_path: str | None = None,
+        memory_context: str = "",
+        memory_grounded: bool = False,
+        conversation_history: list[dict[str, str]] | None = None,
+        prior_context: str = "",
+        chunk_dispatcher: Any = None,
+        event_dispatcher: Any = None,
+    ) -> dict[str, Any]:
+        """Execute a workflow step using the unified QueryEngine.
+
+        This method replaces step_runner.run_workflow_step by integrating
+        WorkflowStep → DelegationTask conversion and delegation execution
+        directly in the QueryEngine.
+
+        Args:
+            step: The WorkflowStep to execute
+            user_message: The original user message
+            provider: The LLM provider
+            model: The LLM model
+            session_id: The session ID
+            folder_path: Working directory for filesystem tools
+            memory_context: RAG context from agent history
+            memory_grounded: If response should prioritize memory context
+            conversation_history: Full conversation history
+            prior_context: Context from previous workflow steps
+            chunk_dispatcher: Optional chunk dispatcher (not used in current impl)
+            event_dispatcher: Optional event dispatcher (not used in current impl)
+
+        Returns:
+            Dict with execution results in step_runner format
+        """
+        # Convert WorkflowStep to DelegationTask
+        task = self._workflow_step_to_delegation_task(
+            step=step,
+            user_message=user_message,
+            session_id=session_id,
+            memory_context=memory_context,
+            memory_grounded=memory_grounded,
+            conversation_history=conversation_history,
+            prior_context=prior_context,
+            folder_path=folder_path,
+        )
+
+        # Execute delegation
+        # Note: session parameter is optional for delegate_task, passing None
+        result = await self.delegate_task(
+            task=task,
+            session=None,  # OrchestratorSession not needed for workflow steps
+            session_id=session_id,
+        )
+
+        # Convert DelegationResult back to step_runner format
+        return self._delegation_result_to_step_output(result, step)
+
+    def _workflow_step_to_delegation_task(
+        self,
+        step: WorkflowStep,
+        user_message: str,
+        session_id: str,
+        *,
+        memory_context: str = "",
+        memory_grounded: bool = False,
+        conversation_history: list[dict[str, str]] | None = None,
+        prior_context: str = "",
+        folder_path: str | None = None,
+        max_iterations: int = 1,
+    ) -> DelegationTask:
+        """Convert WorkflowStep to DelegationTask for execution.
+
+        This is the same logic from orchestrator/delegation/converter.py,
+        now integrated directly in QueryEngine.
+        """
+        return DelegationTask(
+            agent=step.agent_role,
+            agent_role=step.agent_role,
+            specialist=step.specialist,
+            agent_id=step.agent_id,
+            objective=step.objective or user_message,
+            scope=[],  # WorkflowStep doesn't have scope field
+            exclusions=[],  # WorkflowStep doesn't have exclusions field
+            expected_output="",  # WorkflowStep doesn't have expected_output field
+            context_from_session=prior_context,  # Map prior_context to context_from_session
+            priority=Priority.NORMAL,  # Default priority
+            tools=step.tools,  # Preserve tool scope from step
+            root_dir=folder_path,
+            max_iterations=max_iterations,
+            session_id=session_id,
+            # New fields from step_runner integration
+            memory_context=memory_context,
+            memory_grounded=memory_grounded,
+            conversation_history=conversation_history or [],
+            streaming_enabled=False,  # Streaming not yet supported
+        )
+
+    def _delegation_result_to_step_output(
+        self,
+        delegation_result: DelegationResult,
+        step: WorkflowStep,
+    ) -> dict[str, Any]:
+        """Convert DelegationResult back to step_runner output format.
+
+        This is the same logic from orchestrator/delegation/converter.py,
+        now integrated directly in QueryEngine.
+        """
+        return {
+            "agent_id": step.agent_id,
+            "agent_role": step.agent_role.value,
+            "specialist": step.specialist.value if step.specialist else None,
+            "status": delegation_result.status.value,
+            "key_findings": delegation_result.key_findings,
+            "full_output": delegation_result.full_output,
+            "error": delegation_result.error_message,
+        }

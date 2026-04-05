@@ -20,7 +20,8 @@ from langchain_core.callbacks.manager import adispatch_custom_event
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.orchestrator.step_runner import run_workflow_step
+from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType
 from mindflow_backend.schemas.orchestration.planning import PlanningRequest, PlanStatus
 from mindflow_backend.schemas.orchestration.workflow import WorkflowStep
@@ -30,6 +31,22 @@ _logger = get_logger(__name__)
 
 # Safety limit for execution iterations
 _SAFETY_ITERATION_LIMIT = 20
+
+# Global QueryEngine instance for workflow step execution
+_query_engine: QueryEngine | None = None
+
+
+def _get_query_engine() -> QueryEngine:
+    """Get or create the global QueryEngine instance."""
+    global _query_engine
+    if _query_engine is None:
+        _query_engine = QueryEngine(
+            providers=[],  # No context providers needed for workflow steps
+            budget=TokenBudget(),
+            session_id="planning_flow",
+            use_file_cache=False,
+        )
+    return _query_engine
 
 
 class PlanningFlowState(TypedDict, total=False):
@@ -472,7 +489,8 @@ async def run_execution_loop(
         
         # Run the step
         try:
-            result = await run_workflow_step(
+            engine = _get_query_engine()
+            result = await engine.execute_workflow_step(
                 step=step,
                 user_message=next_item.description or next_item.title,
                 provider=provider,
