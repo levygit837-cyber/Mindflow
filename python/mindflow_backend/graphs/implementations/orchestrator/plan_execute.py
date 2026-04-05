@@ -22,7 +22,6 @@ from langgraph.graph import END, StateGraph  # type: ignore[import]
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-from mindflow_backend.archive.tool_invocation import invoke_with_tools
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
@@ -146,11 +145,11 @@ async def _planner_node(state: PlanExecuteState) -> dict:
 
     try:
         if lc_tools:
-            raw = await invoke_with_tools(
-                llm=llm.bind_tools(lc_tools),
-                messages=messages,
-                lc_tools=lc_tools,
-                session_id=session_id,
+            # Legacy invoke_with_tools removed - LangChain tools no longer supported
+            raise NotImplementedError(
+                "invoke_with_tools was removed. LangChain tools are no longer supported. "
+                "Use the new CallableTool architecture instead. "
+                "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
             )
         else:
             response = await llm.ainvoke(messages)
@@ -307,11 +306,11 @@ async def _executor_node(state: PlanExecuteState) -> dict:
             lc_tools = to_langchain_tools(tools)
             if lc_tools:
                 llm_with_tools = llm.bind_tools(lc_tools)
-                result_text = await invoke_with_tools(
-                    llm=llm_with_tools,
-                    messages=messages,
-                    lc_tools=lc_tools,
-                    session_id=session_id,
+                # Legacy invoke_with_tools removed - LangChain tools no longer supported
+                raise NotImplementedError(
+                    "invoke_with_tools was removed. LangChain tools are no longer supported. "
+                    "Use the new CallableTool architecture instead. "
+                    "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
                 )
             else:
                 response = await llm.ainvoke(messages)

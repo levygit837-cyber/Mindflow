@@ -364,7 +364,6 @@ class SimpleOrchestratorGraph(SimpleGraph):
         from langchain_core.callbacks.manager import adispatch_custom_event
 
         from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-        from mindflow_backend.archive.tool_invocation import stream_with_tools
         from mindflow_backend.agents.tools.orchestration.delegate_to_agent import (
             DelegateToAgentTool,
         )
@@ -421,13 +420,11 @@ class SimpleOrchestratorGraph(SimpleGraph):
             async def _event_dispatch(name: str, payload: dict) -> None:
                 await adispatch_custom_event(name, payload)
 
-            response_text = await stream_with_tools(
-                llm=llm_with_tools,
-                messages=messages,
-                lc_tools=lc_tools,
-                chunk_dispatcher=_chunk_dispatch,
-                event_dispatcher=_event_dispatch,
-                session_id=state.get("session_id"),
+            # Legacy stream_with_tools removed - LangChain tools no longer supported
+            raise NotImplementedError(
+                "stream_with_tools was removed. LangChain tools are no longer supported. "
+                "Use the new CallableTool architecture with StreamingToolExecutor instead. "
+                "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
             )
 
             if not response_text.strip():

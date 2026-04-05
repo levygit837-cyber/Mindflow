@@ -110,19 +110,15 @@ def __getattr__(name):
     if name == "StreamingToolExecutor":
         global _StreamingToolExecutor
         if _StreamingToolExecutor is None:
-            from mindflow_backend.archive.callable_executor import (
-                StreamingToolExecutor,
-            )
+            from mindflow_backend.execution.loops import StreamingToolExecutor
             _StreamingToolExecutor = StreamingToolExecutor
         return _StreamingToolExecutor
     elif name == "ToolExecutionState":
-        global _ToolExecutionState
-        if _ToolExecutionState is None:
-            from mindflow_backend.archive.callable_executor import (
-                ToolExecutionState,
-            )
-            _ToolExecutionState = ToolExecutionState
-        return _ToolExecutionState
+        # ToolExecutionState was removed - raise clear error
+        raise AttributeError(
+            "ToolExecutionState was removed. "
+            "Use StreamingToolExecutor from mindflow_backend.execution.loops instead."
+        )
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 # Temporary adapter (will be removed in Phase 3)

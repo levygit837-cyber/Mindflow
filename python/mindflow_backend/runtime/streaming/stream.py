@@ -1276,126 +1276,15 @@ class AgentRuntime:
         agent_type: str,
         session_id: str,
     ) -> AsyncGenerator[StreamEvent, None]:
-        from mindflow_backend.archive.tool_invocation import stream_with_tools
-
-        queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
-
-        async def _chunk_dispatch(text: str) -> None:
-            await queue.put(("chunk", text))
-
-        async def _event_dispatch(name: str, payload: dict[str, Any]) -> None:
-            await queue.put(("event", (name, payload)))
-
-        async def _runner() -> None:
-            try:
-                await stream_with_tools(
-                    llm=llm,
-                    messages=messages,
-                    lc_tools=lc_tools,
-                    chunk_dispatcher=_chunk_dispatch,
-                    event_dispatcher=_event_dispatch,
-                    session_id=session_id,
-                )
-            except Exception as exc:
-                await queue.put(("error", exc))
-            finally:
-                await queue.put(("done", None))
-
-        task = asyncio.create_task(_runner())
-        agent_meta = {"agent": agent_type}
-
-        try:
-            while True:
-                event_kind, payload = await queue.get()
-                if event_kind == "done":
-                    break
-                if event_kind == "error":
-                    raise payload
-                if event_kind == "chunk":
-                    yield normalizer.response_event(
-                        self._next_seq(counter),
-                        payload,
-                        run_id=run_id,
-                        extra_meta=agent_meta,
-                    )
-                    continue
-
-                name, data = payload
-                if name == "agent_thought":
-                    thought = data.get("thought")
-                    if thought:
-                        yield normalizer.thought_event(
-                            self._next_seq(counter),
-                            thought,
-                            run_id=run_id,
-                            extra_meta=agent_meta,
-                        )
-                elif name == "tool_call_start":
-                    tool_name = data.get("tool", "")
-                    tool_args = data.get("args", {}) or {}
-                    tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
-                    tool_meta = data.get("tool_meta") or None
-                    if tool_name:
-                        yield normalizer.tool_call_event(
-                            self._next_seq(counter),
-                            tool_call_id=tool_call_id,
-                            name=tool_name,
-                            args=tool_args,
-                            run_id=run_id,
-                            tool_meta=tool_meta,
-                            extra_meta=agent_meta,
-                        )
-                        kind, message, details = self._notifier_payload_for_tool(tool_name, tool_args, tool_meta)
-                        if should_emit_backend_notifier(kind):
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="notifier",
-                                data=json.dumps({"kind": kind, "message": message, "details": details}),
-                                agent=agent_type,
-                            )
-                elif name == "tool_call":
-                    tool_name = data.get("tool", "")
-                    tool_args = data.get("args", {}) or {}
-                    result_preview = data.get("result_preview", "")
-                    tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())[:8]
-                    tool_meta = data.get("tool_meta") or None
-                    if tool_name and not data.get("tool_call_id"):
-                        yield normalizer.tool_call_event(
-                            self._next_seq(counter),
-                            tool_call_id=tool_call_id,
-                            name=tool_name,
-                            args=tool_args,
-                            run_id=run_id,
-                            tool_meta=tool_meta,
-                            extra_meta=agent_meta,
-                        )
-                        kind, message, details = self._notifier_payload_for_tool(tool_name, tool_args, tool_meta)
-                        if should_emit_backend_notifier(kind):
-                            yield self._custom_event(
-                                counter=counter,
-                                run_id=run_id,
-                                session_id=session_id,
-                                event_type="notifier",
-                                data=json.dumps({"kind": kind, "message": message, "details": details}),
-                                agent=agent_type,
-                            )
-                    if tool_name and result_preview:
-                        yield normalizer.tool_result_event(
-                            self._next_seq(counter),
-                            tool_call_id=tool_call_id,
-                            name=tool_name,
-                            result=result_preview,
-                            run_id=run_id,
-                            tool_meta=tool_meta,
-                            extra_meta=agent_meta,
-                        )
-        finally:
-            if not task.done():
-                task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+        # Legacy stream_with_tools removed - LangChain tools no longer supported
+        # This code path uses LangChain tools (lc_tools) which were removed.
+        # If this functionality is still needed, it must be reimplemented
+        # using the new CallableTool architecture.
+        raise NotImplementedError(
+            "stream_with_tools was removed. LangChain tools are no longer supported. "
+            "Use the new CallableTool architecture with StreamingToolExecutor instead. "
+            "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
+        )
 
     def _should_force_structured_analyst_flow(self, payload: AgentChatRequest) -> bool:
         return (

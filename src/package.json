@@ -8,22 +8,26 @@
         "mindflow": "./entrypoints/cli.tsx"
     },
     "scripts": {
-        "dev": "tsx watch entrypoints/cli.tsx",
+        "dev": "tsx entrypoints/cli.tsx",
         "build": "tsc --noEmit",
         "start": "tsx entrypoints/cli.tsx"
     },
     "dependencies": {
-        "ink": "^5.0.1",
-        "react": "^18.3.1",
+        "ink": "^6.0.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "@json-render/core": "^0.16.0",
+        "@json-render/ink": "^0.16.0",
         "chalk": "^5.4.1"
     },
     "devDependencies": {
-        "@types/react": "^18.3.12",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
         "@types/node": "^22.10.0",
         "typescript": "^5.6.0",
         "tsx": "^4.19.2"
     },
     "overrides": {
-        "react-reconciler": "^0.29.0"
+        "react-reconciler": "^0.33.0"
     }
 }

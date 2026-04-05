@@ -15,11 +15,6 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 
-# Hook handlers for session lifecycle
-from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
-from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
-from mindflow_backend.hooks.handlers.user_prompt_submit import UserPromptSubmitHandler
-
 _logger = get_logger(__name__)
 
 # Lazy imports for optional services
@@ -339,6 +334,8 @@ class AgentRuntime:
         Executed when a new session is initialized. Fires SessionStart hooks
         so other systems can react (logging, initialization, external services).
         """
+        from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
+
         try:
             async for result in SessionStartHandler.execute(session_id=session_id):
                 if result.add_context:
@@ -364,6 +361,8 @@ class AgentRuntime:
             session_id: The session ID to end
             reason: Why the session ended ("clear", "resume", "logout", "other")
         """
+        from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
+
         try:
             async for result in SessionEndHandler.execute(
                 session_id=session_id,
@@ -394,6 +393,8 @@ class AgentRuntime:
             session_id: The session ID
             prompt: The user's prompt text
         """
+        from mindflow_backend.hooks.handlers.user_prompt_submit import UserPromptSubmitHandler
+
         try:
             async for result in UserPromptSubmitHandler.execute(
                 session_id=session_id,

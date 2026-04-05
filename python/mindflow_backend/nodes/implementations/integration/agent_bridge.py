@@ -224,7 +224,6 @@ class AgentBridge(StatefulNode, BaseNode):
         """Execute agent using the proper architecture with LLM and tools."""
         from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
         from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-        from mindflow_backend.archive.tool_invocation import invoke_with_tools
         from mindflow_backend.infra.config import get_settings
         from mindflow_backend.infra.logging import get_logger
         from mindflow_backend.runtime import get_model_for_provider
@@ -269,12 +268,11 @@ class AgentBridge(StatefulNode, BaseNode):
                         tools_count=len(lc_tools)
                     )
 
-                    response_text = await invoke_with_tools(
-                        llm=llm_with_tools,
-                        messages=messages,
-                        lc_tools=lc_tools,
-                        event_dispatcher=None,
-                        max_iterations=policy.max_iterations,
+                    # Legacy invoke_with_tools removed - LangChain tools no longer supported
+                    raise NotImplementedError(
+                        "invoke_with_tools was removed. LangChain tools are no longer supported. "
+                        "Use the new CallableTool architecture instead. "
+                        "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
                     )
                 else:
                     # No LangChain tools, use LLM directly

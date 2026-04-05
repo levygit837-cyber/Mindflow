@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from mindflow_backend.agents.specialists.runtime_policy import AGENT_RUNTIME_POLICY
 from mindflow_backend.agents.tools.contextplus_fallback import ContextPlusFallbackEngine
 from mindflow_backend.agents.tools.contextplus_validator import ContextPlusValidator
 from mindflow_backend.infra.logging import get_logger
@@ -46,6 +45,8 @@ class _DefaultRegistry:
     def _build_tool_mapping(self) -> dict[Any, list[Any]]:
         """Build mapping from AgentType to ToolScope based on canonical policy."""
         try:
+            from mindflow_backend.agents.specialists.runtime_policy import AGENT_RUNTIME_POLICY
+
             mapping: dict[Any, list[Any]] = {}
             for policy in AGENT_RUNTIME_POLICY.values():
                 if policy.specialist is None:

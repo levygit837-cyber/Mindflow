@@ -965,23 +965,13 @@ class QueryEngine:
                     max_iterations=max(1, getattr(task, "max_iterations", 1) * 5),
                 )
 
-            elif strategy == "legacy":
-                # Legacy path: Use LangChain adapter for backward compatibility
-                from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-                from mindflow_backend.archive.tool_invocation import invoke_with_tools
-
-                lc_tools = to_langchain_tools(tools)
-                if lc_tools:
-                    llm_with_tools = llm.bind_tools(lc_tools)
-                    response_text = await invoke_with_tools(
-                        llm=llm_with_tools,
-                        messages=messages,
-                        lc_tools=lc_tools,
-                        event_dispatcher=self._make_event_dispatcher(child_execution_id),
-                        before_iteration=self._make_before_iteration(child_execution_id),
-                        max_iterations=max(1, getattr(task, "max_iterations", 1) * 5),
-                        session_id=session_id,
-                    )
+            else:
+                # No tools or unsupported tool type - skip tool execution
+                _logger.warning(
+                    "no_tools_or_unsupported_type",
+                    strategy=strategy,
+                    tool_count=len(tools),
+                )
 
         if not response_text:
             # Fallback: no tools or tool conversion failed
