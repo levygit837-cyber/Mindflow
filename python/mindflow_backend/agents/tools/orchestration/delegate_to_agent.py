@@ -100,7 +100,8 @@ class DelegateToAgentTool(AsyncToolInterface):
         )
 
         try:
-            from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
+            from mindflow_backend.query.budget.token_counter import TokenBudget
+            from mindflow_backend.query.engine import QueryEngine
             from mindflow_backend.schemas.orchestration.delegation import (
                 DelegationTask,
                 OrchestratorSession,
@@ -149,7 +150,12 @@ class DelegateToAgentTool(AsyncToolInterface):
                     }
                 )
 
-            engine = DelegationEngine()
+            engine = QueryEngine(
+                providers=[],  # No context providers for delegation
+                budget=TokenBudget(max_tokens=200_000),
+                session_id=self.session_id,
+                use_file_cache=True,
+            )
             session = OrchestratorSession()
             result = await engine.delegate_task(
                 task,

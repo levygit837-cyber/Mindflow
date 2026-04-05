@@ -19,7 +19,8 @@ from mindflow_backend.infra.resilience.orchestration_fallback import (
     FallbackContext,
     get_orchestration_fallback_manager,
 )
-from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
+from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.runtime import get_model_for_provider, normalize_response_for_json
 from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
 from mindflow_backend.schemas.orchestration.orchestrator import (
@@ -47,8 +48,8 @@ class IntelligentRouter:
     """LLM-powered intelligent routing. The Orchestrator is an entity — it can
     respond directly OR delegate to specialists. No keyword routing."""
 
-    def __init__(self, delegation_engine: DelegationEngine):
-        self.delegation_engine = delegation_engine
+    def __init__(self, query_engine: QueryEngine):
+        self.query_engine = query_engine
         self.settings = get_settings()
         self._fallback_manager = get_orchestration_fallback_manager()
         self._register_fallback_handlers()
@@ -547,9 +548,14 @@ def get_intelligent_router() -> IntelligentRouter:
     """Get or create the global intelligent router instance."""
     global _intelligent_router
     if _intelligent_router is None:
-        from mindflow_backend.orchestrator.delegation.engine import get_delegation_engine
-
-        _intelligent_router = IntelligentRouter(get_delegation_engine())
+        _intelligent_router = IntelligentRouter(
+            QueryEngine(
+                providers=[],
+                budget=TokenBudget(max_tokens=200_000),
+                session_id="intelligent_router",
+                use_file_cache=False,
+            )
+        )
     return _intelligent_router
 
 
