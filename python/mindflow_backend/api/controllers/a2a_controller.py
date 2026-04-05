@@ -5,7 +5,8 @@ from mindflow_backend.schemas.a2a.task import A2AMessage, A2AArtifact
 from mindflow_backend.communication.a2a.agent_card_registry import AgentCardRegistry
 from mindflow_backend.communication.a2a.task_adapter import TaskAdapter
 from mindflow_backend.communication.a2a.stream_adapter import A2AStreamAdapter
-from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
+from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorSession
 
 class A2AController:
@@ -21,8 +22,13 @@ class A2AController:
         """Processes an A2A task synchronously and returns an artifact."""
         delegation_task = TaskAdapter.a2a_task_to_delegation_task(message)
         session = OrchestratorSession(user_intent=delegation_task.objective)
-        
-        engine = DelegationEngine()
+
+        engine = QueryEngine(
+            providers=[],
+            budget=TokenBudget(max_tokens=200_000),
+            session_id=message.context_id,
+            use_file_cache=False,
+        )
         result = await engine.delegate_task(
             task=delegation_task,
             session=session,
