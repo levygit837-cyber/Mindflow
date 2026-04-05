@@ -697,7 +697,7 @@ class RuntimeExecutor:
         agent_type: str,
         session_id: str,
     ) -> AsyncGenerator[StreamEvent, None]:
-        from mindflow_backend.agents.tools.base.tool_invocation import stream_with_tools
+        from mindflow_backend.archive.tool_invocation import stream_with_tools
 
         queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
 

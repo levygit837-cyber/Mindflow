@@ -19,6 +19,92 @@ from mindflow_backend.infra.config.database import DatabaseConfig
 from mindflow_backend.infra.config.monitoring import MonitoringConfig
 
 
+class OrchestrationFallbackConfig(BaseSettings):
+    """Orchestration Fallback configuration for component-level graceful degradation.
+
+    Features:
+    - Per-component configuration for orchestration components
+    - Timer settings for negotiation/consensus phases
+    - Metrics and alerting thresholds
+    - Environment variable support
+
+    Complements the feature-level GracefulDegradation in infra/error_handling.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="MINDFLOW_ORCHESTRATION_FALLBACK_",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # Global enable/disable
+    enabled: bool = Field(default=True, alias="ENABLED")
+
+    # Component-level configuration
+    intelligent_router_enabled: bool = Field(default=True, alias="INTELLIGENT_ROUTER_ENABLED")
+    delegation_engine_enabled: bool = Field(default=True, alias="DELEGATION_ENGINE_ENABLED")
+    team_orchestrator_enabled: bool = Field(default=True, alias="TEAM_ORCHESTRATOR_ENABLED")
+    communication_bus_enabled: bool = Field(default=True, alias="COMMUNICATION_BUS_ENABLED")
+
+    # Timer configuration
+    negotiation_duration: float = Field(default=30.0, alias="NEGOTIATION_DURATION")
+    consensus_duration: float = Field(default=60.0, alias="CONSENSUS_DURATION")
+    alert_intervals: str = Field(
+        default="0.8,0.5,0.2",
+        alias="ALERT_INTERVALS",
+        description="Comma-separated percentages of total time for alerts",
+    )
+    grace_period: float = Field(default=30.0, alias="GRACE_PERIOD")
+
+    # Metrics and alerting
+    fallback_rate_alert_threshold: float = Field(default=0.2, alias="FALLBACK_RATE_ALERT_THRESHOLD")
+    metrics_window_seconds: int = Field(default=3600, alias="METRICS_WINDOW_SECONDS")
+
+    # Component-specific timer durations (override global)
+    intelligent_router_timer_duration: float | None = Field(
+        default=None, alias="INTELLIGENT_ROUTER_TIMER_DURATION"
+    )
+    delegation_engine_timer_duration: float | None = Field(
+        default=None, alias="DELEGATION_ENGINE_TIMER_DURATION"
+    )
+    team_orchestrator_timer_duration: float | None = Field(
+        default=None, alias="TEAM_ORCHESTRATOR_TIMER_DURATION"
+    )
+
+    def get_alert_intervals(self) -> list[float]:
+        """Parse alert intervals from comma-separated string.
+
+        Returns:
+            List of percentage values (0.0 to 1.0)
+        """
+        intervals = []
+        for val in self.alert_intervals.split(","):
+            try:
+                pct = float(val.strip())
+                if 0.0 <= pct <= 1.0:
+                    intervals.append(pct)
+            except ValueError:
+                continue
+        return intervals or [0.8, 0.5, 0.2]
+
+    def get_timer_duration(self, component: str) -> float:
+        """Get timer duration for a specific component.
+
+        Args:
+            component: Component identifier
+
+        Returns:
+            Timer duration in seconds
+        """
+        component_duration_map = {
+            "intelligent_router": self.intelligent_router_timer_duration or self.negotiation_duration,
+            "delegation_engine": self.delegation_engine_timer_duration or self.consensus_duration,
+            "team_orchestrator": self.team_orchestrator_timer_duration or self.consensus_duration,
+        }
+        return component_duration_map.get(component, self.negotiation_duration)
+
+
 class SecurityConfig(BaseSettings):
     """Security configuration for secure storage and encryption.
 
@@ -322,6 +408,7 @@ class Settings(BaseSettings):
     cache: CacheConfig = Field(default_factory=CacheConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    orchestration_fallback: OrchestrationFallbackConfig = Field(default_factory=OrchestrationFallbackConfig)
 
     @field_validator("database", mode="before", check_fields=False)
     def assemble_database_config(cls, v: DatabaseConfig | dict | None, info: pydantic.ValidationInfo) -> DatabaseConfig:
@@ -359,6 +446,13 @@ class Settings(BaseSettings):
         if isinstance(v, MonitoringConfig):
             return v
         return MonitoringConfig(**(v or {}))
+
+    @field_validator("orchestration_fallback", mode="before", check_fields=False)
+    def assemble_orchestration_fallback_config(cls, v: OrchestrationFallbackConfig | dict | None, info: pydantic.ValidationInfo) -> OrchestrationFallbackConfig:
+        """Assemble orchestration fallback configuration from environment variables."""
+        if isinstance(v, OrchestrationFallbackConfig):
+            return v
+        return OrchestrationFallbackConfig(**(v or {}))
 
     @field_validator("feature_flags", mode="before")
     def parse_feature_flags(cls, v: str | dict[str, bool] | None, info: pydantic.ValidationInfo) -> dict[str, bool]:

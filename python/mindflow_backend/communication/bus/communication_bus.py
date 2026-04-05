@@ -17,9 +17,15 @@ from mindflow_backend.communication.protocols.p2p_protocol import (
     P2PMessage,
 )
 from mindflow_backend.communication.teams.team_chat import TeamMessage
+from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.resilience.circuit_breaker.core import CircuitBreaker
+from mindflow_backend.infra.resilience.orchestration_fallback import (
+    FallbackContext,
+    get_orchestration_fallback_manager,
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CommunicationBus(ABC):
@@ -95,6 +101,31 @@ class InternalCommunicationBus(CommunicationBus):
             "messages_dropped": 0,
             "agents_registered": 0,
         }
+        self.settings = get_settings()
+        self._fallback_manager = get_orchestration_fallback_manager()
+        self._register_fallback_handlers()
+
+    def _register_fallback_handlers(self) -> None:
+        """Register fallback handlers for communication bus."""
+
+        async def send_fallback(ctx: FallbackContext) -> bool:
+            """Fallback handler for send - return False (message not delivered)."""
+            logger.warning(
+                "communication_bus_send_fallback",
+                original_error=str(ctx.original_error),
+            )
+            return False
+
+        async def broadcast_fallback(ctx: FallbackContext) -> bool:
+            """Fallback handler for broadcast - return False (message not delivered)."""
+            logger.warning(
+                "communication_bus_broadcast_fallback",
+                original_error=str(ctx.original_error),
+            )
+            return False
+
+        self._fallback_manager.register_fallback_handler("communication_bus_send", send_fallback)
+        self._fallback_manager.register_fallback_handler("communication_bus_broadcast", broadcast_fallback)
 
     async def register_agent(self, agent_id: str) -> None:
         if agent_id not in self._inboxes:
@@ -145,15 +176,36 @@ class InternalCommunicationBus(CommunicationBus):
                 self._stats["messages_dropped"] += 1
                 return False
 
-        try:
-            return await self._circuit_breaker.execute(_do_send)
-        except Exception:
-            logger.warning(
-                "bus_circuit_open",
-                extra={"from": from_agent, "to": to_agent},
+        # Execute with fallback (includes retry logic automatically)
+        if self.settings.orchestration_fallback.communication_bus_enabled:
+            async def _send_with_circuit_breaker() -> bool:
+                return await self._circuit_breaker.execute(_do_send)
+
+            fallback_result = await self._fallback_manager.execute_with_fallback(
+                component="communication_bus_send",
+                primary_func=_send_with_circuit_breaker,
+                context={"from_agent": from_agent, "to_agent": to_agent},
             )
-            self._stats["messages_dropped"] += 1
-            return False
+            if fallback_result.success:
+                return fallback_result.result
+            else:
+                logger.warning(
+                    "bus_circuit_open",
+                    extra={"from": from_agent, "to": to_agent},
+                )
+                self._stats["messages_dropped"] += 1
+                return False
+        else:
+            # Use only circuit breaker without orchestration fallback
+            try:
+                return await self._circuit_breaker.execute(_do_send)
+            except Exception:
+                logger.warning(
+                    "bus_circuit_open",
+                    extra={"from": from_agent, "to": to_agent},
+                )
+                self._stats["messages_dropped"] += 1
+                return False
 
     async def broadcast(
         self,
@@ -161,26 +213,45 @@ class InternalCommunicationBus(CommunicationBus):
         room_id: str,
         message: TeamMessage,
     ) -> bool:
-        subscribers = self._room_subscribers.get(room_id, [])
-        if not subscribers:
-            logger.warning("bus_broadcast_no_subscribers", extra={"room_id": room_id})
-            return False
+        async def _do_broadcast() -> bool:
+            subscribers = self._room_subscribers.get(room_id, [])
+            if not subscribers:
+                logger.warning("bus_broadcast_no_subscribers", extra={"room_id": room_id})
+                return False
 
-        delivered = 0
-        for agent_id in subscribers:
-            if agent_id == from_agent:
-                continue
-            p2p_msg = P2PMessage(
-                from_agent=from_agent,
-                to_agent=agent_id,
-                content=message.content,
-                message_type=MessageType.DIRECT,
-                metadata={"room_id": room_id, "team_message_id": message.message_id},
+            delivered = 0
+            for agent_id in subscribers:
+                if agent_id == from_agent:
+                    continue
+                p2p_msg = P2PMessage(
+                    from_agent=from_agent,
+                    to_agent=agent_id,
+                    content=message.content,
+                    message_type=MessageType.DIRECT,
+                    metadata={"room_id": room_id, "team_message_id": message.message_id},
+                )
+                if await self.send(from_agent, agent_id, p2p_msg):
+                    delivered += 1
+
+            return delivered > 0
+
+        # Execute with fallback (includes retry logic automatically)
+        if self.settings.orchestration_fallback.communication_bus_enabled:
+            fallback_result = await self._fallback_manager.execute_with_fallback(
+                component="communication_bus_broadcast",
+                primary_func=_do_broadcast,
+                context={"from_agent": from_agent, "room_id": room_id},
             )
-            if await self.send(from_agent, agent_id, p2p_msg):
-                delivered += 1
-
-        return delivered > 0
+            if fallback_result.success:
+                return fallback_result.result
+            else:
+                logger.warning(
+                    "bus_broadcast_failed",
+                    extra={"from": from_agent, "room_id": room_id},
+                )
+                return False
+        else:
+            return await _do_broadcast()
 
     async def subscribe(
         self,

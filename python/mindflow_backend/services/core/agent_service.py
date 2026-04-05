@@ -155,7 +155,7 @@ class AgentService(BaseAbstractService, AgentServiceInterface):
             
             # For now, delegate to gRPC client for actual processing
             # This maintains compatibility with existing architecture
-            from mindflow_backend.grpc.client import LocalAgentClient
+            from mindflow_backend.grpc_internal.client import LocalAgentClient
             grpc_client = LocalAgentClient()
             
             # Stream the response

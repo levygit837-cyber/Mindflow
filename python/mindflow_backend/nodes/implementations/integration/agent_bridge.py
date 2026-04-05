@@ -224,7 +224,7 @@ class AgentBridge(StatefulNode, BaseNode):
         """Execute agent using the proper architecture with LLM and tools."""
         from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
         from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-        from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+        from mindflow_backend.archive.tool_invocation import invoke_with_tools
         from mindflow_backend.infra.config import get_settings
         from mindflow_backend.infra.logging import get_logger
         from mindflow_backend.runtime import get_model_for_provider

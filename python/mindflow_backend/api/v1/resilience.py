@@ -10,8 +10,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.resilience.advanced_retry import AdaptiveBackoffType, RetryConditionType
-from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import AdaptiveThresholdType
+from mindflow_backend.grpc_internal.resilience.advanced_retry import AdaptiveBackoffType, RetryConditionType
+from mindflow_backend.grpc_internal.resilience.enhanced_circuit_breaker import AdaptiveThresholdType
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -65,7 +65,7 @@ async def get_resilience_status() -> dict[str, Any]:
     """Get current resilience configuration and metrics."""
     try:
         # Get global gRPC server instance
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:
@@ -83,7 +83,7 @@ async def get_resilience_status() -> dict[str, Any]:
 async def get_circuit_breaker_status() -> dict[str, Any]:
     """Get circuit breaker status and metrics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.circuit_breaker:
@@ -100,14 +100,14 @@ async def get_circuit_breaker_status() -> dict[str, Any]:
 async def update_circuit_breaker_config(config: CircuitBreakerConfigRequest) -> dict[str, Any]:
     """Update circuit breaker configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.circuit_breaker:
             raise HTTPException(status_code=404, detail="Circuit breaker not available")
         
         # Update circuit breaker configuration
-        from mindflow_backend.grpc.resilience.enhanced_circuit_breaker import (
+        from mindflow_backend.grpc_internal.resilience.enhanced_circuit_breaker import (
             EnhancedCircuitBreakerConfig,
         )
         new_config = EnhancedCircuitBreakerConfig(
@@ -134,7 +134,7 @@ async def update_circuit_breaker_config(config: CircuitBreakerConfigRequest) -> 
 async def force_open_circuit_breaker() -> dict[str, Any]:
     """Force circuit breaker to open state (for testing)."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.circuit_breaker:
@@ -155,7 +155,7 @@ async def force_open_circuit_breaker() -> dict[str, Any]:
 async def force_close_circuit_breaker() -> dict[str, Any]:
     """Force circuit breaker to closed state (for testing)."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.circuit_breaker:
@@ -176,7 +176,7 @@ async def force_close_circuit_breaker() -> dict[str, Any]:
 async def get_retry_policy_status() -> dict[str, Any]:
     """Get retry policy status and metrics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.retry_policy:
@@ -193,14 +193,14 @@ async def get_retry_policy_status() -> dict[str, Any]:
 async def update_retry_policy_config(config: RetryPolicyConfigRequest) -> dict[str, Any]:
     """Update retry policy configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.retry_policy:
             raise HTTPException(status_code=404, detail="Retry policy not available")
         
         # Update retry policy configuration
-        from mindflow_backend.grpc.resilience.advanced_retry import AdvancedRetryConfig
+        from mindflow_backend.grpc_internal.resilience.advanced_retry import AdvancedRetryConfig
         new_config = AdvancedRetryConfig(
             max_attempts=config.max_attempts,
             base_delay=config.base_delay,
@@ -226,7 +226,7 @@ async def update_retry_policy_config(config: RetryPolicyConfigRequest) -> dict[s
 async def get_bulkhead_status() -> dict[str, Any]:
     """Get bulkhead status and metrics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.bulkhead:
@@ -246,14 +246,14 @@ async def get_bulkhead_status() -> dict[str, Any]:
 async def update_bulkhead_config(config: BulkheadConfigRequest) -> dict[str, Any]:
     """Update bulkhead configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.bulkhead:
             raise HTTPException(status_code=404, detail="Bulkhead not available")
         
         # Update bulkhead configuration
-        from mindflow_backend.grpc.resilience.bulkhead import BulkheadConfig
+        from mindflow_backend.grpc_internal.resilience.bulkhead import BulkheadConfig
         new_config = BulkheadConfig(
             max_concurrent=config.max_concurrent,
             max_queue_size=config.max_queue_size,
@@ -278,7 +278,7 @@ async def update_bulkhead_config(config: BulkheadConfigRequest) -> dict[str, Any
 async def get_fallback_status() -> dict[str, Any]:
     """Get fallback manager status and metrics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.fallback_manager:
@@ -295,14 +295,14 @@ async def get_fallback_status() -> dict[str, Any]:
 async def update_fallback_config(config: FallbackConfigRequest) -> dict[str, Any]:
     """Update fallback manager configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.fallback_manager:
             raise HTTPException(status_code=404, detail="Fallback manager not available")
         
         # Update fallback configuration
-        from mindflow_backend.grpc.resilience.fallback import FallbackConfig
+        from mindflow_backend.grpc_internal.resilience.fallback import FallbackConfig
         new_config = FallbackConfig(
             enabled=config.enabled,
             fallback_timeout_seconds=config.fallback_timeout_seconds,
@@ -329,7 +329,7 @@ async def get_resilience_metrics(
 ) -> dict[str, Any]:
     """Get resilience metrics for analysis."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:
@@ -365,7 +365,7 @@ async def get_resilience_metrics(
 async def reset_resilience_metrics() -> dict[str, Any]:
     """Reset all resilience metrics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:
@@ -401,7 +401,7 @@ async def reset_resilience_metrics() -> dict[str, Any]:
 async def perform_resilience_health_check() -> dict[str, Any]:
     """Perform comprehensive resilience health check."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:

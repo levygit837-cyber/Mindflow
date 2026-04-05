@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.performance.compression.compressor import CompressionAlgorithm
+from mindflow_backend.grpc_internal.performance.compression.compressor import CompressionAlgorithm
 from mindflow_backend.infra.logging import get_logger
 
 _logger = get_logger(__name__)
@@ -59,7 +59,7 @@ async def get_performance_status() -> dict[str, Any]:
     """Get current performance configuration and metrics."""
     try:
         # Get global gRPC server instance
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:
@@ -77,7 +77,7 @@ async def get_performance_status() -> dict[str, Any]:
 async def get_compression_stats() -> dict[str, Any]:
     """Get compression statistics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.message_compressor:
@@ -94,14 +94,14 @@ async def get_compression_stats() -> dict[str, Any]:
 async def update_compression_config(config: CompressionConfigRequest) -> dict[str, Any]:
     """Update compression configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.message_compressor:
             raise HTTPException(status_code=404, detail="Compression not available")
         
         # Update compression configuration
-        from mindflow_backend.grpc.performance.compression.compressor import CompressionConfig
+        from mindflow_backend.grpc_internal.performance.compression.compressor import CompressionConfig
         new_config = CompressionConfig(
             enabled=config.enabled,
             algorithm=config.algorithm,
@@ -126,7 +126,7 @@ async def update_compression_config(config: CompressionConfigRequest) -> dict[st
 async def get_cache_stats() -> dict[str, Any]:
     """Get cache statistics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.response_cache:
@@ -143,14 +143,14 @@ async def get_cache_stats() -> dict[str, Any]:
 async def update_cache_config(config: CacheConfigRequest) -> dict[str, Any]:
     """Update cache configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.response_cache:
             raise HTTPException(status_code=404, detail="Cache not available")
         
         # Update cache configuration
-        from mindflow_backend.grpc.performance.caching.cache import CacheConfig
+        from mindflow_backend.grpc_internal.performance.caching.cache import CacheConfig
         new_config = CacheConfig(
             enabled=config.enabled,
             max_size=config.max_size,
@@ -175,7 +175,7 @@ async def update_cache_config(config: CacheConfigRequest) -> dict[str, Any]:
 async def clear_cache() -> dict[str, Any]:
     """Clear all cache entries."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.response_cache:
@@ -196,7 +196,7 @@ async def clear_cache() -> dict[str, Any]:
 async def get_connection_pool_status() -> dict[str, Any]:
     """Get connection pool status."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.connection_pool_manager:
@@ -213,7 +213,7 @@ async def get_connection_pool_status() -> dict[str, Any]:
 async def update_connection_pool_config(config: ConnectionPoolConfigRequest) -> dict[str, Any]:
     """Update connection pool configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.connection_pool_manager:
@@ -234,7 +234,7 @@ async def update_connection_pool_config(config: ConnectionPoolConfigRequest) -> 
 async def get_profiler_status() -> dict[str, Any]:
     """Get profiler status and statistics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.profiler:
@@ -251,14 +251,14 @@ async def get_profiler_status() -> dict[str, Any]:
 async def update_profiler_config(config: ProfilerConfigRequest) -> dict[str, Any]:
     """Update profiler configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.profiler:
             raise HTTPException(status_code=404, detail="Profiler not available")
         
         # Update profiler configuration
-        from mindflow_backend.grpc.performance.monitoring.profiler import (
+        from mindflow_backend.grpc_internal.performance.monitoring.profiler import (
             ProfileConfig,
             ProfileLevel,
         )
@@ -291,7 +291,7 @@ async def update_profiler_config(config: ProfilerConfigRequest) -> dict[str, Any
 async def get_optimizer_status() -> dict[str, Any]:
     """Get optimizer status and recommendations."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.optimizer:
@@ -308,7 +308,7 @@ async def get_optimizer_status() -> dict[str, Any]:
 async def trigger_optimization() -> dict[str, Any]:
     """Trigger performance optimization analysis."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.optimizer:
@@ -339,7 +339,7 @@ async def get_performance_metrics(
 ) -> dict[str, Any]:
     """Get performance metrics for analysis."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.metrics_collector:
@@ -367,11 +367,11 @@ async def get_performance_metrics(
 # Import required modules at the end to avoid circular imports
 import time
 
-from mindflow_backend.grpc.performance.caching.cache import GrpcResponseCache
-from mindflow_backend.grpc.performance.compression.compressor import (
+from mindflow_backend.grpc_internal.performance.caching.cache import GrpcResponseCache
+from mindflow_backend.grpc_internal.performance.compression.compressor import (
     CompressionAlgorithm,
     GrpcMessageCompressor,
 )
-from mindflow_backend.grpc.performance.monitoring.profiler import (
+from mindflow_backend.grpc_internal.performance.monitoring.profiler import (
     GrpcProfiler,
 )

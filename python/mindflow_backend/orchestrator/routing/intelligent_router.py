@@ -15,6 +15,10 @@ from mindflow_backend.agents.specialists.runtime_policy import (
 )
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.resilience.orchestration_fallback import (
+    FallbackContext,
+    get_orchestration_fallback_manager,
+)
 from mindflow_backend.orchestrator.delegation.engine import DelegationEngine
 from mindflow_backend.runtime import get_model_for_provider, normalize_response_for_json
 from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
@@ -46,6 +50,29 @@ class IntelligentRouter:
     def __init__(self, delegation_engine: DelegationEngine):
         self.delegation_engine = delegation_engine
         self.settings = get_settings()
+        self._fallback_manager = get_orchestration_fallback_manager()
+        self._register_fallback_handlers()
+
+    def _register_fallback_handlers(self) -> None:
+        """Register fallback handlers for orchestration components."""
+
+        async def intent_analysis_fallback(ctx: FallbackContext) -> IntentAnalysis:
+            """Fallback handler for intent analysis - delegate to ANALYST."""
+            _logger.warning(
+                "intelligent_router_fallback_triggered",
+                original_error=str(ctx.original_error),
+            )
+            return IntentAnalysis(
+                user_intent=ctx.metadata.get("message", ""),
+                recommended_agent=AgentType.ANALYST,
+                formulated_objective=ctx.metadata.get("message", ""),
+                confidence=0.3,
+                execution_strategy=ExecutionStrategy.DELEGATE,
+            )
+
+        self._fallback_manager.register_fallback_handler(
+            "intelligent_router", intent_analysis_fallback
+        )
 
     async def analyze_intent_with_llm(
         self,
@@ -57,13 +84,15 @@ class IntelligentRouter:
     ) -> IntentAnalysis:
         """Use LLM to analyze user intent and decide execution strategy."""
 
-        available_agents_section = _build_available_agents_section(session_id=session_id)
-        valid_agents_str, valid_specialists_str = _get_valid_agent_and_specialist_values(
-            session_id=session_id
-        )
-        valid_agent_ids_str = _get_valid_agent_id_values(session_id=session_id)
+        async def _analyze_intent_primary() -> IntentAnalysis:
+            """Primary intent analysis logic."""
+            available_agents_section = _build_available_agents_section(session_id=session_id)
+            valid_agents_str, valid_specialists_str = _get_valid_agent_and_specialist_values(
+                session_id=session_id
+            )
+            valid_agent_ids_str = _get_valid_agent_id_values(session_id=session_id)
 
-        analysis_prompt = f"""You are the MindFlow Orchestrator routing engine. Classify the user request into EXACTLY ONE execution strategy.
+            analysis_prompt = f"""You are the MindFlow Orchestrator routing engine. Classify the user request into EXACTLY ONE execution strategy.
 
 User Request: {message}
 
@@ -153,7 +182,6 @@ STRICT RULES:
 - "direct_response" is reserved for the ~5% of messages that are pure social interaction
 - Only use agent names and specialist names that appear in the registered roster above"""
 
-        try:
             llm = get_model_for_provider(
                 self.settings.default_provider,
                 self.settings.default_model,
@@ -219,13 +247,26 @@ STRICT RULES:
             )
             return intent_analysis
 
-        except Exception as exc:
-            _logger.error("intent_analysis_failed", error=str(exc))
+        # Execute with fallback (includes retry logic automatically)
+        fallback_result = await self._fallback_manager.execute_with_fallback(
+            component="intelligent_router",
+            primary_func=_analyze_intent_primary,
+            context={"message": message},
+        )
+
+        if fallback_result.success:
+            return fallback_result.result
+        else:
+            # Ultimate fallback if everything fails
+            _logger.error(
+                "intelligent_router_ultimate_fallback",
+                error=fallback_result.error,
+            )
             return IntentAnalysis(
                 user_intent=message,
                 recommended_agent=AgentType.CODER,
                 formulated_objective=message,
-                confidence=0.3,
+                confidence=0.2,
                 execution_strategy=ExecutionStrategy.DELEGATE,
             )
 

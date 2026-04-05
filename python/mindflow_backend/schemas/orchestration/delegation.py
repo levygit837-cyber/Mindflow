@@ -128,6 +128,23 @@ class DelegationTask(BaseModel):
         default_factory=dict,
         description="Additional custom orchestration metadata."
     )
+    # Fields from step_runner for workflow execution integration
+    memory_context: str = Field(
+        default="",
+        description="RAG context from agent history (memory integration).",
+    )
+    memory_grounded: bool = Field(
+        default=False,
+        description="If response should prioritize memory context over tools.",
+    )
+    conversation_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Full conversation history (role + content) for context continuity.",
+    )
+    streaming_enabled: bool = Field(
+        default=False,
+        description="Enable streaming response (future implementation).",
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def model_post_init(self, __context) -> None:

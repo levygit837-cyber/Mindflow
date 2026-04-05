@@ -14,9 +14,9 @@ from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.api.dependencies.security import require_admin
-from mindflow_backend.grpc.config import GrpcConfig
-from mindflow_backend.grpc.config.features import get_feature_toggles
-from mindflow_backend.grpc.config.profiles import get_environment_loader
+from mindflow_backend.grpc_internal.config import GrpcConfig
+from mindflow_backend.grpc_internal.config.features import get_feature_toggles
+from mindflow_backend.grpc_internal.config.profiles import get_environment_loader
 from mindflow_backend.infra.logging import get_logger
 
 router = APIRouter(
@@ -279,7 +279,7 @@ async def check_feature_flag(
     """Check if a feature flag is enabled for the current context."""
     try:
         feature_toggles = await get_feature_toggles()
-        from mindflow_backend.grpc.config.features import FeatureEvaluationContext
+        from mindflow_backend.grpc_internal.config.features import FeatureEvaluationContext
         
         context = FeatureEvaluationContext(
             user_id="api-check",

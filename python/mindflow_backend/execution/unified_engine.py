@@ -21,7 +21,7 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.orchestration.orchestrator import ExecutionStrategy
 
-from .loops.tool_loop import ToolExecutionLoop
+from mindflow_backend.runtime.execution.legacy_compat import ToolExecutionLoop
 from .types import ExecutionContext, ExecutionResult, ExecutionState, ExecutionStatus
 
 _logger = get_logger(__name__)

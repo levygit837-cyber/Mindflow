@@ -69,10 +69,11 @@ class TestSyntheticError:
             reason=ErrorReason.SIBLING_ERROR,
             tool_id="tool-1",
             tool_name="TestTool",
+            context={"failed_tool": "Bash"},
         )
         assert "⚠️" in error.message
         assert "abortada" in error.message
-        assert "irmã" in error.message
+        assert "Bash" in error.message
 
     def test_streaming_fallback_message(self):
         """Testa mensagem de streaming fallback."""
@@ -204,10 +205,11 @@ class TestSyntheticError:
         assert result.truncation is not None
         assert result.truncation.reason == TruncationReason.SIZE_LIMIT
         assert "❌" in result.data
-        assert result.mcp_meta["error_reason"] == "user_interrupted"
-        assert result.mcp_meta["tool_id"] == "tool-1"
-        assert result.mcp_meta["tool_name"] == "TestTool"
-        assert result.mcp_meta["synthetic"] is True
+        # metadata é uma propriedade computada que inclui legacy_metadata
+        assert result.metadata["error_reason"] == "user_interrupted"
+        assert result.metadata["tool_id"] == "tool-1"
+        assert result.metadata["tool_name"] == "TestTool"
+        assert result.metadata["synthetic"] is True
 
 
 class TestCreateErrorFunctions:

@@ -50,32 +50,34 @@ class SyntheticError:
         """Gera mensagem contextual baseada no motivo."""
         match self.reason:
             case ErrorReason.USER_INTERRUPTED:
-                return "❌ Operação cancelada pelo usuário"
+                return f"❌ Operação cancelada pelo usuário em '{self.tool_name}'"
 
             case ErrorReason.SIBLING_ERROR:
                 return (
-                    f"⚠️ Execução abortada: ferramenta irmã '{self.tool_name}' "
+                    f"⚠️ Execução abortada em '{self.tool_name}': "
+                    f"ferramenta irmã '{self.context.get('failed_tool', 'unknown')}' "
                     f"falhou. Comandos dependentes foram cancelados."
                 )
 
             case ErrorReason.STREAMING_FALLBACK:
                 return (
-                    f"🔄 Streaming fallback: execução de '{self.tool_name}' "
-                    f"descartada devido a retry da API."
+                    f"🔄 Streaming fallback em '{self.tool_name}': "
+                    f"execução descartada devido a retry da API."
                 )
 
             case ErrorReason.TIMEOUT:
                 timeout = self.context.get("timeout_seconds", 30) if self.context else 30
+                timeout_str = f"{int(timeout)}s" if timeout == int(timeout) else f"{timeout}s"
                 return (
-                    f"⏱️ Timeout: '{self.tool_name}' excedeu o limite de "
-                    f"{timeout}s de execução."
+                    f"⏱️ Timeout em '{self.tool_name}': excedeu o limite de "
+                    f"{timeout_str} de execução."
                 )
 
             case ErrorReason.PERMISSION_DENIED:
                 reason = self.context.get("reason", "") if self.context else ""
                 return (
-                    f"🔒 Permissão negada: execução de '{self.tool_name}' "
-                    f"requer aprovação do usuário."
+                    f"🔒 Permissão negada para '{self.tool_name}': "
+                    f"execução requer aprovação do usuário."
                     + (f" Motivo: {reason}" if reason else "")
                 )
 
@@ -87,8 +89,8 @@ class SyntheticError:
 
             case ErrorReason.EXECUTION_ABORTED:
                 return (
-                    f"🛑 Execução abortada: '{self.tool_name}' foi cancelada "
-                    f"por erro em ferramenta dependente."
+                    f"🛑 Execução abortada em '{self.tool_name}': "
+                    f"cancelada por erro em ferramenta dependente."
                 )
 
             case ErrorReason.INVALID_INPUT:
@@ -116,11 +118,13 @@ class SyntheticError:
         """
         return ToolResult(
             data=self.message,
+            success=False,
+            error_message=self.message,
             truncation=ResultTruncation(
                 was_truncated=False,
                 reason=TruncationReason.SIZE_LIMIT,
             ),
-            mcp_meta={
+            legacy_metadata={
                 "error_reason": self.reason.value,
                 "tool_id": self.tool_id,
                 "tool_name": self.tool_name,

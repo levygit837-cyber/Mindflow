@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from mindflow_backend.api.middleware.error_handler import ErrorHandlerMiddleware
-from mindflow_backend.grpc.interceptors.error_handler import ErrorHandlerInterceptor
+from mindflow_backend.grpc_internal.interceptors.error_handler import ErrorHandlerInterceptor
 
 
 def setup_fastapi_error_handling(

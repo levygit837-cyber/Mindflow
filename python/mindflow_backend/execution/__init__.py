@@ -5,7 +5,8 @@ Este módulo fornece:
 - UnifiedExecutionEngine: Engine centralizada para todas as execuções
 - AgentTeamManager: Gerenciamento de times colaborativos
 - MissionLauncher: Lançamento de missões autônomas
-- ToolExecutionLoop: Loop unificado de ferramentas (ReAct)
+- StreamingToolExecutor: Execução de ferramentas com controle de concorrência
+- Task management: Sistema de gerenciamento de tarefas
 
 Uso recomendado — imports diretos para evitar circular imports:
     # Unified Engine
@@ -15,7 +16,7 @@ Uso recomendado — imports diretos para evitar circular imports:
         ExecutionContext, ExecutionState, ExecutionResult,
     )
 
-    # Missions (legacy)
+    # Missions
     from mindflow_backend.execution.missions.mission_context import MissionContext
     from mindflow_backend.execution.missions.mission_result import (
         MissionResult, MemoryAnnotationRef,
@@ -25,5 +26,17 @@ Uso recomendado — imports diretos para evitar circular imports:
     )
 
     # Loops
-    from mindflow_backend.execution.loops.tool_loop import ToolExecutionLoop
+    from mindflow_backend.execution.loops import (
+        StreamingToolExecutor,
+        partition_tool_calls,
+        ToolOrchestrator,
+    )
+
+    # Task
+    from mindflow_backend.execution.task import (
+        TaskType,
+        TaskStatus,
+        generate_task_id,
+        is_terminal_task_status,
+    )
 """

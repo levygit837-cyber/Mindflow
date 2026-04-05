@@ -40,6 +40,7 @@ from mindflow_backend.schemas.tools.streaming_types import (
     TrackedTool,
     create_child_abort_controller,
 )
+from mindflow_backend.runtime.execution.tool_partition import partition_tool_calls
 
 _logger = get_logger(__name__)
 
@@ -640,6 +641,156 @@ class StreamingToolExecutor:
 
         results.sort(key=lambda result: result.order)
         return results
+
+    async def execute_batch(
+        self,
+        tool_calls: list[dict[str, Any]],
+    ) -> list[StreamingToolResult]:
+        """Execute a batch of tool calls using Claude-style partition.
+
+        This method is for post-API execution (when tool calls are received
+        all at once after the LLM response). It partitions tools into
+        concurrent-safe and serial batches, then executes them.
+
+        Args:
+            tool_calls: List of tool call dictionaries with 'name', 'args', 'id'
+
+        Returns:
+            List of StreamingToolResult in original tool-call order
+
+        Example:
+            >>> executor = StreamingToolExecutor(...)
+            >>> tool_calls = [
+            ...     {"name": "file_read", "args": {"path": "a.txt"}, "id": "1"},
+            ...     ]
+            >>> results = await executor.execute_batch(tool_calls)
+        """
+        if not tool_calls:
+            return []
+
+        # Partition tool calls into concurrent-safe and serial batches
+        batches = partition_tool_calls(tool_calls, self._tool_definitions)
+
+        all_results: list[StreamingToolResult] = []
+
+        for batch in batches:
+            if batch.is_concurrent_safe:
+                # Execute concurrent-safe tools in parallel
+                batch_results = await self._execute_concurrent_batch(batch.blocks)
+            else:
+                # Execute non-concurrent tools serially
+                batch_results = await self._execute_serial_batch(batch.blocks)
+
+            all_results.extend(batch_results)
+
+        # Sort by original order (tool_call_id)
+        all_results.sort(key=lambda r: r.tool_id)
+        return all_results
+
+    async def _execute_concurrent_batch(
+        self,
+        tool_calls: list[dict[str, Any]],
+    ) -> list[StreamingToolResult]:
+        """Execute a batch of concurrent-safe tools in parallel.
+
+        Args:
+            tool_calls: List of tool call dictionaries
+
+        Returns:
+            List of StreamingToolResult
+        """
+        semaphore = asyncio.Semaphore(self._max_concurrent)
+
+        async def _run_single(tool_call: dict[str, Any]) -> StreamingToolResult:
+            async with semaphore:
+                return await self._execute_single_tool(tool_call)
+
+        tasks = [asyncio.create_task(_run_single(tc)) for tc in tool_calls]
+        return await asyncio.gather(*tasks)
+
+    async def _execute_serial_batch(
+        self,
+        tool_calls: list[dict[str, Any]],
+    ) -> list[StreamingToolResult]:
+        """Execute a batch of tools serially.
+
+        Args:
+            tool_calls: List of tool call dictionaries
+
+        Returns:
+            List of StreamingToolResult
+        """
+        results = []
+        for tool_call in tool_calls:
+            result = await self._execute_single_tool(tool_call)
+            results.append(result)
+        return results
+
+    async def _execute_single_tool(
+        self,
+        tool_call: dict[str, Any],
+    ) -> StreamingToolResult:
+        """Execute a single tool call.
+
+        This is a simplified version of the full streaming execution path,
+        used for batch execution where we don't need streaming progress.
+
+        Args:
+            tool_call: Tool call dictionary with 'name', 'args', 'id'
+
+        Returns:
+            StreamingToolResult with execution result
+        """
+        tool_name = tool_call.get("name", "")
+        tool_args = tool_call.get("args", {})
+        tool_use_id = tool_call.get("id", "") or str(uuid.uuid4())
+
+        tool_def = self._tool_definitions.get(tool_name)
+
+        if tool_def is None:
+            return StreamingToolResult(
+                tool_id=tool_use_id,
+                tool_name=tool_name,
+                status=ToolStatus.ERROR,
+                result=None,
+                error=f"Unknown tool: {tool_name}",
+                execution_time_ms=0,
+                order=0,
+            )
+
+        start_time = time.time()
+
+        try:
+            # Execute the tool
+            result = await tool_def.callable(tool_args, self._tool_use_context)
+
+            execution_time_ms = (time.time() - start_time) * 1000
+
+            return StreamingToolResult(
+                tool_id=tool_use_id,
+                tool_name=tool_name,
+                status=ToolStatus.COMPLETED if result.success else ToolStatus.ERROR,
+                result=result,
+                error=result.error if not result.success else None,
+                execution_time_ms=execution_time_ms,
+                order=0,
+            )
+        except Exception as exc:
+            execution_time_ms = (time.time() - start_time) * 1000
+            _logger.error(
+                "batch_tool_execution_error",
+                tool_name=tool_name,
+                error=str(exc),
+            )
+            return StreamingToolResult(
+                tool_id=tool_use_id,
+                tool_name=tool_name,
+                status=ToolStatus.ERROR,
+                result=None,
+                error=str(exc),
+                execution_time_ms=execution_time_ms,
+                order=0,
+            )
 
     def get_stats(self) -> dict[str, Any]:
         """Retorna estatísticas do executor."""

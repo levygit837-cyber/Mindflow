@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -266,10 +266,89 @@ class ToolResult(BaseModel):
         description="Tool execution time in milliseconds",
     )
 
+    # Legacy compatibility fields (deprecated but maintained for backward compatibility)
+    success: bool = Field(
+        default=True,
+        description="Legacy: Whether the tool execution succeeded (deprecated, use truncation.reason)",
+    )
+
+    content: str | None = Field(
+        default=None,
+        description="Legacy: Tool result content as string (deprecated, use data)",
+    )
+
+    error_message: str | None = Field(
+        default=None,
+        description="Legacy: Error message if execution failed (deprecated)",
+        alias="error",
+    )
+
+    # Legacy metadata field (for backward compatibility with old API)
+    legacy_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Legacy: Metadata dict (deprecated, use individual fields)",
+        exclude=True,
+    )
+
+    @property
+    def is_error(self) -> bool:
+        """Legacy property for backward compatibility."""
+        return not self.success or self.error_message is not None
+
+    @property
+    def error(self) -> str | None:
+        """Legacy property for backward compatibility."""
+        return self.error_message
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """Legacy property for backward compatibility."""
+        meta: dict[str, Any] = {}
+        if self.truncation:
+            meta["truncation"] = self.truncation.model_dump()
+        if self.execution_time_ms:
+            meta["execution_time_ms"] = self.execution_time_ms
+        if self.mcp_meta:
+            meta["mcp"] = self.mcp_meta
+        if self.legacy_metadata:
+            meta.update(self.legacy_metadata)
+        return meta
+
+    @model_validator(mode='before')
     @classmethod
-    def success(cls, data: Any) -> ToolResult:
+    def validate_legacy_params(cls, data: Any) -> Any:
+        """Validate and convert legacy parameters to new API."""
+        if not isinstance(data, dict):
+            return data
+
+        # Convert is_error parameter to success
+        if 'is_error' in data:
+            is_error = data.pop('is_error')
+            data['success'] = not is_error
+
+        # Convert metadata parameter to legacy_metadata
+        if 'metadata' in data:
+            data['legacy_metadata'] = data.pop('metadata')
+
+        # If content is provided but data is not, sync them
+        if 'content' in data and 'data' not in data:
+            data['data'] = data['content']
+
+        return data
+
+    def model_post_init(self, __context: Any) -> None:
+        """Initialize legacy fields from new API for backward compatibility."""
+        # If content is not set but data is, sync them
+        if self.content is None and self.data is not None:
+            if isinstance(self.data, str):
+                self.content = self.data
+            else:
+                self.content = str(self.data)
+
+    @classmethod
+    def create_success(cls, data: Any) -> ToolResult:
         """Create a successful result."""
-        return cls(data=data)
+        return cls(data=data, success=True)
 
     @classmethod
     def with_messages(cls, data: Any, messages: list[dict[str, Any]]) -> ToolResult:
@@ -285,6 +364,8 @@ class ToolResult(BaseModel):
         """Create an error result."""
         return cls(
             data=None,
+            error_message=error,
+            success=False,
             truncation=ResultTruncation(
                 was_truncated=False,
                 reason=TruncationReason.SIZE_LIMIT,

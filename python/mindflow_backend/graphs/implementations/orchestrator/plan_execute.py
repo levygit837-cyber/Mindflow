@@ -22,7 +22,7 @@ from langgraph.graph import END, StateGraph  # type: ignore[import]
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
 from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+from mindflow_backend.archive.tool_invocation import invoke_with_tools
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger

@@ -15,7 +15,7 @@ from mindflow_backend.api.controllers.base_controller import (
     require_auth,
     sanitize_input,
 )
-from mindflow_backend.grpc.factory import get_runtime_client
+from mindflow_backend.grpc_internal.factory import get_runtime_client
 from mindflow_backend.infra.sanitizer import SanitizationError
 from mindflow_backend.schemas.api.requests import AgentChatRequest
 from mindflow_backend.schemas.api.responses import AgentResponse

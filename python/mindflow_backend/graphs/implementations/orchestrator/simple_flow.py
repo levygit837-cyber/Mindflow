@@ -357,7 +357,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
         from langchain_core.callbacks.manager import adispatch_custom_event
 
         from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-        from mindflow_backend.agents.tools.base.tool_invocation import stream_with_tools
+        from mindflow_backend.archive.tool_invocation import stream_with_tools
         from mindflow_backend.agents.tools.orchestration.delegate_to_agent import (
             DelegateToAgentTool,
         )

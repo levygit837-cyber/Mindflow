@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.grpc.monitoring.alerting import (
+from mindflow_backend.grpc_internal.monitoring.alerting import (
     AlertSeverity,
     NotificationChannel,
 )
@@ -66,7 +66,7 @@ async def get_monitoring_status() -> dict[str, Any]:
     """Get current monitoring configuration and metrics."""
     try:
         # Get global gRPC server instance
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:
@@ -106,7 +106,7 @@ async def get_alerts(
 ) -> dict[str, Any]:
     """Get active alerts and alert history."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:
@@ -150,14 +150,14 @@ async def get_alerts(
 async def update_alert_config(config: AlertConfigRequest) -> dict[str, Any]:
     """Update alert manager configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:
             raise HTTPException(status_code=404, detail="Alert manager not available")
         
         # Update alert configuration
-        from mindflow_backend.grpc.monitoring.alerting import AlertConfig
+        from mindflow_backend.grpc_internal.monitoring.alerting import AlertConfig
         new_config = AlertConfig(
             enabled=config.enabled,
             notification_channels=config.notification_channels,
@@ -193,14 +193,14 @@ async def update_alert_config(config: AlertConfigRequest) -> dict[str, Any]:
 async def add_alert_condition(condition: AlertConditionRequest) -> dict[str, Any]:
     """Add new alert condition."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:
             raise HTTPException(status_code=404, detail="Alert manager not available")
         
         # Create alert condition
-        from mindflow_backend.grpc.monitoring.alerting import AlertCondition
+        from mindflow_backend.grpc_internal.monitoring.alerting import AlertCondition
         new_condition = AlertCondition(
             name=condition.name,
             metric_name=condition.metric_name,
@@ -226,7 +226,7 @@ async def add_alert_condition(condition: AlertConditionRequest) -> dict[str, Any
 async def remove_alert_condition(condition_name: str) -> dict[str, Any]:
     """Remove alert condition."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:
@@ -247,7 +247,7 @@ async def remove_alert_condition(condition_name: str) -> dict[str, Any]:
 async def acknowledge_alert(alert_id: str) -> dict[str, Any]:
     """Acknowledge an alert."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:
@@ -271,7 +271,7 @@ async def acknowledge_alert(alert_id: str) -> dict[str, Any]:
 async def resolve_alert(alert_id: str) -> dict[str, Any]:
     """Manually resolve an alert."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:
@@ -295,7 +295,7 @@ async def resolve_alert(alert_id: str) -> dict[str, Any]:
 async def get_health_check_status() -> dict[str, Any]:
     """Get health checker status and metrics."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.health_checker:
@@ -321,7 +321,7 @@ async def get_health_check_status() -> dict[str, Any]:
 async def update_health_check_config(config: HealthCheckConfigRequest) -> dict[str, Any]:
     """Update health checker configuration."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.health_checker:
@@ -345,7 +345,7 @@ async def get_monitoring_metrics(
 ) -> dict[str, Any]:
     """Get monitoring metrics for analysis."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.metrics_collector:
@@ -369,7 +369,7 @@ async def get_monitoring_metrics(
 async def get_prometheus_metrics() -> str:
     """Get Prometheus metrics in text format."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.prometheus_exporter:
@@ -401,7 +401,7 @@ grpc_request_duration_seconds_count 100
 async def get_monitoring_dashboard() -> dict[str, Any]:
     """Get monitoring dashboard data."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server:
@@ -433,7 +433,7 @@ async def get_monitoring_dashboard() -> dict[str, Any]:
 async def test_alert() -> dict[str, Any]:
     """Trigger a test alert to verify alerting system."""
     try:
-        from mindflow_backend.grpc.server import get_grpc_server
+        from mindflow_backend.grpc_internal.server import get_grpc_server
         server = await get_grpc_server()
         
         if not server or not server.alert_manager:

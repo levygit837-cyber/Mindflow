@@ -23,8 +23,8 @@ from mindflow_backend.api.middleware.performance import PerformanceMiddleware
 from mindflow_backend.api.middleware.validation import ValidationMiddleware
 from mindflow_backend.api.router import router
 from mindflow_backend.api.websocket import router as websocket_router
-from mindflow_backend.grpc.config.dynamic.manager import get_config_manager
-from mindflow_backend.grpc.server import setup_signal_handlers, start_grpc_server, stop_grpc_server
+from mindflow_backend.grpc_internal.config.dynamic.manager import get_config_manager
+from mindflow_backend.grpc_internal.server import setup_signal_handlers, start_grpc_server, stop_grpc_server
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import configure_logging, get_logger
 from mindflow_backend.infra.middleware.rate_limiter import RateLimiterMiddleware
@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
     # Start gRPC server only if explicitly enabled in settings
     if settings.grpc_enabled and settings.grpc_auto_start:
         try:
-            from mindflow_backend.grpc.config import GrpcConfig
+            from mindflow_backend.grpc_internal.config import GrpcConfig
             grpc_config = await GrpcConfig.load_dynamic()
             app.state.grpc_config = grpc_config
             grpc_server = await start_grpc_server(grpc_config)
@@ -212,7 +212,7 @@ async def health() -> dict[str, str | dict]:
         
         if grpc_config.enabled:
             try:
-                from mindflow_backend.grpc.server import get_grpc_server
+                from mindflow_backend.grpc_internal.server import get_grpc_server
                 server = await get_grpc_server()
                 if server and server.is_running():
                     grpc_status.update({

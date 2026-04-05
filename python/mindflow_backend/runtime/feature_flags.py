@@ -33,6 +33,10 @@ class FeatureFlags:
     # Deep Work
     ENABLE_DEEP_WORK = "ENABLE_DEEP_WORK"
 
+    # Tool Execution
+    ENABLE_STREAMING_TOOL_EXECUTION = "ENABLE_STREAMING_TOOL_EXECUTION"
+    ENABLE_CONCURRENT_TOOL_EXECUTION = "ENABLE_CONCURRENT_TOOL_EXECUTION"
+
     @staticmethod
     def is_enabled(flag_name: str, default: bool = False) -> bool:
         """Check if a feature flag is enabled.
@@ -120,6 +124,16 @@ class FeatureFlags:
         return cls.is_enabled(cls.ENABLE_DEEP_WORK, default=True)
 
     @classmethod
+    def streaming_tool_execution_enabled(cls) -> bool:
+        """Check if streaming tool execution is enabled."""
+        return cls.is_enabled(cls.ENABLE_STREAMING_TOOL_EXECUTION, default=True)
+
+    @classmethod
+    def concurrent_tool_execution_enabled(cls) -> bool:
+        """Check if concurrent tool execution is enabled."""
+        return cls.is_enabled(cls.ENABLE_CONCURRENT_TOOL_EXECUTION, default=True)
+
+    @classmethod
     def get_all_flags(cls) -> dict[str, Any]:
         """Get all feature flags and their current values.
 
@@ -131,8 +145,12 @@ class FeatureFlags:
             "team_sessions": cls.team_sessions_enabled(),
             "communication_bus": cls.communication_bus_enabled(),
             "deep_work": cls.deep_work_enabled(),
+            "streaming_tool_execution": cls.streaming_tool_execution_enabled(),
+            "concurrent_tool_execution": cls.concurrent_tool_execution_enabled(),
             "rollout_percentages": {
                 "unified_engine": cls.get_rollout_percentage(cls.ENABLE_UNIFIED_ENGINE),
                 "team_sessions": cls.get_rollout_percentage(cls.ENABLE_TEAM_SESSIONS),
+                "streaming_tool_execution": cls.get_rollout_percentage(cls.ENABLE_STREAMING_TOOL_EXECUTION),
+                "concurrent_tool_execution": cls.get_rollout_percentage(cls.ENABLE_CONCURRENT_TOOL_EXECUTION),
             },
         }

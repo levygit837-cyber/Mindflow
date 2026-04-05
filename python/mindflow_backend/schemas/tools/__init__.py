@@ -101,10 +101,29 @@ from mindflow_backend.schemas.tools.callable_builder import (
     build_destructive_tool,
 )
 
-from mindflow_backend.schemas.tools.callable_executor import (
-    StreamingToolExecutor,
-    ToolExecutionState,
-)
+# Lazy import for callable_executor to avoid circular import
+# (callable_executor imports runtime.execution.streaming_executor which causes circular dependency)
+_StreamingToolExecutor = None
+_ToolExecutionState = None
+
+def __getattr__(name):
+    if name == "StreamingToolExecutor":
+        global _StreamingToolExecutor
+        if _StreamingToolExecutor is None:
+            from mindflow_backend.archive.callable_executor import (
+                StreamingToolExecutor,
+            )
+            _StreamingToolExecutor = StreamingToolExecutor
+        return _StreamingToolExecutor
+    elif name == "ToolExecutionState":
+        global _ToolExecutionState
+        if _ToolExecutionState is None:
+            from mindflow_backend.archive.callable_executor import (
+                ToolExecutionState,
+            )
+            _ToolExecutionState = ToolExecutionState
+        return _ToolExecutionState
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 # Temporary adapter (will be removed in Phase 3)
 from mindflow_backend.schemas.tools.callable_adapter import (

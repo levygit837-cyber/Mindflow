@@ -19,6 +19,10 @@ from mindflow_backend.communication.mixins.agent_communication import AgentCommu
 from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.resilience.orchestration_fallback import (
+    FallbackContext,
+    get_orchestration_fallback_manager,
+)
 from mindflow_backend.runtime.providers import get_model_for_provider
 from mindflow_backend.services.core import get_worktree_service
 from mindflow_backend.schemas.orchestration.delegation import DelegationResult, DelegationTask
@@ -40,6 +44,8 @@ class DelegationEngine(ExecutionMemoryMixin):
         self.settings = get_settings()
         self._execution_memory = execution_memory or get_execution_memory_service()
         self._worktree_service = get_worktree_service()
+        self._fallback_manager = get_orchestration_fallback_manager()
+        self._register_fallback_handlers()
 
         # Communication bus (optional, graceful degradation)
         self._comm_bus: CommunicationBus | None = None
@@ -50,6 +56,33 @@ class DelegationEngine(ExecutionMemoryMixin):
 
         # MissionLauncher (Phase 2B) — lazy init, None until needed
         self._mission_launcher: Any | None = None
+
+    def _register_fallback_handlers(self) -> None:
+        """Register fallback handlers for delegation engine."""
+
+        async def delegation_fallback(ctx: FallbackContext) -> DelegationResult:
+            """Fallback handler for delegation - return error result."""
+            _logger.warning(
+                "delegation_engine_fallback_triggered",
+                original_error=str(ctx.original_error),
+            )
+            task = ctx.metadata.get("task")
+            return DelegationResult(
+                task_id=task.task_id if task else "unknown",
+                agent=task.agent if task else None,
+                agent_role=task.agent_role if task else None,
+                specialist=task.specialist if task else None,
+                agent_id=task.agent_id if task else None,
+                status="failed",
+                key_findings="",
+                full_output=f"Delegation failed: {str(ctx.original_error)}",
+                confidence=0.0,
+                error_message=str(ctx.original_error),
+            )
+
+        self._fallback_manager.register_fallback_handler(
+            "delegation_engine", delegation_fallback
+        )
         
     def _get_mission_launcher(self) -> Any | None:
         """Lazy init MissionLauncher with graceful degradation.
@@ -227,8 +260,10 @@ class DelegationEngine(ExecutionMemoryMixin):
             },
             stage="booting",
         )
-        
-        try:
+
+        # Define primary delegation logic
+        async def _delegation_primary() -> DelegationResult:
+            """Primary delegation logic."""
             # Get the target agent
             agent = get_agent(
                 task.agent_role or task.agent,
@@ -257,17 +292,42 @@ class DelegationEngine(ExecutionMemoryMixin):
             messages = [
                 {"role": "system", "content": agent.system_prompt}
             ]
-            
+
             # Add context if provided
             if task.context_from_session:
                 messages.append(
                     {"role": "system", "content": f"Relevant context from previous delegations:\n{task.context_from_session}"}
                 )
             
+            # Add memory context if provided (RAG from agent history)
+            if getattr(task, "memory_context", None) and task.memory_context.strip():
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": f"Memory Context (RAG from agent history):\n{task.memory_context}"
+                    }
+                )
+                # Add memory-grounded instruction if enabled
+                if getattr(task, "memory_grounded", False):
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": (
+                                "MEMORY-GROUNDED TURN: responda primeiro usando o Memory Context. "
+                                "Só use ferramentas se a memória for insuficiente ou ambígua."
+                            ),
+                        }
+                    )
+            
+            # Add conversation history if provided
+            if getattr(task, "conversation_history", None):
+                for item in task.conversation_history:
+                    messages.append({"role": item["role"], "content": item["content"]})
+
             # Add the main task
             task_prompt = self._format_task_for_agent(task)
             messages.append({"role": "user", "content": task_prompt})
-            
+
             # Set up sandbox and tools
             sandbox = self._create_sandbox_for_agent(agent, task)
             tool_registry = create_default_registry(
@@ -275,7 +335,7 @@ class DelegationEngine(ExecutionMemoryMixin):
                 session_id=session_id,
                 execution_id=child_execution_id,
             )
-            
+
             # Get authorized tools (none for sandbox NONE agents)
             if agent.sandbox == SandboxMode.NONE:
                 tools = []
@@ -324,6 +384,36 @@ class DelegationEngine(ExecutionMemoryMixin):
 
             # Bind tools and run with tool invocation loop if tools are available
             response_text = ""
+            
+            # Memory-grounded optimization: try direct response first if memory context is available
+            is_memory_grounded = getattr(task, "memory_grounded", False)
+            has_memory_context = getattr(task, "memory_context", None) and task.memory_context.strip()
+            
+            if is_memory_grounded and has_memory_context and tools:
+                # Try direct response without tools first
+                response = await llm.ainvoke(messages)
+                response_text = response.content if hasattr(response, "content") else str(response)
+                
+                # Check if response indicates need for tool follow-up
+                if not self._needs_tool_follow_up(response_text):
+                    # Response is sufficient, return without tools
+                    key_findings = response_text[:500] + "... [truncated]" if len(response_text) > 1000 else response_text
+                    return DelegationResult(
+                        task_id=task.task_id,
+                        agent=task.agent,
+                        agent_role=task.agent_role or task.agent,
+                        specialist=task.specialist,
+                        agent_id=task.agent_id,
+                        status="completed",
+                        key_findings=key_findings,
+                        full_output=response_text,
+                        files_analyzed=[],
+                        symbols_found=[],
+                        confidence=0.9,  # High confidence for memory-grounded responses
+                        tokens_consumed=len(response_text.split()) + len(messages) * 10,
+                    )
+                # If needs_tool_follow_up, continue to tool execution below
+            
             if tools:
                 from mindflow_backend.agents.tools.base.tool_detection import (
                     get_tool_execution_strategy,
@@ -368,7 +458,7 @@ class DelegationEngine(ExecutionMemoryMixin):
                 elif strategy == "legacy":
                     # Legacy path: Use LangChain adapter for backward compatibility
                     from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-                    from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools
+                    from mindflow_backend.archive.tool_invocation import invoke_with_tools
 
                     lc_tools = to_langchain_tools(tools)
                     if lc_tools:
@@ -399,10 +489,10 @@ class DelegationEngine(ExecutionMemoryMixin):
                     response_text = "".join(parts)
                 else:
                     response_text = str(content) if content else ""
-            
+
             # Estimate token consumption (rough approximation)
             tokens_consumed = len(response_text.split()) + len(messages) * 10  # Rough estimate
-            
+
             # Create structured result
             result = DelegationResult(
                 task_id=task.task_id,
@@ -418,7 +508,7 @@ class DelegationEngine(ExecutionMemoryMixin):
                 confidence=0.8,  # Agent's self-assessed confidence
                 tokens_consumed=tokens_consumed,
             )
-            
+
             _logger.info(
                 "delegation_completed",
                 agent=task.agent.value,
@@ -455,36 +545,25 @@ class DelegationEngine(ExecutionMemoryMixin):
                     stage="finalizing",
                     progress=1.0,
                 )
-            
-            return result
-            
-        except Exception as exc:
-            _logger.error(
-                "delegation_failed",
-                agent=task.agent.value,
-                task_id=str(task.task_id),
-                error=str(exc),
-            )
 
-            if child_execution_id:
-                await self._append_execution_event(
-                    child_execution_id,
-                    "delegation_failed",
-                    {
-                        "task_id": str(task.task_id),
-                        "error": str(exc),
-                        "success": False,
-                    },
-                    stage="finalizing",
-                )
-                await self._mark_execution_status(
-                    child_execution_id,
-                    "failed",
-                    stage="finalizing",
-                    error=str(exc),
-                )
-            
-            return DelegationResult(
+            return result
+
+        # Execute with fallback (includes retry logic automatically)
+        fallback_result = await self._fallback_manager.execute_with_fallback(
+            component="delegation_engine",
+            primary_func=_delegation_primary,
+            context={"task": task},
+        )
+
+        if fallback_result.success:
+            result = fallback_result.result
+        else:
+            # Ultimate fallback if everything fails
+            _logger.error(
+                "delegation_ultimate_fallback",
+                error=fallback_result.error,
+            )
+            result = DelegationResult(
                 task_id=task.task_id,
                 agent=task.agent,
                 agent_role=task.agent_role or task.agent,
@@ -492,12 +571,32 @@ class DelegationEngine(ExecutionMemoryMixin):
                 agent_id=task.agent_id,
                 status="failed",
                 key_findings="",
-                full_output="",
+                full_output=f"Delegation failed: {fallback_result.error}",
                 confidence=0.0,
-                tokens_consumed=0,
-                error_message=str(exc),
+                error_message=fallback_result.error,
             )
-    
+
+        # Handle failure case for execution tracking
+        if result.status == "failed" and child_execution_id:
+            await self._append_execution_event(
+                child_execution_id,
+                "delegation_failed",
+                {
+                    "task_id": str(task.task_id),
+                    "error": result.error_message,
+                    "success": False,
+                },
+                stage="finalizing",
+            )
+            await self._mark_execution_status(
+                child_execution_id,
+                "failed",
+                stage="finalizing",
+                error=result.error_message,
+            )
+
+        return result
+
     def _format_task_for_agent(self, task: DelegationTask) -> str:
         """Format the delegation task for the specific agent."""
         
@@ -564,6 +663,34 @@ Use this context to inform your work, but focus on the current objective.
         symbol_pattern = r'\b[a-zA-Z_][a-zA-Z0-9_]*\s*\('
         matches = re.findall(symbol_pattern, response)
         return list(set(matches))
+    
+    def _needs_tool_follow_up(self, response_text: str) -> bool:
+        """Check if response indicates need for tool usage (memory-grounded logic).
+        
+        Used when memory_grounded is True to determine if the agent needs
+        to use tools despite having memory context available.
+        
+        Args:
+            response_text: The agent's response text
+            
+        Returns:
+            True if response indicates insufficient context and needs tools
+        """
+        normalized = (response_text or "").strip().lower()
+        if not normalized:
+            return True
+        insufficiency_markers = (
+            "não tenho contexto suficiente",
+            "preciso investigar",
+            "não encontrei",
+            "não sei",
+            "insufficient context",
+            "need to inspect",
+            "contexto insuficiente",
+            "need more information",
+            "cannot determine",
+        )
+        return any(marker in normalized for marker in insufficiency_markers)
 
 
 # Global delegation engine instance

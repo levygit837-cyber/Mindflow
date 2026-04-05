@@ -1,21 +1,20 @@
-"""Shared runtime executor for explicit workflow steps."""
+"""Shared runtime executor for explicit workflow steps.
+
+This module now uses DelegationEngine as the backend for execution,
+providing a unified execution path for all agent tasks.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
-from mindflow_backend.agents.tools import create_default_registry
-from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-from mindflow_backend.agents.tools.base.tool_invocation import invoke_with_tools, stream_with_tools
-from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
-from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.runtime import get_model_for_provider
-from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
-from mindflow_backend.schemas.orchestration.orchestrator import SandboxMode
+from mindflow_backend.orchestrator.delegation.converter import (
+    delegation_result_to_step_output,
+    workflow_step_to_delegation_task,
+)
 from mindflow_backend.schemas.orchestration.workflow import WorkflowStep
 
 _logger = get_logger(__name__)
@@ -39,175 +38,73 @@ async def run_workflow_step(
     chunk_dispatcher: ChunkDispatcher = None,
     event_dispatcher: EventDispatcher = None,
 ) -> dict[str, Any]:
-    """Execute a single step using canonical agent identity resolution."""
-
-    settings = get_settings()
-    agent = get_agent(agent_id=step.agent_id, session_id=session_id)
+    """Execute a single step using DelegationEngine backend.
+    
+    This function now uses DelegationEngine as the unified execution backend,
+    converting WorkflowStep to DelegationTask and delegating the execution.
+    
+    Args:
+        step: The WorkflowStep to execute
+        user_message: The original user message
+        provider: LLM provider
+        model: LLM model
+        session_id: Session ID
+        folder_path: Working directory (optional)
+        memory_context: RAG context from agent history (optional)
+        memory_grounded: If response should prioritize memory context (optional)
+        conversation_history: Full conversation history (optional)
+        prior_context: Context from previous workflow steps (optional)
+        chunk_dispatcher: Streaming dispatcher (currently not used, reserved for future)
+        event_dispatcher: Event dispatcher for execution events (optional)
+        
+    Returns:
+        Dict with agent_id, agent_role, specialist, status, key_findings, full_output, error
+    """
+    # Get agent runtime policy for max_iterations
     policy = get_agent_runtime_policy(agent_id=step.agent_id, session_id=session_id)
-
-    messages: list[dict[str, str]] = [{"role": "system", "content": agent.system_prompt}]
-
-    if memory_context.strip():
-        messages.append(
-            {
-                "role": "system",
-                "content": f"Memory Context (RAG from agent history):\n{memory_context}",
-            }
-        )
-        if memory_grounded:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": (
-                        "MEMORY-GROUNDED TURN: responda primeiro usando o Memory Context. "
-                        "Só use ferramentas se a memória for insuficiente ou ambígua."
-                    ),
-                }
-            )
-
-    if prior_context.strip():
-        messages.append(
-            {
-                "role": "system",
-                "content": f"Relevant context from previous workflow steps:\n{prior_context}",
-            }
-        )
-
-    for item in conversation_history or []:
-        messages.append({"role": item["role"], "content": item["content"]})
-
-    messages.append(
-        {
-            "role": "user",
-            "content": (
-                f"OBJECTIVE: {step.objective or user_message}\n\n"
-                f"STEP_ID: {step.step_id}\n"
-                f"AGENT_ID: {step.agent_id}\n"
-                f"SESSION_ID: {session_id or 'unknown'}\n\n"
-                f"USER_REQUEST:\n{user_message}"
-            ),
-        }
+    
+    # Convert WorkflowStep → DelegationTask
+    delegation_task = workflow_step_to_delegation_task(
+        step=step,
+        user_message=user_message,
+        session_id=session_id,
+        memory_context=memory_context,
+        memory_grounded=memory_grounded,
+        conversation_history=conversation_history,
+        prior_context=prior_context,
+        folder_path=folder_path,
+        max_iterations=policy.max_iterations,
     )
-
-    sandbox_root = folder_path or getattr(agent, "root_dir", None) or getattr(settings, "working_path", None)
-    sandbox = MindFlowSandbox(
-        root_dir=sandbox_root,
-        read_only=(agent.sandbox == SandboxMode.READ_ONLY),
-    )
-    registry = create_default_registry(sandbox, session_id=session_id)
-    tools = registry.get_tools_for_agent(agent)
-
-    if sandbox_root and tools:
-        messages.insert(
-            1,
-            {
-                "role": "system",
-                "content": (
-                    f"Your working directory (root_dir) is: {sandbox_root}\n"
-                    "Use this path as the base for filesystem operations unless the user provides an absolute path."
-                ),
-            },
-        )
-
-    llm = get_model_for_provider(provider, model)
-
+    
+    # Use DelegationEngine for execution
+    from mindflow_backend.orchestrator.delegation.engine import get_delegation_engine
+    
+    delegation_engine = get_delegation_engine()
+    
     try:
-        if memory_grounded and tools and memory_context.strip():
-            response = await llm.ainvoke(messages)
-            response_text = response.content if hasattr(response, "content") else str(response)
-            if not _needs_tool_follow_up(response_text):
-                key_findings = response_text[:500] + "... [truncated]" if len(response_text) > 1000 else response_text
-                return {
-                    "agent_id": step.agent_id,
-                    "agent_role": step.agent_role.value,
-                    "specialist": step.specialist.value if step.specialist else None,
-                    "status": "completed",
-                    "key_findings": key_findings,
-                    "full_output": response_text,
-                    "error": None,
-                }
-
-        if tools:
-            from mindflow_backend.agents.tools.base.tool_detection import (
-                get_tool_execution_strategy,
-                separate_tools,
-            )
-            from mindflow_backend.schemas.tools.context import ToolContext
-
-            strategy = get_tool_execution_strategy(tools)
-
-            if strategy == "callable":
-                # Phase 3: All tools are CallableTools → use direct execution
-                from mindflow_backend.agents.tools.base.tool_invocation_callable import (
-                    invoke_with_callable_tools,
-                )
-
-                callable_tools, _ = separate_tools(tools)
-
-                # Build ToolContext for callable execution
-                tool_context = ToolContext(
-                    permission_context=None,
-                    metadata={
-                        "session_id": session_id,
-                        "agent_id": step.agent_id,
-                        "step_id": step.step_id,
-                    },
-                    root_dir=sandbox_root,
-                    sandbox_mode=agent.sandbox,
-                    session_id=session_id,
-                )
-
-                response_text = await invoke_with_callable_tools(
-                    llm=llm,
-                    messages=messages,
-                    callable_tools=callable_tools,
-                    tool_context=tool_context,
-                    event_dispatcher=event_dispatcher,
-                    max_iterations=policy.max_iterations,
-                )
-
-            elif strategy == "legacy":
-                # Legacy path: Use LangChain adapter
-                lc_tools = to_langchain_tools(tools)
-                if lc_tools:
-                    llm_with_tools = llm.bind_tools(lc_tools)
-                    if chunk_dispatcher is not None:
-                        response_text = await stream_with_tools(
-                            llm=llm_with_tools,
-                            messages=messages,
-                            lc_tools=lc_tools,
-                            chunk_dispatcher=chunk_dispatcher,
-                            event_dispatcher=event_dispatcher,
-                            max_iterations=policy.max_iterations,
-                            session_id=session_id,
-                        )
-                    else:
-                        response_text = await invoke_with_tools(
-                            llm=llm_with_tools,
-                            messages=messages,
-                            lc_tools=lc_tools,
-                            event_dispatcher=event_dispatcher,
-                            max_iterations=policy.max_iterations,
-                            session_id=session_id,
-                        )
-            else:
-                response = await llm.ainvoke(messages)
-                response_text = response.content if hasattr(response, "content") else str(response)
-        elif chunk_dispatcher is not None:
-            full_response: list[str] = []
-            async for chunk in llm.astream(messages):
-                thought, texts = extract_chunk_parts(chunk)
-                if thought and event_dispatcher is not None:
-                    await event_dispatcher("agent_thought", {"thought": thought})
-                for text in texts:
-                    full_response.append(text)
-                    await chunk_dispatcher(text)
-            response_text = "".join(full_response)
-        else:
-            response = await llm.ainvoke(messages)
-            response_text = response.content if hasattr(response, "content") else str(response)
+        delegation_result = await delegation_engine.delegate_task(
+            task=delegation_task,
+            session=None,  # Session object is optional for step_runner
+            session_id=session_id,
+        )
+        
+        # Convert DelegationResult → step_runner output format
+        result = delegation_result_to_step_output(delegation_result, step)
+        
+        _logger.info(
+            "workflow_step_completed",
+            agent_id=step.agent_id,
+            status=result["status"],
+        )
+        
+        return result
+        
     except Exception as exc:
-        _logger.error("workflow_step_failed", agent_id=step.agent_id, error=str(exc))
+        _logger.error(
+            "workflow_step_failed",
+            agent_id=step.agent_id,
+            error=str(exc),
+        )
         return {
             "agent_id": step.agent_id,
             "agent_role": step.agent_role.value,
@@ -217,29 +114,3 @@ async def run_workflow_step(
             "full_output": "",
             "error": str(exc),
         }
-
-    key_findings = response_text[:500] + "... [truncated]" if len(response_text) > 1000 else response_text
-    return {
-        "agent_id": step.agent_id,
-        "agent_role": step.agent_role.value,
-        "specialist": step.specialist.value if step.specialist else None,
-        "status": "completed",
-        "key_findings": key_findings,
-        "full_output": response_text,
-        "error": None,
-    }
-
-
-def _needs_tool_follow_up(response_text: str) -> bool:
-    normalized = (response_text or "").strip().lower()
-    if not normalized:
-        return True
-    insufficiency_markers = (
-        "não tenho contexto suficiente",
-        "preciso investigar",
-        "não encontrei",
-        "não sei",
-        "insufficient context",
-        "need to inspect",
-    )
-    return any(marker in normalized for marker in insufficiency_markers)

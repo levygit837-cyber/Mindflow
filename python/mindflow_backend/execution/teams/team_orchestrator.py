@@ -13,7 +13,12 @@ import asyncio
 from datetime import datetime
 from typing import Any, TYPE_CHECKING
 
+from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.resilience.orchestration_fallback import (
+    FallbackContext,
+    get_orchestration_fallback_manager,
+)
 from mindflow_backend.schemas.orchestration.communication import MissionGraphType
 
 from .mission_dag import MissionDAG, MissionNode
@@ -59,6 +64,31 @@ class TeamOrchestrator:
         self._team_manager = team_manager
         self._mission_launcher = mission_launcher
         self._comm_bus = comm_bus
+        self.settings = get_settings()
+        self._fallback_manager = get_orchestration_fallback_manager()
+        self._register_fallback_handlers()
+
+    def _register_fallback_handlers(self) -> None:
+        """Register fallback handlers for team orchestrator."""
+
+        async def team_session_fallback(ctx: FallbackContext) -> TeamSessionResult:
+            """Fallback handler for team session - return error result."""
+            logger.warning(
+                "team_orchestrator_fallback_triggered",
+                original_error=str(ctx.original_error),
+            )
+            task = ctx.metadata.get("task", "")
+            return TeamSessionResult(
+                success=False,
+                synthesized_output=f"Team session failed: {str(ctx.original_error)}",
+                agent_outputs={},
+                mission_results=[],
+                error=str(ctx.original_error),
+            )
+
+        self._fallback_manager.register_fallback_handler(
+            "team_orchestrator", team_session_fallback
+        )
 
     # ------------------------------------------------------------------
     # Entry point
@@ -98,7 +128,9 @@ class TeamOrchestrator:
             },
         )
 
-        try:
+        # Define primary team session logic
+        async def _team_session_primary() -> TeamSessionResult:
+            """Primary team session logic."""
             # FASE 1: Formation
             await self._phase_formation(session)
 
@@ -142,30 +174,33 @@ class TeamOrchestrator:
                 phases_completed=[p.value for p in TeamPhase if p != TeamPhase.COMPLETED],
             )
 
-        except Exception as exc:
+        # Execute with fallback (includes retry logic automatically)
+        fallback_result = await self._fallback_manager.execute_with_fallback(
+            component="team_orchestrator",
+            primary_func=_team_session_primary,
+            context={"task": task, "agent_ids": agent_ids, "session_id": session_id},
+        )
+
+        if fallback_result.success:
+            return fallback_result.result
+        else:
+            # Ultimate fallback if everything fails
             logger.error(
-                "team_session_failed",
-                extra={
-                    "session_id": session_id,
-                    "phase": session.phase.value,
-                    "error": str(exc),
-                },
+                "team_session_ultimate_fallback",
+                error=fallback_result.error,
+                extra={"session_id": session_id},
             )
             session.mark_completed()
-
             return TeamSessionResult(
                 session_id=session.session_id,
                 task=task,
                 final_result="",
                 success=False,
-                missions={
-                    agent_id: result.to_delegation_result_data()
-                    for agent_id, result in session.missions.items()
-                },
-                chat_history_length=len(session.chat_history),
+                missions={},
+                chat_history_length=0,
                 total_duration_seconds=session.get_duration(),
                 phases_completed=[session.phase.value],
-                error=str(exc),
+                error=fallback_result.error,
             )
 
     # ------------------------------------------------------------------

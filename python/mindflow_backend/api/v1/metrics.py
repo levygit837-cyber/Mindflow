@@ -269,11 +269,61 @@ async def get_metrics_summary(request: Request):
         }
         
         return summary
-        
+
     except Exception as e:
         logger.error(f"Error getting metrics summary: {str(e)}")
         return {
             "status": "error",
             "error": str(e),
             "timestamp": metrics_controller._get_current_timestamp()
+        }
+
+
+@router.get("/orchestration-fallback")
+async def get_orchestration_fallback_metrics(request: Request):
+    """Get orchestration fallback metrics."""
+    try:
+        from mindflow_backend.infra.resilience.orchestration_fallback_metrics import (
+            get_orchestration_fallback_metrics_collector,
+        )
+
+        metrics_collector = get_orchestration_fallback_metrics_collector()
+        all_metrics = metrics_collector.get_all_metrics()
+
+        # Convert metrics to API format
+        components = {}
+        for component, metrics in all_metrics.items():
+            components[component] = {
+                "fallback_total": metrics.fallback_total,
+                "fallback_rate": metrics_collector._calculate_fallback_rate(component),
+                "fallback_latency_p50": metrics.p50_latency,
+                "fallback_latency_p95": metrics.p95_latency,
+                "fallback_success_rate": metrics.fallback_success_rate,
+                "alert_threshold_exceeded": metrics_collector.is_fallback_rate_high(component),
+            }
+
+        alerting_components = metrics_collector.get_alerting_components()
+
+        result = {
+            "timestamp": metrics_controller._get_current_timestamp(),
+            "overall_fallback_rate": metrics_collector.get_overall_fallback_rate(),
+            "components": components,
+            "alerts": [
+                {
+                    "component": comp,
+                    "fallback_rate": metrics_collector._calculate_fallback_rate(comp),
+                }
+                for comp in alerting_components
+            ],
+        }
+
+        metrics_controller.log_request(request, "get_orchestration_fallback_metrics")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error getting orchestration fallback metrics: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": metrics_controller._get_current_timestamp(),
         }
