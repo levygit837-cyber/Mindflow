@@ -19,6 +19,42 @@ from mindflow_backend.infra.config.database import DatabaseConfig
 from mindflow_backend.infra.config.monitoring import MonitoringConfig
 
 
+class SecurityConfig(BaseSettings):
+    """Security configuration for secure storage and encryption.
+
+    Features:
+    - Secret pepper for key derivation
+    - Environment variable support
+    - Validation for production environments
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="MINDFLOW_",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    secret_pepper: str | None = Field(
+        default=None,
+        alias="SECRET_PEPPER",
+        description="Random pepper for secret storage encryption (required in production)",
+    )
+
+    @field_validator("secret_pepper")
+    @classmethod
+    def validate_pepper(cls, v: str | None, info: pydantic.FieldValidationInfo) -> str | None:
+        """Validate that pepper is set in production."""
+        # Get app_env from parent Settings if available
+        app_env = info.data.get("app_env", "development")
+        if app_env == "production" and not v:
+            raise ValueError(
+                "SECRET_PEPPER must be set in production environment. "
+                "Generate a random value: python -c 'import secrets; print(secrets.token_hex(32))'"
+            )
+        return v
+
+
 class Settings(BaseSettings):
     """Main application settings with comprehensive configuration.
     
@@ -285,6 +321,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
 
     @field_validator("database", mode="before", check_fields=False)
     def assemble_database_config(cls, v: DatabaseConfig | dict | None, info: pydantic.ValidationInfo) -> DatabaseConfig:
