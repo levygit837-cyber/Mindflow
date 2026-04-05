@@ -310,13 +310,6 @@ All v1 tools are deprecated and will be removed in v3.0.0.
 - `multiline` - Multiline matching
 - `head_limit`, `offset` - Pagination
 
-### ShellExecutorToolV2
-- `run_in_background` - Background execution
-- `sandbox_mode` - Sandbox mode override
-- All 11 bash security validators
-- Command semantic analysis
-- Security level classification
-
 ## Migration Steps
 
 1. **Update imports:**

@@ -127,11 +127,20 @@ class _DefaultRegistry:
         return tools
 
     def _get_filesystem_tools(self) -> list[Any]:
-        """Get filesystem tools (v2 by default, v1 for backward compatibility)."""
+        """Get filesystem tools (canonical tools only)."""
         tools = []
 
         try:
-            # Import v1 tools for backward compatibility
+            # Import canonical tools
+            from .filesystem.file_operations import (
+                FileEditTool,
+                FileReadTool,
+                FileWriteTool,
+            )
+            from .filesystem.search_tools import (
+                GlobSearchTool,
+                GrepSearchTool,
+            )
             from .filesystem import (
                 DirectoryCreateTool,
                 DirectoryListTool,
@@ -139,32 +148,21 @@ class _DefaultRegistry:
                 FindFilesTool,
             )
 
-            # Import v2 tools (Claude Code standard)
-            from .filesystem.file_operations_v2 import (
-                FileEditToolV2,
-                FileReadToolV2,
-                FileWriteToolV2,
-            )
-            from .filesystem.search_tools_v2 import (
-                GlobToolV2,
-                GrepToolV2,
-            )
-
             tools = [
-                # v2 tools (default)
-                FileReadToolV2(),
-                FileWriteToolV2(),
-                FileEditToolV2(),
-                GrepToolV2(),
-                GlobToolV2(),
+                # Canonical tools (default)
+                FileReadTool(),
+                FileWriteTool(),
+                FileEditTool(),
+                GrepSearchTool(),
+                GlobSearchTool(),
 
-                # v1 tools (backward compatibility)
+                # v1 tools (backward compatibility - directory operations)
                 FindFilesTool(),
                 DirectoryListTool(),
                 FileDeleteTool(),
                 DirectoryCreateTool()
             ]
-            _logger.info(f"Loaded {len(tools)} filesystem tools (5 v2 + 4 v1)")
+            _logger.info(f"Loaded {len(tools)} filesystem tools (5 canonical + 4 v1)")
 
         except ImportError as e:
             _logger.warning(f"Could not import filesystem tools: {e}")

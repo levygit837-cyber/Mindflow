@@ -1,0 +1,349 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3
+codspeed: 4.3.0 (disabled, mode: walltime, callgraph: enabled, timer_resolution: 1.0ns)
+cachedir: .pytest_cache
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/levybonito/Projetos/MindFlow/python
+configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
+plugins: langsmith-0.7.14, benchmark-5.2.3, syrupy-5.1.0, anyio-4.12.1, recording-0.13.4, respx-0.22.0, socket-0.7.0, codspeed-4.3.0, asyncio-1.3.0, typeguard-4.4.2
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 3 items
+
+python/mindflow_backend/tests/unit/a2a/test_a2a_client.py::test_a2a_client_call_external_agent FAILED [ 33%]
+python/mindflow_backend/tests/unit/a2a/test_task_adapter.py::test_a2a_task_to_delegation_task FAILED [ 66%]
+python/mindflow_backend/tests/unit/a2a/test_task_adapter.py::test_delegation_result_to_a2a_artifact PASSED [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_a2a_client_call_external_agent ______________________
+python/mindflow_backend/tests/unit/a2a/test_a2a_client.py:11: in test_a2a_client_call_external_agent
+    task = DelegationTask(
+E   pydantic.errors.PydanticUserError: `DelegationTask` is not fully defined; you should define `Any`, then call `DelegationTask.model_rebuild()`.
+E   
+E   For further information visit https://errors.pydantic.dev/2.12/u/class-not-fully-defined
+_______________________ test_a2a_task_to_delegation_task _______________________
+python/mindflow_backend/tests/unit/a2a/test_task_adapter.py:19: in test_a2a_task_to_delegation_task
+    del_task = TaskAdapter.a2a_task_to_delegation_task(a2a_msg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/mindflow_backend/communication/a2a/task_adapter.py:27: in a2a_task_to_delegation_task
+    return DelegationTask(
+E   pydantic.errors.PydanticUserError: `DelegationTask` is not fully defined; you should define `Any`, then call `DelegationTask.model_rebuild()`.
+E   
+E   For further information visit https://errors.pydantic.dev/2.12/u/class-not-fully-defined
+=============================== warnings summary ===============================
+python/mindflow_backend/schemas/tools/registry.py:31
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/tools/registry.py:31: UserWarning: Field name "schema" in "ToolRegistration" shadows an attribute in parent "BaseModel"
+    class ToolRegistration(BaseModel):
+
+python/mindflow_backend/schemas/tools/__init__.py:104
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/tools/__init__.py:104: DeprecationWarning: schemas.tools.callable_executor is deprecated. Use runtime.execution.streaming_executor instead. This module will be removed in a future version.
+    from mindflow_backend.schemas.tools.callable_executor import (
+
+python/mindflow_backend/schemas/memory/contracts.py:72
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:72: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryEntry(BaseModel):
+
+../../.local/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:319: 116 warnings
+  /home/levybonito/.local/lib/python3.13/site-packages/pydantic/_internal/_generate_schema.py:319: PydanticDeprecatedSince20: `json_encoders` is deprecated. See https://docs.pydantic.dev/2.12/concepts/serialization/#custom-serializers for alternatives. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    warnings.warn(
+
+python/mindflow_backend/schemas/memory/contracts.py:112
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:112: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ContextWindow(BaseModel):
+
+python/mindflow_backend/schemas/memory/contracts.py:142
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:142: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryCursor(BaseModel):
+
+python/mindflow_backend/schemas/memory/contracts.py:171
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:171: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryEvent(BaseModel):
+
+python/mindflow_backend/schemas/memory/contracts.py:201
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:201: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryFact(BaseModel):
+
+python/mindflow_backend/schemas/memory/contracts.py:231
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:231: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryEmbedding(BaseModel):
+
+python/mindflow_backend/schemas/memory/contracts.py:257
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/contracts.py:257: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryRetrievalResult(BaseModel):
+
+python/mindflow_backend/schemas/memory/requests.py:42
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/requests.py:42: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('token_end')
+
+python/mindflow_backend/schemas/memory/requests.py:138
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/requests.py:138: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    memory_ids: list[UUID] = Field(min_items=1, description="Memory IDs to delete")
+
+python/mindflow_backend/schemas/memory/responses.py:50
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/responses.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemorySearchResponse(BaseMemoryResponse):
+
+python/mindflow_backend/schemas/memory/responses.py:96
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/responses.py:96: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ContextWindowResponse(BaseMemoryResponse):
+
+python/mindflow_backend/schemas/memory/responses.py:114
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/responses.py:114: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryCursorResponse(BaseMemoryResponse):
+
+python/mindflow_backend/schemas/memory/responses.py:130
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/responses.py:130: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryStatsResponse(BaseMemoryResponse):
+
+python/mindflow_backend/schemas/memory/responses.py:162
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/memory/responses.py:162: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MemoryExportResponse(BaseMemoryResponse):
+
+python/mindflow_backend/schemas/tools/tool_config.py:29
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/tools/tool_config.py:29: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ToolSchema(BaseModel):
+
+python/mindflow_backend/schemas/tools/tool_config.py:50
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/tools/tool_config.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ToolRegistrySchema(BaseModel):
+
+python/mindflow_backend/schemas/tools/tool_config.py:67
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/tools/tool_config.py:67: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ToolConfig(BaseModel):
+
+python/mindflow_backend/schemas/tools/tool_config.py:82
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/tools/tool_config.py:82: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ToolCategoryConfig(BaseModel):
+
+python/mindflow_backend/schemas/session/contracts.py:59
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:59: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    token_range: str = Field(example="0-10k", description="Human-readable token range")
+
+python/mindflow_backend/schemas/session/contracts.py:60
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:60: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    execution_window: tuple[int, int] = Field(example=(0, 10000), description="Execution token boundaries")
+
+python/mindflow_backend/schemas/session/contracts.py:61
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:61: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    context_window: tuple[int, int] = Field(example=(0, 100000), description="Analysis token boundaries")
+
+python/mindflow_backend/schemas/session/contracts.py:82
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:82: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    token_sub_range: str = Field(example="30k-60k", description="Token range within parent")
+
+python/mindflow_backend/schemas/session/contracts.py:83
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:83: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    execution_window: tuple[int, int] = Field(example=(30000, 60000))
+
+python/mindflow_backend/schemas/session/contracts.py:100
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:100: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    context_window: tuple[int, int] = Field(example=(0, 100000), description="Context analysis window")
+
+python/mindflow_backend/schemas/session/contracts.py:135
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:135: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    current_window: tuple[int, int] = Field(example=(83000, 93000))
+
+python/mindflow_backend/schemas/session/contracts.py:136
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:136: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    current_window_index: int = Field(example=8)
+
+python/mindflow_backend/schemas/session/contracts.py:137
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:137: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    previous_window: tuple[int, int] | None = Field(example=(73000, 83000))
+
+python/mindflow_backend/schemas/session/contracts.py:138
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:138: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    next_window: tuple[int, int] | None = Field(example=(93000, 103000))
+
+python/mindflow_backend/schemas/session/contracts.py:139
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:139: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    window_size: int = Field(example=10000)
+
+python/mindflow_backend/schemas/session/contracts.py:140
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:140: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    total_tokens: int = Field(example=150000)
+
+python/mindflow_backend/schemas/session/contracts.py:141
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/session/contracts.py:141: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    progress_percentage: float = Field(example=0.553, description="Progress through total tokens")
+
+python/mindflow_backend/schemas/skills/base.py:47
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/base.py:47: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillMetadata(BaseModel):
+
+python/mindflow_backend/schemas/skills/base.py:71
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/base.py:71: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('timeout_seconds')
+
+python/mindflow_backend/schemas/skills/base.py:95
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/base.py:95: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillResult(BaseModel):
+
+python/mindflow_backend/schemas/skills/base.py:109
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/base.py:109: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillBase(BaseModel):
+
+python/mindflow_backend/schemas/skills/core.py:18
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/core.py:18: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AnalysisSkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/core.py:40
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/core.py:40: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class CodingSkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/core.py:66
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/core.py:66: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ResearchSkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/core.py:93
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/core.py:93: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class CoreSkillDefinition(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:22
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExecutionContext(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:61
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:61: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('duration_ms')
+
+python/mindflow_backend/schemas/skills/execution.py:51
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:51: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExecutionMetrics(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:100
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:100: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('success_rate')
+
+python/mindflow_backend/schemas/skills/execution.py:86
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:86: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class PerformanceMetrics(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:126
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:126: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExecutionResult(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:160
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:160: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillExecution(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:172
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:172: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExecutionRequest(BaseModel):
+
+python/mindflow_backend/schemas/skills/execution.py:196
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/execution.py:196: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class BatchExecutionRequest(BaseModel):
+
+python/mindflow_backend/schemas/skills/registry.py:11
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/registry.py:11: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillRegistration(BaseModel):
+
+python/mindflow_backend/schemas/skills/registry.py:47
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/registry.py:47: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillDiscovery(BaseModel):
+
+python/mindflow_backend/schemas/skills/registry.py:71
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/registry.py:71: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillRegistryEntry(BaseModel):
+
+python/mindflow_backend/schemas/skills/registry.py:102
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/registry.py:102: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillQuery(BaseModel):
+
+python/mindflow_backend/schemas/skills/registry.py:133
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/registry.py:133: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillFilter(BaseModel):
+
+python/mindflow_backend/schemas/skills/registry.py:158
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/registry.py:158: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SkillRecommendation(BaseModel):
+
+python/mindflow_backend/schemas/skills/specialized.py:22
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/specialized.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SecuritySkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/specialized.py:49
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/specialized.py:49: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ArchitectureSkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/specialized.py:73
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/specialized.py:73: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TestingSkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/specialized.py:100
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/specialized.py:100: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class DocumentationSkillConfig(SkillConfiguration):
+
+python/mindflow_backend/schemas/skills/specialized.py:127
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/skills/specialized.py:127: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SpecializedSkillDefinition(BaseModel):
+
+python/mindflow_backend/schemas/errors/base.py:65
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/base.py:65: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ErrorContext(BaseModel):
+
+python/mindflow_backend/schemas/errors/base.py:82
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/base.py:82: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ErrorSchema(BaseModel):
+
+python/mindflow_backend/schemas/errors/base.py:175
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/base.py:175: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ErrorResponse(BaseModel):
+
+python/mindflow_backend/schemas/errors/base.py:195
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/base.py:195: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ErrorListResponse(BaseModel):
+
+python/mindflow_backend/schemas/errors/agent_errors.py:16
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/agent_errors.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AgentErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:18
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:18: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class RoutingErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:51
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:51: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class RequestValidationErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:85
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:85: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AuthenticationErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:118
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:118: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AuthorizationErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:151
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:151: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StreamingErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:183
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:183: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class RateLimitErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/api_errors.py:215
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/api_errors.py:215: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ApiTimeoutErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/base_exceptions.py:18
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/base_exceptions.py:18: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MindFlowErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/base_exceptions.py:43
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/base_exceptions.py:43: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SystemErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/orchestrator_errors.py:14
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/orchestrator_errors.py:14: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class OrchestratorErrorSchema(ErrorSchema):
+
+python/mindflow_backend/schemas/errors/provider_errors.py:14
+  /home/levybonito/Projetos/MindFlow/python/mindflow_backend/schemas/errors/provider_errors.py:14: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProviderErrorSchema(ErrorSchema):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED python/mindflow_backend/tests/unit/a2a/test_a2a_client.py::test_a2a_client_call_external_agent
+FAILED python/mindflow_backend/tests/unit/a2a/test_task_adapter.py::test_a2a_task_to_delegation_task
+================== 2 failed, 1 passed, 193 warnings in 0.65s ===================

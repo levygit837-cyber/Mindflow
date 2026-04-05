@@ -24,7 +24,6 @@ _COMPAT_EXPORTS = {
     "ProcessManagerToolV3": (".process_manager_v3", "ProcessManagerToolV3"),
     "ResourceMonitorToolV3": (".resource_monitor_v3", "ResourceMonitorToolV3"),
     "ShellExecutorToolV3": (".shell_executor_v3", "ShellExecutorToolV3"),
-    "ShellExecutorToolV2": (".shell_executor_v2", "ShellExecutorToolV2"),
 }
 
 __all__ = [

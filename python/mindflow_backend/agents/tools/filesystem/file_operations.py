@@ -5,18 +5,29 @@ with security controls, validation, and error handling.
 
 from __future__ import annotations
 
+import base64
 import shutil
+import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from mindflow_backend.agents.tools.base.tool_interface import AsyncToolInterface
+from mindflow_backend.agents.tools.security.filesystem_validators import (
+    TOCTOUValidator,
+    PermissionBehavior,
+    validate_device_file,
+    validate_secrets,
+    validate_symlink,
+)
 from mindflow_backend.agents.tools.workspace_security import (
     WorkspaceSecurityError,
     is_read_only_mode,
     resolve_workspace_path,
 )
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.permissions.types import PermissionBehavior
 from mindflow_backend.schemas.tools.filesystem_schemas import (
     DELETE_FILE_SCHEMA,
     EDIT_FILE_SCHEMA,
@@ -72,6 +83,8 @@ class FileReadTool(AsyncToolInterface):
             '.sql', '.graphql', '.gql', '.proto', '.tf', '.hcl',
             # Docs / markup
             '.md', '.mdx', '.rst', '.tex', '.adoc', '.org',
+            # Images
+            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp',
             # Misc
             '.csv', '.tsv', '.log', '.lock', '.rb', '.php',
             '.swift', '.dart', '.lua', '.r', '.R',
@@ -104,9 +117,26 @@ class FileReadTool(AsyncToolInterface):
                 limit = int(max_lines)
 
             path_obj = _resolve_tool_path(self, file_path)
+            resolved_path = str(path_obj)
+
+            # Security validation: device file blocking
+            device_decision = validate_device_file(resolved_path)
+            if device_decision.behavior == PermissionBehavior.DENY:
+                return self._format_result(
+                    success=False,
+                    error=device_decision.message
+                )
+
+            # Security validation: symlink validation
+            symlink_decision = validate_symlink(resolved_path, self.root_dir)
+            if symlink_decision.behavior in [PermissionBehavior.DENY, PermissionBehavior.ASK]:
+                return self._format_result(
+                    success=False,
+                    error=symlink_decision.message
+                )
 
             # Security validation
-            validation_result = self._validate_path(str(path_obj))
+            validation_result = self._validate_path(resolved_path)
             if not validation_result["valid"]:
                 return self._format_result(
                     success=False,
@@ -134,6 +164,12 @@ class FileReadTool(AsyncToolInterface):
                     success=False,
                     error=f"File too large: {file_size} bytes (max: {self.max_file_size})"
                 )
+
+            # Check if file is an image - return base64
+            file_ext = path_obj.suffix.lower()
+            image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+            if file_ext in image_extensions:
+                return await self._read_image(path_obj)
 
             with open(path_obj, encoding=encoding) as file:
                 lines = file.readlines()
@@ -191,6 +227,26 @@ class FileReadTool(AsyncToolInterface):
                 error=f"File read error: {str(e)}"
             )
 
+    async def _read_image(self, path_obj: Path) -> dict[str, Any]:
+        """Read image file and return base64 encoded."""
+        with open(path_obj, 'rb') as f:
+            image_data = f.read()
+
+        base64_data = base64.b64encode(image_data).decode('utf-8')
+        file_ext = path_obj.suffix.lstrip('.')
+
+        return self._format_result(
+            success=True,
+            result={
+                "content": base64_data,
+                "file_path": str(path_obj.absolute()),
+                "file_type": "image",
+                "image_format": file_ext,
+                "size_bytes": len(image_data),
+                "encoding": "base64"
+            }
+        )
+
     def _validate_path(self, file_path: str) -> dict[str, Any]:
         """
         Validate file path for security restrictions.
@@ -247,6 +303,7 @@ class FileEditTool(AsyncToolInterface):
         super().__init__()
         self.name = "edit_file"
         self.description = "Edit a file by replacing a substring (single occurrence)"
+        self.toctou_validator = TOCTOUValidator()
 
         self.restricted_paths = {
             "/etc", "/usr", "/bin", "/sbin", "/boot", "/sys",
@@ -287,6 +344,17 @@ class FileEditTool(AsyncToolInterface):
         if old_string not in content:
             return self._format_result(success=False, error="old_string not found in file")
 
+        # TOCTOU protection: record mtime before edit
+        self.toctou_validator.record_mtime(str(path_obj))
+
+        # Security validation: secret detection in new content
+        secret_decision = validate_secrets(new_string, str(path_obj))
+        if secret_decision.behavior == PermissionBehavior.DENY:
+            return self._format_result(
+                success=False,
+                error=secret_decision.message
+            )
+
         total_occurrences = content.count(old_string)
         if count == -1:
             new_content = content.replace(old_string, new_string)
@@ -310,6 +378,14 @@ class FileEditTool(AsyncToolInterface):
                     "total_occurrences": total_occurrences,
                     "file_path": str(path_obj.absolute()),
                 },
+            )
+
+        # TOCTOU protection: validate mtime before write
+        toctou_decision = self.toctou_validator.validate_mtime(str(path_obj))
+        if toctou_decision.behavior == PermissionBehavior.DENY:
+            return self._format_result(
+                success=False,
+                error=toctou_decision.message
             )
 
         path_obj.write_text(new_content, encoding=encoding)
@@ -396,6 +472,8 @@ class FileWriteTool(AsyncToolInterface):
             content: Content to write
             encoding: File encoding
             create_dirs: Create parent directories
+            create_backup: Create backup before write
+            atomic_write: Use atomic write (temp file + rename)
         Returns:
             Dictionary with write operation result
         """
@@ -405,6 +483,9 @@ class FileWriteTool(AsyncToolInterface):
             encoding = kwargs.get("encoding", "utf-8")
             create_dirs = kwargs.get("create_dirs", True)
             overwrite = kwargs.get("overwrite", True)
+            create_backup = kwargs.get("create_backup", False)
+            atomic_write = kwargs.get("atomic_write", False)
+            generate_git_diff = kwargs.get("generate_git_diff", False)
 
             if is_read_only_mode(self.sandbox_mode):
                 return self._format_result(
@@ -420,6 +501,14 @@ class FileWriteTool(AsyncToolInterface):
                 return self._format_result(
                     success=False,
                     error=validation_result["error"]
+                )
+
+            # Security validation: secret detection
+            secret_decision = validate_secrets(content, str(path_obj))
+            if secret_decision.behavior == PermissionBehavior.DENY:
+                return self._format_result(
+                    success=False,
+                    error=secret_decision.message
                 )
 
             # Check content size
@@ -446,21 +535,45 @@ class FileWriteTool(AsyncToolInterface):
                     error=f"Parent directory does not exist: {path_obj.parent}"
                 )
 
-            # Write file
-            with open(path_obj, 'w', encoding=encoding) as file:
-                bytes_written = file.write(content)
+            # Create backup if requested and file exists
+            backup_path = None
+            if create_backup and file_exists:
+                backup_path = await self._create_backup(path_obj)
 
-            return self._format_result(
-                success=True,
-                result={
-                    "bytes_written": bytes_written,
-                    "file_path": str(path_obj.absolute()),
-                    "encoding": encoding,
-                    "line_count": content.count('\n') + (1 if content else 0),
-                    "created": not file_exists,
-                    "overwritten": file_exists,
-                }
-            )
+            # Write file (atomic or direct)
+            try:
+                if atomic_write:
+                    bytes_written = await self._atomic_write(path_obj, content, encoding)
+                else:
+                    with open(path_obj, 'w', encoding=encoding) as file:
+                        bytes_written = file.write(content)
+
+                # Generate git diff if requested
+                git_diff = None
+                if generate_git_diff and file_exists:
+                    git_diff = await self._generate_git_diff(path_obj)
+
+                return self._format_result(
+                    success=True,
+                    result={
+                        "bytes_written": bytes_written,
+                        "file_path": str(path_obj.absolute()),
+                        "encoding": encoding,
+                        "line_count": content.count('\n') + (1 if content else 0),
+                        "created": not file_exists,
+                        "overwritten": file_exists,
+                        "backup_created": backup_path is not None,
+                        "backup_path": str(backup_path) if backup_path else None,
+                        "atomic": atomic_write,
+                        "git_diff": git_diff,
+                    }
+                )
+            except Exception as write_error:
+                # Restore from backup if write failed and backup was created
+                if backup_path and backup_path.exists():
+                    shutil.copy2(backup_path, path_obj)
+                    backup_path.unlink()
+                raise write_error
 
         except PermissionError as e:
             return self._format_result(
@@ -477,6 +590,50 @@ class FileWriteTool(AsyncToolInterface):
                 success=False,
                 error=f"File write error: {str(e)}"
             )
+
+    async def _create_backup(self, path_obj: Path) -> Path:
+        """Create backup of file before write."""
+        backup_path = Path(f"{path_obj}.backup")
+        shutil.copy2(path_obj, backup_path)
+        return backup_path
+
+    async def _atomic_write(self, path_obj: Path, content: str, encoding: str) -> int:
+        """Write file atomically using temp file + rename."""
+        dir_path = path_obj.parent
+
+        # Create temp file in same directory (ensures same filesystem)
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            encoding=encoding,
+            dir=str(dir_path),
+            delete=False
+        ) as tmp_file:
+            tmp_file.write(content)
+            tmp_path = Path(tmp_file.name)
+
+        # Atomic rename
+        bytes_written = len(content.encode(encoding))
+        Path(tmp_path).replace(path_obj)
+
+        return bytes_written
+
+    async def _generate_git_diff(self, path_obj: Path) -> str | None:
+        """Generate git diff for the file.
+
+        Note: Requires git to be installed and file to be in a git repo.
+        """
+        try:
+            result = subprocess.run(
+                ['git', 'diff', str(path_obj)],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                return result.stdout
+            return None
+        except Exception:
+            return None
 
     def _validate_path(self, file_path: str) -> dict[str, Any]:
         """

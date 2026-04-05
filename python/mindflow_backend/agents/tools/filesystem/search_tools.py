@@ -1,10 +1,12 @@
 """
-Search tools for filesystem operations. Provides tools for searching files and directories 
+Search tools for filesystem operations. Provides tools for searching files and directories
 with pattern matching, content search, and filtering capabilities.
 """
 
 from __future__ import annotations
 
+import fnmatch
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -54,6 +56,8 @@ class GrepSearchTool(AsyncToolInterface):
             recursive: Search recursively
             case_sensitive: Case sensitive
             max_results: Maximum results
+            context_before: Number of lines before match
+            context_after: Number of lines after match
         Returns:
             Dictionary with search results
         """
@@ -64,6 +68,8 @@ class GrepSearchTool(AsyncToolInterface):
             recursive = kwargs.get("recursive", True)
             case_sensitive = kwargs.get("case_sensitive", False)
             max_results = kwargs.get("max_results", 100)
+            context_before = kwargs.get("context_before", 0)
+            context_after = kwargs.get("context_after", 0)
 
             # Compile regex pattern
             try:
@@ -101,24 +107,39 @@ class GrepSearchTool(AsyncToolInterface):
             for file_path in files:
                 if file_path.is_file():
                     files_searched += 1
-                    
+
                     # Search in file
                     try:
                         with open(file_path, encoding='utf-8', errors='ignore') as f:
-                            for line_num, line in enumerate(f, 1):
-                                if regex.search(line):
-                                    matches.append({
-                                        "file": str(file_path),
-                                        "line_number": line_num,
-                                        "line": line.rstrip(),
-                                        "match": regex.search(line).group()
+                            lines = f.readlines()
+
+                        for line_num, line in enumerate(lines, 1):
+                            if regex.search(line):
+                                # Build context
+                                context_lines = []
+                                for ctx_line_num in range(
+                                    max(0, line_num - context_before),
+                                    min(len(lines), line_num + context_after)
+                                ):
+                                    context_lines.append({
+                                        "line_number": ctx_line_num + 1,
+                                        "line": lines[ctx_line_num].rstrip(),
+                                        "is_match": ctx_line_num + 1 == line_num
                                     })
-                                    
-                                    # Check max results
-                                    if len(matches) >= max_results:
-                                        truncated = True
-                                        break
-                    
+
+                                matches.append({
+                                    "file": str(file_path),
+                                    "line_number": line_num,
+                                    "line": line.rstrip(),
+                                    "match": regex.search(line).group(),
+                                    "context": context_lines if (context_before > 0 or context_after > 0) else None
+                                })
+
+                                # Check max results
+                                if len(matches) >= max_results:
+                                    truncated = True
+                                    break
+
                     except (UnicodeDecodeError, PermissionError):
                         continue
 
@@ -164,6 +185,9 @@ class GlobSearchTool(AsyncToolInterface):
             max_results = int(kwargs.get("max_results", 200))
             include_dirs = bool(kwargs.get("include_dirs", False))
             absolute_paths = bool(kwargs.get("absolute_paths", True))
+            exclude_patterns = kwargs.get("exclude_patterns", [])
+            max_depth = kwargs.get("max_depth", None)
+            sort_by_mtime = kwargs.get("sort_by_mtime", False)
 
             base = _resolve_search_path(self, directory)
             if not base.exists():
@@ -174,24 +198,56 @@ class GlobSearchTool(AsyncToolInterface):
             directories: list[str] = []
             truncated = False
 
-            for match in base.glob(pattern):
-                total_so_far = len(files) + len(directories)
-                if total_so_far >= max_results:
-                    truncated = True
+            # Use os.walk for advanced features (exclude_patterns, max_depth)
+            base_depth = len(base.parts)
+            for root, dirs, filenames in os.walk(str(base)):
+                current_path = Path(root)
+                current_depth = len(current_path.parts) - base_depth
+
+                # Check max depth
+                if max_depth is not None and current_depth > max_depth:
+                    dirs.clear()
+                    continue
+                if max_depth is not None and current_depth >= max_depth:
+                    dirs.clear()  # Don't recurse deeper
+
+                # Filter directories by exclude patterns
+                if exclude_patterns:
+                    dirs[:] = [
+                        d for d in dirs
+                        if not self._matches_any_pattern(d, exclude_patterns)
+                    ]
+
+                # Check files
+                for filename in filenames:
+                    # Skip if matches exclude pattern
+                    if exclude_patterns and self._matches_any_pattern(filename, exclude_patterns):
+                        continue
+
+                    # Check if matches include pattern
+                    if self._matches_pattern(filename, pattern):
+                        total_so_far = len(files) + len(directories)
+                        if total_so_far >= max_results:
+                            truncated = True
+                            break
+
+                        full_path = current_path / filename
+                        if absolute_paths:
+                            path_str = str(full_path.absolute())
+                        else:
+                            try:
+                                path_str = str(full_path.relative_to(base))
+                            except ValueError:
+                                path_str = str(full_path)
+
+                        files.append(path_str)
+
+                if truncated:
                     break
 
-                if absolute_paths:
-                    path_str = str(match.absolute())
-                else:
-                    try:
-                        path_str = str(match.relative_to(base))
-                    except ValueError:
-                        path_str = str(match)
-
-                if match.is_file():
-                    files.append(path_str)
-                elif match.is_dir() and include_dirs:
-                    directories.append(path_str)
+            # Sort by mtime if requested
+            if sort_by_mtime:
+                files = self._sort_by_mtime(files)
 
             result = {
                 "files": files,
@@ -209,6 +265,22 @@ class GlobSearchTool(AsyncToolInterface):
             return self._format_result(success=True, result=result)
         except Exception as e:
             return self._format_result(success=False, error=f"Glob search error: {e}")
+
+    def _matches_pattern(self, filename: str, pattern: str) -> bool:
+        """Check if filename matches pattern."""
+        return fnmatch.fnmatch(filename, pattern)
+
+    def _matches_any_pattern(self, filename: str, patterns: list[str]) -> bool:
+        """Check if filename matches any of the patterns."""
+        return any(self._matches_pattern(filename, p) for p in patterns)
+
+    def _sort_by_mtime(self, files: list[str]) -> list[str]:
+        """Sort files by modification time (most recent first)."""
+        return sorted(
+            files,
+            key=lambda f: os.path.getmtime(f) if os.path.exists(f) else 0,
+            reverse=True
+        )
 
     def get_schema(self) -> dict[str, Any]:
         return self._schema.dict()
