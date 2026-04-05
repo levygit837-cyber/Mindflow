@@ -13,6 +13,8 @@ from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 
 # Hook handlers for session lifecycle
@@ -64,23 +66,23 @@ except Exception:
 class AgentRuntime:
     """
     Main runtime orchestrator for MindFlow agents.
-    
+
     Coordinates streaming, routing, execution, and memory integration.
     Delegates specialized operations to focused modules.
     """
-    
+
     def __init__(self) -> None:
         self._orchestrator_graph = None
         self._memory_service = _get_memory_service() if _get_memory_service else None
         self._execution_memory = _get_execution_memory_service() if _get_execution_memory_service else None
         self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
-        
+
         # Import specialized modules
         from ..execution.executor import RuntimeExecutor
         from ..memory.memory_integration import MemoryIntegration
         from ..routing.runtime_router import RuntimeRouter
         from ..streaming.stream_manager import StreamManager
-        
+
         self._router = RuntimeRouter()
         self._executor = RuntimeExecutor()
         self._stream_manager = StreamManager()
@@ -89,9 +91,25 @@ class AgentRuntime:
             execution_memory=self._execution_memory,
             memory_publisher=self._memory_publisher,
         )
-        
+
+        # Initialize unified QueryEngine for direct execution
+        self._query_engine: QueryEngine | None = None
+
         # Initialize CommunicationBus and register agents
         asyncio.create_task(self._initialize_communication_bus())
+
+    def _get_query_engine(self, session_id: str) -> QueryEngine:
+        """Get or create the QueryEngine for this session."""
+        if self._query_engine is None:
+            self._query_engine = QueryEngine(
+                providers=[],  # No context providers for runtime execution
+                budget=TokenBudget(max_tokens=200_000),
+                system_prompt="",  # Use agent-specific prompts
+                session_id=session_id,
+                use_file_cache=True,
+                execution_memory=self._execution_memory,
+            )
+        return self._query_engine
     
     async def _initialize_communication_bus(self) -> None:
         """Initialize CommunicationBus (Internal or XMPP based on feature flag) and register agents."""
