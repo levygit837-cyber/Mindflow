@@ -13,8 +13,6 @@ from typing import Any
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.query.budget.token_counter import TokenBudget
-from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 
 # Hook handlers for session lifecycle
@@ -92,15 +90,18 @@ class AgentRuntime:
             memory_publisher=self._memory_publisher,
         )
 
-        # Initialize unified QueryEngine for direct execution
-        self._query_engine: QueryEngine | None = None
+        # Initialize unified QueryEngine for direct execution (lazy import to avoid circular dependency)
+        self._query_engine: Any = None
 
         # Initialize CommunicationBus and register agents
         asyncio.create_task(self._initialize_communication_bus())
 
-    def _get_query_engine(self, session_id: str) -> QueryEngine:
-        """Get or create the QueryEngine for this session."""
+    def _get_query_engine(self, session_id: str) -> Any:
+        """Get or create the QueryEngine for this session (lazy import to avoid circular dependency)."""
         if self._query_engine is None:
+            from mindflow_backend.query.budget.token_counter import TokenBudget
+            from mindflow_backend.query.engine import QueryEngine
+
             self._query_engine = QueryEngine(
                 providers=[],  # No context providers for runtime execution
                 budget=TokenBudget(max_tokens=200_000),
