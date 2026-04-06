@@ -1,17 +1,15 @@
 """Tests for unified execution path migration.
 
-Tests validate that step_runner correctly uses DelegationEngine as backend
-and that the integration maintains backward compatibility.
+Tests validate that QueryEngine correctly handles WorkflowStep → DelegationTask
+conversion and DelegationResult → step output conversion.
 """
 
+import uuid
 import pytest
-from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
-from mindflow_backend.orchestrator.delegation.converter import (
-    delegation_result_to_step_output,
-    workflow_step_to_delegation_task,
-)
+from mindflow_backend.query.budget.token_counter import TokenBudget
+from mindflow_backend.query.engine import QueryEngine
 from mindflow_backend.schemas.orchestration.delegation import DelegationResult, DelegationStatus
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType, SpecialistType
 from mindflow_backend.schemas.orchestration.workflow import WorkflowStep
@@ -19,6 +17,15 @@ from mindflow_backend.schemas.orchestration.workflow import WorkflowStep
 
 class TestWorkflowStepToDelegationTask:
     """Tests for WorkflowStep → DelegationTask conversion."""
+
+    def setup_method(self):
+        """Setup QueryEngine instance for tests."""
+        self.engine = QueryEngine(
+            providers=[],
+            budget=TokenBudget(max_tokens=100_000),
+            session_id="test_session",
+            use_file_cache=False,
+        )
 
     def test_basic_conversion(self):
         """Test basic conversion of WorkflowStep to DelegationTask."""
@@ -30,7 +37,7 @@ class TestWorkflowStepToDelegationTask:
             objective="Implement feature X",
         )
 
-        task = workflow_step_to_delegation_task(
+        task = self.engine._workflow_step_to_delegation_task(
             step=step,
             user_message="Implement feature X",
             session_id="test-session",
@@ -52,7 +59,7 @@ class TestWorkflowStepToDelegationTask:
             objective="Analyze code",
         )
 
-        task = workflow_step_to_delegation_task(
+        task = self.engine._workflow_step_to_delegation_task(
             step=step,
             user_message="Analyze code",
             session_id="test-session",
@@ -77,7 +84,7 @@ class TestWorkflowStepToDelegationTask:
             {"role": "assistant", "content": "Hi"},
         ]
 
-        task = workflow_step_to_delegation_task(
+        task = self.engine._workflow_step_to_delegation_task(
             step=step,
             user_message="Write code",
             session_id="test-session",
@@ -95,7 +102,7 @@ class TestWorkflowStepToDelegationTask:
             objective="Continue work",
         )
 
-        task = workflow_step_to_delegation_task(
+        task = self.engine._workflow_step_to_delegation_task(
             step=step,
             user_message="Continue work",
             session_id="test-session",
@@ -113,7 +120,7 @@ class TestWorkflowStepToDelegationTask:
             objective="Write code",
         )
 
-        task = workflow_step_to_delegation_task(
+        task = self.engine._workflow_step_to_delegation_task(
             step=step,
             user_message="Write code",
             session_id="test-session",
@@ -131,7 +138,7 @@ class TestWorkflowStepToDelegationTask:
             objective="Write code",
         )
 
-        task = workflow_step_to_delegation_task(
+        task = self.engine._workflow_step_to_delegation_task(
             step=step,
             user_message="Write code",
             session_id="test-session",
@@ -142,7 +149,16 @@ class TestWorkflowStepToDelegationTask:
 
 
 class TestDelegationResultToStepOutput:
-    """Tests for DelegationResult → step_runner output conversion."""
+    """Tests for DelegationResult → step output conversion."""
+
+    def setup_method(self):
+        """Setup QueryEngine instance for tests."""
+        self.engine = QueryEngine(
+            providers=[],
+            budget=TokenBudget(max_tokens=100_000),
+            session_id="test_session",
+            use_file_cache=False,
+        )
 
     def test_basic_conversion(self):
         """Test basic conversion of DelegationResult to step output."""
@@ -155,7 +171,7 @@ class TestDelegationResultToStepOutput:
         )
 
         result = DelegationResult(
-            task_id=uuid4(),
+            task_id=uuid.uuid4(),
             agent=AgentType.CODER,
             agent_role=AgentType.CODER,
             specialist=SpecialistType.CODER,
@@ -170,7 +186,7 @@ class TestDelegationResultToStepOutput:
             tokens_consumed=100,
         )
 
-        output = delegation_result_to_step_output(result, step)
+        output = self.engine._delegation_result_to_step_output(result, step)
 
         assert output["agent_id"] == "coder"
         assert output["agent_role"] == "coder"
