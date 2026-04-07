@@ -127,11 +127,16 @@ async def get_current_config(
         
         stats = await manager.get_statistics()
         
+        # Get auto_reload from actual config settings
+        from mindflow_backend.infra.config.settings import get_settings
+        settings = get_settings()
+        auto_reload = getattr(settings, 'grpc_auto_reload', True)
+        
         return ConfigResponse(
             config=config_dict,
             version=stats["current_version"],
             last_updated=stats["last_updated"],
-            auto_reload=True,  # TODO: Get from actual config
+            auto_reload=auto_reload,
         )
         
     except Exception as exc:

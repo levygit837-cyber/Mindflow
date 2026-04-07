@@ -126,7 +126,8 @@ class AgentContextRetriever:
             query=query,
             context_windows=[context_window],
             content=context_content,
-            relevance_score=0.8,  # TODO: Calculate actual relevance
+            # Calculate actual relevance score based on context content and query
+            relevance_score = self._calculate_relevance_score(context_content, query)
             source_sessions=[session_id],
             metadata={
                 "agent_id": agent_id,
@@ -243,17 +244,52 @@ class AgentContextRetriever:
             session_id=str(context.session_id),
         )
         
-        # TODO: Implement actual context injection into agent memory
-        # This would involve:
-        # 1. Formatting context for agent consumption
-        # 2. Adding to agent's working memory
-        # 3. Updating agent's context window
-        
-        _logger.info(
-            "agent_context_injection_completed",
-            target_agent_id=agent_id,
-            context_id=str(context.context_id),
-        )
+        try:
+            # 1. Format context for agent consumption
+            formatted_context = self._format_context_for_agent(context)
+            
+            # 2. Get or create agent retriever
+            target_retriever = await get_agent_context_retriever(agent_id)
+            
+            # 3. Store in agent's context cache
+            cache_key = f"injected_{context.context_id}"
+            target_retriever._context_cache[cache_key] = context
+            
+            # 4. Update agent's working memory if available
+            try:
+                from mindflow_backend.services.memory import get_memory_facade_service
+                memory_service = get_memory_facade_service()
+                
+                # Store as a memory entry
+                await memory_service.store_memory(
+                    session_id=str(context.session_id),
+                    agent_id=agent_id,
+                    content=formatted_context,
+                    metadata={
+                        "context_type": "injected",
+                        "source_context_id": str(context.context_id),
+                        "relevance_score": context.relevance_score,
+                    }
+                )
+            except Exception as mem_exc:
+                _logger.debug("memory_store_failed", error=str(mem_exc))
+                # Continue even if memory storage fails
+            
+            _logger.info(
+                "agent_context_injection_completed",
+                target_agent_id=agent_id,
+                context_id=str(context.context_id),
+                cache_key=cache_key,
+            )
+            
+        except Exception as exc:
+            _logger.error(
+                "agent_context_injection_failed",
+                target_agent_id=agent_id,
+                context_id=str(context.context_id),
+                error=str(exc),
+            )
+            raise
     
     async def update_context_during_execution(
         self,
@@ -278,13 +314,48 @@ class AgentContextRetriever:
             token_count=token_count,
         )
         
-        # TODO: Implement real-time context updates
-        # This would involve:
-        # 1. Creating embeddings for new content
-        # 2. Storing in vector database
-        # 3. Updating context cache
+        try:
+            # Initialize if needed
+            if not self.vector_store:
+                await self.initialize()
+            
+            # 1. Create embeddings for new content
+            embedding = await self.embedding_provider.generate_embedding(new_content)
+            
+            # 2. Create collection for session if it doesn't exist
+            await self.vector_store.create_session_collection(session_id)
+            
+            # 3. Store in vector database
+            await self.vector_store.store_vectors(
+                session_id=session_id,
+                vectors=[{
+                    "vector": embedding,
+                    "content": new_content,
+                    "metadata": {
+                        "agent_id": agent_id,
+                        "timestamp": self._get_timestamp(),
+                        "context_type": "real_time_update",
+                        "token_count": token_count,
+                    },
+                }],
+            )
+            
+            _logger.info(
+                "agent_context_embedding_created",
+                agent_id=agent_id,
+                session_id=session_id,
+                content_length=len(new_content),
+            )
+            
+        except Exception as exc:
+            _logger.warning(
+                "agent_context_embedding_failed",
+                agent_id=agent_id,
+                session_id=session_id,
+                error=str(exc),
+            )
         
-        # Clear relevant cache entries
+        # 4. Clear relevant cache entries
         if hasattr(self.cache, 'invalidate_session'):
             self.cache.invalidate_session(session_id)
         else:
@@ -360,10 +431,18 @@ class AgentContextRetriever:
         if not search_results:
             return f"No relevant context found for query: {query}"
         
-        context_parts = [f"Context for query: {query}"]
+        context_parts = [f"Context for query: {query}", ""]
         for i, result in enumerate(search_results, 1):
-            # TODO: Format actual search results
-            context_parts.append(f"{i}. [Search result {i}]")
+            # Format actual search result with available fields
+            content = result.get('content', result.get('text', '[No content]'))
+            source = result.get('source', result.get('session_id', 'unknown'))
+            relevance = result.get('relevance_score', result.get('score', 0))
+            
+            # Truncate content if too long
+            if len(content) > 500:
+                content = content[:497] + "..."
+            
+            context_parts.append(f"{i}. [Relevance: {relevance:.2f}] From {source}:\n{content}")
         
         return "\n\n".join(context_parts)
     
@@ -372,10 +451,89 @@ class AgentContextRetriever:
         session_id: str,
         context_window: tuple[int, int],
     ) -> str:
-        """Get context from a specific token range."""
-        # TODO: Implement actual range-based context retrieval
-        return f"Context from token range {context_window[0]}-{context_window[1]} in session {session_id}"
+        """Get context from a specific token range using session messages."""
+        try:
+            from mindflow_backend.infra.database.connection import get_db_session
+            from mindflow_backend.db.models import Session, Message
+            from sqlalchemy import select
+            
+            start_token, end_token = context_window
+            
+            async with get_db_session() as session:
+                # Get session messages within token range
+                # Note: This is a simplified implementation - real token-based
+                # retrieval would require token position tracking
+                stmt = (
+                    select(Message)
+                    .where(Message.session_id == session_id)
+                    .order_by(Message.created_at)
+                )
+                
+                result = await session.execute(stmt)
+                messages = result.scalars().all()
+                
+                # Approximate token-based extraction
+                # (In production, you'd track token positions per message)
+                current_tokens = 0
+                selected_messages = []
+                
+                for msg in messages:
+                    msg_tokens = len(msg.content) // 4 if msg.content else 0
+                    
+                    if current_tokens >= start_token and current_tokens < end_token:
+                        selected_messages.append(msg)
+                    
+                    current_tokens += msg_tokens
+                    
+                    if current_tokens >= end_token:
+                        break
+                
+                if selected_messages:
+                    context_text = "\n\n".join([
+                        f"[{msg.role.upper()}]: {msg.content[:200]}"
+                        for msg in selected_messages
+                    ])
+                    return f"Context from token range {start_token}-{end_token} in session {session_id}:\n\n{context_text}"
+                else:
+                    return f"No messages found in token range {start_token}-{end_token}"
+                    
+        except Exception as exc:
+            return f"Could not retrieve range context: {exc}"
     
+    def _calculate_relevance_score(self, content: str, query: str | None) -> float:
+        """Calculate relevance score based on content and query match.
+        
+        Args:
+            content: Retrieved context content
+            query: Original search query (if semantic search)
+            
+        Returns:
+            Relevance score between 0.0 and 1.0
+        """
+        if not query:
+            # Range-based retrieval - default to medium-high relevance
+            return 0.75
+        
+        if not content:
+            return 0.0
+        
+        # Simple keyword matching for relevance calculation
+        query_terms = query.lower().split()
+        content_lower = content.lower()
+        
+        if not query_terms:
+            return 0.5
+        
+        # Count matching terms
+        matches = sum(1 for term in query_terms if term in content_lower)
+        match_ratio = matches / len(query_terms)
+        
+        # Calculate score based on match ratio
+        # Perfect match = 1.0, no match = 0.3 (minimum)
+        score = max(0.3, min(1.0, 0.3 + (match_ratio * 0.7)))
+        
+        return round(score, 2)
+
     def _generate_context_id(self) -> str:
         """Generate a unique context ID."""
         from uuid import uuid4
@@ -428,7 +586,42 @@ async def get_agent_context_retriever(agent_id: str) -> AgentContextRetriever:
 async def inject_context_to_all_agents(
     context: RetrievedContext,
     agent_ids: list[str] | None = None,
-) -> None:
-    """Inject context into multiple agents."""
-    # TODO: Implement batch context injection
-    pass
+) -> dict[str, bool]:
+    """Inject context into multiple agents.
+    
+    Args:
+        context: The context to inject
+        agent_ids: Optional list of specific agent IDs, or None for all active agents
+        
+    Returns:
+        Dictionary mapping agent_id to success status
+    """
+    results = {}
+    
+    try:
+        # If no specific agents provided, get all active agents
+        if agent_ids is None:
+            from mindflow_backend.execution.agent_team_manager import AgentTeamManager
+            team_manager = AgentTeamManager()
+            # Collect all agents from active teams
+            agent_ids = set()
+            for team_data in team_manager._teams.values():
+                agent_ids.update(team_data.get("agent_ids", []))
+            agent_ids = list(agent_ids)
+        
+        # Inject context to each agent
+        for agent_id in agent_ids:
+            try:
+                retriever = await get_agent_context_retriever(agent_id)
+                # Store context in retriever's cache
+                cache_key = f"injected_{context.context_id}"
+                retriever._context_cache[cache_key] = context
+                results[agent_id] = True
+            except Exception as exc:
+                results[agent_id] = False
+        
+        return results
+        
+    except Exception as exc:
+        # Return failure for all agents if global error
+        return {agent_id: False for agent_id in (agent_ids or [])}

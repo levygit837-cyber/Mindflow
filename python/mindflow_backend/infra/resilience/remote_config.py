@@ -206,14 +206,135 @@ class RemoteCircuitBreakerConfig:
         # LOCAL provider doesn't need refresh
 
     async def _refresh_growthbook(self) -> None:
-        """Refresh configs from GrowthBook."""
-        # TODO: Implement GrowthBook integration
-        _logger.debug("growthbook_refresh_skipped", reason="not_implemented")
+        """Refresh configs from GrowthBook API."""
+        try:
+            # Try to import growthbook SDK
+            try:
+                from growthbook import GrowthBook
+            except ImportError:
+                _logger.warning(
+                    "growthbook_sdk_not_available",
+                    message="Install with: pip install growthbook",
+                )
+                return
+            
+            # Get GrowthBook configuration from settings
+            from mindflow_backend.config import settings
+            
+            api_host = getattr(settings, 'GROWTHBOOK_API_HOST', None)
+            client_key = getattr(settings, 'GROWTHBOOK_CLIENT_KEY', None)
+            
+            if not api_host or not client_key:
+                _logger.warning(
+                    "growthbook_config_missing",
+                    message="GROWTHBOOK_API_HOST and GROWTHBOOK_CLIENT_KEY required",
+                )
+                return
+            
+            # Initialize GrowthBook client
+            gb = GrowthBook(
+                api_host=api_host,
+                client_key=client_key,
+            )
+            
+            # Fetch features
+            await gb.fetch_features()
+            
+            # Update circuit breaker configs from GrowthBook features
+            for service_name in self._configs:
+                feature_key = f"circuit_breaker_{service_name}"
+                
+                if gb.is_on(feature_key):
+                    feature_value = gb.get_feature_value(feature_key, {})
+                    
+                    if isinstance(feature_value, dict):
+                        config = self._configs[service_name]
+                        
+                        # Update config from feature flags
+                        if 'enabled' in feature_value:
+                            config.enabled = feature_value['enabled']
+                        if 'failure_threshold' in feature_value:
+                            config.failure_threshold = feature_value['failure_threshold']
+                        if 'recovery_timeout' in feature_value:
+                            config.recovery_timeout = feature_value['recovery_timeout']
+                        
+                        _logger.info(
+                            "growthbook_config_updated",
+                            service=service_name,
+                            feature=feature_key,
+                        )
+            
+            _logger.info("growthbook_refresh_completed")
+            
+        except Exception as e:
+            _logger.error("growthbook_refresh_failed", error=str(e))
 
     async def _refresh_launchdarkly(self) -> None:
         """Refresh configs from LaunchDarkly."""
-        # TODO: Implement LaunchDarkly integration
-        _logger.debug("launchdarkly_refresh_skipped", reason="not_implemented")
+        try:
+            # Try to import LaunchDarkly SDK
+            try:
+                import ldclient
+                from ldclient.config import Config as LDConfig
+            except ImportError:
+                _logger.warning(
+                    "launchdarkly_sdk_not_available",
+                    message="Install with: pip install launchdarkly-server-sdk",
+                )
+                return
+            
+            # Get LaunchDarkly configuration from settings
+            from mindflow_backend.config import settings
+            
+            sdk_key = getattr(settings, 'LAUNCHDARKLY_SDK_KEY', None)
+            
+            if not sdk_key:
+                _logger.warning(
+                    "launchdarkly_config_missing",
+                    message="LAUNCHDARKLY_SDK_KEY required",
+                )
+                return
+            
+            # Initialize LaunchDarkly client
+            ldclient.set_config(LDConfig(sdk_key))
+            client = ldclient.get()
+            
+            if not client.is_initialized():
+                _logger.error("launchdarkly_client_not_initialized")
+                return
+            
+            # Create evaluation context
+            from ldclient.evaluation_context import EvaluationContext
+            
+            context = EvaluationContext.builder("mindflow-service").build()
+            
+            # Update circuit breaker configs from LaunchDarkly flags
+            for service_name in self._configs:
+                flag_key = f"circuit-breaker-{service_name}"
+                
+                flag_value = client.variation(flag_key, context, {})
+                
+                if isinstance(flag_value, dict):
+                    config = self._configs[service_name]
+                    
+                    # Update config from feature flags
+                    if 'enabled' in flag_value:
+                        config.enabled = flag_value['enabled']
+                    if 'failureThreshold' in flag_value:
+                        config.failure_threshold = flag_value['failureThreshold']
+                    if 'recoveryTimeout' in flag_value:
+                        config.recovery_timeout = flag_value['recoveryTimeout']
+                    
+                    _logger.info(
+                        "launchdarkly_config_updated",
+                        service=service_name,
+                        flag=flag_key,
+                    )
+            
+            _logger.info("launchdarkly_refresh_completed")
+            
+        except Exception as e:
+            _logger.error("launchdarkly_refresh_failed", error=str(e))
 
     def get_all_configs(self) -> dict[str, dict[str, Any]]:
         """Get all configurations.

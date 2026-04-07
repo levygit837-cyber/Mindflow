@@ -211,10 +211,22 @@ def _convert_new_tool(tool: Any):
         async def _arun(**kwargs: Any) -> str:
             """Async execution wrapper that injects ToolContext."""
             try:
-                # Create minimal context
-                # TODO: Inject real permission_manager from runtime
+                # Try to get permission context from runtime if available
+                permission_context = None
+                try:
+                    # Try to get from session or runtime context
+                    from mindflow_backend.services.permission import get_permission_manager
+                    
+                    perm_manager = get_permission_manager()
+                    if perm_manager:
+                        permission_context = await perm_manager.get_context_for_tool(_tool.name)
+                except ImportError:
+                    pass  # Permission system not available
+                except Exception:
+                    pass  # Silently fall back to None
+                
                 context = ToolContext(
-                    permission_context=None,
+                    permission_context=permission_context,
                     metadata={
                         "tool_name": _tool.name,
                         "tool_input": kwargs,

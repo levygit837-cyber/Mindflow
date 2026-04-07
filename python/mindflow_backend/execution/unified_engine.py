@@ -370,11 +370,19 @@ class UnifiedExecutionEngine:
 
         # Run team session
         from mindflow_backend.execution.teams.team_orchestrator import TeamOrchestrator
+        from mindflow_backend.execution.missions import MissionLauncher
+        from mindflow_backend.communication import CommunicationBus
+
+        # Initialize mission launcher and comm bus if not already set
+        if not hasattr(self, '_mission_launcher') or self._mission_launcher is None:
+            self._mission_launcher = MissionLauncher()
+        if not hasattr(self, '_comm_bus') or self._comm_bus is None:
+            self._comm_bus = CommunicationBus()
 
         team_orchestrator = TeamOrchestrator(
             team_manager=team_manager,
-            mission_launcher=None,  # TODO: inject when available
-            comm_bus=None,  # TODO: inject when available
+            mission_launcher=self._mission_launcher,
+            comm_bus=self._comm_bus,
         )
 
         team_result = await team_orchestrator.run_full_team_session(
@@ -397,12 +405,62 @@ class UnifiedExecutionEngine:
         context: ExecutionContext,
         state: ExecutionState,
     ) -> AsyncGenerator[dict[str, Any], None]:
-        """Stream team session execution."""
-        # TODO: Implement streaming for team sessions
-        # For now, execute non-streaming and yield result
-        result = await self._execute_team_session(context, state)
-        yield {"type": "response", "data": result.response}
-        yield {"type": "done"}
+        """Stream team session execution with real-time updates."""
+        from mindflow_backend.execution.teams.team_orchestrator import TeamOrchestrator
+        from mindflow_backend.communication import CommunicationBus
+        
+        team_manager = self._get_team_manager()
+        
+        # Get agent IDs from decision
+        agent_ids = context.decision.agent_ids
+        if not agent_ids:
+            yield {"type": "error", "data": "No agents specified for team session"}
+            return
+        
+        # Initialize communication bus for streaming
+        comm_bus = CommunicationBus()
+        
+        try:
+            # Stream team formation
+            yield {"type": "status", "data": f"Forming team with {len(agent_ids)} agents..."}
+            
+            # Stream agent initialization
+            for agent_id in agent_ids:
+                yield {"type": "agent_start", "data": {"agent_id": agent_id, "status": "initializing"}}
+            
+            # Execute team session (non-streaming for now, but with progress updates)
+            team_orchestrator = TeamOrchestrator(
+                team_manager=team_manager,
+                mission_launcher=None,
+                comm_bus=comm_bus,
+            )
+            
+            yield {"type": "status", "data": "Executing team missions..."}
+            
+            team_result = await team_orchestrator.run_full_team_session(
+                task=context.message,
+                agent_ids=agent_ids,
+                session_id=context.session_id,
+            )
+            
+            # Stream mission results
+            for i, mission_result in enumerate(team_result.mission_results):
+                yield {
+                    "type": "mission_complete",
+                    "data": {
+                        "mission_index": i,
+                        "success": mission_result.get("success", False),
+                        "agent": mission_result.get("agent_id"),
+                    }
+                }
+            
+            # Final response
+            yield {"type": "response", "data": team_result.synthesized_response}
+            yield {"type": "done"}
+            
+        except Exception as exc:
+            yield {"type": "error", "data": f"Team session failed: {exc}"}
+            yield {"type": "done"}
 
     # ─────────────────────────────────────────────────────────────────
     # Other Strategies (CHAIN, GRAPH, DIRECT_RESPONSE)
@@ -413,28 +471,113 @@ class UnifiedExecutionEngine:
         context: ExecutionContext,
         state: ExecutionState,
     ) -> ExecutionResult:
-        """Execute chain strategy."""
-        # TODO: Implement chain execution
-        return ExecutionResult.from_state(
-            state=state,
-            response="Chain execution not yet implemented",
-            success=False,
-            error="Not implemented",
-        )
+        """Execute chain strategy - sequential agent execution."""
+        from mindflow_backend.execution.chains import ChainExecutor
+        from mindflow_backend.agents.tools import get_tools_for_scopes
+        from mindflow_backend.infra.llm import get_model_for_provider
+        
+        try:
+            # Get chain configuration from decision
+            chain_steps = context.decision.chain_steps or []
+            if not chain_steps:
+                # Default: single step with primary agent
+                chain_steps = [{"agent": context.decision.agent, "task": context.message}]
+            
+            # Initialize chain executor
+            llm = get_model_for_provider(context.provider, context.model)
+            tools = get_tools_for_scopes(
+                context.decision.tools or [],
+                sandbox_root=context.folder_path,
+            )
+            
+            executor = ChainExecutor(
+                llm=llm,
+                tools=tools,
+                session_id=context.session_id,
+            )
+            
+            # Execute chain
+            chain_result = await executor.execute_chain(
+                steps=chain_steps,
+                initial_input=context.message,
+                context={
+                    "memory_context": context.memory_context,
+                    "conversation_history": context.conversation_history,
+                }
+            )
+            
+            # Update state
+            state.chain_results = chain_result.get("step_results", [])
+            
+            return ExecutionResult.from_state(
+                state=state,
+                response=chain_result.get("final_output", ""),
+                success=chain_result.get("success", False),
+                error=chain_result.get("error"),
+            )
+            
+        except Exception as exc:
+            return ExecutionResult.from_state(
+                state=state,
+                response="",
+                success=False,
+                error=f"Chain execution failed: {exc}",
+            )
 
     async def _execute_graph(
         self,
         context: ExecutionContext,
         state: ExecutionState,
     ) -> ExecutionResult:
-        """Execute graph strategy."""
-        # TODO: Implement graph execution
-        return ExecutionResult.from_state(
-            state=state,
-            response="Graph execution not yet implemented",
-            success=False,
-            error="Not implemented",
-        )
+        """Execute graph strategy - DAG-based workflow execution."""
+        from mindflow_backend.execution.graphs import GraphExecutor
+        from mindflow_backend.agents.tools import get_tools_for_scopes
+        from mindflow_backend.infra.llm import get_model_for_provider
+        
+        try:
+            # Get graph configuration from decision
+            graph_config = context.decision.graph_config
+            if not graph_config:
+                # Fallback to simple sequential execution
+                return await self._execute_chain(context, state)
+            
+            # Initialize graph executor
+            llm = get_model_for_provider(context.provider, context.model)
+            tools = get_tools_for_scopes(
+                context.decision.tools or [],
+                sandbox_root=context.folder_path,
+            )
+            
+            executor = GraphExecutor(
+                llm=llm,
+                tools=tools,
+                session_id=context.session_id,
+            )
+            
+            # Execute graph
+            graph_result = await executor.execute_graph(
+                graph=graph_config,
+                initial_input=context.message,
+                context={
+                    "memory_context": context.memory_context,
+                    "conversation_history": context.conversation_history,
+                }
+            )
+            
+            # Update state
+            state.graph_results = graph_result.get("node_results", {})
+            state.execution_order = graph_result.get("execution_order", [])
+            
+            return ExecutionResult.from_state(
+                state=state,
+                response=graph_result.get("final_output", ""),
+                success=graph_result.get("success", False),
+                error=graph_result.get("error"),
+            )
+            
+        except Exception as exc:
+            # Fallback to chain execution if graph fails
+            return await self._execute_chain(context, state)
 
     async def _execute_direct_response(
         self,

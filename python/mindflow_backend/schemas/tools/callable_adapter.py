@@ -84,14 +84,33 @@ def callable_to_langchain(callable_tool: CallableTool) -> Any:
     async def _arun(**kwargs: Any) -> str:
         """Async execution wrapper that creates ToolContext and calls the tool."""
         try:
-            # Create minimal context
-            # TODO: Inject real permission_context from runtime
+            # Build permission context from runtime
+            permission_context = None
+            try:
+                from mindflow_backend.agents.tools.base.langchain_adapter import (
+                    PermissionManager,
+                    PermissionContext,
+                )
+                
+                # Create permission manager and context
+                permission_manager = PermissionManager()
+                permission_context = PermissionContext(
+                    session_id=kwargs.get("session_id"),
+                    agent_id=kwargs.get("agent_id"),
+                    permissions=permission_manager.get_tool_permissions(_tool.name),
+                    constraints=permission_manager.get_tool_constraints(_tool.name),
+                )
+            except Exception as perm_exc:
+                _logger.debug(f"Could not build full permission context: {perm_exc}")
+                # Continue with None permission context
+            
             context = ToolContext(
-                permission_context=None,
+                permission_context=permission_context,
                 metadata={
                     "tool_name": _tool.name,
                     "tool_input": kwargs,
                     "adapter": "callable_to_langchain",
+                    "has_permissions": permission_context is not None,
                 },
             )
 

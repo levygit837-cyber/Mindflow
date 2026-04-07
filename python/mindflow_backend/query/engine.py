@@ -942,8 +942,11 @@ class QueryEngine:
                 callable_tools, _ = separate_tools(tools)
 
                 # Build ToolContext for callable execution
+                # Get permission context from agent's sandbox configuration
+                permission_context = self._build_permission_context(agent, task)
+                
                 tool_context = ToolContext(
-                    permission_context=None,  # TODO: Add permission context
+                    permission_context=permission_context,
                     metadata={
                         "session_id": session_id,
                         "execution_id": child_execution_id,
@@ -1131,6 +1134,42 @@ Use this context to inform your work, but focus on the current objective.
 
         return task_prompt
 
+    def _build_permission_context(self, agent, task: DelegationTask) -> dict[str, Any]:
+        """Build permission context based on agent sandbox configuration and task.
+        
+        Args:
+            agent: The agent configuration
+            task: The delegation task
+            
+        Returns:
+            Dictionary with permission settings
+        """
+        # Base permissions from agent sandbox mode
+        sandbox_mode = getattr(agent, 'sandbox', None)
+        
+        permissions = {
+            "sandbox_mode": str(sandbox_mode) if sandbox_mode else "none",
+            "filesystem": {
+                "read": True,  # Always allow read
+                "write": sandbox_mode != SandboxMode.READ_ONLY if sandbox_mode else False,
+                "delete": sandbox_mode == SandboxMode.READ_WRITE if sandbox_mode else False,
+            },
+            "network": {
+                "http_requests": True,
+                "external_apis": True,
+            },
+            "execution": {
+                "shell_commands": sandbox_mode != SandboxMode.READ_ONLY if sandbox_mode else False,
+                "code_execution": True,
+            },
+            "task_scope": {
+                "allowed_paths": [task.root_dir] if task.root_dir else [],
+                "exclusions": task.exclusions or [],
+            },
+        }
+        
+        return permissions
+
     def _create_sandbox_for_agent(self, agent, task=None):
         """Create appropriate sandbox for the agent."""
         # Priority: task.root_dir > settings.working_path > None
@@ -1145,12 +1184,95 @@ Use this context to inform your work, but focus on the current objective.
         )
 
     def _extract_key_findings(self, response: str, expected_output: str) -> str:
-        """Extract key findings from agent response."""
-        # For now, return the full response but compressed
-        # TODO: Implement smarter extraction based on expected_output
+        """Extract key findings from agent response based on expected output format.
+        
+        Uses expected_output hint to guide extraction strategy.
+        """
+        if not response:
+            return ""
+        
+        # Parse expected_output to determine extraction strategy
+        expected_lower = (expected_output or "").lower()
+        
+        # Strategy 1: Summary/Overview - extract first paragraph or executive summary
+        if any(keyword in expected_lower for keyword in ["summary", "overview", "executive"]):
+            # Look for summary section or take first substantial paragraph
+            lines = response.split('\n')
+            summary_lines = []
+            in_summary = False
+            
+            for line in lines:
+                line_stripped = line.strip().lower()
+                # Detect summary section headers
+                if any(marker in line_stripped for marker in ['summary:', 'overview:', 'executive summary:', 'key findings:']):
+                    in_summary = True
+                    continue
+                # Stop at next major section
+                if in_summary and line_stripped.endswith(':') and len(line_stripped) > 3:
+                    break
+                if in_summary and line.strip():
+                    summary_lines.append(line.strip())
+                    if len(summary_lines) >= 5:  # Limit to 5 lines
+                        break
+            
+            if summary_lines:
+                return ' '.join(summary_lines)
+            
+            # Fallback: first paragraph if no summary section found
+            first_para = response.split('\n\n')[0] if '\n\n' in response else response[:500]
+            return first_para[:800] if len(first_para) > 800 else first_para
+        
+        # Strategy 2: List/Bullet points - extract list items
+        if any(keyword in expected_lower for keyword in ["list", "bullet", "items", "points"]):
+            import re
+            # Find bullet points or numbered items
+            bullet_pattern = r'^[\s]*[-•*\d]+[.\s]+(.+)$'
+            matches = re.findall(bullet_pattern, response, re.MULTILINE)
+            if matches:
+                return '\n'.join(f"- {m[:200]}" for m in matches[:10])  # Top 10 items, max 200 chars each
+        
+        # Strategy 3: Code/Technical - extract code blocks and explanations
+        if any(keyword in expected_lower for keyword in ["code", "implementation", "technical", "solution"]):
+            import re
+            # Find code blocks
+            code_blocks = re.findall(r'```[\w]*\n(.*?)```', response, re.DOTALL)
+            if code_blocks:
+                # Return first code block with some context
+                first_block = code_blocks[0][:500]
+                return f"Code solution provided:\n```\n{first_block}\n```"
+            
+            # Look for function/class definitions
+            func_pattern = r'(def\s+\w+\s*\([^)]*\):|class\s+\w+[^(]*:)'  
+            func_matches = re.findall(func_pattern, response)
+            if func_matches:
+                return f"Implemented {len(func_matches)} function(s)/class(es): {', '.join(func_matches[:3])}"
+        
+        # Strategy 4: Analysis/Review - extract conclusions and recommendations
+        if any(keyword in expected_lower for keyword in ["analysis", "review", "assessment", "evaluation"]):
+            import re
+            # Look for conclusion/recommendation sections
+            conclusion_patterns = [
+                r'(?:conclusion|concluding|in conclusion|summary)[s]?:?\s*(.+?)(?=\n\n|\Z)',
+                r'(?:recommendation|suggestion)[s]?:?\s*(.+?)(?=\n\n|\Z)',
+            ]
+            for pattern in conclusion_patterns:
+                match = re.search(pattern, response, re.IGNORECASE | re.DOTALL)
+                if match:
+                    conclusion = match.group(1).strip()[:800]
+                    return conclusion
+        
+        # Default strategy: Compress long responses intelligently
         if len(response) > 1000:
-            # Compress long responses
+            # Try to find a good breaking point (end of sentence/paragraph)
+            truncated = response[:800]
+            # Find last sentence end
+            last_period = truncated.rfind('.')
+            last_newline = truncated.rfind('\n')
+            break_point = max(last_period, last_newline)
+            if break_point > 400:  # Only use if we have substantial content
+                return response[:break_point] + "... [truncated]"
             return response[:500] + "... [truncated for context efficiency]"
+        
         return response
 
     def _extract_files_mentioned(self, response: str) -> list[str]:

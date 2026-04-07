@@ -161,9 +161,12 @@ class ImplementNode(BaseNode):
                     read_file_safe,
                 )
 
+                # Detect project type from files in step
+                project_type = self._detect_project_type(step.get("files", []))
+
                 # Get project context
                 project_context = {
-                    "project_type": "python",  # TODO: Get from state
+                    "project_type": project_type,
                 }
 
                 # Generate code using LLM
@@ -186,7 +189,8 @@ class ImplementNode(BaseNode):
 
             elif action == "fix":
                 # Bug fix step - generate fix with LLM
-                project_context = {"project_type": "python"}
+                project_type = self._detect_project_type(step.get("files", []))
+                project_context = {"project_type": project_type}
 
                 code_generation = await generate_code_with_llm(
                     step=step,
@@ -206,7 +210,8 @@ class ImplementNode(BaseNode):
 
             elif action == "refactor":
                 # Refactoring step
-                project_context = {"project_type": "python"}
+                project_type = self._detect_project_type(step.get("files", []))
+                project_context = {"project_type": project_type}
 
                 code_generation = await generate_code_with_llm(
                     step=step,
@@ -263,6 +268,40 @@ class ImplementNode(BaseNode):
             _logger.error("step_execution_failed", action=action, error=str(e))
 
         return result
+
+    def _detect_project_type(self, files: list[str]) -> str:
+        """Detect project type from file extensions.
+        
+        Args:
+            files: List of file paths
+            
+        Returns:
+            Detected project type
+        """
+        if not files:
+            return "unknown"
+        
+        # Count extensions
+        ext_counts = {}
+        for f in files:
+            ext = f.split(".")[-1].lower() if "." in f else ""
+            ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        
+        # Determine type based on most common extension
+        if ext_counts.get("py", 0) > 0:
+            return "python"
+        elif ext_counts.get("ts", 0) > 0 or ext_counts.get("tsx", 0) > 0:
+            return "typescript"
+        elif ext_counts.get("js", 0) > 0 or ext_counts.get("jsx", 0) > 0:
+            return "javascript"
+        elif ext_counts.get("go", 0) > 0:
+            return "go"
+        elif ext_counts.get("rs", 0) > 0:
+            return "rust"
+        elif ext_counts.get("java", 0) > 0:
+            return "java"
+        else:
+            return "unknown"
 
     def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate required inputs."""

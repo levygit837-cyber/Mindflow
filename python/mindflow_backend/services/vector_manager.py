@@ -8,10 +8,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.infra.database.connection import get_db_session
+
+import numpy as np
 
 _logger = get_logger(__name__)
 
@@ -105,7 +108,7 @@ class VectorDatabase(ABC):
 
 
 class PgVectorDatabase(VectorDatabase):
-    """PostgreSQL pgvector implementation."""
+    """PostgreSQL pgvector implementation using SQLAlchemy."""
     
     def __init__(self, connection_string: str, dimensions: int = 256) -> None:
         """Initialize pgvector database.
@@ -116,12 +119,17 @@ class PgVectorDatabase(VectorDatabase):
         """
         self.connection_string = connection_string
         self.dimensions = dimensions
-        self._connection = None
+        self._initialized = False
     
     async def initialize(self) -> None:
         """Initialize pgvector connection and extension."""
         try:
-            # TODO: Implement actual pgvector connection
+            async with get_db_session() as session:
+                # Enable pgvector extension
+                await session.execute("CREATE EXTENSION IF NOT EXISTS vector")
+                await session.commit()
+            
+            self._initialized = True
             _logger.info("pgvector_initialized", dimensions=self.dimensions)
         except Exception as e:
             _logger.error("pgvector_initialization_failed", error=str(e))
@@ -129,7 +137,33 @@ class PgVectorDatabase(VectorDatabase):
     
     async def create_collection(self, name: str, dimension: int) -> None:
         """Create a pgvector table for the collection."""
-        # TODO: Implement actual table creation with pgvector extension
+        if not self._initialized:
+            await self.initialize()
+        
+        # Sanitize table name to prevent SQL injection
+        table_name = self._sanitize_table_name(name)
+        
+        async with get_db_session() as session:
+            # Create table with vector column
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    vector vector({dimension}),
+                    metadata JSONB DEFAULT '{{}}',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                )
+            """
+            await session.execute(create_sql)
+            
+            # Create index for similarity search
+            index_sql = f"""
+                CREATE INDEX IF NOT EXISTS idx_{table_name}_vector 
+                ON {table_name} USING ivfflat (vector vector_cosine_ops)
+            """
+            await session.execute(index_sql)
+            await session.commit()
+        
         _logger.info("pgvector_collection_created", name=name, dimension=dimension)
     
     async def insert_vectors(
@@ -138,8 +172,44 @@ class PgVectorDatabase(VectorDatabase):
         vectors: list[dict[str, Any]],
     ) -> list[str]:
         """Insert vectors into pgvector table."""
-        # TODO: Implement actual vector insertion
-        vector_ids = [str(UUID()) for _ in vectors]
+        if not self._initialized:
+            await self.initialize()
+        
+        table_name = self._sanitize_table_name(collection_name)
+        vector_ids = []
+        
+        async with get_db_session() as session:
+            for vector_data in vectors:
+                vector_id = str(vector_data.get("id", uuid4()))
+                vector = vector_data.get("vector", [])
+                metadata = vector_data.get("metadata", {})
+                
+                # Convert vector to string format for pgvector
+                vector_str = self._vector_to_pgvector_str(vector)
+                
+                insert_sql = f"""
+                    INSERT INTO {table_name} (id, vector, metadata)
+                    VALUES (:id, :vector::vector, :metadata::jsonb)
+                    ON CONFLICT (id) DO UPDATE SET
+                        vector = EXCLUDED.vector,
+                        metadata = EXCLUDED.metadata,
+                        updated_at = NOW()
+                    RETURNING id
+                """
+                result = await session.execute(
+                    insert_sql,
+                    {
+                        "id": vector_id,
+                        "vector": vector_str,
+                        "metadata": metadata,
+                    }
+                )
+                row = result.fetchone()
+                if row:
+                    vector_ids.append(str(row[0]))
+            
+            await session.commit()
+        
         _logger.info(
             "pgvector_vectors_inserted",
             collection_name=collection_name,
@@ -155,9 +225,52 @@ class PgVectorDatabase(VectorDatabase):
         score_threshold: float = 0.0,
         filter_dict: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
-        """Search vectors using pgvector similarity."""
-        # TODO: Implement actual vector search with cosine similarity
-        results = []
+        """Search vectors using pgvector cosine similarity."""
+        if not self._initialized:
+            await self.initialize()
+        
+        table_name = self._sanitize_table_name(collection_name)
+        vector_str = self._vector_to_pgvector_str(query_vector)
+        
+        async with get_db_session() as session:
+            # Build query with cosine similarity
+            # 1 - cosine_distance gives us cosine similarity (0 to 1)
+            search_sql = f"""
+                SELECT 
+                    id,
+                    metadata,
+                    1 - (vector <=> :query_vector::vector) as score
+                FROM {table_name}
+                WHERE 1 - (vector <=> :query_vector::vector) >= :threshold
+            """
+            
+            params = {
+                "query_vector": vector_str,
+                "threshold": score_threshold,
+            }
+            
+            # Add metadata filters if provided
+            if filter_dict:
+                for key, value in filter_dict.items():
+                    search_sql += f" AND metadata->>:filter_key_{key} = :filter_val_{key}"
+                    params[f"filter_key_{key}"] = key
+                    params[f"filter_val_{key}"] = str(value)
+            
+            search_sql += " ORDER BY score DESC LIMIT :limit"
+            params["limit"] = limit
+            
+            result = await session.execute(search_sql, params)
+            rows = result.fetchall()
+            
+            results = [
+                {
+                    "id": str(row[0]),
+                    "metadata": row[1],
+                    "score": float(row[2]),
+                }
+                for row in rows
+            ]
+        
         _logger.info(
             "pgvector_search_completed",
             collection_name=collection_name,
@@ -173,7 +286,22 @@ class PgVectorDatabase(VectorDatabase):
         vector_ids: list[str],
     ) -> None:
         """Delete vectors from pgvector table."""
-        # TODO: Implement actual vector deletion
+        if not self._initialized:
+            await self.initialize()
+        
+        if not vector_ids:
+            return
+        
+        table_name = self._sanitize_table_name(collection_name)
+        
+        async with get_db_session() as session:
+            delete_sql = f"""
+                DELETE FROM {table_name}
+                WHERE id = ANY(:vector_ids)
+            """
+            await session.execute(delete_sql, {"vector_ids": vector_ids})
+            await session.commit()
+        
         _logger.info(
             "pgvector_vectors_deleted",
             collection_name=collection_name,
@@ -186,7 +314,29 @@ class PgVectorDatabase(VectorDatabase):
         vector_id: str,
     ) -> dict[str, Any] | None:
         """Get vector from pgvector table."""
-        # TODO: Implement actual vector retrieval
+        if not self._initialized:
+            await self.initialize()
+        
+        table_name = self._sanitize_table_name(collection_name)
+        
+        async with get_db_session() as session:
+            select_sql = f"""
+                SELECT id, vector, metadata, created_at, updated_at
+                FROM {table_name}
+                WHERE id = :vector_id
+            """
+            result = await session.execute(select_sql, {"vector_id": vector_id})
+            row = result.fetchone()
+            
+            if row:
+                return {
+                    "id": str(row[0]),
+                    "vector": self._pgvector_str_to_list(row[1]),
+                    "metadata": row[2],
+                    "created_at": row[3].isoformat() if row[3] else None,
+                    "updated_at": row[4].isoformat() if row[4] else None,
+                }
+        
         return None
     
     async def update_vector(
@@ -197,7 +347,43 @@ class PgVectorDatabase(VectorDatabase):
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update vector in pgvector table."""
-        # TODO: Implement actual vector update
+        if not self._initialized:
+            await self.initialize()
+        
+        table_name = self._sanitize_table_name(collection_name)
+        vector_str = self._vector_to_pgvector_str(vector)
+        
+        async with get_db_session() as session:
+            if metadata:
+                update_sql = f"""
+                    UPDATE {table_name}
+                    SET vector = :vector::vector,
+                        metadata = metadata || :metadata::jsonb,
+                        updated_at = NOW()
+                    WHERE id = :vector_id
+                """
+                await session.execute(
+                    update_sql,
+                    {
+                        "vector": vector_str,
+                        "metadata": metadata,
+                        "vector_id": vector_id,
+                    }
+                )
+            else:
+                update_sql = f"""
+                    UPDATE {table_name}
+                    SET vector = :vector::vector,
+                        updated_at = NOW()
+                    WHERE id = :vector_id
+                """
+                await session.execute(
+                    update_sql,
+                    {"vector": vector_str, "vector_id": vector_id}
+                )
+            
+            await session.commit()
+        
         _logger.info(
             "pgvector_vector_updated",
             collection_name=collection_name,
@@ -206,9 +392,37 @@ class PgVectorDatabase(VectorDatabase):
     
     async def close(self) -> None:
         """Close pgvector connection."""
-        if self._connection:
-            # TODO: Implement actual connection closing
-            _logger.info("pgvector_connection_closed")
+        self._initialized = False
+        _logger.info("pgvector_connection_closed")
+    
+    @staticmethod
+    def _sanitize_table_name(name: str) -> str:
+        """Sanitize table name to prevent SQL injection."""
+        # Only allow alphanumeric, underscore, and hyphen
+        import re
+        sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+        # Ensure it starts with a letter
+        if sanitized and not sanitized[0].isalpha():
+            sanitized = 'vec_' + sanitized
+        return sanitized[:63]  # PostgreSQL identifier limit
+    
+    @staticmethod
+    def _vector_to_pgvector_str(vector: list[float]) -> str:
+        """Convert vector list to pgvector string format."""
+        if not vector:
+            return "[]"
+        return "[" + ",".join(str(x) for x in vector) + "]"
+    
+    @staticmethod
+    def _pgvector_str_to_list(vector_str: str) -> list[float]:
+        """Convert pgvector string to list."""
+        if not vector_str or vector_str == "[]":
+            return []
+        # Remove brackets and split
+        content = vector_str.strip("[]")
+        if not content:
+            return []
+        return [float(x) for x in content.split(",")]
 
 
 class QdrantDatabase(VectorDatabase):
@@ -230,16 +444,51 @@ class QdrantDatabase(VectorDatabase):
     async def initialize(self) -> None:
         """Initialize Qdrant client."""
         try:
-            # TODO: Implement actual Qdrant client initialization
-            _logger.info("qdrant_initialized", url=self.url, dimensions=self.dimensions)
+            from qdrant_client import QdrantClient
+            
+            if self.api_key:
+                self._client = QdrantClient(
+                    url=self.url,
+                    api_key=self.api_key,
+                    timeout=30,
+                )
+            else:
+                self._client = QdrantClient(
+                    url=self.url,
+                    timeout=30,
+                )
+            
+            _logger.info("qdrant_initialized", url=self.url)
+        except ImportError:
+            _logger.error("qdrant_client_not_installed")
+            raise ImportError("Install qdrant-client: pip install qdrant-client")
         except Exception as e:
             _logger.error("qdrant_initialization_failed", error=str(e))
             raise
     
     async def create_collection(self, name: str, dimension: int) -> None:
         """Create a Qdrant collection."""
-        # TODO: Implement actual collection creation
-        _logger.info("qdrant_collection_created", name=name, dimension=dimension)
+        try:
+            from qdrant_client.models import Distance, VectorParams
+            
+            # Check if collection exists
+            collections = self._client.get_collections().collections
+            exists = any(c.name == name for c in collections)
+            
+            if not exists:
+                self._client.create_collection(
+                    collection_name=name,
+                    vectors_config=VectorParams(
+                        size=dimension,
+                        distance=Distance.COSINE,
+                    ),
+                )
+                _logger.info("qdrant_collection_created", name=name, dimension=dimension)
+            else:
+                _logger.debug("qdrant_collection_exists", name=name)
+        except Exception as e:
+            _logger.error("qdrant_collection_creation_failed", error=str(e))
+            raise
     
     async def insert_vectors(
         self,
@@ -247,14 +496,39 @@ class QdrantDatabase(VectorDatabase):
         vectors: list[dict[str, Any]],
     ) -> list[str]:
         """Insert vectors into Qdrant collection."""
-        # TODO: Implement actual vector insertion
-        vector_ids = [str(UUID()) for _ in vectors]
-        _logger.info(
-            "qdrant_vectors_inserted",
-            collection_name=collection_name,
-            count=len(vectors),
-        )
-        return vector_ids
+        try:
+            from qdrant_client.models import PointStruct
+            
+            # Ensure collection exists
+            await self.create_collection(collection_name, self.dimensions)
+            
+            points = []
+            vector_ids = []
+            
+            for v in vectors:
+                vector_id = str(UUID())
+                vector_ids.append(vector_id)
+                
+                points.append(PointStruct(
+                    id=vector_id,
+                    vector=v.get("vector", v.get("embedding", [])),
+                    payload=v.get("metadata", v.get("payload", {})),
+                ))
+            
+            self._client.upsert(
+                collection_name=collection_name,
+                points=points,
+            )
+            
+            _logger.info(
+                "qdrant_vectors_inserted",
+                collection_name=collection_name,
+                count=len(vectors),
+            )
+            return vector_ids
+        except Exception as e:
+            _logger.error("qdrant_insert_failed", error=str(e))
+            raise
     
     async def search_vectors(
         self,
@@ -265,16 +539,60 @@ class QdrantDatabase(VectorDatabase):
         filter_dict: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Search vectors using Qdrant."""
-        # TODO: Implement actual vector search
-        results = []
-        _logger.info(
-            "qdrant_search_completed",
-            collection_name=collection_name,
-            limit=limit,
-            score_threshold=score_threshold,
-            results_count=len(results),
-        )
-        return results
+        try:
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            
+            # Build filter if provided
+            query_filter = None
+            if filter_dict:
+                conditions = []
+                for key, value in filter_dict.items():
+                    if isinstance(value, dict) and "$ne" in value:
+                        # Not equal condition
+                        conditions.append(
+                            FieldCondition(
+                                key=key,
+                                match=MatchValue(value=value["$ne"]),
+                            )
+                        )
+                    else:
+                        conditions.append(
+                            FieldCondition(
+                                key=key,
+                                match=MatchValue(value=value),
+                            )
+                        )
+                
+                if conditions:
+                    query_filter = Filter(must=conditions)
+            
+            results = self._client.search(
+                collection_name=collection_name,
+                query_vector=query_vector,
+                limit=limit,
+                score_threshold=score_threshold,
+                query_filter=query_filter,
+            )
+            
+            formatted_results = []
+            for r in results:
+                formatted_results.append({
+                    "id": r.id,
+                    "score": r.score,
+                    "vector": r.vector,
+                    "metadata": r.payload,
+                })
+            
+            _logger.info(
+                "qdrant_search_completed",
+                collection_name=collection_name,
+                limit=limit,
+                results_count=len(formatted_results),
+            )
+            return formatted_results
+        except Exception as e:
+            _logger.error("qdrant_search_failed", error=str(e))
+            return []
     
     async def delete_vectors(
         self,
@@ -282,12 +600,19 @@ class QdrantDatabase(VectorDatabase):
         vector_ids: list[str],
     ) -> None:
         """Delete vectors from Qdrant collection."""
-        # TODO: Implement actual vector deletion
-        _logger.info(
-            "qdrant_vectors_deleted",
-            collection_name=collection_name,
-            count=len(vector_ids),
-        )
+        try:
+            self._client.delete(
+                collection_name=collection_name,
+                points_selector=vector_ids,
+            )
+            _logger.info(
+                "qdrant_vectors_deleted",
+                collection_name=collection_name,
+                count=len(vector_ids),
+            )
+        except Exception as e:
+            _logger.error("qdrant_delete_failed", error=str(e))
+            raise
     
     async def get_vector(
         self,
@@ -295,8 +620,23 @@ class QdrantDatabase(VectorDatabase):
         vector_id: str,
     ) -> dict[str, Any] | None:
         """Get vector from Qdrant collection."""
-        # TODO: Implement actual vector retrieval
-        return None
+        try:
+            results = self._client.retrieve(
+                collection_name=collection_name,
+                ids=[vector_id],
+            )
+            
+            if results:
+                r = results[0]
+                return {
+                    "id": r.id,
+                    "vector": r.vector,
+                    "metadata": r.payload,
+                }
+            return None
+        except Exception as e:
+            _logger.error("qdrant_get_failed", error=str(e))
+            return None
     
     async def update_vector(
         self,
@@ -306,17 +646,31 @@ class QdrantDatabase(VectorDatabase):
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update vector in Qdrant collection."""
-        # TODO: Implement actual vector update
-        _logger.info(
-            "qdrant_vector_updated",
-            collection_name=collection_name,
-            vector_id=vector_id,
-        )
+        try:
+            from qdrant_client.models import PointStruct
+            
+            self._client.upsert(
+                collection_name=collection_name,
+                points=[PointStruct(
+                    id=vector_id,
+                    vector=vector,
+                    payload=metadata or {},
+                )],
+            )
+            _logger.info(
+                "qdrant_vector_updated",
+                collection_name=collection_name,
+                vector_id=vector_id,
+            )
+        except Exception as e:
+            _logger.error("qdrant_update_failed", error=str(e))
+            raise
     
     async def close(self) -> None:
         """Close Qdrant client."""
         if self._client:
-            # TODO: Implement actual client closing
+            # Qdrant client doesn't require explicit closing
+            self._client = None
             _logger.info("qdrant_client_closed")
 
 
@@ -337,16 +691,46 @@ class ChromaDatabase(VectorDatabase):
     async def initialize(self) -> None:
         """Initialize Chroma client."""
         try:
-            # TODO: Implement actual Chroma client initialization
+            import chromadb
+            from chromadb.config import Settings as ChromaSettings
+            
+            if self.path:
+                # Persistent client
+                self._client = chromadb.PersistentClient(
+                    path=self.path,
+                    settings=ChromaSettings(
+                        anonymized_telemetry=False,
+                    ),
+                )
+            else:
+                # In-memory client
+                self._client = chromadb.Client(
+                    settings=ChromaSettings(
+                        anonymized_telemetry=False,
+                    ),
+                )
+            
             _logger.info("chroma_initialized", path=self.path, dimensions=self.dimensions)
+        except ImportError:
+            _logger.error("chromadb_not_installed")
+            raise ImportError("Install chromadb: pip install chromadb")
         except Exception as e:
             _logger.error("chroma_initialization_failed", error=str(e))
             raise
     
     async def create_collection(self, name: str, dimension: int) -> None:
         """Create a Chroma collection."""
-        # TODO: Implement actual collection creation
-        _logger.info("chroma_collection_created", name=name, dimension=dimension)
+        try:
+            # Chroma collections are created implicitly when accessed
+            # But we can get_or_create to ensure it exists
+            self._client.get_or_create_collection(
+                name=name,
+                metadata={"dimension": dimension, "hnsw:space": "cosine"},
+            )
+            _logger.info("chroma_collection_created", name=name, dimension=dimension)
+        except Exception as e:
+            _logger.error("chroma_collection_creation_failed", error=str(e))
+            raise
     
     async def insert_vectors(
         self,
@@ -354,14 +738,37 @@ class ChromaDatabase(VectorDatabase):
         vectors: list[dict[str, Any]],
     ) -> list[str]:
         """Insert vectors into Chroma collection."""
-        # TODO: Implement actual vector insertion
-        vector_ids = [str(UUID()) for _ in vectors]
-        _logger.info(
-            "chroma_vectors_inserted",
-            collection_name=collection_name,
-            count=len(vectors),
-        )
-        return vector_ids
+        try:
+            collection = self._client.get_or_create_collection(name=collection_name)
+            
+            vector_ids = []
+            embeddings = []
+            metadatas = []
+            documents = []
+            
+            for v in vectors:
+                vector_id = str(UUID())
+                vector_ids.append(vector_id)
+                embeddings.append(v.get("vector", v.get("embedding", [])))
+                metadatas.append(v.get("metadata", v.get("payload", {})))
+                documents.append(v.get("content", v.get("document", "")))
+            
+            collection.add(
+                ids=vector_ids,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                documents=documents,
+            )
+            
+            _logger.info(
+                "chroma_vectors_inserted",
+                collection_name=collection_name,
+                count=len(vectors),
+            )
+            return vector_ids
+        except Exception as e:
+            _logger.error("chroma_insert_failed", error=str(e))
+            raise
     
     async def search_vectors(
         self,
@@ -372,16 +779,50 @@ class ChromaDatabase(VectorDatabase):
         filter_dict: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Search vectors using Chroma."""
-        # TODO: Implement actual vector search
-        results = []
-        _logger.info(
-            "chroma_search_completed",
-            collection_name=collection_name,
-            limit=limit,
-            score_threshold=score_threshold,
-            results_count=len(results),
-        )
-        return results
+        try:
+            collection = self._client.get_collection(name=collection_name)
+            
+            # Build where clause from filter_dict
+            where_clause = None
+            if filter_dict:
+                where_clause = {}
+                for key, value in filter_dict.items():
+                    if isinstance(value, dict) and "$ne" in value:
+                        where_clause[key] = {"$ne": value["$ne"]}
+                    else:
+                        where_clause[key] = value
+            
+            results = collection.query(
+                query_embeddings=[query_vector],
+                n_results=limit,
+                where=where_clause,
+                include=["metadatas", "documents", "distances"],
+            )
+            
+            formatted_results = []
+            if results["ids"] and results["ids"][0]:
+                for i, (vid, distance) in enumerate(zip(results["ids"][0], results["distances"][0])):
+                    # Chroma returns distance (lower is better), convert to similarity score
+                    score = 1.0 - distance
+                    
+                    if score >= score_threshold:
+                        formatted_results.append({
+                            "id": vid,
+                            "score": score,
+                            "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
+                            "document": results["documents"][0][i] if results["documents"] else "",
+                        })
+            
+            _logger.info(
+                "chroma_search_completed",
+                collection_name=collection_name,
+                limit=limit,
+                results_count=len(formatted_results),
+            )
+            return formatted_results
+        except Exception as e:
+            _logger.error("chroma_search_failed", error=str(e))
+            return []
     
     async def delete_vectors(
         self,
@@ -389,12 +830,17 @@ class ChromaDatabase(VectorDatabase):
         vector_ids: list[str],
     ) -> None:
         """Delete vectors from Chroma collection."""
-        # TODO: Implement actual vector deletion
-        _logger.info(
-            "chroma_vectors_deleted",
-            collection_name=collection_name,
-            count=len(vector_ids),
-        )
+        try:
+            collection = self._client.get_collection(name=collection_name)
+            collection.delete(ids=vector_ids)
+            _logger.info(
+                "chroma_vectors_deleted",
+                collection_name=collection_name,
+                count=len(vector_ids),
+            )
+        except Exception as e:
+            _logger.error("chroma_delete_failed", error=str(e))
+            raise
     
     async def get_vector(
         self,
@@ -402,8 +848,24 @@ class ChromaDatabase(VectorDatabase):
         vector_id: str,
     ) -> dict[str, Any] | None:
         """Get vector from Chroma collection."""
-        # TODO: Implement actual vector retrieval
-        return None
+        try:
+            collection = self._client.get_collection(name=collection_name)
+            result = collection.get(
+                ids=[vector_id],
+                include=["embeddings", "metadatas", "documents"],
+            )
+            
+            if result["ids"] and len(result["ids"]) > 0:
+                return {
+                    "id": result["ids"][0],
+                    "vector": result["embeddings"][0] if result["embeddings"] else None,
+                    "metadata": result["metadatas"][0] if result["metadatas"] else {},
+                    "document": result["documents"][0] if result["documents"] else "",
+                }
+            return None
+        except Exception as e:
+            _logger.error("chroma_get_failed", error=str(e))
+            return None
     
     async def update_vector(
         self,
@@ -413,17 +875,29 @@ class ChromaDatabase(VectorDatabase):
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update vector in Chroma collection."""
-        # TODO: Implement actual vector update
-        _logger.info(
-            "chroma_vector_updated",
-            collection_name=collection_name,
-            vector_id=vector_id,
-        )
+        try:
+            collection = self._client.get_collection(name=collection_name)
+            
+            # Chroma uses upsert for updates
+            collection.upsert(
+                ids=[vector_id],
+                embeddings=[vector],
+                metadatas=[metadata] if metadata else [{}],
+            )
+            _logger.info(
+                "chroma_vector_updated",
+                collection_name=collection_name,
+                vector_id=vector_id,
+            )
+        except Exception as e:
+            _logger.error("chroma_update_failed", error=str(e))
+            raise
     
     async def close(self) -> None:
         """Close Chroma client."""
         if self._client:
-            # TODO: Implement actual client closing
+            # Chroma client doesn't require explicit closing
+            self._client = None
             _logger.info("chroma_client_closed")
 
 

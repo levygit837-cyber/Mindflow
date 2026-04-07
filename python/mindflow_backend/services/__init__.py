@@ -48,6 +48,13 @@ from mindflow_backend.services.core import (
     get_shell_tab_service,
 )
 
+# LLM Service
+from mindflow_backend.services.llm import (
+    LLMService,
+    get_llm_service,
+    reset_llm_service,
+)
+
 # Dependency injection container
 from mindflow_backend.services.core.container import (
     get_container,
@@ -63,6 +70,7 @@ from mindflow_backend.services.interfaces import (
     EmbeddingServiceInterface,
     GrpcServiceInterface,
     HealthServiceInterface,
+    MemoryFacadeInterface,
     MemoryServiceInterface,
     MetricsServiceInterface,
     OrchestrationServiceInterface,
@@ -80,6 +88,7 @@ from mindflow_backend.services.interfaces import (
 # Memory domain services
 from mindflow_backend.services.memory import (
     get_memory_service,
+    get_memory_facade_service,
 )
 
 # Monitoring domain services
@@ -108,6 +117,11 @@ __all__ = [
     "get_provider_service",
     "get_shell_tab_service",
     
+    # LLM services
+    "LLMService",
+    "get_llm_service",
+    "reset_llm_service",
+    
     # Orchestration services
     "get_orchestration_service",
     "get_task_service",
@@ -133,6 +147,7 @@ __all__ = [
     
     # Memory services
     "get_memory_service",
+    "get_memory_facade_service",
     
     # Dependency injection
     "get_container",
@@ -145,6 +160,7 @@ __all__ = [
     "AgentServiceInterface",
     "SessionServiceInterface",
     "MemoryServiceInterface",
+    "MemoryFacadeInterface",
     "ProviderServiceInterface",
     "OrchestrationServiceInterface",
     "TaskServiceInterface",

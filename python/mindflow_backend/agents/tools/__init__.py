@@ -254,11 +254,21 @@ class _DefaultRegistry:
         return tools
 
     def _get_browser_search_tools(self) -> list[Any]:
-        """Get compatibility tools for the legacy browser_search scope."""
+        """Get browser search tools with LightPanda integration."""
         tools = []
         
-        # Browser search tools removed with PinchTab deprecation
-        # TODO: Reimplement with LightPanda integration
+        try:
+            from mindflow_backend.agents.tools.web.lightpanda_browser_search import (
+                LightPandaBrowserSearchTool,
+            )
+            
+            # Add LightPanda browser search tool
+            browser_tool = LightPandaBrowserSearchTool()
+            tools.append(browser_tool)
+            _logger.info("Loaded LightPanda browser search tool")
+            
+        except ImportError as e:
+            _logger.warning(f"Could not import LightPanda browser tools: {e}")
         
         return tools
 

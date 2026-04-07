@@ -68,6 +68,7 @@ class DatabaseHealthChecker:
         self._last_metrics: DatabaseMetrics | None = None
         self._monitoring_task: asyncio.Task | None = None
         self._is_monitoring = False
+        self._start_time: datetime = datetime.now(UTC)  # Track when checker was initialized
         
     async def check_health(self) -> HealthCheckResult:
         """Perform comprehensive database health check.
@@ -174,6 +175,9 @@ class DatabaseHealthChecker:
             # Count slow queries
             slow_queries = sum(1 for check in recent_checks if check.latency_ms > 500)
             
+            # Calculate uptime from start time
+            uptime_seconds = (datetime.now(UTC) - self._start_time).total_seconds()
+            
             metrics = DatabaseMetrics(
                 connection_pool_utilization=metrics_data.pool_utilization,
                 active_connections=metrics_data.active_connections,
@@ -183,7 +187,7 @@ class DatabaseHealthChecker:
                 avg_query_time_ms=avg_query_time,
                 slow_queries_count=slow_queries,
                 last_error_time=metrics_data.last_error,
-                uptime_seconds=0.0,  # TODO: Implement uptime tracking
+                uptime_seconds=uptime_seconds,
             )
             
             self._last_metrics = metrics

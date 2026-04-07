@@ -234,41 +234,83 @@ class CacheHealthChecker(HealthChecker):
         super().__init__(component, ComponentType.CACHE)
         
     async def check_health(self) -> HealthCheckResult:
-        """Check cache health."""
+        """Check cache health using actual Redis ping."""
         start_time = datetime.now(UTC)
         
         try:
-            # TODO: Implement actual Redis health check
-            # For now, simulate health check
-            await asyncio.sleep(0.01)  # Simulate network latency
-            response_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
-            
-            if response_time < 50:
-                status = HealthStatus.HEALTHY
-                message = "Cache is healthy and responsive"
-            elif response_time < 200:
-                status = HealthStatus.DEGRADED
-                message = f"Cache is responsive but slow ({response_time:.1f}ms)"
-            else:
-                status = HealthStatus.UNHEALTHY
-                message = f"Cache is too slow ({response_time:.1f}ms)"
+            # Try to import and use Redis
+            try:
+                import redis.asyncio as redis
+                from mindflow_backend.config import settings
                 
-            result = HealthCheckResult(
-                component=self.component,
-                component_type=self.component_type,
-                status=status,
-                message=message,
-                details={
-                    "response_time_ms": response_time,
-                    "connection_status": "connected",
-                },
-                response_time_ms=response_time,
-            )
+                # Get Redis URL from settings or use default
+                redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379/0')
+                
+                # Create Redis client
+                client = redis.from_url(redis_url, socket_connect_timeout=5)
+                
+                # Ping Redis
+                await client.ping()
+                
+                # Get Redis info if available
+                try:
+                    info = await client.info()
+                    used_memory = info.get('used_memory_human', 'unknown')
+                    connected_clients = info.get('connected_clients', 0)
+                except Exception:
+                    used_memory = 'unknown'
+                    connected_clients = 0
+                
+                await client.close()
+                
+                response_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
+                
+                if response_time < 50:
+                    status = HealthStatus.HEALTHY
+                    message = "Redis cache is healthy and responsive"
+                elif response_time < 200:
+                    status = HealthStatus.DEGRADED
+                    message = f"Redis cache is responsive but slow ({response_time:.1f}ms)"
+                else:
+                    status = HealthStatus.UNHEALTHY
+                    message = f"Redis cache is too slow ({response_time:.1f}ms)"
+                
+                result = HealthCheckResult(
+                    component=self.component,
+                    component_type=self.component_type,
+                    status=status,
+                    message=message,
+                    details={
+                        "response_time_ms": response_time,
+                        "connection_status": "connected",
+                        "used_memory": used_memory,
+                        "connected_clients": connected_clients,
+                    },
+                    response_time_ms=response_time,
+                )
+                
+            except ImportError:
+                # Redis not installed, use simulated check
+                await asyncio.sleep(0.01)
+                response_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
+                
+                result = HealthCheckResult(
+                    component=self.component,
+                    component_type=self.component_type,
+                    status=HealthStatus.UNKNOWN,
+                    message="Redis not available (redis package not installed)",
+                    details={
+                        "response_time_ms": response_time,
+                        "connection_status": "unavailable",
+                        "note": "Install redis package: pip install redis",
+                    },
+                    response_time_ms=response_time,
+                )
             
             self.last_check = result
             self.check_count += 1
             
-            if status in [HealthStatus.DEGRADED, HealthStatus.UNHEALTHY]:
+            if result.status in [HealthStatus.DEGRADED, HealthStatus.UNHEALTHY]:
                 self.failure_count += 1
                 
             return result

@@ -1,34 +1,41 @@
-"""Memory Services for MindFlow.
-
-Provides simple and efficient memory storage and retrieval
-using SQLite + NumPy for context management.
-"""
+"""Memory domain services for MindFlow backend."""
 
 from __future__ import annotations
 
-from .context_retriever import ContextRetriever
-from .context_storage import ContextStorage
-from .memory_service import MemoryService, create_memory_service
-
-# Memory service instance
-_memory_service = None
-
-
-def get_memory_service():
-    """Get the memory service instance.
-    
-    Returns:
-        MemoryService: The memory service instance
-    """
-    global _memory_service
-    if _memory_service is None:
-        _memory_service = create_memory_service()
-    return _memory_service
+from mindflow_backend.services.memory.agent_memory_service import MemoryService
+from mindflow_backend.services.memory.memory_facade_service import (
+    MemoryFacadeService,
+    get_memory_facade_service,
+    reset_memory_facade_service,
+)
+from mindflow_backend.services.memory.memory_service import (
+    ContextEntry,
+    ContextRetriever,
+    ContextStorage,
+    MemoryConfig,
+    SimpleMemoryService,
+    get_simple_memory_service,
+)
 
 __all__ = [
+    # Main services
     "MemoryService",
-    "create_memory_service",
+    "SimpleMemoryService",
+    "MemoryFacadeService",
+    # Factory functions
     "get_memory_service",
+    "get_simple_memory_service",
+    "get_memory_facade_service",
+    "reset_memory_facade_service",
+    # Legacy/utility classes
+    "MemoryConfig",
+    "ContextEntry",
     "ContextStorage",
     "ContextRetriever",
 ]
+
+
+# Factory function for backward compatibility
+def get_memory_service() -> MemoryService:
+    """Get the memory service instance."""
+    return MemoryService()

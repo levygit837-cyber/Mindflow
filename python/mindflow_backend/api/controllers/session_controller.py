@@ -96,10 +96,14 @@ class SessionController(BaseController):
         try:
             self.log_request(None, "list_sessions", limit=pagination.limit, offset=pagination.offset)
             
+            # Get sessions and total count
             sessions_data = await self.session_service.list_sessions(
                 limit=pagination.limit,
                 offset=pagination.offset
             )
+            
+            # Get actual total count for pagination
+            total_count = await self.session_service.count_sessions()
             
             # Convert to response format
             session_responses = []
@@ -112,12 +116,16 @@ class SessionController(BaseController):
                     metadata=session_data
                 ))
             
+            # Calculate has_next based on actual total
+            current_end = pagination.offset + len(session_responses)
+            has_next = current_end < total_count
+            
             return SessionListResponse(
                 items=session_responses,
-                total=len(session_responses),  # TODO: Get actual total from service
+                total=total_count,
                 limit=pagination.limit,
                 offset=pagination.offset,
-                has_next=False,  # TODO: Calculate based on total
+                has_next=has_next,
                 has_prev=pagination.offset > 0
             )
             

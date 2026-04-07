@@ -221,6 +221,36 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             self._logger.error(f"Error listing sessions: {str(exc)}")
             raise
     
+    async def count_sessions(self, user_id: str | None = None) -> int:
+        """Count total sessions with optional user filter.
+        
+        Args:
+            user_id: Optional user filter
+            
+        Returns:
+            Total number of sessions
+        """
+        self.log_operation("count_sessions", user_id=user_id)
+        
+        try:
+            async with async_session_factory() as session:
+                from sqlalchemy import func, select
+                from mindflow_backend.db.models import ChatSession
+                
+                # Build query
+                stmt = select(func.count(ChatSession.id))
+                if user_id:
+                    stmt = stmt.where(ChatSession.user_id == user_id)
+                
+                result = await session.execute(stmt)
+                count = result.scalar() or 0
+                
+                return count
+                
+        except Exception as exc:
+            self._logger.error(f"Error counting sessions: {str(exc)}")
+            return 0
+    
     async def update_session(
         self,
         session_id: str,

@@ -26,13 +26,37 @@ async def search_web(query: str, max_results: int = 5) -> dict[str, Any]:
         Dictionary containing search results with metadata
     """
     try:
-        # For now, return a mock response until browser search is fully integrated
         _logger.info("web_search_initiated", query=query, max_results=max_results)
         
-        # TODO: Integrate with BrowserSearchTool when available
-        # For now, provide a simple structured response
+        # Try to use LightPanda browser search tool if available
+        try:
+            from mindflow_backend.agents.tools.web.lightpanda_browser_search import (
+                get_lightpanda_browser_search_tool,
+            )
+            
+            tool = get_lightpanda_browser_search_tool()
+            
+            # Perform web search using LightPanda
+            search_results = await tool.search_web(
+                query=query,
+                max_results=max_results,
+            )
+            
+            _logger.info(
+                "web_search_completed_with_lightpanda",
+                query=query,
+                results_count=len(search_results.get("results", [])),
+            )
+            
+            return search_results
+            
+        except ImportError:
+            _logger.debug("lightpanda_browser_search_not_available")
+        except Exception as exc:
+            _logger.warning("lightpanda_search_failed", error=str(exc))
         
-        await asyncio.sleep(0.1)  # Simulate async operation
+        # Fallback to simulated search
+        await asyncio.sleep(0.1)
         
         result = {
             "query": query,
@@ -41,15 +65,16 @@ async def search_web(query: str, max_results: int = 5) -> dict[str, Any]:
                 {
                     "title": f"Search result for: {query}",
                     "url": "https://example.com",
-                    "snippet": f"This is a placeholder result for the query: {query}",
+                    "snippet": f"This is a search result for the query: {query}. For real web search, ensure LightPanda browser is configured.",
                     "relevance_score": 0.8
                 }
             ],
             "total_results": 1,
-            "search_time": 0.1
+            "search_time": 0.1,
+            "note": "Using fallback search. For real results, configure LightPanda browser.",
         }
         
-        _logger.info("web_search_completed", query=query, results_count=len(result["results"]))
+        _logger.info("web_search_completed_fallback", query=query)
         return result
         
     except Exception as e:

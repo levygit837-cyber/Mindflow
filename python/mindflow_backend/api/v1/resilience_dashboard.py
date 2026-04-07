@@ -165,8 +165,17 @@ async def get_health_status() -> HealthStatus:
         )
 
         circuit_breakers_healthy = open_count == 0
-        retry_rate_acceptable = True  # TODO: Check retry rate < 5%
-        latency_acceptable = True  # TODO: Check P95 < 200ms
+        
+        # Calculate retry rate across all circuit breakers
+        total_retries = sum(m.get("retries", 0) for m in _circuit_breaker_metrics.values())
+        total_calls = sum(m.get("total_calls", 1) for m in _circuit_breaker_metrics.values())
+        retry_rate = (total_retries / max(total_calls, 1)) * 100
+        retry_rate_acceptable = retry_rate < 5.0
+        
+        # Calculate P95 latency across all circuit breakers
+        p95_latencies = [m.get("p95_latency", 0) for m in _circuit_breaker_metrics.values() if m.get("p95_latency", 0) > 0]
+        avg_p95 = sum(p95_latencies) / max(len(p95_latencies), 1) if p95_latencies else 0
+        latency_acceptable = avg_p95 < 200  # P95 < 200ms
 
         overall_healthy = (
             circuit_breakers_healthy

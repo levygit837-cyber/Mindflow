@@ -251,9 +251,12 @@ class PlanNode(BaseNode):
             decompose_task_with_llm,
         )
 
+        # Detect project type from files
+        project_type = self._detect_project_type(relevant_files)
+
         # Get project context from state
         project_context = {
-            "project_type": "python",  # TODO: Get from state
+            "project_type": project_type,
             "total_files": len(relevant_files),
         }
 
@@ -293,6 +296,40 @@ class PlanNode(BaseNode):
             "affected_files": relevant_files,
             "estimated_complexity": len(steps) * len(relevant_files) / 10,
         }
+
+    def _detect_project_type(self, files: list[str]) -> str:
+        """Detect project type from file extensions.
+        
+        Args:
+            files: List of file paths
+            
+        Returns:
+            Detected project type
+        """
+        if not files:
+            return "unknown"
+        
+        # Count extensions
+        ext_counts = {}
+        for f in files:
+            ext = f.split(".")[-1].lower() if "." in f else ""
+            ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        
+        # Determine type based on most common extension
+        if ext_counts.get("py", 0) > 0:
+            return "python"
+        elif ext_counts.get("ts", 0) > 0 or ext_counts.get("tsx", 0) > 0:
+            return "typescript"
+        elif ext_counts.get("js", 0) > 0 or ext_counts.get("jsx", 0) > 0:
+            return "javascript"
+        elif ext_counts.get("go", 0) > 0:
+            return "go"
+        elif ext_counts.get("rs", 0) > 0:
+            return "rust"
+        elif ext_counts.get("java", 0) > 0:
+            return "java"
+        else:
+            return "unknown"
 
     def validate_inputs(self, state: dict[str, Any]) -> list[str]:
         """Validate required inputs."""

@@ -6,6 +6,9 @@ to ensure consistency and testability.
 
 from __future__ import annotations
 
+# Import from interfaces.services
+from mindflow_backend.interfaces.services.memory import MemoryFacadeInterface
+
 # Import all interface modules
 from mindflow_backend.services.interfaces.base_interfaces import (
     BaseServiceInterface,
@@ -46,6 +49,7 @@ __all__ = [
     "AgentServiceInterface",
     "SessionServiceInterface", 
     "MemoryServiceInterface",
+    "MemoryFacadeInterface",
     "ProviderServiceInterface",
     
     # Orchestration interfaces

@@ -591,69 +591,165 @@ class SessionReviewWorker(BaseWorker):
             )
     
     async def _handle_token_management(self, message_data: dict[str, Any]) -> WorkerResult:
-        """Handle token window management and budget enforcement."""
+        """Handle token budget and window size management using session data."""
         session_id = message_data.get("session_id")
         action = message_data.get("action", "reset_window")
         new_window_size = message_data.get("new_window_size")
         budget_adjustment = message_data.get("budget_adjustment", 0)
         
-        # TODO: Implement token management logic
-        # This would manage token budgets and window sizes
+        if not session_id:
+            return WorkerResult(
+                success=False,
+                message="No session_id provided for token management",
+                data={"error": "session_id required"},
+            )
         
-        await asyncio.sleep(0.2)  # Simulate token management
-        
-        return WorkerResult(
-            success=True,
-            message=f"Token management completed for session {session_id}",
-            data={
-                "session_id": session_id,
-                "action": action,
-                "previous_window_size": 10000,
-                "new_window_size": new_window_size or 10000,
-                "budget_adjustment": budget_adjustment,
-                "current_token_count": 2500,
-                "tokens_until_next_review": 7500,
-                "window_progress": 0.25,
-                "budget_status": "healthy",
-                "recommendations": [
-                    "Current window size is appropriate",
-                    "Consider increasing budget for complex tasks",
-                ],
-            },
-        )
+        try:
+            # Get session from database to check actual token usage
+            from mindflow_backend.infra.database.connection import get_db_session
+            from mindflow_backend.db.models import Session
+            
+            async with get_db_session() as session:
+                db_session = await session.get(Session, session_id)
+                
+                if not db_session:
+                    return WorkerResult(
+                        success=False,
+                        message=f"Session {session_id} not found",
+                        data={"error": "session_not_found"},
+                    )
+                
+                # Calculate current token usage from session messages
+                current_tokens = 0
+                if hasattr(db_session, 'messages'):
+                    for msg in db_session.messages:
+                        if hasattr(msg, 'content') and msg.content:
+                            # Rough estimate: 1 token per 4 characters
+                            current_tokens += len(msg.content) // 4
+                
+                # Determine window size
+                default_window = 10000
+                actual_window = new_window_size or default_window
+                
+                # Apply budget adjustment
+                adjusted_window = actual_window + budget_adjustment
+                
+                # Calculate status
+                token_ratio = current_tokens / adjusted_window if adjusted_window > 0 else 0
+                if token_ratio < 0.5:
+                    budget_status = "healthy"
+                elif token_ratio < 0.8:
+                    budget_status = "warning"
+                else:
+                    budget_status = "critical"
+                
+                tokens_remaining = max(0, adjusted_window - current_tokens)
+                
+                recommendations = []
+                if budget_status == "warning":
+                    recommendations.append("Consider increasing window size for complex tasks")
+                elif budget_status == "critical":
+                    recommendations.append("Token budget critical - consider summarizing or starting new session")
+                else:
+                    recommendations.append("Current token budget is appropriate")
+                
+                return WorkerResult(
+                    success=True,
+                    message=f"Token management completed for session {session_id}",
+                    data={
+                        "session_id": session_id,
+                        "action": action,
+                        "previous_window_size": actual_window,
+                        "new_window_size": adjusted_window,
+                        "budget_adjustment": budget_adjustment,
+                        "current_token_count": current_tokens,
+                        "tokens_until_next_review": tokens_remaining,
+                        "window_progress": round(token_ratio, 2),
+                        "budget_status": budget_status,
+                        "recommendations": recommendations,
+                    },
+                )
+        except Exception as exc:
+            return WorkerResult(
+                success=False,
+                message=f"Token management failed: {exc}",
+                data={"error": str(exc)},
+            )
     
     async def _handle_session_cleanup(self, message_data: dict[str, Any]) -> WorkerResult:
-        """Handle cleanup of old or inactive session data."""
+        """Handle cleanup of old or inactive session data using database."""
         cleanup_criteria = message_data.get("cleanup_criteria", "inactive_7d")
         dry_run = message_data.get("dry_run", True)
         target_sessions = message_data.get("target_sessions", [])
         
-        # TODO: Implement session cleanup logic
-        # This would clean up old sessions, temporary data, etc.
-        
-        await asyncio.sleep(0.3)  # Simulate cleanup
-        
-        return WorkerResult(
-            success=True,
-            message=f"Session cleanup completed: {cleanup_criteria}",
-            data={
-                "cleanup_criteria": cleanup_criteria,
-                "dry_run": dry_run,
-                "sessions_scanned": 150,
-                "sessions_cleaned": 23,
-                "space_freed": 5120,  # KB
-                "cleanup_details": {
-                    "old_sessions": 15,
-                    "temp_data": 8,
-                    "orphaned_data": 0,
+        try:
+            from datetime import datetime, timedelta
+            from mindflow_backend.infra.database.connection import get_db_session
+            from sqlalchemy import select, delete
+            
+            # Parse criteria
+            if cleanup_criteria == "inactive_7d":
+                cutoff_date = datetime.now() - timedelta(days=7)
+            elif cleanup_criteria == "inactive_30d":
+                cutoff_date = datetime.now() - timedelta(days=30)
+            elif cleanup_criteria == "all_inactive":
+                cutoff_date = datetime.now() - timedelta(days=1)
+            else:
+                cutoff_date = datetime.now() - timedelta(days=7)
+            
+            sessions_cleaned = 0
+            sessions_scanned = 0
+            space_freed_kb = 0
+            
+            async with get_db_session() as session:
+                # Query for old sessions
+                from mindflow_backend.db.models import Session as SessionModel
+                
+                if target_sessions:
+                    # Specific sessions requested
+                    stmt = select(SessionModel).where(SessionModel.id.in_(target_sessions))
+                else:
+                    # All inactive sessions
+                    stmt = select(SessionModel).where(SessionModel.updated_at < cutoff_date)
+                
+                result = await session.execute(stmt)
+                old_sessions = result.scalars().all()
+                
+                sessions_scanned = len(old_sessions)
+                
+                for old_session in old_sessions:
+                    # Estimate size (rough approximation)
+                    session_size = 100  # Base size in KB
+                    if hasattr(old_session, 'messages'):
+                        session_size += len(old_session.messages) * 10  # 10KB per message
+                    
+                    if not dry_run:
+                        # Delete session
+                        await session.delete(old_session)
+                        sessions_cleaned += 1
+                        space_freed_kb += session_size
+                
+                if not dry_run:
+                    await session.commit()
+            
+            return WorkerResult(
+                success=True,
+                message=f"Session cleanup completed: {cleanup_criteria}",
+                data={
+                    "cleanup_criteria": cleanup_criteria,
+                    "dry_run": dry_run,
+                    "sessions_scanned": sessions_scanned,
+                    "sessions_cleaned": sessions_cleaned,
+                    "space_freed_kb": space_freed_kb,
+                    "cutoff_date": cutoff_date.isoformat(),
                 },
-                "preserved_sessions": [
-                    "active_session_1",
-                    "important_session_2",
-                ],
-                "next_cleanup_scheduled": "2024-03-09T10:00:00Z",
-            },
-        )
+            )
+        except Exception as exc:
+            return WorkerResult(
+                success=False,
+                message=f"Session cleanup failed: {exc}",
+                data={"error": str(exc)},
+            )
 
     async def _save_facts_to_unified_memory(
         self,

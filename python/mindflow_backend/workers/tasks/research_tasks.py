@@ -526,17 +526,60 @@ class ResearchTaskPublisher:
         return success
 
     def _build_queue_message(self, task: ResearchTask) -> dict[str, Any]:
-        """Build the canonical queue payload for research tasks."""
-        # TODO: Reimplement with LightPanda integration
-        # These envelope builders were removed with PinchTab deprecation
-        _logger.warning(f"Task type {task.task_type} not yet reimplemented for LightPanda")
-        return {
+        """Build the canonical queue payload for research tasks with LightPanda integration."""
+        task_type = task.task_type
+        task_data = task.task_data
+        
+        message = {
             "task_id": task.task_id,
-            "task_type": task.task_type,
+            "task_type": task_type,
             "session_id": task.session_id,
-            "task_data": task.task_data,
+            "task_data": task_data,
             "metadata": task.metadata,
         }
+        
+        # Add LightPanda browser integration for web search tasks
+        if task_type == "web_search" and task_data.get("search_query"):
+            try:
+                from mindflow_backend.agents.tools.web.lightpanda_browser_search import get_lightpanda_browser_search_tool
+                
+                browser_tool = get_lightpanda_browser_search_tool()
+                
+                # Build search-specific envelope with browser capabilities
+                message["browser_config"] = {
+                    "tool_available": browser_tool is not None,
+                    "search_query": task_data.get("search_query"),
+                    "max_results": task_data.get("max_results", 10),
+                    "search_depth": task_data.get("search_depth", "standard"),
+                    "scrape_options": {
+                        "extract_text": True,
+                        "extract_links": True,
+                        "extract_images": False,
+                        "max_scrolls": 3 if task_data.get("search_depth") == "deep" else 1,
+                    },
+                }
+                
+                # Add browser tool to resources if available
+                if browser_tool:
+                    message["resources"] = {
+                        "browser_tool": {
+                            "type": "lightpanda",
+                            "capabilities": ["search", "scrape", "navigate"],
+                        }
+                    }
+                
+                _logger.info(
+                    "research_task_envelope_built",
+                    task_id=task.task_id,
+                    task_type=task_type,
+                    browser_available=browser_tool is not None,
+                )
+                
+            except ImportError:
+                _logger.warning("lightpanda_browser_search not available")
+                message["browser_config"] = {"tool_available": False}
+        
+        return message
     
     def _get_queue_name(self, research_domain: str, priority: str) -> str:
         """Get queue name for research domain and priority."""

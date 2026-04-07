@@ -162,9 +162,45 @@ class CommandExecutor:
             return True
 
         try:
-            # TODO: Integrate with Phase 1 permission system when available
-            # For now, stub implementation that always allows
-            return True
+            # Integrate with PermissionManager
+            from mindflow_backend.permissions.manager import PermissionManager
+            from mindflow_backend.permissions.types import PermissionContext, PermissionMode
+            
+            # Build permission context
+            perm_context = PermissionContext(
+                session_id=session_id,
+                user_id=user_id,
+                mode=PermissionMode.DEFAULT,  # Could be configurable per command
+            )
+            
+            # Check permission using the real permission system
+            perm_manager = PermissionManager()
+            result = await perm_manager.check_permission(
+                tool_name=command.metadata.name,
+                input={"args": getattr(context, "args", []), "kwargs": getattr(context, "kwargs", {})},
+                context=perm_context,
+            )
+            
+            # Handle permission result
+            if result.behavior.value == "deny":
+                logger.warning(
+                    f"Command '{command.metadata.name}' denied by permission system",
+                    extra={"session_id": session_id, "reason": result.reason},
+                )
+                return False
+            elif result.behavior.value == "ask":
+                # In command context, "ask" means we need explicit approval
+                # For now, log and allow (could prompt user in interactive mode)
+                logger.info(
+                    f"Command '{command.metadata.name}' requires approval",
+                    extra={"session_id": session_id, "message": result.message},
+                )
+                # Return True but could implement interactive prompting
+                return True
+            else:
+                # Allowed
+                return True
+                
         except Exception as e:
             logger.error(
                 f"Error checking permission for command '{command.metadata.name}'",

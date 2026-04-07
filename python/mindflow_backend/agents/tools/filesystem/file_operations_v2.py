@@ -818,14 +818,40 @@ class FileEditToolV2(AsyncToolInterface):
         return matches
 
     def _fuzzy_find(self, content: str, search: str, threshold: float) -> list[int]:
-        """Find fuzzy matches using simple similarity.
+        """Find fuzzy matches using sequence similarity (difflib).
 
-        Note: This is a basic implementation. For production, use
-        libraries like fuzzywuzzy or rapidfuzz.
+        Uses difflib.SequenceMatcher for similarity matching.
+        For production with large files, consider rapidfuzz for better performance.
         """
-        # TODO: Implement proper fuzzy matching with fuzzywuzzy/rapidfuzz
-        # For now, fall back to exact matching
-        return self._exact_find(content, search)
+        import difflib
+        
+        # Try exact match first
+        exact_matches = self._exact_find(content, search)
+        if exact_matches:
+            return exact_matches
+        
+        # Use sliding window approach with difflib
+        matches = []
+        search_len = len(search)
+        content_len = len(content)
+        
+        # Slide a window of search text size through content
+        step = max(1, search_len // 4)  # Step by quarter of search length
+        
+        for i in range(0, content_len - search_len + 1, step):
+            window = content[i:i + search_len]
+            similarity = difflib.SequenceMatcher(None, search, window).ratio()
+            
+            if similarity >= threshold:
+                # Refine: check exact position with smaller step
+                for j in range(max(0, i - step), min(content_len - search_len + 1, i + step)):
+                    refined_window = content[j:j + search_len]
+                    refined_similarity = difflib.SequenceMatcher(None, search, refined_window).ratio()
+                    
+                    if refined_similarity >= threshold and j not in matches:
+                        matches.append(j)
+        
+        return sorted(matches)
 
     async def _generate_git_diff(self, file_path: str) -> str | None:
         """Generate git diff for the file."""
