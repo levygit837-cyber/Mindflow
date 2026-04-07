@@ -56,6 +56,11 @@ dependencies = [
   "bandit>=1.7.0",  # Python security linter
   "safety>=3.0.0",  # Dependency vulnerability scanner
   "sarif-om>=1.0.0",  # SARIF format
+  "lightpanda-py>=0.2.0",  # LightPanda Python wrapper for browser automation
+  "playwright>=1.52.0",  # Browser automation (compatible with LightPanda CDP)
+  "asyncpg>=0.29.0",  # PostgreSQL async driver for snapshot persistence
+  "docker>=7.1.0",  # Docker SDK for container management
+  "httpx>=0.27.0",  # Async HTTP client for health checks
 ]
 
 [project.optional-dependencies]

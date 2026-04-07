@@ -22,10 +22,6 @@ from .filesystem import (
     GlobSearchTool,
     GrepSearchTool,
 )
-from .pinchtab import (
-    PinchTabBrowserHandleInterface,
-    PinchTabFleetToolInterface,
-)
 from .planning import (
     PlanningToolInterface,
     TodoListFocusTool,
@@ -85,8 +81,6 @@ __all__ = [
     "WebhookTool",
     "RssFeedTool",
     "WebSecurityTool",
-    "PinchTabBrowserHandleInterface",
-    "PinchTabFleetToolInterface",
     "PlanningToolInterface",
     "TodoListWriteTool",
     "TodoListReadTool",

@@ -14,9 +14,6 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from mindflow_backend.agents.tools.search_web import search_web
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
-    build_simple_orchestrator_flow,
-)
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime.providers import (
@@ -74,6 +71,9 @@ def _get_orchestrator_graph() -> Any:
     global _ORCHESTRATOR_GRAPH
     if _ORCHESTRATOR_GRAPH is None:
         _logger.info("orchestrator_graph_compiling")
+        from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+            build_simple_orchestrator_flow,
+        )
         _ORCHESTRATOR_GRAPH = build_simple_orchestrator_flow()
         _logger.info("orchestrator_graph_compiled_and_cached")
     return _ORCHESTRATOR_GRAPH
@@ -1184,6 +1184,9 @@ class RuntimeExecutor:
                     yield emitted_event
             else:
                 async with langgraph_memory() as (checkpointer, store):
+                    from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+                        build_simple_orchestrator_flow,
+                    )
                     graph = build_simple_orchestrator_flow(
                         checkpointer=checkpointer,
                         store=store,

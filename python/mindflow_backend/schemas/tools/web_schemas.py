@@ -266,7 +266,7 @@ WEB_SCRAPER_SCHEMA = ToolSchema(
 # Browser Search Tool Schema
 BROWSER_SEARCH_SCHEMA = ToolSchema(
     name="browser_search",
-    description="Browser-based web research with PinchTab automation",
+    description="Browser-based web research tool",
     category="web",
     parameters=[
         ToolParameter(

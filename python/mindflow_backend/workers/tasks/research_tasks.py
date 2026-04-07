@@ -10,12 +10,6 @@ from typing import Any
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.workers.contracts.schemas.envelope import QueueMessageEnvelope
 from mindflow_backend.workers.infrastructure.queue_manager import get_queue_manager
-from mindflow_backend.workers.research.schemas.browser_tasks import (
-    build_web_search_envelope,
-)
-from mindflow_backend.workers.research.schemas.content_tasks import (
-    build_content_synthesis_envelope,
-)
 
 _logger = get_logger(__name__)
 
@@ -533,27 +527,16 @@ class ResearchTaskPublisher:
 
     def _build_queue_message(self, task: ResearchTask) -> dict[str, Any]:
         """Build the canonical queue payload for research tasks."""
-        if task.task_type == "web_search":
-            return build_web_search_envelope(
-                session_id=task.session_id,
-                query=task.task_data["search_query"],
-                search_engine=task.task_data.get("search_engine", "google"),
-                max_results=task.task_data.get("max_results", 10),
-                search_depth=task.task_data.get("search_depth", "standard"),
-                origin=task.metadata.get("origin", "research_task_publisher"),
-            ).model_dump(mode="json")
-
-        if task.task_type == "content_synthesis":
-            return build_content_synthesis_envelope(
-                session_id=task.session_id,
-                content_sources=task.task_data.get("content_sources", []),
-                synthesis_type=task.task_data.get("synthesis_type", "comprehensive"),
-                target_audience=task.task_data.get("target_audience", "technical"),
-                synthesis_length=task.task_data.get("synthesis_length", "medium"),
-                origin=task.metadata.get("origin", "research_task_publisher"),
-            ).model_dump(mode="json")
-
-        return task.to_dict()
+        # TODO: Reimplement with LightPanda integration
+        # These envelope builders were removed with PinchTab deprecation
+        _logger.warning(f"Task type {task.task_type} not yet reimplemented for LightPanda")
+        return {
+            "task_id": task.task_id,
+            "task_type": task.task_type,
+            "session_id": task.session_id,
+            "task_data": task.task_data,
+            "metadata": task.metadata,
+        }
     
     def _get_queue_name(self, research_domain: str, priority: str) -> str:
         """Get queue name for research domain and priority."""

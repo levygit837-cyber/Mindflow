@@ -11,12 +11,6 @@ from typing import Any
 
 from mindflow_backend.graphs.base.graph import BaseGraph
 from mindflow_backend.graphs.base.types import GraphConfig, GraphType
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
-    SimpleOrchestratorGraph,
-)
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
-    build_simple_orchestrator_flow as _build_simple_orchestrator_flow,
-)
 from mindflow_backend.infra.logging import get_logger
 
 
@@ -140,7 +134,11 @@ class GraphFactory:
     
     def _register_builtin_graphs(self) -> None:
         """Register built-in graph types."""
-        # Register Simple Orchestrator
+        # Register Simple Orchestrator (lazy import to avoid circular dependency)
+        from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+            SimpleOrchestratorGraph,
+        )
+
         self.register_graph_class(
             graph_type=GraphType.SIMPLE,
             graph_class=SimpleOrchestratorGraph,
@@ -314,4 +312,7 @@ def create_orchestrator_graph(
 
 def build_simple_orchestrator_flow() -> Any:
     """Build the canonical compiled LangGraph orchestrator flow."""
+    from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+        build_simple_orchestrator_flow as _build_simple_orchestrator_flow,
+    )
     return _build_simple_orchestrator_flow()

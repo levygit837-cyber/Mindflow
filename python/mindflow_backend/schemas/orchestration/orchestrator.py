@@ -56,8 +56,6 @@ class ToolScope(StrEnum):
     SHELL = "shell"
     WEB_SEARCH = "web_search"
     BROWSER_SEARCH = "browser_search"
-    PINCHTAB_FLEET = "pinchtab_fleet"
-    PINCHTAB_BROWSER = "pinchtab_browser"
     CODE_ANALYSIS = "code_analysis"
     CONTEXTPLUS = "contextplus"
     DATABASE = "database"

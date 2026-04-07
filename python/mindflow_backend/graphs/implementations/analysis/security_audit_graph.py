@@ -31,22 +31,23 @@ class SecurityAuditGraph(BaseGraph):
         self.set_entry_point("initialize")
 
     def _setup_nodes(self) -> None:
-        from mindflow_backend.nodes.implementations.analysis import (
-            AnalysisInitializeNode,
-            AnalysisReportNode,
-            AnnotateNode,
-            InvestigateNode,
-            ReadContextNode,
-            SynthesizeNode,
-        )
+        # Use generic common nodes
+        from mindflow_backend.nodes.common.initialize_node import InitializeNode
+        from mindflow_backend.nodes.common.read_context_node import ReadContextNode
+        from mindflow_backend.nodes.common.report_node import ReportNode
 
-        self.add_node("initialize", AnalysisInitializeNode("initialize"))
+        # Use Analyst-specific nodes
+        from mindflow_backend.nodes.analysis.investigate_node import InvestigateNode
+        from mindflow_backend.nodes.analysis.annotate_node import AnnotateNode
+        from mindflow_backend.nodes.analysis.synthesize_node import SynthesizeNode
+
+        self.add_node("initialize", InitializeNode("initialize"))
         self.add_node("scan_surface", ReadContextNode("scan_surface"))
         self.add_node("identify_vectors", InvestigateNode("identify_vectors"))
         self.add_node("test_vulnerabilities", InvestigateNode("test_vulnerabilities"))
         self.add_node("document", AnnotateNode("document"))
         self.add_node("prioritize", SynthesizeNode("prioritize"))
-        self.add_node("report", AnalysisReportNode("report"))
+        self.add_node("report", ReportNode("report"))
 
     def _setup_connections(self) -> None:
         self.add_connection(NodeConnection(source_node="initialize", target_node="scan_surface"))
@@ -72,6 +73,7 @@ class SecurityAuditGraph(BaseGraph):
 
         current_node = self._entry_point
         nodes_executed = 0
+        iteration = state.get("iteration", 0)
 
         while current_node:
             state["current_node"] = current_node
@@ -80,6 +82,10 @@ class SecurityAuditGraph(BaseGraph):
                 node = self._nodes[current_node]
                 if hasattr(node, "execute"):
                     result = await node.execute(state)
+                    if isinstance(result, dict):
+                        state.update(result)
+                else:
+                    result = await node(state)
                     if isinstance(result, dict):
                         state.update(result)
                 nodes_executed += 1
@@ -91,6 +97,8 @@ class SecurityAuditGraph(BaseGraph):
 
             # Determine next node
             if current_node == "document":
+                iteration += 1
+                state["iteration"] = iteration
                 next_node = self._should_continue_vuln_scan(dict(state))
             elif current_node == "test_vulnerabilities":
                 next_node = "document"
@@ -104,6 +112,7 @@ class SecurityAuditGraph(BaseGraph):
             "nodes_executed": nodes_executed,
             "nodes_failed": 1 if state.get("error") else 0,
             "total_tokens_used": 0,
+            "vulnerabilities_tested": iteration,
             "error_details": [state["error"]] if state.get("error") else [],
         }
 

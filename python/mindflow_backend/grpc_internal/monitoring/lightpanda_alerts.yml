@@ -1,0 +1,104 @@
+# Prometheus Alert Rules for LightPanda Browser Service
+
+groups:
+  - name: lightpanda_browser_alerts
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      - alert: LightpandaHighErrorRate
+        expr: rate(lightpanda_browser_error_rate[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser error rate is high"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes for LightPanda browser service."
+          
+      # High Latency Alert
+      - alert: LightpandaHighLatency
+        expr: histogram_quantile(0.95, lightpanda_browser_request_duration_seconds) > 5.0
+        for: 5m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser latency is high"
+          description: "P95 request duration is {{ $value }}s over the last 5 minutes for LightPanda browser service."
+          
+      # High Memory Usage Alert
+      - alert: LightpandaHighMemoryUsage
+        expr: lightpanda_browser_memory_usage_mb > 400
+        for: 10m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser memory usage is high"
+          description: "Memory usage is {{ $value }}MB for LightPanda browser service."
+          
+      # Critical Memory Usage Alert
+      - alert: LightpandaCriticalMemoryUsage
+        expr: lightpanda_browser_memory_usage_mb > 480
+        for: 5m
+        labels:
+          severity: critical
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser memory usage is critical"
+          description: "Memory usage is {{ $value }}MB for LightPanda browser service. Consider scaling or cleanup."
+          
+      # High CPU Usage Alert
+      - alert: LightpandaHighCpuUsage
+        expr: lightpanda_browser_cpu_usage_percent > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser CPU usage is high"
+          description: "CPU usage is {{ $value }}% for LightPanda browser service."
+          
+      # Instance Down Alert
+      - alert: LightpandaInstanceDown
+        expr: lightpanda_browser_active_instances == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: lightpanda
+        annotations:
+          summary: "No active LightPanda browser instances"
+          description: "No active browser instances detected for LightPanda service."
+          
+      # Low Pool Size Alert
+      - alert: LightpandaLowPoolSize
+        expr: lightpanda_browser_active_instances < 2
+        for: 10m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser pool size is low"
+          description: "Only {{ $value }} active browser instances available. Consider increasing pool size."
+          
+      # Request Failures Alert
+      - alert: LightpandaRequestFailures
+        expr: rate(lightpanda_browser_failed_requests_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda browser request failures are high"
+          description: "Failed request rate is {{ $value }} req/s over the last 5 minutes."
+          
+      # Snapshot Creation Failures Alert
+      - alert: LightpandaSnapshotFailures
+        expr: rate(lightpanda_browser_snapshot_errors_total[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: lightpanda
+        annotations:
+          summary: "LightPanda snapshot creation failures"
+          description: "Snapshot error rate is {{ $value }} errors/s over the last 5 minutes."

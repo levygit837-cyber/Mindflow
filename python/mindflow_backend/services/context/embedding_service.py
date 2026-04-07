@@ -1,7 +1,7 @@
 """Embedding service for generating and managing text embeddings.
 
 This service provides multilingual embedding generation with support for
-multiple models, caching, and optimization for different task types.
+multiple models, caching, retry logic, and optimization for different task types.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ import asyncio
 import hashlib
 import math
 import os
+import random
 import re
 from typing import Any
 
@@ -17,6 +18,9 @@ from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.context_interfaces import EmbeddingServiceInterface
+
+
+logger = get_logger(__name__)
 
 
 class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
@@ -27,7 +31,7 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     """
     
     def __init__(self) -> None:
-        """Initialize embedding service with model configuration."""
+        """Initialize embedding service with model configuration and retry settings."""
         super().__init__()
         self.settings = get_settings()
         
@@ -35,11 +39,22 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
         self.default_model = getattr(self.settings, 'embedding_model', 'text-embedding-004')
         self.default_dimensions = getattr(self.settings, 'embedding_dimensions', 768)
         
+        # Retry configuration
+        self.max_retries = getattr(self.settings, 'embedding_max_retries', 3)
+        self.retry_base_delay = getattr(self.settings, 'embedding_retry_base_delay', 1.0)
+        self.retry_max_delay = getattr(self.settings, 'embedding_retry_max_delay', 10.0)
+        self.retry_exponential_base = getattr(self.settings, 'embedding_retry_exponential_base', 2.0)
+        
         # Cache for embeddings
         self._embedding_cache: dict[str, list[float]] = {}
         self._cache_size_limit = 10000
         self._cache_hits = 0
         self._cache_misses = 0
+        
+        # Retry statistics
+        self._retry_count = 0
+        self._retry_success = 0
+        self._retry_failures = 0
         
         # Supported languages
         self._supported_languages = [
@@ -348,33 +363,86 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
     # Helper methods
     
     async def _generate_llm_embedding(self, text: str, model: str) -> list[float]:
-        """Generate embedding using LLM provider."""
-        try:
-            # Try to use Google Generative AI embeddings
-            from langchain_google_genai import GoogleGenerativeAIEmbeddings
-            
-            api_key = self.settings.google_api_key
-            if not api_key:
-                api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-            
-            if api_key:
-                embeddings_model = GoogleGenerativeAIEmbeddings(
-                    model=model,
-                    google_api_key=api_key,
-                )
-                vector = embeddings_model.embed_query(text)
-                
-                # Ensure correct dimensions
-                if len(vector) != self.default_dimensions:
-                    vector = self._normalize_vector_dimensions(vector, self.default_dimensions)
-                
-                return vector
-            else:
-                raise ValueError("No API key available for embeddings")
-                
-        except Exception as exc:
-            self._logger.warning(f"LLM embedding failed, using fallback: {str(exc)}")
-            return self._generate_hash_embedding(text, self.default_dimensions)
+        """Generate embedding using LLM provider with retry logic.
+
+        Uses exponential backoff with jitter for retry attempts.
+        Falls back to hash-based embedding if all retries fail.
+
+        Args:
+            text: Text to embed
+            model: Model name
+
+        Returns:
+            Embedding vector
+        """
+        last_error = None
+
+        for attempt in range(self.max_retries + 1):  # +1 for initial attempt
+            try:
+                # Try to use Google Generative AI embeddings
+                from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+                api_key = self.settings.google_api_key
+                if not api_key:
+                    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+                if api_key:
+                    embeddings_model = GoogleGenerativeAIEmbeddings(
+                        model=model,
+                        google_api_key=api_key,
+                    )
+                    vector = embeddings_model.embed_query(text)
+
+                    # Ensure correct dimensions
+                    if len(vector) != self.default_dimensions:
+                        vector = self._normalize_vector_dimensions(vector, self.default_dimensions)
+
+                    if attempt > 0:
+                        self._retry_success += 1
+                        self._logger.info(
+                            "embedding_retry_success",
+                            attempt=attempt,
+                            max_retries=self.max_retries
+                        )
+
+                    return vector
+                else:
+                    raise ValueError("No API key available for embeddings")
+
+            except Exception as exc:
+                last_error = exc
+                self._retry_count += 1
+
+                if attempt < self.max_retries:
+                    # Calculate exponential backoff with jitter
+                    delay = min(
+                        self.retry_base_delay * (self.retry_exponential_base ** attempt),
+                        self.retry_max_delay
+                    )
+                    # Add jitter (±25%)
+                    jitter = delay * 0.25 * (2 * random.random() - 1)
+                    delay = delay + jitter
+
+                    self._logger.warning(
+                        "embedding_retry_attempt",
+                        attempt=attempt + 1,
+                        max_retries=self.max_retries,
+                        delay=round(delay, 2),
+                        error=str(exc)
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    break
+
+        # All retries failed, use fallback
+        self._retry_failures += 1
+        self._logger.error(
+            "embedding_all_retries_failed",
+            max_retries=self.max_retries,
+            last_error=str(last_error),
+            fallback="hash_embedding"
+        )
+        return self._generate_hash_embedding(text, self.default_dimensions)
     
     def _generate_hash_embedding(self, text: str, dims: int) -> list[float]:
         """Generate hash-based fallback embedding."""
@@ -432,17 +500,31 @@ class EmbeddingService(BaseAbstractService, EmbeddingServiceInterface):
         self._embedding_cache[key] = embedding
     
     def get_cache_stats(self) -> dict[str, Any]:
-        """Get embedding cache statistics."""
+        """Get embedding cache and retry statistics."""
         total_requests = self._cache_hits + self._cache_misses
         hit_rate = self._cache_hits / total_requests if total_requests > 0 else 0.0
-        
+
+        total_retries = self._retry_count
+        retry_success_rate = self._retry_success / total_retries if total_retries > 0 else 0.0
+
         return {
-            "cache_size": len(self._embedding_cache),
-            "cache_limit": self._cache_size_limit,
-            "hits": self._cache_hits,
-            "misses": self._cache_misses,
-            "hit_rate": hit_rate,
-            "total_requests": total_requests
+            "cache": {
+                "size": len(self._embedding_cache),
+                "limit": self._cache_size_limit,
+                "hits": self._cache_hits,
+                "misses": self._cache_misses,
+                "hit_rate": hit_rate,
+                "total_requests": total_requests
+            },
+            "retry": {
+                "total_attempts": self._retry_count,
+                "successful_retries": self._retry_success,
+                "failures": self._retry_failures,
+                "success_rate": retry_success_rate,
+                "max_retries": self.max_retries,
+                "base_delay": self.retry_base_delay,
+                "max_delay": self.retry_max_delay
+            }
         }
     
     def clear_cache(self) -> None:

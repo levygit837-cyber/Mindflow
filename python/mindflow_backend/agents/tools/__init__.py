@@ -93,10 +93,6 @@ class _DefaultRegistry:
                 tools = self._get_web_search_tools()
             elif scope == ToolScope.BROWSER_SEARCH:
                 tools = self._get_browser_search_tools()
-            elif scope == ToolScope.PINCHTAB_FLEET:
-                tools = self._get_pinchtab_fleet_tools()
-            elif scope == ToolScope.PINCHTAB_BROWSER:
-                tools = self._get_pinchtab_browser_tools()
             elif scope == ToolScope.CODE_ANALYSIS:
                 tools = self._get_code_analysis_tools()
             elif scope == ToolScope.DATABASE:
@@ -261,65 +257,9 @@ class _DefaultRegistry:
         """Get compatibility tools for the legacy browser_search scope."""
         tools = []
         
-        try:
-            from .web import (
-                BrowserSearchTool,
-                PinchTabFleetTool,
-            )
-            
-            tools = [
-                BrowserSearchTool(),
-                PinchTabFleetTool(),
-            ]
-            _logger.info(f"Loaded {len(tools)} browser search tools")
-            
-        except ImportError as e:
-            # Try individual imports
-            try:
-                from .web import BrowserSearchTool
-                tools.append(BrowserSearchTool())
-                _logger.info("Loaded BrowserSearchTool")
-            except ImportError as e2:
-                _logger.warning(f"Could not import BrowserSearchTool: {e2}")
-                
-            try:
-                from .web import PinchTabFleetTool
-                tools.append(PinchTabFleetTool())
-                _logger.info("Loaded PinchTabFleetTool")
-            except ImportError as e2:
-                _logger.warning(f"Could not import PinchTabFleetTool: {e2}")
-                
-            if not tools:
-                _logger.warning(f"Could not import any browser search tools: {e}")
-            
-        return tools
-
-    def _get_pinchtab_fleet_tools(self) -> list[Any]:
-        """Get PinchTab fleet management tools."""
-        tools = []
-
-        try:
-            from .web import PinchTabFleetTool
-
-            tools = [PinchTabFleetTool()]
-            _logger.info(f"Loaded {len(tools)} PinchTab fleet tools")
-        except ImportError as e:
-            _logger.warning(f"Could not import PinchTab fleet tools: {e}")
-
-        return tools
-
-    def _get_pinchtab_browser_tools(self) -> list[Any]:
-        """Get PinchTab per-browser control tools."""
-        tools = []
-
-        try:
-            from .web import PinchTabBrowserTool
-
-            tools = [PinchTabBrowserTool()]
-            _logger.info(f"Loaded {len(tools)} PinchTab browser tools")
-        except ImportError as e:
-            _logger.warning(f"Could not import PinchTab browser tools: {e}")
-
+        # Browser search tools removed with PinchTab deprecation
+        # TODO: Reimplement with LightPanda integration
+        
         return tools
 
     def _get_code_analysis_tools(self) -> list[Any]:

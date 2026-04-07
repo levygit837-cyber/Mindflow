@@ -29,7 +29,6 @@ This document maps all existing interfaces to their new locations in the central
 | `/agents/interfaces/agents/core_personality.py` | CorePersonalityContract | `/interfaces/agents/core_personality.py` | High |
 | `/agents/interfaces/agents/enhanced_coder.py` | EnhancedCoder | `/interfaces/agents/enhanced/coder.py` | Medium |
 | `/agents/interfaces/agents/enhanced_analyst.py` | EnhancedAnalyst | `/interfaces/agents/enhanced/analyst.py` | Medium |
-| `/agents/interfaces/agents/enhanced_researcher.py` | EnhancedResearcher | `/interfaces/agents/enhanced/researcher.py` | Medium |
 | `/agents/interfaces/agents/enhanced_reviewer.py` | EnhancedReviewer | `/interfaces/agents/enhanced/reviewer.py` | Medium |
 | `/agents/interfaces/agents/task_rag_agent.py` | TaskRagAgent | `/interfaces/agents/rag.py` | Low |
 | `/agents/interfaces/orchestrator/core.py` | OrchestratorCoreContract | `/interfaces/agents/orchestrator.py` | High |

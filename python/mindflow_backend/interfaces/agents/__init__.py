@@ -9,7 +9,6 @@ from .context import Cache, ContextRetriever, VectorStore
 from .core_personality import CorePersonalityContract
 from .enhanced.analyst import EnhancedAnalyst
 from .enhanced.coder import EnhancedCoder
-from .enhanced.researcher import EnhancedResearcher
 from .enhanced_reviewer import EnhancedReviewer
 from .personality import RuleEngine as PersonalityRuleEngine
 from .personality import SpecialistSelector as PersonalitySpecialistSelector
@@ -38,7 +37,6 @@ __all__ = [
     "CorePersonalityContract",
     "PersonalitySpecialistSelector",
     "PersonalityRuleEngine",
-    "EnhancedResearcher",
     "TaskRagAgent",
     "Reviewer",
     "EnhancedCoder",

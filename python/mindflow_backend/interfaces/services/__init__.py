@@ -40,11 +40,6 @@ from .orchestration import (
     TaskServiceInterface,
     TodoPlanningServiceInterface,
 )
-from .pinchtab import (
-    PinchTabBrowserServiceInterface,
-    PinchTabContainerOrchestratorInterface,
-    PinchTabFleetServiceInterface,
-)
 
 __all__ = [
     # Base service interfaces
@@ -73,9 +68,6 @@ __all__ = [
     "ContextRetrievalServiceInterface",
     "ContextEmbeddingServiceInterface",
     "ContextVectorServiceInterface",
-    "PinchTabBrowserServiceInterface",
-    "PinchTabContainerOrchestratorInterface",
-    "PinchTabFleetServiceInterface",
     
     # Monitoring interfaces
     "MonitoringServiceInterface",

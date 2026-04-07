@@ -1,11 +1,12 @@
 """Node implementations for MindFlow orchestration."""
 
-from . import control, integration, io, orchestrator, processing
+from . import control, integration, io, memory, orchestrator, processing
 
 __all__ = [
     "control",
     "processing",
-    "integration", 
+    "integration",
     "io",
     "orchestrator",
+    "memory",
 ]

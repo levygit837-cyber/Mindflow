@@ -47,7 +47,22 @@ This directory contains tools migrated to the CallableTool pattern (Phase 2).
 | todo_list_write | ✅ Complete | `planning.py` | Migrated with session state management |
 | todo_list_focus | ✅ Complete | `planning.py` | Migrated with complexity-based prioritization |
 
-## Overall Progress: 18/18 (100%) 🎉🎉🎉
+### Priority 6: Browser - 3/3 ✅
+
+| Tool | Status | File | Notes |
+|------|--------|------|-------|
+| browser_search | ✅ Complete | `browser.py` | LightPanda browser search with multi-engine support |
+| deep_page_scraper | ✅ Complete | `browser.py` | Advanced scraping with scroll, link mapping, lazy-loaded content detection |
+| multi_tab_search | ✅ Complete | `browser.py` | Parallel multi-tab search with TabManager |
+
+### Priority 7: LLM - 2/2 ✅
+
+| Tool | Status | File | Notes |
+|------|--------|------|-------|
+| llm_research_synthesis | ✅ Complete | `llm.py` | LLM-powered research synthesis with multiple types |
+| llm_query_refinement | ✅ Complete | `llm.py` | LLM-powered query refinement for better search results |
+
+## Overall Progress: 23/23 (100%) 🎉🎉🎉
 
 **Completed:**
 - ✅ Priority 1: Filesystem (Read-Only) - 5/5 tools
@@ -55,6 +70,8 @@ This directory contains tools migrated to the CallableTool pattern (Phase 2).
 - ✅ Priority 3: System - 3/3 tools
 - ✅ Priority 4: Web - 3/3 tools
 - ✅ Priority 5: Planning - 3/3 tools
+- ✅ Priority 6: Browser - 3/3 tools
+- ✅ Priority 7: LLM - 2/2 tools
 
 **Phase 2 Tool Migration: COMPLETE! 🚀**
 
@@ -93,3 +110,83 @@ This directory contains tools migrated to the CallableTool pattern (Phase 2).
 - Legacy tools remain available during migration for backward compatibility
 - Registry returns mix of callable + legacy until migration complete
 - After validation, legacy tools will be removed
+
+## Browser Tools Configuration
+
+The Priority 6 Browser tools require LightPanda service to be running:
+
+### Environment Variables
+
+```bash
+LIGHTPANDA_HOST=localhost
+LIGHTPANDA_PORT=9222
+LIGHTPANDA_MAX_INSTANCES=5
+```
+
+### Requirements
+
+- LightPanda Docker service must be running
+- BrowserLifecycleService must be initialized
+- CDP (Chrome DevTools Protocol) connection available
+
+### Usage Example
+
+```python
+from mindflow_backend.agents.tools.callable import BrowserSearchCallable
+from mindflow_backend.schemas.tools.context import ToolContext
+
+context = ToolContext(root_dir="/workspace", sandbox_mode=False)
+input_data = BrowserSearchCallable.InputSchema(
+    query="machine learning tutorial",
+    search_engine="google",
+    num_results=10,
+    language="en",
+)
+
+result = await BrowserSearchCallable.call_fn(input_data, context)
+if result.success:
+    print(f"Found {result.data['total_results']} results")
+else:
+    print(f"Error: {result.error}")
+```
+
+## LLM Tools Configuration
+
+The Priority 7 LLM tools provide AI-powered synthesis and query refinement capabilities.
+
+### Environment Variables
+
+```bash
+# LLM Service Configuration (if using external LLM)
+LLM_SERVICE_URL=http://localhost:8000
+LLM_API_KEY=your_api_key_here
+LLM_MODEL=gpt-4
+```
+
+### Requirements
+
+- LLM service integration (can be simulated without external service)
+- ToolContext for runtime state
+- Research findings data structure
+
+### Usage Example
+
+```python
+from mindflow_backend.agents.tools.callable import LLMResearchSynthesisCallable
+from mindflow_backend.schemas.tools.context import ToolContext
+
+context = ToolContext(root_dir="/workspace", sandbox_mode=False)
+input_data = LLMResearchSynthesisCallable.InputSchema(
+    findings=[...],  # List of research findings
+    query="machine learning tutorial",
+    synthesis_type="comprehensive",
+    include_citations=True,
+)
+
+result = await LLMResearchSynthesisCallable.call_fn(input_data, context)
+if result.success:
+    print(f"Synthesis: {result.data['synthesis']}")
+    print(f"Confidence: {result.data['confidence_score']}")
+else:
+    print(f"Error: {result.error}")
+```

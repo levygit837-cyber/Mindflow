@@ -14,7 +14,6 @@ from .browser_search import *
 
 # Research components
 from .core import *
-from .monitoring.pinchtab_service import get_pinchtab_service
 from .search_web import *
 
 __all__ = [
@@ -23,13 +22,9 @@ __all__ = [
     "search_web",
     
     # Core components
-    "get_enhanced_researcher_agent",
     "get_enhanced_query_planner",
     
     # Analysis components
     "get_result_synthesizer", 
     "get_source_trust_engine",
-    
-    # Monitoring components
-    "get_pinchtab_service",
 ]

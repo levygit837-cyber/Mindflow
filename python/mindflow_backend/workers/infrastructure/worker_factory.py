@@ -11,8 +11,6 @@ from mindflow_backend.workers.agents.orchestrator_worker import OrchestratorWork
 from mindflow_backend.workers.agents.researcher_worker import ResearcherWorker
 from mindflow_backend.workers.base.worker import BaseWorker
 from mindflow_backend.workers.config.queues import QueueConfig, QueueDefinitions
-from mindflow_backend.workers.research.browser_worker import BrowserWorker
-from mindflow_backend.workers.research.content_worker import ContentWorker
 from mindflow_backend.workers.system.health_worker import HealthWorker
 from mindflow_backend.workers.system.memory_worker import MemoryWorker
 from mindflow_backend.workers.system.session_review_worker import SessionReviewWorker
@@ -37,10 +35,6 @@ class WorkerFactory:
         "memory": MemoryWorker,
         "session_review": SessionReviewWorker,
         "health": HealthWorker,
-        
-        # Research workers
-        "browser": BrowserWorker,
-        "content": ContentWorker,
     }
     
     def __init__(self) -> None:
@@ -110,8 +104,6 @@ class WorkerFactory:
             "memory": "memory_low",
             "session_review": "session_review_high",
             "health": "health_low",
-            "browser": "browser_high",
-            "content": "content_medium",
         }
         
         return default_mappings.get(worker_type, f"{worker_type}_high")

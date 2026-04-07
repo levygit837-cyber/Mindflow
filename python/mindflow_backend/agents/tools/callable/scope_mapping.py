@@ -27,6 +27,11 @@ from mindflow_backend.agents.tools.callable import (
     TodoListReadCallable,
     TodoListWriteCallable,
     TodoListFocusCallable,
+    BrowserSearchCallable,
+    DeepPageScraperCallable,
+    MultiTabSearchCallable,
+    LLMResearchSynthesisCallable,
+    LLMQueryRefinementCallable,
 )
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools import CallableTool
@@ -73,11 +78,21 @@ def get_callable_tools_for_scope(scope: Any) -> list[CallableTool]:
                 ApiClientCallable,
             ]
 
+        elif scope == ToolScope.BROWSER_SEARCH:
+            return [
+                BrowserSearchCallable,
+                WebScraperCallable,
+                DeepPageScraperCallable,
+                MultiTabSearchCallable,
+            ]
+
         elif scope == ToolScope.PLANNING:
             return [
                 TodoListReadCallable,
                 TodoListWriteCallable,
                 TodoListFocusCallable,
+                LLMResearchSynthesisCallable,
+                LLMQueryRefinementCallable,
             ]
 
         elif scope == ToolScope.CODE_ANALYSIS:
@@ -92,9 +107,6 @@ def get_callable_tools_for_scope(scope: Any) -> list[CallableTool]:
 
         # Scopes not yet migrated to callable pattern
         elif scope in (
-            ToolScope.BROWSER_SEARCH,
-            ToolScope.PINCHTAB_FLEET,
-            ToolScope.PINCHTAB_BROWSER,
             ToolScope.DATABASE,
             ToolScope.MEMORY,
             ToolScope.DELEGATION,
@@ -116,7 +128,7 @@ def get_all_callable_tools() -> list[CallableTool]:
     """Get all registered CallableTool instances.
 
     Returns:
-        List of all 18 CallableTool instances
+        List of all 23 CallableTool instances
     """
     return [
         # Filesystem (9 tools)
@@ -137,10 +149,16 @@ def get_all_callable_tools() -> list[CallableTool]:
         HttpClientCallable,
         WebScraperCallable,
         ApiClientCallable,
-        # Planning (3 tools)
+        # Browser (3 tools)
+        BrowserSearchCallable,
+        DeepPageScraperCallable,
+        MultiTabSearchCallable,
+        # Planning + LLM (5 tools)
         TodoListReadCallable,
         TodoListWriteCallable,
         TodoListFocusCallable,
+        LLMResearchSynthesisCallable,
+        LLMQueryRefinementCallable,
     ]
 
 

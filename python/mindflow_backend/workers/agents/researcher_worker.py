@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.services.browser import BrowserLifecycleService
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
 from mindflow_backend.workers.config.queues import QueueConfig
 
@@ -15,9 +16,15 @@ _logger = get_logger(__name__)
 class ResearcherWorker(BaseWorker):
     """Worker specialized for Researcher Agent tasks."""
     
-    def __init__(self, queue_config: QueueConfig) -> None:
-        """Initialize the Researcher worker."""
+    def __init__(self, queue_config: QueueConfig, browser_service: BrowserLifecycleService | None = None) -> None:
+        """Initialize the Researcher worker.
+        
+        Args:
+            queue_config: Queue configuration
+            browser_service: Browser lifecycle service (created if None)
+        """
         super().__init__(queue_config, worker_name="researcher_worker")
+        self.browser_service = browser_service or BrowserLifecycleService()
     
     async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process research and information gathering tasks.
@@ -74,46 +81,60 @@ class ResearcherWorker(BaseWorker):
             )
     
     async def _handle_web_search(self, message_data: dict[str, Any]) -> WorkerResult:
-        """Handle web search and information gathering."""
+        """Handle web search and information gathering using LightPanda."""
         query = message_data.get("query")
         search_depth = message_data.get("search_depth", "standard")
         sources = message_data.get("sources", ["web"])
         max_results = message_data.get("max_results", 10)
         
-        # TODO: Integrate with existing PinchTab browser automation
-        # This would use the PinchTabService for web searches
-        
-        await asyncio.sleep(0.8)  # Simulate web search
-        
-        return WorkerResult(
-            success=True,
-            message=f"Web search completed for query: {query}",
-            data={
-                "query": query,
-                "search_depth": search_depth,
-                "sources_used": sources,
-                "results_count": max_results,
-                "findings": [
-                    {
-                        "title": "Research Finding 1",
-                        "url": "https://example.com/1",
-                        "relevance_score": 0.9,
-                        "snippet": "Relevant information snippet...",
-                    },
-                    {
-                        "title": "Research Finding 2", 
-                        "url": "https://example.com/2",
-                        "relevance_score": 0.8,
-                        "snippet": "Another relevant finding...",
-                    },
-                ],
-                "search_metadata": {
-                    "total_time": 0.8,
-                    "sources_explored": 5,
-                    "quality_score": 0.85,
-                },
-            },
+        _logger.info(
+            "handling_web_search",
+            query=query,
+            search_depth=search_depth,
+            max_results=max_results,
         )
+        
+        try:
+            # Import LightPanda browser search tool
+            from mindflow_backend.agents.tools.web.lightpanda_browser_search import (
+                get_lightpanda_browser_search_tool,
+            )
+            
+            # Get browser search tool
+            browser_tool = get_lightpanda_browser_search_tool()
+            
+            # Execute search
+            search_result = await browser_tool.search_web(
+                query=query,
+                num_results=max_results,
+            )
+            
+            _logger.info(
+                "web_search_completed",
+                query=query,
+                results_count=search_result.get("total_results", 0),
+            )
+            
+            return WorkerResult(
+                success=True,
+                message=f"Web search completed for query: {query}",
+                data=search_result,
+                processing_time=time.time() - time.time(),  # Will be set by base class
+            )
+            
+        except Exception as exc:
+            _logger.error(
+                "web_search_failed",
+                query=query,
+                error=str(exc),
+                exc_info=True,
+            )
+            return WorkerResult(
+                success=False,
+                message=f"Web search failed for query '{query}': {exc}",
+                error=exc,
+                processing_time=time.time() - time.time(),
+            )
     
     async def _handle_source_validation(self, message_data: dict[str, Any]) -> WorkerResult:
         """Handle source validation and verification."""

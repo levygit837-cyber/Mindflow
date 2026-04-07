@@ -1,6 +1,6 @@
-"""CodingGraph — Implementation with verify-retry loop.
+"""CodingGraph — Implementation with auto-verify and verify-retry loop.
 
-Fluxo: initialize → plan → read_context → (implement → verify)* → [test] → report
+Fluxo: initialize → plan → read_context → implement → auto_verify → verify → test → report
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ class CodingGraph(BaseGraph):
 
     def _setup_nodes(self) -> None:
         from mindflow_backend.nodes.implementations.coding import (
+            AutoVerifyNode,
             CodingInitializeNode,
             CodingReportNode,
             ImplementNode,
@@ -45,6 +46,7 @@ class CodingGraph(BaseGraph):
         self.add_node("plan", PlanNode("plan"))
         self.add_node("read_context", ReadContextNode("read_context"))
         self.add_node("implement", ImplementNode("implement"))
+        self.add_node("auto_verify", AutoVerifyNode("auto_verify"))
         self.add_node("verify", VerifyNode("verify"))
         self.add_node("test", TestNode("test"))
         self.add_node("report", CodingReportNode("report"))
@@ -53,20 +55,30 @@ class CodingGraph(BaseGraph):
         self.add_connection(NodeConnection(source_node="initialize", target_node="plan"))
         self.add_connection(NodeConnection(source_node="plan", target_node="read_context"))
         self.add_connection(NodeConnection(source_node="read_context", target_node="implement"))
-        self.add_connection(NodeConnection(source_node="implement", target_node="verify"))
+        self.add_connection(NodeConnection(source_node="implement", target_node="auto_verify"))
+        self.add_connection(NodeConnection(source_node="auto_verify", target_node="verify"))
         self.add_connection(NodeConnection(source_node="verify", target_node="test"))
         self.add_connection(NodeConnection(source_node="test", target_node="report"))
 
     @staticmethod
     def _should_retry_implementation(state: dict[str, Any]) -> str:
+        # First check auto_verify (quick check)
+        if not state.get("auto_verify_passed", True):
+            # If auto_verify failed, go back to implement
+            return "implement"
+
+        # Then check full verify
         if state.get("verify_passed"):
             return "test"
+
+        # If verify failed but under retry limit, retry implement
         if state.get("verify_retries", 0) >= MAX_VERIFY_RETRIES:
             return "report"
+
         return "implement"
 
     async def execute(self, state: GraphState) -> GraphState:
-        """Executa fluxo de implementação com retry de verificação."""
+        """Executa fluxo de implementação com auto-verify e retry de verificação."""
         current_node = self._entry_point
         nodes_executed = 0
 

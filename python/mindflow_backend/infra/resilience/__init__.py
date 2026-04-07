@@ -41,6 +41,12 @@ from mindflow_backend.infra.resilience.orchestration_retry import (
     OrchestrationRetryManager,
 )
 
+# Backward-compatible aliases for legacy imports
+from mindflow_backend.infra.resilience.retry_fallback import (
+    RetryFallbackConfig as RetryConfig,
+    with_retry_and_fallback as with_retry,
+)
+
 from .negotiation_timer import (
     NegotiationTimer,
     TimerAlert,
@@ -91,4 +97,7 @@ __all__ = [
     "TimerConfig",
     "TimerPhase",
     "run_timer_with_alerts",
+    # Backward-compatible aliases
+    "RetryConfig",
+    "with_retry",
 ]

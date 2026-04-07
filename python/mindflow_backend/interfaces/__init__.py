@@ -141,8 +141,6 @@ from .tools import (
     GrepSearchTool,
     HttpClientTool,
     PermissionTool,
-    PinchTabBrowserHandleInterface,
-    PinchTabFleetToolInterface,
     ProcessManagerTool,
     RssFeedTool,
     SandboxTool,

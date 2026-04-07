@@ -32,21 +32,22 @@ class AnalysisGraph(BaseGraph):
         self.set_entry_point("initialize")
 
     def _setup_nodes(self) -> None:
-        from mindflow_backend.nodes.implementations.analysis import (
-            AnalysisInitializeNode,
-            AnalysisReportNode,
-            AnnotateNode,
-            InvestigateNode,
-            ReadContextNode,
-            SynthesizeNode,
-        )
+        # Use generic common nodes
+        from mindflow_backend.nodes.common.initialize_node import InitializeNode
+        from mindflow_backend.nodes.common.read_context_node import ReadContextNode
+        from mindflow_backend.nodes.common.report_node import ReportNode
 
-        self.add_node("initialize", AnalysisInitializeNode("initialize"))
+        # Use Analyst-specific nodes
+        from mindflow_backend.nodes.analysis.investigate_node import InvestigateNode
+        from mindflow_backend.nodes.analysis.annotate_node import AnnotateNode
+        from mindflow_backend.nodes.analysis.synthesize_node import SynthesizeNode
+
+        self.add_node("initialize", InitializeNode("initialize"))
         self.add_node("read_context", ReadContextNode("read_context"))
         self.add_node("investigate", InvestigateNode("investigate"))
         self.add_node("annotate", AnnotateNode("annotate"))
         self.add_node("synthesize", SynthesizeNode("synthesize"))
-        self.add_node("report", AnalysisReportNode("report"))
+        self.add_node("report", ReportNode("report"))
 
     def _setup_connections(self) -> None:
         self.add_connection(NodeConnection(source_node="initialize", target_node="read_context"))
@@ -68,6 +69,7 @@ class AnalysisGraph(BaseGraph):
         """Executa o fluxo de análise iterativa com loop condicional."""
         current_node = self._entry_point
         nodes_executed = 0
+        iteration = state.get("iteration", 0)
 
         while current_node:
             state["current_node"] = current_node
@@ -93,8 +95,13 @@ class AnalysisGraph(BaseGraph):
             # Determine next node
             if current_node == "annotate":
                 next_node = self._should_continue(dict(state))
+                if next_node == "investigate":
+                    iteration += 1
+                    state["iteration"] = iteration
             elif current_node == "investigate":
                 next_node = "annotate"
+            elif current_node == "synthesize":
+                next_node = "report"
             else:
                 next_nodes = self.get_next_nodes(current_node)
                 next_node = next_nodes[0] if next_nodes else None

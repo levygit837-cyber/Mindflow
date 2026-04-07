@@ -419,3 +419,125 @@ class SessionFact(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ============================================================================
+# Unified Memory System Models (Phase 1 - Intelligent Memory System)
+# ============================================================================
+
+
+class MemoryEntry(Base):
+    """Unified memory entry for the Intelligent Memory System.
+
+    Centralizes all memory types (facts, patterns, preferences, errors)
+    with support for project and global scope, full-text search, and embeddings.
+    """
+    __tablename__ = "memory_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Categorization (references existing hierarchical models)
+    category_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("memory_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    subcategory_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("memory_subcategories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # Scope (project or global)
+    scope: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    # scope: "global" | "project" | "session"
+
+    project_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("project_memories.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+    # Content
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_structured: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+    # Metadata
+    memory_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # memory_type: "fact" | "pattern" | "preference" | "error" | "insight" | "context"
+
+    importance: Mapped[float] = mapped_column(Float, default=0.5, index=True)
+    source_agent_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    source_tool: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+
+    # Usage tracking
+    access_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_accessed: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Full-text search vector - usar TSVECTOR para busca eficiente
+    search_vector: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Full-text search vector (usar to_tsvector na migration)"
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class MemoryEmbedding(Base):
+    """Vector embeddings for semantic memory search.
+
+    Supports similarity-based retrieval of memories across all types.
+    """
+    __tablename__ = "memory_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    memory_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("memory_entries.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    # Vector embedding (dimension configurable, default 1536 for OpenAI)
+    vector: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
+
+    # Metadata
+    embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MemoryTag(Base):
+    """Tags for flexible memory organization and filtering.
+
+    Allows cross-cutting categorization beyond the hierarchical structure.
+    """
+    __tablename__ = "memory_tags"
+    __table_args__ = (
+        UniqueConstraint("memory_id", "tag", name="uq_memory_tag"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    memory_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("memory_entries.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tag: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    scope: Mapped[str] = mapped_column(String(20), nullable=False)
+    # scope: "global" | "project" | "session"
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MemoryCategoryType(Base):
+    """System-wide memory category types (base categories).
+
+    Defines the fixed base categories that all projects share.
+    Dynamic sub-categories are stored in MemoryCategory/MemorySubCategory.
+    """
+    __tablename__ = "memory_category_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_dynamic: Mapped[bool] = mapped_column(Boolean, default=False)
+    # If True, allows sub-categories
+
+    default_importance: Mapped[float] = mapped_column(Float, default=0.5)
+    auto_extract: Mapped[bool] = mapped_column(Boolean, default=True)
+    # If True, observers can auto-extract to this category
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

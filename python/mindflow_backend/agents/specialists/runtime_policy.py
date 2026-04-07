@@ -361,10 +361,12 @@ AGENT_RUNTIME_POLICY: dict[str, AgentRuntimePolicy] = {
         can_observe=False,
         mission_types=("architecture_design", "structural_refactor"),
     ),
+    # TODO: Integrar ToolScope.LIGHTPANDA ao Researcher após implementação do LightPanda
+    # Tracking: https://github.com/issue-tracker/mindflow/issues/XXX
     "researcher": AgentRuntimePolicy(
         agent_role=AgentType.RESEARCHER,
         system_prompt=RESEARCHER_SYSTEM_PROMPT,
-        tools=(ToolScope.WEB_SEARCH, ToolScope.PINCHTAB_FLEET, ToolScope.PINCHTAB_BROWSER, ToolScope.MEMORY),
+        tools=(ToolScope.WEB_SEARCH, ToolScope.MEMORY),
         sandbox=SandboxMode.READ_ONLY,
         thinking_level=ThinkingLevel.HIGH,
         max_iterations=500,  # Unlimited for thorough research

@@ -20,7 +20,7 @@ from .config import QueueConfig, WorkerSettings, get_queue_config, get_worker_se
 from .infrastructure import QueueManager, WorkerFactory, WorkerMonitor
 
 # Research workers
-from .research import BrowserWorker, ContentWorker
+# (Removed with PinchTab deprecation)
 
 # System workers
 from .system import HealthWorker, MemoryWorker, VectorWorker
@@ -58,9 +58,7 @@ __all__ = [
     "MemoryWorker",
     "HealthWorker",
     
-    # Research workers
-    "BrowserWorker",
-    "ContentWorker",
+    # Research workers (removed with PinchTab deprecation)
     
     # Infrastructure
     "QueueManager",

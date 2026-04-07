@@ -43,7 +43,6 @@ from mindflow_backend.services.context import (
 # Core domain services
 from mindflow_backend.services.core import (
     get_agent_service,
-    get_pinchtab_service,
     get_provider_service,
     get_session_service,
     get_shell_tab_service,
@@ -107,7 +106,6 @@ __all__ = [
     "get_agent_service",
     "get_session_service",
     "get_provider_service",
-    "get_pinchtab_service",
     "get_shell_tab_service",
     
     # Orchestration services

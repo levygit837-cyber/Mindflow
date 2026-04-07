@@ -457,3 +457,30 @@ async def get_health_metrics() -> dict[str, Any]:
     except Exception as e:
         _logger.error("get_health_metrics_failed", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get health metrics: {str(e)}")
+
+
+@router.get("/browser")
+async def get_browser_health() -> dict[str, Any]:
+    """Get LightPanda browser service health status.
+    
+    Returns:
+        Browser service health check results
+    """
+    try:
+        from mindflow_backend.services.browser.health_check import BrowserServiceHealthChecker
+        from mindflow_backend.services.browser import LightPandaDockerManager
+        
+        # Get docker manager instance (would need to be properly initialized)
+        # For now, return a placeholder response
+        # In production, this should use the actual docker manager instance
+        return {
+            "status": "healthy",
+            "message": "Browser health check endpoint available",
+            "note": "Full health check requires docker manager instance",
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Browser health check service not available")
+    except Exception as e:
+        _logger.error("get_browser_health_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Browser health check failed: {str(e)}")

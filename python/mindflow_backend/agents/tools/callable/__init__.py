@@ -52,6 +52,17 @@ from .web import (
     ApiClientCallable,
 )
 
+# Browser tools (Priority 6) ✅ COMPLETE
+from .browser import (
+    BrowserSearchCallable,
+    DeepPageScraperCallable,
+    MultiTabSearchCallable,
+)
+from .llm import (
+    LLMResearchSynthesisCallable,
+    LLMQueryRefinementCallable,
+)
+
 # Planning tools (Priority 5) ✅ COMPLETE
 from .planning import (
     TodoListReadCallable,
@@ -96,6 +107,13 @@ __all__ = [
     "HttpClientCallable",
     "WebScraperCallable",
     "ApiClientCallable",
+    # Priority 6 - Browser (COMPLETE)
+    "BrowserSearchCallable",
+    "DeepPageScraperCallable",
+    "MultiTabSearchCallable",
+    # Priority 7 - LLM (COMPLETE)
+    "LLMResearchSynthesisCallable",
+    "LLMQueryRefinementCallable",
     # Priority 5 - Planning (COMPLETE)
     "TodoListReadCallable",
     "TodoListWriteCallable",

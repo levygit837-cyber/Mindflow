@@ -9,6 +9,8 @@ from typing import Any
 from pydantic import ValidationError
 
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.memory import MemoryService
+from mindflow_backend.memory.category_manager import MemoryScope
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
 from mindflow_backend.workers.config.queues import QueueConfig
 from mindflow_backend.workers.system.consumers.session_review_consumer import (
@@ -25,7 +27,15 @@ class SessionReviewWorker(BaseWorker):
         """Initialize the Session Review worker."""
         super().__init__(queue_config, worker_name="session_review_worker")
         self._session_review_consumer = SessionReviewTaskConsumer()
-    
+        self._memory_service: MemoryService | None = None
+
+    async def _get_memory_service(self) -> MemoryService:
+        """Get or initialize MemoryService."""
+        if self._memory_service is None:
+            self._memory_service = MemoryService()
+            await self._memory_service.initialize()
+        return self._memory_service
+
     async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process session review tasks.
         
@@ -361,7 +371,13 @@ class SessionReviewWorker(BaseWorker):
                     facts_count=facts_count,
                 )
 
-            # Step 4: Generate summary from facts
+            # Step 4: Save to unified memory system
+            project_id = message_data.get("project_id")
+            unified_saved = await self._save_facts_to_unified_memory(
+                facts, session_id, project_id
+            )
+
+            # Step 5: Generate summary from facts
             summary_parts = []
             key_points = []
 
@@ -411,6 +427,7 @@ class SessionReviewWorker(BaseWorker):
                     "summary_text": summary_text,
                     "key_points": key_points[:10],  # Limit to 10
                     "facts_extracted": facts_count,
+                    "facts_in_unified_memory": unified_saved,
                     "facts_by_type": {
                         "action": len([f for f in facts if f.fact_type == "action"]),
                         "decision": len([f for f in facts if f.fact_type == "decision"]),
@@ -637,3 +654,75 @@ class SessionReviewWorker(BaseWorker):
                 "next_cleanup_scheduled": "2024-03-09T10:00:00Z",
             },
         )
+
+    async def _save_facts_to_unified_memory(
+        self,
+        facts: list[Any],
+        session_id: str,
+        project_id: int | None = None,
+    ) -> int:
+        """Save extracted facts to the unified Memory System.
+
+        Args:
+            facts: List of SessionFact objects
+            session_id: Session ID
+            project_id: Optional project ID
+
+        Returns:
+            Number of facts saved
+        """
+        if not facts:
+            return 0
+
+        try:
+            memory_service = await self._get_memory_service()
+            saved_count = 0
+
+            for fact in facts:
+                # Map fact_type to memory_type
+                memory_type_map = {
+                    "action": "fact",
+                    "decision": "insight",
+                    "discovery": "pattern",
+                    "error": "error",
+                    "state": "context",
+                }
+                memory_type = memory_type_map.get(fact.fact_type, "fact")
+
+                # Determine scope based on importance
+                scope = MemoryScope.SESSION
+                if fact.importance >= 0.8:
+                    scope = MemoryScope.GLOBAL if not project_id else MemoryScope.PROJECT
+                elif fact.importance >= 0.6:
+                    scope = MemoryScope.PROJECT if project_id else MemoryScope.SESSION
+
+                await memory_service.save_memory(
+                    content=fact.content,
+                    memory_type=memory_type,
+                    scope=scope,
+                    project_id=project_id,
+                    session_id=session_id,
+                    category=fact.category or "project_context",
+                    importance=fact.importance,
+                    source_agent_id=fact.agent_id,
+                    tags=[fact.fact_type, "session_fact", f"session:{session_id}"],
+                    related_files=fact.related_files,
+                    generate_embedding=True,
+                )
+                saved_count += 1
+
+            _logger.debug(
+                "facts_saved_to_unified_memory",
+                session_id=session_id,
+                facts_count=saved_count,
+            )
+
+            return saved_count
+
+        except Exception as e:
+            _logger.warning(
+                "unified_memory_save_failed",
+                session_id=session_id,
+                error=str(e),
+            )
+            return 0

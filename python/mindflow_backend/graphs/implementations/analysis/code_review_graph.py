@@ -29,22 +29,23 @@ class CodeReviewGraph(BaseGraph):
         self.set_entry_point("initialize")
 
     def _setup_nodes(self) -> None:
-        from mindflow_backend.nodes.implementations.analysis import (
-            AnalysisInitializeNode,
-            AnalysisReportNode,
-            AnnotateNode,
-            InvestigateNode,
-            ReadContextNode,
-            SynthesizeNode,
-        )
+        # Use generic common nodes
+        from mindflow_backend.nodes.common.initialize_node import InitializeNode
+        from mindflow_backend.nodes.common.read_context_node import ReadContextNode
+        from mindflow_backend.nodes.common.report_node import ReportNode
 
-        self.add_node("initialize", AnalysisInitializeNode("initialize"))
+        # Use Analyst-specific nodes
+        from mindflow_backend.nodes.analysis.investigate_node import InvestigateNode
+        from mindflow_backend.nodes.analysis.annotate_node import AnnotateNode
+        from mindflow_backend.nodes.analysis.synthesize_node import SynthesizeNode
+
+        self.add_node("initialize", InitializeNode("initialize"))
         self.add_node("read_files", ReadContextNode("read_files"))
         self.add_node("analyze_patterns", InvestigateNode("analyze_patterns"))
         self.add_node("check_standards", InvestigateNode("check_standards"))
         self.add_node("annotate_findings", AnnotateNode("annotate_findings"))
         self.add_node("synthesize", SynthesizeNode("synthesize"))
-        self.add_node("report", AnalysisReportNode("report"))
+        self.add_node("report", ReportNode("report"))
 
     def _setup_connections(self) -> None:
         self.add_connection(NodeConnection(source_node="initialize", target_node="read_files"))

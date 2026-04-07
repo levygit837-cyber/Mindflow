@@ -337,12 +337,12 @@ def is_streamable_node(node_name: str) -> bool:
 def _auto_register_common_nodes() -> None:
     """Auto-register common orchestrator nodes."""
     registry = get_node_registry()
-    
+
     # Import nodes to register them
     from mindflow_backend.nodes.orchestrator.execute_node import ExecuteNode
     from mindflow_backend.nodes.orchestrator.respond_node import RespondNode
     from mindflow_backend.nodes.orchestrator.route_node import RouteNode
-    
+
     # Register route node
     registry.register(
         node_id="route",
@@ -354,7 +354,7 @@ def _auto_register_common_nodes() -> None:
         tags=["routing", "agent-selection", "classification"],
         author="MindFlow",
     )
-    
+
     # Register execute node
     registry.register(
         node_id="execute",
@@ -366,7 +366,7 @@ def _auto_register_common_nodes() -> None:
         tags=["llm", "execution", "tools", "agents"],
         author="MindFlow",
     )
-    
+
     # Register respond node
     registry.register(
         node_id="respond",
@@ -380,5 +380,132 @@ def _auto_register_common_nodes() -> None:
     )
 
 
+def _auto_register_generic_nodes() -> None:
+    """Auto-register generic reusable nodes."""
+    registry = get_node_registry()
+
+    # Import generic nodes
+    from mindflow_backend.nodes.common.initialize_node import InitializeNode
+    from mindflow_backend.nodes.common.read_context_node import ReadContextNode
+    from mindflow_backend.nodes.common.report_node import ReportNode
+
+    # Register initialize node
+    registry.register(
+        node_id="initialize",
+        node_class=InitializeNode,
+        node_type=NodeType.CUSTOM,
+        category=NodeCategory.INTERNAL,
+        description="Setup tools, memory scope, and agent policy for execution",
+        capabilities=[NodeCapability.STATEFUL, NodeCapability.ASYNC],
+        tags=["common", "initialization", "setup"],
+        author="MindFlow",
+    )
+
+    # Register read_context node
+    registry.register(
+        node_id="read_context",
+        node_class=ReadContextNode,
+        node_type=NodeType.CUSTOM,
+        category=NodeCategory.DATA_PROCESSING,
+        description="Scan filesystem and map project structure",
+        capabilities=[NodeCapability.ASYNC],
+        tags=["common", "context", "filesystem"],
+        author="MindFlow",
+    )
+
+    # Register report node
+    registry.register(
+        node_id="report",
+        node_class=ReportNode,
+        node_type=NodeType.FORMATTER,
+        category=NodeCategory.DATA_PROCESSING,
+        description="Generate final report with metrics and annotations",
+        capabilities=[NodeCapability.STATEFUL, NodeCapability.ASYNC],
+        tags=["common", "report", "formatting"],
+        author="MindFlow",
+    )
+
+
+def _auto_register_analyst_nodes() -> None:
+    """Auto-register Analyst-specific nodes."""
+    registry = get_node_registry()
+
+    # Import Analyst nodes
+    from mindflow_backend.nodes.analysis.investigate_node import InvestigateNode
+    from mindflow_backend.nodes.analysis.annotate_node import AnnotateNode
+    from mindflow_backend.nodes.analysis.synthesize_node import SynthesizeNode
+
+    # Register investigate node
+    registry.register(
+        node_id="investigate",
+        node_class=InvestigateNode,
+        node_type=NodeType.AGENT,
+        category=NodeCategory.LLM_INVOKE,
+        description="Investigate codebase with tools and LLM interpretation",
+        capabilities=[NodeCapability.STREAMING, NodeCapability.ASYNC],
+        tags=["analysis", "investigation", "analyst"],
+        author="MindFlow",
+    )
+
+    # Register annotate node
+    registry.register(
+        node_id="annotate",
+        node_class=AnnotateNode,
+        node_type=NodeType.CUSTOM,
+        category=NodeCategory.DATA_PROCESSING,
+        description="Annotate findings from current investigation pass",
+        capabilities=[NodeCapability.ASYNC],
+        tags=["analysis", "annotation", "analyst"],
+        author="MindFlow",
+    )
+
+    # Register synthesize node
+    registry.register(
+        node_id="synthesize",
+        node_class=SynthesizeNode,
+        node_type=NodeType.CUSTOM,
+        category=NodeCategory.DATA_PROCESSING,
+        description="Merge and synthesize all annotations into coherent analysis",
+        capabilities=[NodeCapability.ASYNC],
+        tags=["analysis", "synthesis", "analyst"],
+        author="MindFlow",
+    )
+
+
+def _auto_register_memory_nodes() -> None:
+    """Auto-register Intelligent Memory System nodes."""
+    registry = get_node_registry()
+
+    # Import memory nodes
+    from mindflow_backend.nodes.implementations.memory import MemoryRecallNode, MemorySaveNode
+
+    # Register memory_recall node
+    registry.register(
+        node_id="memory_recall",
+        node_class=MemoryRecallNode,
+        node_type=NodeType.MEMORY,
+        category=NodeCategory.DATA_PROCESSING,
+        description="Retrieve relevant memories for context enhancement",
+        capabilities=[NodeCapability.ASYNC, NodeCapability.STATEFUL],
+        tags=["memory", "recall", "context", "intelligent_memory_system"],
+        author="MindFlow",
+    )
+
+    # Register memory_save node
+    registry.register(
+        node_id="memory_save",
+        node_class=MemorySaveNode,
+        node_type=NodeType.MEMORY,
+        category=NodeCategory.DATA_PROCESSING,
+        description="Save important insights as memories",
+        capabilities=[NodeCapability.ASYNC, NodeCapability.STATEFUL],
+        tags=["memory", "save", "insights", "intelligent_memory_system"],
+        author="MindFlow",
+    )
+
+
 # Initialize auto-registration
 _auto_register_common_nodes()
+_auto_register_generic_nodes()
+_auto_register_analyst_nodes()
+_auto_register_memory_nodes()

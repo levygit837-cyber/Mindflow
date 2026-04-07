@@ -32,6 +32,15 @@ from .web import (
     WebScraperCallable,
     ApiClientCallable,
 )
+from .browser import (
+    BrowserSearchCallable,
+    DeepPageScraperCallable,
+    MultiTabSearchCallable,
+)
+from .llm import (
+    LLMResearchSynthesisCallable,
+    LLMQueryRefinementCallable,
+)
 from .planning import (
     TodoListReadCallable,
     TodoListWriteCallable,
@@ -85,11 +94,21 @@ def register_all_callable_tools() -> int:
         (ApiClientCallable, "web"),
     ]
 
-    # Priority 5: Planning
+    # Priority 6: Browser
+    browser_tools = [
+        (BrowserSearchCallable, "browser"),
+        (WebScraperCallable, "browser"),
+        (DeepPageScraperCallable, "browser"),
+        (MultiTabSearchCallable, "browser"),
+    ]
+
+    # Priority 5: Planning + LLM
     planning_tools = [
         (TodoListReadCallable, "planning"),
         (TodoListWriteCallable, "planning"),
         (TodoListFocusCallable, "planning"),
+        (LLMResearchSynthesisCallable, "llm"),
+        (LLMQueryRefinementCallable, "llm"),
         (ScratchpadReadCallable, "planning"),
         (ScratchpadWriteCallable, "planning"),
     ]
@@ -100,6 +119,7 @@ def register_all_callable_tools() -> int:
         + filesystem_write_tools
         + system_tools
         + web_tools
+        + browser_tools
         + planning_tools
     )
 
@@ -145,8 +165,11 @@ def unregister_all_callable_tools() -> int:
         "shell_executor", "system_info", "process_manager",
         # Web
         "http_client", "web_scraper", "api_client",
-        # Planning
+        # Browser
+        "browser_search", "deep_page_scraper", "multi_tab_search",
+        # Planning + LLM
         "read_todos", "write_todos", "focus_todos",
+        "llm_research_synthesis", "llm_query_refinement",
         "read_scratchpad", "write_scratchpad",
     ]
 

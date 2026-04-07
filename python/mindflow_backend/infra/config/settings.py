@@ -376,32 +376,6 @@ class Settings(BaseSettings):
 
     # Feature Flags
     feature_flags: dict[str, bool] = Field(default_factory=dict)
-
-    # PinchTab browser fleet
-    pinchtab_browser_image: str = Field(
-        default="mindflow/pinchtab-browser:latest",
-        alias="PINCHTAB_BROWSER_IMAGE",
-    )
-    pinchtab_docker_network: str = Field(
-        default="mindflow_default",
-        alias="PINCHTAB_DOCKER_NETWORK",
-    )
-    pinchtab_default_economy_mode: str = Field(
-        default="warm_paused",
-        alias="PINCHTAB_DEFAULT_ECONOMY_MODE",
-    )
-    pinchtab_idle_timeout_seconds: int = Field(
-        default=120,
-        alias="PINCHTAB_IDLE_TIMEOUT_SECONDS",
-    )
-    pinchtab_max_browsers_per_session: int = Field(
-        default=5,
-        alias="PINCHTAB_MAX_BROWSERS_PER_SESSION",
-    )
-    pinchtab_reconcile_on_startup: bool = Field(
-        default=True,
-        alias="PINCHTAB_RECONCILE_ON_STARTUP",
-    )
     
     # Modular Configuration Sections
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)

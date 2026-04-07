@@ -18,6 +18,18 @@ from .session_memory import (
     SessionMemoryService,
 )
 
+# Intelligent Memory System (NEW)
+from .category_manager import CategoryManager, MemoryScope, MemoryType
+from .graph_hooks import MemoryHooks
+from .memory_service import MemoryService, SearchMode
+from .observers import (
+    DynamicCodeParser,
+    EventBusMemoryObserver,
+    MemoryObserverCoordinator,
+    ObserverConfig,
+    PostToolUseObserver,
+)
+
 # Shared Components - Componentes Compartilhados
 from .shared import (
     ContextRetriever,
@@ -98,4 +110,17 @@ __all__ = [
 
     # Canonical facade (Phase 1)
     "MemoryFacade",
+
+    # Intelligent Memory System (NEW)
+    "CategoryManager",
+    "MemoryService",
+    "MemoryScope",
+    "MemoryType",
+    "SearchMode",
+    "MemoryHooks",
+    "EventBusMemoryObserver",
+    "PostToolUseObserver",
+    "DynamicCodeParser",
+    "MemoryObserverCoordinator",
+    "ObserverConfig",
 ]
