@@ -8,9 +8,11 @@ Security:
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
+from mindflow_backend.api.controllers.agent_controller import AgentController
 from mindflow_backend.api.dependencies import protected_route_dependencies
 from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.infra.config import get_settings
@@ -22,11 +24,99 @@ from mindflow_backend.schemas.api.chat import (
     ChatSessionTitleGenerateRequest,
     ChatSessionUpdateRequest,
 )
+from mindflow_backend.schemas.chat.agent import AgentChatRequest
 from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
 
 router = APIRouter(prefix="/chat", tags=["chat"], dependencies=protected_route_dependencies)
 
+# Initialize agent controller for chat forwarding
+agent_controller = AgentController()
+
 _LEGACY_OWNER = "legacy-system"
+
+
+# ── chat endpoint (Desktop CLI compatibility) ─────────────────────────────────
+
+@router.post("")
+async def chat(payload: dict, request: Request):
+    """Main chat endpoint for Desktop CLI compatibility.
+    
+    Forwards requests to the agent chat stream endpoint to enable
+    conversation with agents from the Desktop frontend.
+    
+    Handles frontend's nested message format and converts to AgentChatRequest.
+    Supports both streaming and non-streaming modes.
+    """
+    # Extract message content from frontend format
+    # Frontend sends: { message: { type: 'user', content: string, ... }, ... }
+    # Backend expects: { message: string, ... }
+    
+    message_content = ""
+    if isinstance(payload.get("message"), dict):
+        # Frontend format: nested message object
+        message_content = payload["message"].get("content", "")
+    elif isinstance(payload.get("message"), str):
+        # Simple format: message is already a string
+        message_content = payload["message"]
+    else:
+        raise HTTPException(status_code=400, detail="Invalid message format")
+    
+    # Build AgentChatRequest from frontend payload
+    agent_request = AgentChatRequest(
+        message=message_content,
+        provider=payload.get("provider"),
+        model=payload.get("model"),
+        sessionId=payload.get("session_id"),
+        agent_type=payload.get("agent_type"),
+        orchestrate=payload.get("orchestrate", False),
+        debugSteps=payload.get("debugSteps", False),
+        folder_path=payload.get("folder_path"),
+    )
+    
+    # Check if streaming is requested
+    stream_mode = payload.get("stream", False)
+    
+    if stream_mode:
+        # Streaming mode: return SSE stream
+        return await agent_controller.stream_chat(agent_request, request)
+    else:
+        # Non-streaming mode: use streaming internally and collect result
+        # Call the agent runtime directly to collect events
+        from mindflow_backend.grpc_internal.factory import get_runtime_client
+        import uuid
+        
+        grpc_client = get_runtime_client()
+        session_id = payload.get("session_id") or agent_request.sessionId
+        run_id = str(uuid.uuid4())
+        
+        full_content = []
+        async for event in grpc_client.stream_chat(
+            session_id=session_id,
+            message=message_content,
+            provider=agent_request.provider,
+            model=agent_request.model,
+            run_id=run_id,
+            orchestrate=agent_request.orchestrate,
+            agent_type=agent_request.agent_type,
+            folder_path=agent_request.folder_path,
+        ):
+            # Collect assistant text from events
+            if hasattr(event, 'data'):
+                full_content.append(event.data)
+            elif hasattr(event, 'assistant_text_delta'):
+                full_content.append(event.assistant_text_delta)
+        
+        # Return as AssistantMessage format
+        return {
+            "message": {
+                "type": "assistant",
+                "content": "".join(full_content),
+                "timestamp": datetime.now(UTC).isoformat(),
+                "uuid": payload.get("message", {}).get("uuid") if isinstance(payload.get("message"), dict) else None,
+                "session_id": session_id,
+            },
+            "session_id": session_id,
+        }
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

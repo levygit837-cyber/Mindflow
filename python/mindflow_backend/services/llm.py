@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger

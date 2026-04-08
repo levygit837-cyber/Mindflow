@@ -126,8 +126,7 @@ class AgentContextRetriever:
             query=query,
             context_windows=[context_window],
             content=context_content,
-            # Calculate actual relevance score based on context content and query
-            relevance_score = self._calculate_relevance_score(context_content, query)
+            relevance_score=self._calculate_relevance_score(context_content, query),
             source_sessions=[session_id],
             metadata={
                 "agent_id": agent_id,

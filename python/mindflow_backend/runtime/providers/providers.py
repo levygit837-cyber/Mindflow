@@ -313,4 +313,14 @@ def get_model_for_provider(
             base_url=base_url or settings.ollama_base_url,
         )
 
+    if provider == "lmstudio":
+        from langchain_openai import ChatOpenAI
+
+        # LM Studio exposes an OpenAI-compatible API locally
+        return ChatOpenAI(
+            model=model or settings.lmstudio_default_model,
+            api_key="not-needed",  # LM Studio doesn't require API key
+            base_url=base_url or settings.lmstudio_base_url,
+        )
+
     raise ValueError(f"Unknown provider: {provider}")

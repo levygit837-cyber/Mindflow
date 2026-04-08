@@ -62,6 +62,7 @@ class ToolScope(StrEnum):
     MEMORY = "memory"
     PLANNING = "planning"
     DELEGATION = "delegation"
+    LIGHTPANDA = "lightpanda"
 
 
 class SandboxMode(StrEnum):

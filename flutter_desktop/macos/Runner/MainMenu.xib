@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="17701" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+  <dependencies>
+    <deployment identifier="macosx"/>
+    <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="17701"/>
+  </dependencies>
+  <objects>
+    <customObject id="-2" userLabel="File's Owner" customClass="NSApplication"/>
+    <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+    <customObject id="-3" userLabel="Application" customClass="NSApplication"/>
+    <menu title="MindFlow" id="1">
+      <items>
+        <menuItem title="MindFlow" id="2">
+          <menu key="submenu" title="MindFlow" id="3">
+            <items>
+              <menuItem title="About MindFlow" id="4"/>
+              <menuItem isSeparatorItem="YES" id="5"/>
+              <menuItem title="Preferences..." keyEquivalent="," id="6"/>
+              <menuItem isSeparatorItem="YES" id="7"/>
+              <menuItem title="Quit MindFlow" keyEquivalent="q" id="8"/>
+            </items>
+          </menu>
+        </menuItem>
+      </items>
+    </menu>
+  </objects>
+</document>

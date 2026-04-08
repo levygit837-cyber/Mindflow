@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mindflow_backend.agents.tools.web.browser_search import (
+from mindflow_backend.agents.tools.browser_search import (
     BrowserSearchTool,
     get_browser_search_tool,
 )

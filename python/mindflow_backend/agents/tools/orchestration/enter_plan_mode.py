@@ -16,7 +16,7 @@ from loguru import logger
 from mindflow_backend.agents.tools.base.tool_interface import BaseTool
 from mindflow_backend.permissions.types import PermissionMode
 
-_logger = logger.bind(__name__)
+_logger = logger.bind(name=__name__)
 
 
 class EnterPlanModeTool(BaseTool):

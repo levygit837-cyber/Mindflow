@@ -62,6 +62,22 @@ The EventRail is the central metaphor — a vertical timeline of agent activitie
 - **Focus Ring** (`#0D6E6E`): Teal focus ring for accessibility
 - **Link Color** (`#5B6ABF`): Reuses Analyst Indigo for links and interactive text
 
+### Gradient System
+MindFlow uses a minimal gradient approach, focusing on agent-colored gradients for subtle depth and emphasis rather than decorative gradients. The dark theme means gradients are used sparingly to avoid visual noise.
+
+**Agent Gradients**
+- **Orchestrator Gradient**: Linear gradient from `#0D6E6E` to `#0a5a5a` — subtle teal fade for primary buttons and brand moments
+- **Analyst Gradient**: Linear gradient from `#5B6ABF` to `#4a5a9f` — indigo fade for analytical components
+- **Coder Gradient**: Linear gradient from `#C75D2C` to `#a84d1c` — orange fade for code-related elements
+- **Researcher Gradient**: Linear gradient from `#2D8F5E` to `#1e7a4f` — green fade for research components
+
+**Surface Gradients**
+- **Surface Fade**: Linear gradient from `#1a1a1a` to `#0a0a0a` — subtle depth for elevated cards and modals
+- **Highlight Glow**: Radial gradient from `rgba(13, 110, 110, 0.15)` to transparent — soft glow behind active elements
+
+**Gradient Philosophy**
+MindFlow's gradient system is intentionally restrained. Gradients serve functional purposes — creating subtle depth, indicating active states, and reinforcing agent identity — rather than decorative flourishes. The dark theme provides sufficient visual richness through surface variations and agent color accents, making heavy gradients unnecessary and potentially distracting.
+
 ## 3. Typography Rules
 
 ### Font Family

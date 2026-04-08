@@ -70,11 +70,19 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
                 ],
                 "capabilities": ["text_generation"],
                 "status": "conditional"  # Depends on local setup
+            },
+            "lmstudio": {
+                "name": "LM Studio (Local)",
+                "models": [
+                    {"id": "Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-v2-GGUF", "name": "Qwen 3.5 4B Claude Reasoning", "context_window": 32768, "supports_vision": False, "supports_reasoning": True},
+                ],
+                "capabilities": ["text_generation", "reasoning"],
+                "status": "conditional"  # Depends on local LM Studio instance
             }
         }
         
         # Default fallback chain
-        self._fallback_chain = ["google", "anthropic", "openai", "ollama"]
+        self._fallback_chain = ["google", "anthropic", "openai", "ollama", "lmstudio"]
         
         # Connection status cache
         self._connection_cache: dict[str, dict[str, Any]] = {}
@@ -276,6 +284,12 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
                 config["settings"] = {
                     "base_url": getattr(self.settings, 'ollama_base_url', 'http://localhost:11434'),
                     "timeout": getattr(self.settings, 'ollama_timeout', 30)
+                }
+            elif provider_id == "lmstudio":
+                config["settings"] = {
+                    "base_url": getattr(self.settings, 'lmstudio_base_url', 'http://localhost:1234/v1'),
+                    "default_model": getattr(self.settings, 'lmstudio_default_model', 'Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-v2-GGUF'),
+                    "timeout": getattr(self.settings, 'lmstudio_timeout', 60)
                 }
             
             # Add connection status
@@ -530,6 +544,11 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
                 if "base_url" in config:
                     if not config["base_url"].startswith(("http://", "https://")):
                         raise ValueError("Ollama base URL must be a valid HTTP/HTTPS URL")
+            elif provider_id == "lmstudio":
+                # Check for required LM Studio settings
+                if "base_url" in config:
+                    if not config["base_url"].startswith(("http://", "https://")):
+                        raise ValueError("LM Studio base URL must be a valid HTTP/HTTPS URL")
             
             return True
             

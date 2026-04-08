@@ -13,8 +13,7 @@ from mindflow_backend.services.memory.memory_service import (
     ContextRetriever,
     ContextStorage,
     MemoryConfig,
-    SimpleMemoryService,
-    get_simple_memory_service,
+    MemoryService as SimpleMemoryService,
 )
 
 __all__ = [
@@ -24,7 +23,6 @@ __all__ = [
     "MemoryFacadeService",
     # Factory functions
     "get_memory_service",
-    "get_simple_memory_service",
     "get_memory_facade_service",
     "reset_memory_facade_service",
     # Legacy/utility classes

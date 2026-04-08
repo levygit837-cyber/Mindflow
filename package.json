@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "@openai/codex": "^0.118.0"
+    "@openai/codex": "^0.118.0",
+    "cssstudio": "^0.4.3",
+    "ws": "^8.20.0"
   }
 }

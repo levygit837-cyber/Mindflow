@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS Variables */
+:root {
+  /* Agent Colors */
+  --agent-teal: #0D6E6E;
+  --agent-indigo: #5B6ABF;
+  --agent-orange: #C75D2C;
+  --agent-green: #2D8F5E;
+  
+  /* Surface Colors */
+  --surface-primary: #0a0a0a;
+  --surface-secondary: #1a1a1a;
+  --surface-tertiary: #2a2a2a;
+  --surface-highlight: #3a3a3a;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-tertiary: #707070;
+  --text-muted: #505050;
+  
+  /* Border Colors */
+  --border-subtle: #2a2a2a;
+  --border-standard: #3a3a3a;
+}
+
+/* Global Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-tertiary);
+  border-radius: 9999px;
+  border: 2px solid var(--surface-primary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-highlight);
+}
+
+/* Animations */
+@keyframes pulse-dot {
+  0%, 100% { 
+    opacity: 0.2; 
+    transform: scale(0.8); 
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes bounce-search {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(3px, -3px); }
+  50% { transform: translate(6px, 0px); }
+  75% { transform: translate(3px, 3px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes stream-progress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+/* Animation Classes */
+.animate-pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+.animate-pulse-dot-delay-1 {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+  animation-delay: 100ms;
+}
+
+.animate-pulse-dot-delay-2 {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+  animation-delay: 200ms;
+}
+
+.animate-blink {
+  animation: blink-cursor 1s step-end infinite;
+}
+
+.animate-search-bounce {
+  animation: bounce-search 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-stream {
+  animation: stream-progress 2s ease-in-out infinite;
+}
+
+/* Focus Ring Utility */
+.interactive-ring {
+  outline: none;
+}
+
+.interactive-ring:focus-visible {
+  box-shadow: 0 0 0 2px var(--agent-teal);
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(13, 110, 110, 0.3);
+  color: white;
+}
+
+/* Code Font */
+.font-mono {
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

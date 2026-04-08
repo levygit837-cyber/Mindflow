@@ -1,29 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   server: {
+    port: 5173,
+    host: true,
     proxy: {
-      '/v1': {
+      '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        // http-proxy buffers response by default for non-streaming.
-        // Setting selfHandleResponse=false (default) lets it pass through.
-        // We force no Content-Length manipulation so SSE chunks flush instantly.
-        configure: (proxy) => {
-          proxy.on('proxyRes', (proxyRes, _req) => {
-            if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
-              proxyRes.headers['x-accel-buffering'] = 'no'
-            }
-          })
-        },
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
-    },
-    watch: {
-      usePolling: true,
-      interval: 1000,
     },
   },
 })

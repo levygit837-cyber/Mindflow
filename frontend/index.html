@@ -1,44 +1,15 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MindFlow</title>
-    <script>
-      (() => {
-        const fontSizeMap = {
-          small: { base: '13px', scale: '0.93' },
-          medium: { base: '14px', scale: '1' },
-          large: { base: '15px', scale: '1.07' },
-        };
-
-        try {
-          const persisted = localStorage.getItem('mindflow-store');
-          const parsed = persisted ? JSON.parse(persisted) : null;
-          const theme = parsed?.state?.theme === 'dark' ? 'dark' : 'light';
-          const persistedSize = parsed?.state?.settings?.fontSize;
-          const fontSize = fontSizeMap[persistedSize] ? persistedSize : 'large';
-          document.documentElement.dataset.theme = theme;
-          document.documentElement.dataset.fontSize = fontSize;
-          document.documentElement.style.colorScheme = theme;
-          document.documentElement.style.setProperty('--base-font-size', fontSizeMap[fontSize].base);
-          document.documentElement.style.setProperty('--font-scale', fontSizeMap[fontSize].scale);
-        } catch {
-          document.documentElement.dataset.theme = 'light';
-          document.documentElement.dataset.fontSize = 'medium';
-          document.documentElement.style.colorScheme = 'light';
-          document.documentElement.style.setProperty('--base-font-size', '14px');
-          document.documentElement.style.setProperty('--font-scale', '1');
-        }
-      })();
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Azeret+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <title>MindFlow - AI Workspace</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>

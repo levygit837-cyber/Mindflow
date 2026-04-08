@@ -7,7 +7,7 @@ from mindflow_backend.communication.a2a.task_adapter import TaskAdapter
 from mindflow_backend.communication.a2a.stream_adapter import A2AStreamAdapter
 from mindflow_backend.query.budget.token_counter import TokenBudget
 from mindflow_backend.query.engine import QueryEngine
-from mindflow_backend.schemas.orchestration.orchestrator import OrchestratorSession
+from mindflow_backend.schemas.orchestration.delegation import OrchestratorSession
 
 class A2AController:
     """Controller for A2A Gateway operations."""

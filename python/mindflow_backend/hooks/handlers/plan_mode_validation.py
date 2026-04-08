@@ -12,7 +12,7 @@ from loguru import logger
 from mindflow_backend.hooks.types import HookEvent, HookResult
 from mindflow_backend.hooks.context import HookContext
 
-_logger = logger.bind(__name__)
+_logger = logger.bind(name=__name__)
 
 # Tools allowed in Plan Mode (read-only + planning tools)
 ALLOWED_IN_PLAN_MODE: frozenset[str] = frozenset({

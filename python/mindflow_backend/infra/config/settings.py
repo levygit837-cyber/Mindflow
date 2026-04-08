@@ -209,7 +209,7 @@ class Settings(BaseSettings):
     working_path: str | None = Field(default=None, alias="WORKING_PATH")
 
     # AI/ML Configuration
-    default_provider: str = Field(default="google", alias="DEFAULT_PROVIDER")
+    default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3.1-flash-lite-preview", alias="DEFAULT_MODEL")
     enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
     agent_stream_timeout_seconds: float = Field(default=180.0, alias="AGENT_STREAM_TIMEOUT_SECONDS")
@@ -255,6 +255,11 @@ class Settings(BaseSettings):
     vertexai_credentials_path: str | None = Field(default=None, alias="VERTEXAI_CREDENTIALS_PATH", repr=False)
     google_cloud_project: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
+    lmstudio_base_url: str = Field(default="http://localhost:1234/v1", alias="LMSTUDIO_BASE_URL")
+    lmstudio_default_model: str = Field(
+        default="Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-v2-GGUF",
+        alias="LMSTUDIO_DEFAULT_MODEL"
+    )
     kuzudb_url: str = Field(default="http://localhost:8001", alias="KUZUDB_URL")
 
     # Context Governance Configuration

@@ -6,16 +6,18 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from collections import deque
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.services.browser.lifecycle_service import (
-    BrowserHandle,
-    BrowserLifecycleService,
-    BrowserRequirements,
-)
 from mindflow_backend.services.browser.metrics_collector import BrowserMetricsCollector
+
+if TYPE_CHECKING:
+    from mindflow_backend.services.browser.lifecycle_service import (
+        BrowserHandle,
+        BrowserLifecycleService,
+        BrowserRequirements,
+    )
 
 _logger = get_logger(__name__)
 
@@ -129,6 +131,9 @@ class BrowserPoolManager:
         Returns:
             PooledBrowser: Pooled browser
         """
+        # Import runtime para evitar circular import
+        from mindflow_backend.services.browser.lifecycle_service import BrowserRequirements
+        
         requirements = requirements or BrowserRequirements()
 
         async with self._lock:

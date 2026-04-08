@@ -1,0 +1,1 @@
+ /home/levybonito/Projetos/MindFlow/flutter_desktop/.dart_tool/flutter_build/0cd894e5e9cce44330d37aeb90b582c6/native_assets.json: 
