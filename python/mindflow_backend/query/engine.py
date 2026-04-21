@@ -368,6 +368,96 @@ class QueryEngine:
         logger.info("QueryEngine reset")
 
     # ---------------------------------------------------------------------------
+    # Strategy Dispatcher (unified-engine kernel entrypoint)
+    # ---------------------------------------------------------------------------
+
+    async def execute(
+        self,
+        strategy: Any,  # QueryStrategy — late-bound to avoid circular imports
+        context: Any,  # StrategyContext — late-bound to avoid circular imports
+    ):
+        """Dispatch a request to the chosen execution strategy.
+
+        This is the canonical entrypoint of the unified kernel. Gated by the
+        ``UNIFIED_ENGINE_ENABLED`` feature flag — legacy paths do NOT route
+        through here until Phase 3 of the migration plan.
+
+        Args:
+            strategy: A ``QueryStrategy`` enum value or its string form.
+            context: A ``StrategyContext`` dataclass with message, services,
+                tools and metadata needed by the strategy.
+
+        Yields:
+            Stream events as dicts. The strategy terminates by yielding a
+            ``{"type": "final", ...}`` or a ``{"type": "system", "is_error":
+            True}`` event.
+        """
+        # Late imports to keep the query module lightweight at import time
+        # and avoid circular dependencies with strategies.*
+        from mindflow_backend.query.strategies import (
+            QueryStrategy,
+            StrategyContext,
+            get_strategy,
+        )
+
+        # Use structlog for structured kwargs (module-level ``logger`` here is
+        # stdlib-only — a pre-existing inconsistency in this file).
+        struct_logger = get_logger(__name__)
+
+        # Normalize strategy into the enum value
+        if isinstance(strategy, str):
+            strategy_enum = QueryStrategy(strategy)
+        elif isinstance(strategy, QueryStrategy):
+            strategy_enum = strategy
+        else:
+            raise TypeError(
+                f"execute() expected QueryStrategy or str, got {type(strategy).__name__}"
+            )
+
+        if not isinstance(context, StrategyContext):
+            raise TypeError(
+                f"execute() expected StrategyContext, got {type(context).__name__}"
+            )
+
+        # Token budget defaults to the engine's budget if not supplied by caller.
+        if context.token_budget is None:
+            context.token_budget = self._budget
+
+        strategy_impl = get_strategy(strategy_enum)
+
+        struct_logger.info(
+            "queryengine_execute_start",
+            strategy=strategy_enum.value,
+            session_id=context.session_id,
+            execution_id=context.execution_id,
+            provider=context.provider,
+            model=context.model,
+        )
+
+        try:
+            async for event in strategy_impl.run(context):
+                yield event
+        except Exception as exc:  # noqa: BLE001 - surfaced to caller
+            struct_logger.error(
+                "queryengine_execute_failed",
+                strategy=strategy_enum.value,
+                session_id=context.session_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            yield {
+                "type": "system",
+                "content": f"QueryEngine.execute({strategy_enum.value}) failed: {exc}",
+                "is_error": True,
+            }
+        finally:
+            struct_logger.info(
+                "queryengine_execute_end",
+                strategy=strategy_enum.value,
+                session_id=context.session_id,
+            )
+
+    # ---------------------------------------------------------------------------
     # Execution Memory Helpers (from ExecutionMemoryMixin)
     # ---------------------------------------------------------------------------
 
