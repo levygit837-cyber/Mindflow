@@ -80,8 +80,9 @@ cd src && npm run dev
 2. **Non-standard ports** - PostgreSQL on 5433 (not 5432), RabbitMQ on 5673 (not 5672)
 3. **Tailwind v4 syntax** - Uses new `@import 'tailwindcss'` in CSS, no separate config file
 4. **Multi-service coordination** - Backend has 3 processes (API, gRPC, worker) that must run together
-5. **Feature flags** - Many features are toggled via env vars (ENABLE_RABBITMQ, ENABLE_LLM_PLANNING_TRIGGER, etc.)
+5. **Feature flags** - Many features are toggled via env vars (ENABLE_RABBITMQ, ENABLE_LLM_PLANNING_TRIGGER, UNIFIED_ENGINE_ENABLED, etc.)
 6. **Agent iteration limits** - Configurable up to 1000 iterations (see UNLIMITED_AGENTS_GUIDE.md)
+7. **Unified Engine flag** - `UNIFIED_ENGINE_ENABLED=True` routes all requests through the new QueryEngine kernel instead of legacy AgentRuntime paths. Default is `False` (legacy). See Unified Engine section below.
 
 ## Code Style
 
@@ -102,6 +103,39 @@ cd src && npm run dev
 - Python tests in `python/tests/` with markers: `@pytest.mark.live`, `@pytest.mark.slow`, `@pytest.mark.integration`
 - Frontend uses Vitest for unit tests, Playwright for e2e
 - Coverage threshold: 80% for Python
+
+## Unified Engine Architecture
+
+The backend is migrating from 4 separate execution engines to a single **QueryEngine kernel** (Claude Code architecture port). This is gated by `UNIFIED_ENGINE_ENABLED` (default `False`).
+
+**Request flow (flag=True):**
+```
+AgentChatRequest → stream_chat() → select_strategy() → QueryEngine.execute(strategy, ctx)
+  → adapt_strategy_events() → StreamEvent SSE stream
+```
+
+**Strategies** (`query/strategies/`):
+- **REACT** — Claude Code while-true tool loop (default for plain messages)
+- **DIRECT** — single agent invocation (when `agent_type` is set)
+- **DECOMPOSITION** — task decomposition pipeline (when `orchestrate=True`)
+- **DEEP_WORK** — multi-turn continuation protocol
+
+**Key modules:**
+- `query/engine.py` — QueryEngine kernel + `execute()` dispatcher
+- `query/selector.py` — `select_strategy()` + `build_strategy_context()`
+- `query/adapter.py` — dict→StreamEvent bridge
+- `query/hooks.py` — pure async hook firing functions
+- `query/persistence.py` — pure async persistence helpers
+- `query/streaming.py` — pure stream event builder functions
+
+**Legacy paths** (flag=False, will be removed after validation):
+- `_stream_chat_legacy` → replaced by REACT strategy
+- `_stream_chat_direct_agent` → replaced by DIRECT strategy
+- `_stream_chat_orchestrated` → replaced by DECOMPOSITION strategy
+
+**Tests:** `python/tests/unit/query/` (67 tests covering all strategies, dispatcher, selector, adapter, flag routing)
+
+**Audit:** `docs/09-analysis-and-reports/REPO-AUDIT-2026-04-20.md`
 
 ## Architecture Documentation
 
