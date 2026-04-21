@@ -906,6 +906,13 @@ class AgentRuntime:
         *,
         execution_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
+        _logger.debug(
+            "legacy_stream_path_active",
+            path="_stream_chat_direct_agent",
+            session_id=session_id,
+            agent_type=getattr(payload, "agent_type", None),
+            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable in Phase 5",
+        )
         from mindflow_backend.agents._registry import get_agent
         from mindflow_backend.agents.tools.base.tool_detection import (
             get_tool_execution_strategy,
@@ -1561,6 +1568,12 @@ class AgentRuntime:
         session_id: str,
         run_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
+        _logger.debug(
+            "legacy_stream_path_active",
+            path="_stream_chat_legacy",
+            session_id=session_id,
+            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable in Phase 5",
+        )
         provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
 
         yield normalizer.step_event(
@@ -2132,6 +2145,13 @@ class AgentRuntime:
         resume: bool = False,
         stored_graph_input: dict[str, Any] | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
+        _logger.debug(
+            "legacy_stream_path_active",
+            path="_stream_chat_orchestrated",
+            session_id=session_id,
+            orchestrate=getattr(payload, "orchestrate", False),
+            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable in Phase 5",
+        )
         provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
         agent_state: dict[str, str | None] = {"current_agent": None}
 
