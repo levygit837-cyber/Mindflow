@@ -210,7 +210,7 @@ class Settings(BaseSettings):
 
     # AI/ML Configuration
     default_provider: str = Field(default="vertexai", alias="DEFAULT_PROVIDER")
-    default_model: str = Field(default="gemini-3.1-flash-lite-preview", alias="DEFAULT_MODEL")
+    default_model: str = Field(default="gemini-2.5-flash", alias="DEFAULT_MODEL")
     enable_decomposition_thinking: bool = Field(default=False, alias="ENABLE_DECOMPOSITION_THINKING")
     agent_stream_timeout_seconds: float = Field(default=180.0, alias="AGENT_STREAM_TIMEOUT_SECONDS")
     agent_stream_initial_timeout_seconds: float = Field(
@@ -261,6 +261,9 @@ class Settings(BaseSettings):
         alias="LMSTUDIO_DEFAULT_MODEL"
     )
     kuzudb_url: str = Field(default="http://localhost:8001", alias="KUZUDB_URL")
+    windsurf_gateway_url: str = Field(default="http://localhost:3000", alias="WINDSURF_GATEWAY_URL")
+    windsurf_default_model: str = Field(default="MODEL_SWE_1_5_SLOW", alias="WINDSURF_DEFAULT_MODEL")
+    windsurf_gateway_enabled: bool = Field(default=True, alias="WINDSURF_GATEWAY_ENABLED")
 
     # Context Governance Configuration
     enable_input_normalization: bool = Field(default=False, alias="ENABLE_INPUT_NORMALIZATION")
@@ -378,6 +381,18 @@ class Settings(BaseSettings):
     grpc_timeout_adaptive: bool = Field(default=True, alias="GRPC_TIMEOUT_ADAPTIVE")
     grpc_timeout_deadline_propagation: bool = Field(default=True, alias="GRPC_TIMEOUT_DEADLINE_PROPAGATION")
     grpc_transport_mode: str = Field(default="local", alias="GRPC_TRANSPORT_MODE")
+
+    # ── Unified Engine (Claude Code port) ─────────────────────────────────────
+    # When True, the new unified QueryEngine kernel handles requests instead of
+    # the legacy AgentRuntime -> SimpleOrchestratorGraph path.
+    # See docs/09-analysis-and-reports/REPO-AUDIT-2026-04-20.md and
+    # .windsurf/plans/unified-engine-47796c.md for migration details.
+    unified_engine_enabled: bool = Field(default=False, alias="UNIFIED_ENGINE_ENABLED")
+    # Optional override for strategy selection during debugging.
+    # Valid values: "direct", "react", "decomposition", "deep_work".
+    queryengine_strategy_override: str | None = Field(
+        default=None, alias="QUERYENGINE_STRATEGY_OVERRIDE"
+    )
 
     # Feature Flags
     feature_flags: dict[str, bool] = Field(default_factory=dict)
