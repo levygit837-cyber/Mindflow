@@ -25,9 +25,12 @@ from mindflow_backend.query.hooks import fire_session_start as _fire_session_sta
 from mindflow_backend.query.hooks import (
     fire_user_prompt_submit as _fire_user_prompt_submit,
 )
+from mindflow_backend.query.adapter import adapt_strategy_events as _adapt_strategy_events
 from mindflow_backend.query.persistence import (
     dispatch_memory_message as _dispatch_memory_message_fn,
 )
+from mindflow_backend.query.selector import build_strategy_context as _build_strategy_context
+from mindflow_backend.query.selector import select_strategy as _select_strategy
 from mindflow_backend.query.persistence import save_message_bg as _save_message_bg_fn
 from mindflow_backend.query.persistence import snapshot_json as _snapshot_json_fn
 from mindflow_backend.query.persistence import (
@@ -741,6 +744,45 @@ class AgentRuntime:
         assistant_completed = False
 
         try:
+            # ── Unified-engine routing gate ────────────────────────────────
+            # When UNIFIED_ENGINE_ENABLED=True the new QueryEngine kernel
+            # handles the request. The legacy path is still the default
+            # (flag=False) until Phase 5 removes it entirely.
+            if settings.unified_engine_enabled:
+                from mindflow_backend.query.engine import QueryEngine
+
+                qe: QueryEngine = QueryEngine(
+                    providers=[],
+                    session_id=session_id,
+                )
+                strategy = _select_strategy(payload)
+                ctx = _build_strategy_context(
+                    payload,
+                    session_id=session_id,
+                    execution_id=execution_id,
+                    run_id=run_id,
+                    services={"agent": qe},
+                )
+                provider_str, model_str, current_run_id, normalizer, ev_counter = (
+                    self._create_stream_context(payload, session_id, run_id)
+                )
+                async for stream_event in _adapt_strategy_events(
+                    qe.execute(strategy, ctx),
+                    provider=provider_str,
+                    model=model_str,
+                    run_id=current_run_id,
+                    session_id=session_id,
+                    normalizer=normalizer,
+                    counter=ev_counter,
+                ):
+                    if stream_event.type == "response":
+                        assistant_content.append(stream_event.data)
+                    elif stream_event.type == "done":
+                        assistant_completed = True
+                    yield stream_event
+                return  # skip legacy path below
+            # ── End unified-engine gate ────────────────────────────────────
+
             # Emit initialization event for visual feedback on cold starts
             is_cold_start = execution_id and getattr(execution, "status", None) == "running"
             if is_cold_start:
