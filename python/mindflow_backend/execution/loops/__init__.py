@@ -1,14 +1,23 @@
-"""Execution loops for the unified engine.
+"""Execution loops — compatibility re-exports.
 
-This module contains different types of execution loops:
-- StreamingToolExecutor: Tool execution with concurrency control
-- tool_partition: Tool call partitioning logic
-- tool_orchestration: Batch tool execution orchestration
+Canonical location for StreamingToolExecutor / partition_tool_calls is now
+``mindflow_backend.runtime.execution``. This package keeps re-exports so
+existing callers continue to work during the unified-engine migration.
+
+Only ``tool_orchestration`` still has its primary definition here.
 """
 
-from .streaming_tool_executor import StreamingToolExecutor, ToolDefinition, ToolUseContext
-from .tool_partition import partition_tool_calls, ToolBatch
-from .tool_orchestration import ToolOrchestrator, OrchestratedToolCallResult
+from mindflow_backend.runtime.execution.streaming_executor import (
+    StreamingToolExecutor,
+    ToolDefinition,
+    ToolUseContext,
+)
+from mindflow_backend.runtime.execution.tool_partition import (
+    ToolBatch,
+    partition_tool_calls,
+)
+
+from .tool_orchestration import OrchestratedToolCallResult, ToolOrchestrator
 
 __all__ = [
     "StreamingToolExecutor",

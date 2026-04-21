@@ -1,4 +1,4 @@
-from mindflow_backend.runtime.stream_event_queue import StreamEventQueue
+from mindflow_backend.runtime.streaming.stream_event_queue import StreamEventQueue
 from mindflow_backend.schemas.agent import StreamEventMeta
 
 

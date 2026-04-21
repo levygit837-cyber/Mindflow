@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from mindflow_backend.runtime.output_categorizer import categorize_output
-from mindflow_backend.runtime.stream_event_queue import StreamEventQueue
+from mindflow_backend.runtime.streaming.stream_event_queue import StreamEventQueue
 from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
 
 
