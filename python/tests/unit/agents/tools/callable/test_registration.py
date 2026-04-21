@@ -21,7 +21,7 @@ def clean_registry():
 
 
 def test_register_all_callable_tools():
-    """Test that all 18 callable tools register successfully."""
+    """Test that the callable registry exposes the full unique tool set."""
     registry = get_registry()
 
     # Initially empty
@@ -30,9 +30,8 @@ def test_register_all_callable_tools():
     # Register all tools
     count = register_all_callable_tools()
 
-    # Should register exactly 18 tools
-    assert count == 18
-    assert len(registry.tools) == 18
+    assert count == 31
+    assert len(registry.tools) == 31
 
 
 def test_registered_tool_names():
@@ -48,8 +47,17 @@ def test_registered_tool_names():
         "shell_execute", "system_info", "process_manager",
         # Web (3 tools)
         "http_client", "web_scraper", "api_client",
-        # Planning (3 tools)
+        # Browser
+        "browser_search", "deep_page_scraper", "multi_tab_search",
+        # Planning
         "read_todos", "write_todos", "focus_todos",
+        # Scratchpad + LLM
+        "read_scratchpad", "write_scratchpad",
+        "llm_research_synthesis", "llm_query_refinement",
+        # Memory
+        "store_fact", "search_facts", "retrieve_task_context", "recall_session_memory",
+        # Orchestration
+        "AgentTool", "SendMessage",
     }
 
     registered_names = set(registry.tool_names)
@@ -73,9 +81,22 @@ def test_registered_tool_categories():
     web_tools = registry.filter_by_category("web")
     assert len(web_tools) == 3
 
+    # Check browser category
+    browser_tools = registry.filter_by_category("browser")
+    assert len(browser_tools) == 3
+
     # Check planning category
     planning_tools = registry.filter_by_category("planning")
-    assert len(planning_tools) == 3
+    assert len(planning_tools) == 5
+
+    llm_tools = registry.filter_by_category("llm")
+    assert len(llm_tools) == 2
+
+    memory_tools = registry.filter_by_category("memory")
+    assert len(memory_tools) == 4
+
+    orchestration_tools = registry.filter_by_category("orchestration")
+    assert len(orchestration_tools) == 2
 
 
 def test_registered_tool_metadata():
@@ -107,12 +128,11 @@ def test_unregister_all_callable_tools():
     register_all_callable_tools()
     registry = get_registry()
 
-    # Should have 18 tools
-    assert len(registry.tools) == 18
+    assert len(registry.tools) == 31
 
     # Unregister all
     count = unregister_all_callable_tools()
-    assert count == 18
+    assert count == 31
 
     # Should be empty
     assert len(registry.tools) == 0
@@ -124,13 +144,13 @@ def test_double_registration_is_safe():
 
     # Register once
     count1 = register_all_callable_tools()
-    assert count1 == 18
-    assert len(registry.tools) == 18
+    assert count1 == 31
+    assert len(registry.tools) == 31
 
     # Register again - registry.register() will overwrite existing tools with same name
     count2 = register_all_callable_tools()
-    assert count2 == 18  # All 18 tools registered again (overwritten)
-    assert len(registry.tools) == 18  # Still 18 tools (no duplicates due to name-based dict)
+    assert count2 == 31
+    assert len(registry.tools) == 31
 
 
 def test_get_enabled_tools():
@@ -139,7 +159,7 @@ def test_get_enabled_tools():
     registry = get_registry()
 
     enabled_tools = registry.get_enabled_tools()
-    assert len(enabled_tools) == 18
+    assert len(enabled_tools) == 31
 
     # All tools should be enabled
     for tool in enabled_tools:
@@ -157,7 +177,7 @@ def test_filter_by_pattern():
 
     # Find all *_search tools
     search_tools = registry.filter_by_pattern("*_search")
-    assert len(search_tools) == 2  # grep_search, glob_search
+    assert len(search_tools) == 4  # grep_search, glob_search, browser_search, multi_tab_search
 
     # Find all *_todos tools
     todo_tools = registry.filter_by_pattern("*_todos")

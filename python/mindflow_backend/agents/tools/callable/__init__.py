@@ -73,6 +73,16 @@ from .scratchpad import (
     ScratchpadReadCallable,
     ScratchpadWriteCallable,
 )
+from .memory import (
+    StoreFactCallable,
+    SearchFactsCallable,
+    RetrieveTaskContextCallable,
+    RecallSessionMemoryCallable,
+)
+from .orchestration import (
+    AgentToolCallable,
+    SendMessageCallable,
+)
 
 # Registration
 from .registration import (
@@ -120,6 +130,12 @@ __all__ = [
     "TodoListFocusCallable",
     "ScratchpadReadCallable",
     "ScratchpadWriteCallable",
+    "StoreFactCallable",
+    "SearchFactsCallable",
+    "RetrieveTaskContextCallable",
+    "RecallSessionMemoryCallable",
+    "AgentToolCallable",
+    "SendMessageCallable",
     # Registration
     "register_all_callable_tools",
     "unregister_all_callable_tools",
@@ -128,4 +144,3 @@ __all__ = [
     "get_all_callable_tools",
     "get_callable_tools_by_names",
 ]
-

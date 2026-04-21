@@ -71,7 +71,7 @@ def register_settings_commands(app: typer.Typer) -> None:
         default_provider = settings.get("default_provider", "google")
         console.print(f"  Default Provider: {default_provider}")
 
-        default_model = settings.get("default_model", "gemini-3.1-flash-lite-preview")
+        default_model = settings.get("default_model", "gemini-2.5-flash")
         console.print(f"  Default Model: {default_model}")
         
         console.print("[bold]🤖 Agent Configuration:[/]")
@@ -162,7 +162,7 @@ def register_settings_commands(app: typer.Typer) -> None:
         default_settings = {
             "api_url": os.getenv("MINDFLOW_API_URL", "http://127.0.0.1:8000"),
             "default_provider": "google",
-            "default_model": "gemini-3.1-flash-lite-preview",
+            "default_model": "gemini-2.5-flash",
             "default_agent": "auto",
             "auto_orchestrate": True,
             "debug_mode": False,

@@ -111,7 +111,7 @@ def _run_chat(
     if not provider:
         provider = settings.get("default_provider", "google")
     if not model:
-        model = settings.get("default_model", "gemini-3.1-flash-lite-preview")
+        model = settings.get("default_model", "gemini-2.5-flash")
     if not base_url:
         base_url = settings.get("api_url")
 
@@ -168,7 +168,7 @@ def register_chat_commands(app: typer.Typer) -> None:
     def connect(
         agent: str = typer.Option("coder", "--agent", "-a", help="Personalidade do agente (coder, analyst, researcher, etc)"),
         provider: str = typer.Option("google", "--provider", help="Provider override"),
-        model: str = typer.Option("gemini-3.1-flash-lite-preview", "--model", help="Model override"),
+        model: str = typer.Option("gemini-2.5-flash", "--model", help="Model override"),
         debug_steps: bool = typer.Option(False, "--debug-steps", help="Enable debug-oriented stream flags"),
         orchestrate: bool = typer.Option(False, "--orchestrate", "-o", help="Usar orquestrador inteligente (roteia para agente especialista)"),
         base_url: str | None = typer.Option(

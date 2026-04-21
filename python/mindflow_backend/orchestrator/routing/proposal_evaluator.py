@@ -25,11 +25,20 @@ from mindflow_backend.schemas.orchestration.specialists import SpecialistType
 _logger = get_logger(__name__)
 
 
+def get_circuit_breaker(name: str) -> Any:
+    """Resolve circuit breaker lazily to keep routing imports lightweight."""
+    from mindflow_backend.infra.resilience.circuit_breaker.core import (
+        get_circuit_breaker as _get_circuit_breaker,
+    )
+
+    return _get_circuit_breaker(name)
+
+
 class ProposalEvaluator:
     """Evaluates agent proposals and produces routing decisions.
 
     Decision logic:
-    - 0 proposals → DIRECT_RESPONSE (orchestrator handles it)
+    - 0 proposals → DELEGATE back to orchestrator
     - 1 proposal → DELEGATE to that agent
     - N proposals, 1 clear winner → DELEGATE to winner
     - N proposals, close scores → LLM tiebreaker or TEAM_SESSION
@@ -59,19 +68,17 @@ class ProposalEvaluator:
             healthy=len(healthy_proposals),
         )
 
-        # No proposals → direct response
+        # No proposals → delegate back to orchestrator
         if not healthy_proposals:
-            _logger.info("no_proposals_fallback_direct")
+            _logger.info("no_proposals_fallback_orchestrator")
             return OrchestratorDecision(
                 agent=AgentType.ORCHESTRATOR,
-                execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
-                rationale="Nenhum agente se propôs a ajudar. O orquestrador responderá diretamente.",
+                agent_id="orchestrator",
+                execution_strategy=ExecutionStrategy.DELEGATE,
+                rationale="Nenhum agente se propôs a ajudar. A solicitação volta ao orquestrador.",
+                task=message,
                 confidence=0.5,
             )
-
-        # Single proposal → delegate directly
-        if len(healthy_proposals) == 1:
-            return self._single_proposal_decision(healthy_proposals[0])
 
         # Check for collaboration needs
         collaboration_proposals = [
@@ -80,16 +87,16 @@ class ProposalEvaluator:
         if collaboration_proposals:
             return self._team_session_decision(collaboration_proposals, healthy_proposals)
 
+        # Single proposal → delegate directly
+        if len(healthy_proposals) == 1:
+            return self._single_proposal_decision(healthy_proposals[0])
+
         # Multiple proposals → find best
         return self._multi_proposal_decision(healthy_proposals, message)
 
     def _filter_healthy(self, proposals: list[AgentProposal]) -> list[AgentProposal]:
         """Filter out proposals from agents with open circuit breakers."""
         try:
-            from mindflow_backend.infra.resilience.circuit_breaker.core import (
-                get_circuit_breaker,
-            )
-
             healthy = []
             for p in proposals:
                 cb = get_circuit_breaker(f"agent_{p.agent_id}")

@@ -91,4 +91,5 @@ class WorkflowPlan(BaseModel):
             chain_type=self.chain_type,
             graph_id=self.graph_id,
             graph_type=self.graph_type,
+            metadata=dict(self.route.metadata),
         )

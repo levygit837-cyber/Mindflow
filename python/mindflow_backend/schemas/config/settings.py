@@ -5,7 +5,7 @@ from mindflow_backend.schemas.core.common import LLMProvider
 
 class AppSettings(BaseModel):
     defaultProvider: LLMProvider = "google"
-    defaultModel: str = Field(default="gemini-3.1-flash-lite-preview", min_length=1)
+    defaultModel: str = Field(default="gemini-2.5-flash", min_length=1)
     anthropicApiKey: str = ""
     openaiApiKey: str = ""
     googleApiKey: str = ""

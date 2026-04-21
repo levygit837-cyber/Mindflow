@@ -29,7 +29,8 @@ export type StreamEventType =
   | 'tool_operation_update'
   | 'tool_operation_complete'
   | 'routing_analysis'
-  | 'agent_execution_start';
+  | 'agent_execution_start'
+  | 'initialization';
 
 export type StreamModeName = 'updates' | 'messages' | 'custom' | 'values' | 'debug';
 
@@ -49,7 +50,7 @@ export interface StreamEventMeta {
   insertBefore?: string;
   firstResponseMarker?: string;
   category?: string;
-  agent?: AgentType;
+  agent?: AgentType | 'system';
 }
 
 export interface StreamEvent {

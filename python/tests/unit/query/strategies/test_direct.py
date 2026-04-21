@@ -29,14 +29,15 @@ class _FakeAgent:
 
 
 @pytest.mark.asyncio
-async def test_direct_strategy_single_call_yields_one_assistant_event():
+async def test_direct_strategy_single_call_yields_assistant_and_done():
     agent = _FakeAgent(response="hello world")
     ctx = StrategyContext(message="hi", services={"agent": agent})
 
     events = [ev async for ev in DirectStrategy().run(ctx)]
 
-    assert len(events) == 1
+    assert len(events) == 2
     assert events[0] == {"type": "assistant", "content": "hello world"}
+    assert events[1] == {"type": "done"}
     assert len(agent.calls) == 1
     # message falls back to context.message when context.messages is empty
     assert agent.calls[0]["messages"] == [{"role": "user", "content": "hi"}]
@@ -50,7 +51,9 @@ async def test_direct_strategy_uses_preexisting_messages_when_provided():
 
     events = [ev async for ev in DirectStrategy().run(ctx)]
 
-    assert len(events) == 1
+    assert len(events) == 2
+    assert events[0] == {"type": "assistant", "content": "fake response"}
+    assert events[1] == {"type": "done"}
     assert agent.calls[0]["messages"] == messages
 
 

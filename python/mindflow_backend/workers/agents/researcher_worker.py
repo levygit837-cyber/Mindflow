@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mindflow_backend.infra.logging import get_logger
-from mindflow_backend.services.browser import BrowserLifecycleService
 from mindflow_backend.workers.base.worker import BaseWorker, WorkerResult
 from mindflow_backend.workers.config.queues import QueueConfig
 
 _logger = get_logger(__name__)
+
+if TYPE_CHECKING:
+    from mindflow_backend.services.browser import BrowserLifecycleService
 
 
 class ResearcherWorker(BaseWorker):
@@ -24,7 +26,20 @@ class ResearcherWorker(BaseWorker):
             browser_service: Browser lifecycle service (created if None)
         """
         super().__init__(queue_config, worker_name="researcher_worker")
-        self.browser_service = browser_service or BrowserLifecycleService()
+        self.browser_service = browser_service or self._build_browser_service()
+
+    @staticmethod
+    def _build_browser_service():
+        """Instantiate the browser lifecycle service only when the dependency exists."""
+        try:
+            from mindflow_backend.services.browser import BrowserLifecycleService
+        except ModuleNotFoundError:
+            _logger.warning(
+                "researcher_worker_browser_service_unavailable",
+                reason="optional browser dependencies are not installed",
+            )
+            return None
+        return BrowserLifecycleService()
     
     async def process_message(self, message_data: dict[str, Any]) -> WorkerResult:
         """Process research and information gathering tasks.

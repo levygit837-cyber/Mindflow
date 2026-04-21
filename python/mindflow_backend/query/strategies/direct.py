@@ -79,3 +79,4 @@ class DirectStrategy(BaseStrategy):
 
         content = response.content if hasattr(response, "content") else str(response)
         yield {"type": "assistant", "content": content}
+        yield {"type": "done"}

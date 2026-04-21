@@ -29,21 +29,26 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 _logger = get_logger(__name__)
 
 
-def snapshot_json(value: Any) -> Any:
+def snapshot_json(value: Any, _depth: int = 0, _max_depth: int = 20) -> Any:
     """Recursively convert complex objects to JSON-safe primitives.
 
     Mirrors ``AgentRuntime._snapshot_json`` as a module-level function.
     """
+    if _depth > _max_depth:
+        return "<max-depth-exceeded>"
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     if isinstance(value, (list, tuple)):
-        return [snapshot_json(item) for item in value]
+        return [snapshot_json(item, _depth=_depth + 1, _max_depth=_max_depth) for item in value]
     if isinstance(value, dict):
-        return {str(k): snapshot_json(v) for k, v in value.items()}
+        return {
+            str(k): snapshot_json(v, _depth=_depth + 1, _max_depth=_max_depth)
+            for k, v in value.items()
+        }
     if hasattr(value, "model_dump"):
-        return snapshot_json(value.model_dump(mode="json"))
+        return snapshot_json(value.model_dump(mode="json"), _depth=_depth + 1, _max_depth=_max_depth)
     if hasattr(value, "value"):
-        return snapshot_json(value.value)
+        return snapshot_json(value.value, _depth=_depth + 1, _max_depth=_max_depth)
     return str(value)
 
 

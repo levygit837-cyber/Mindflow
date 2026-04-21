@@ -420,8 +420,11 @@ class QueryEngine:
             )
 
         # Token budget defaults to the engine's budget if not supplied by caller.
+        # Use replace() so we don't mutate the caller's dataclass in-place.
         if context.token_budget is None:
-            context.token_budget = self._budget
+            from dataclasses import replace
+
+            context = replace(context, token_budget=self._budget)
 
         strategy_impl = get_strategy(strategy_enum)
 

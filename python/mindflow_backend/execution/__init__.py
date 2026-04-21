@@ -1,16 +1,13 @@
 """
-Execution module do MindFlow — Unified Execution Engine + Missões autônomas.
+Execution module do MindFlow — Missões autônomas e gerenciamento de execução.
 
 Este módulo fornece:
-- UnifiedExecutionEngine: Engine centralizada para todas as execuções
 - AgentTeamManager: Gerenciamento de times colaborativos
 - MissionLauncher: Lançamento de missões autônomas
 - StreamingToolExecutor: Execução de ferramentas com controle de concorrência
 - Task management: Sistema de gerenciamento de tarefas
 
 Uso recomendado — imports diretos para evitar circular imports:
-    # Unified Engine
-    from mindflow_backend.execution.unified_engine import UnifiedExecutionEngine
     from mindflow_backend.execution.agent_team_manager import AgentTeamManager
     from mindflow_backend.execution.types import (
         ExecutionContext, ExecutionState, ExecutionResult,

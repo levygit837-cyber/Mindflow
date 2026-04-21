@@ -34,21 +34,21 @@ class DecompositionStrategy(BaseStrategy):
         context: StrategyContext,
     ) -> AsyncGenerator[dict[str, Any], None]:
         engine = context.services.get("decomposition_engine")
-        if engine is None:
-            # Lazy-build a default engine using the v2 orchestrator components,
-            # mirroring how SimpleOrchestratorGraph wires it today.
-            engine = _build_default_engine()
-
-        complexity_score = float(context.metadata.get("complexity_score", 0.5))
-        memory_context = str(context.metadata.get("memory_context", ""))
-
-        yield {
-            "type": "system",
-            "content": "Decomposing task into subtasks…",
-            "stage": "decomposition_start",
-        }
-
         try:
+            if engine is None:
+                # Lazy-build a default engine using the v2 orchestrator components,
+                # mirroring how SimpleOrchestratorGraph wires it today.
+                engine = _build_default_engine()
+
+            complexity_score = float(context.metadata.get("complexity_score", 0.5))
+            memory_context = str(context.metadata.get("memory_context", ""))
+
+            yield {
+                "type": "system",
+                "content": "Decomposing task into subtasks…",
+                "stage": "decomposition_start",
+            }
+
             result = await engine.execute(
                 message=context.message,
                 session_id=context.session_id or "default",

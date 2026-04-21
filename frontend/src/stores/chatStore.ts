@@ -24,6 +24,7 @@ export interface ChatState {
   toolCallEvents: Map<string, ToolCallEvent>;
   delegationEvents: Map<string, DelegationEvent>;
   activeStreamings: Map<AgentType, { text: string; progress?: number }>;
+  thinkingStreamings: Set<AgentType>;
 
   // Streaming state
   isStreaming: boolean;
@@ -32,6 +33,7 @@ export interface ChatState {
   // Actions
   setSessions: (sessions: ChatSession[]) => void;
   setCurrentSession: (sessionId: string) => void;
+  setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
 
@@ -66,6 +68,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   toolCallEvents: new Map(),
   delegationEvents: new Map(),
   activeStreamings: new Map(),
+  thinkingStreamings: new Set(),
   isStreaming: false,
   currentAgent: null,
 
@@ -79,9 +82,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       thinkingEvents: new Map(),
       toolCallEvents: new Map(),
       delegationEvents: new Map(),
+      thinkingStreamings: new Set(),
     }),
 
   // Message actions
+  setMessages: (messages) => set({ messages }),
+
   addMessage: (message) =>
     set((state) => ({
       messages: [...state.messages, message],
@@ -99,38 +105,71 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const state = get();
     const agentType = event.meta?.agent || 'orchestrator';
 
+    // Stable key for accumulating thinking per agent within a turn
+    const THINKING_KEY = `thinking-${agentType}`;
+
     switch (event.type) {
-      // Thinking events
+      // Thinking events — accumulate into one block per agent; skip empty signals
       case 'thought':
       case 'orchestrator_thinking_start':
       case 'orchestrator_thinking':
       case 'orchestrator_thinking_end':
-      case 'specialist_thinking':
-        state.addThinkingEvent({
-          id: event.id,
-          agentType: agentType as AgentType,
-          reasoning: event.data,
-          isExpanded: false,
-          timestamp: new Date(),
-          status: event.meta?.status || 'update',
-        });
+      case 'specialist_thinking': {
+        if (!event.data.trim()) break; // skip empty marker events
+
+        // Add to thinking streamings when thinking starts
+        if (event.type === 'orchestrator_thinking_start' || event.type === 'thought') {
+          set((state) => {
+            const newSet = new Set(state.thinkingStreamings);
+            newSet.add(agentType as AgentType);
+            return { thinkingStreamings: newSet };
+          });
+        }
+
+        // Remove from thinking streamings when thinking ends
+        if (event.type === 'orchestrator_thinking_end') {
+          set((state) => {
+            const newSet = new Set(state.thinkingStreamings);
+            newSet.delete(agentType as AgentType);
+            return { thinkingStreamings: newSet };
+          });
+        }
+
+        const existing = get().thinkingEvents.get(THINKING_KEY);
+        if (existing) {
+          state.updateThinkingEvent(THINKING_KEY, {
+            reasoning: existing.reasoning + '\n' + event.data,
+            status: 'update',
+          });
+        } else {
+          state.addThinkingEvent({
+            id: THINKING_KEY,
+            agentType: agentType as AgentType,
+            reasoning: event.data,
+            isExpanded: true,
+            timestamp: new Date(),
+            status: 'update',
+          });
+        }
         break;
+      }
 
       // Tool call events
       case 'tool_call':
-      case 'tool_operation_start':
+      case 'tool_operation_start': {
         try {
           const toolData = JSON.parse(event.data);
+          // Use toolCallId from parsed data as the stable key so results can match
+          const toolId = toolData.id || event.meta?.toolCallId || event.id;
           state.addToolCallEvent({
-            id: event.id,
+            id: toolId,
             agentType: agentType as AgentType,
-            toolName: toolData.tool || 'unknown',
+            toolName: toolData.name || toolData.tool || 'unknown',
             status: 'running',
             input: toolData.args || {},
             timestamp: new Date(),
           });
         } catch {
-          // If not JSON, treat as simple tool name
           state.addToolCallEvent({
             id: event.id,
             agentType: agentType as AgentType,
@@ -141,12 +180,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
         }
         break;
+      }
 
       case 'tool_result':
-      case 'tool_operation_complete':
+      case 'tool_operation_complete': {
         try {
           const resultData = JSON.parse(event.data);
-          state.updateToolCallEvent(event.id, {
+          // Match by toolCallId from data, fallback to event.id
+          const toolId = resultData.id || event.meta?.toolCallId || event.id;
+          state.updateToolCallEvent(toolId, {
             status: resultData.error ? 'error' : 'success',
             output: resultData.result,
             error: resultData.error,
@@ -158,6 +200,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
         }
         break;
+      }
 
       // Delegation events
       case 'agent_delegation_start':
@@ -195,6 +238,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({ isStreaming: true, currentAgent: agentType as AgentType });
         break;
 
+      case 'initialization':
+        // Visual feedback for initialization (cold starts)
+        console.log('Agent initialization:', event.data);
+        break;
+
       case 'response':
         if (state.isStreaming) {
           state.setStreamingState(
@@ -206,7 +254,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         break;
 
       case 'done':
-        set({ isStreaming: false });
+        set({ isStreaming: false, currentAgent: null });
         state.clearStreamingState();
         break;
 
@@ -293,6 +341,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       toolCallEvents: new Map(),
       delegationEvents: new Map(),
       activeStreamings: new Map(),
+      thinkingStreamings: new Set(),
     }),
 }));
 

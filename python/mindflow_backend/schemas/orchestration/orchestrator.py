@@ -101,11 +101,12 @@ class Priority(StrEnum):
 class ExecutionStrategy(StrEnum):
     """How the orchestrator intends to execute a request."""
 
-    DIRECT_RESPONSE = "direct_response"  # Orchestrator responds directly without delegating
     DELEGATE = "delegate"  # Delegate to one or more agents (LLM decides quantity)
     CHAIN = "chain"
     GRAPH = "graph"
     TEAM_SESSION = "team_session"  # Create team of agents for collaborative missions (Phase 3A)
+    DIRECT_RESPONSE = "direct_response"  # Orchestrator responds directly without delegation
+    SINGLE_AGENT = "single_agent"  # Single agent execution (legacy)
 
 
 class ChainType(StrEnum):
@@ -216,6 +217,7 @@ class OrchestratorDecision(BaseModel):
     chain_type: ChainType | None = None
     graph_id: str | None = None
     graph_type: GraphType | None = None
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     complexity_score: float = Field(default=0.0, ge=0.0, le=1.0)
     memory_recall: MemoryRecallConfig = Field(default_factory=MemoryRecallConfig)
     metadata: dict[str, Any] = Field(default_factory=dict)

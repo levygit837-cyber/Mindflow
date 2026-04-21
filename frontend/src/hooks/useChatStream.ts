@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
-import { ApiError } from '../lib/api';
+import { ApiError, chatApi } from '../lib/api';
 import { useChatStore } from '../stores/chatStore';
-import { AgentType, ChatMessage, StreamEvent } from '../types/backend';
+import { AgentType, ChatMessage } from '../types/backend';
 
 interface UseChatStreamOptions {
   sessionId?: string;
@@ -14,12 +14,13 @@ interface UseChatStreamReturn {
   isStreaming: boolean;
   error: string | null;
   messages: ChatMessage[];
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, sessionId?: string) => Promise<void>;
   stopStreaming: () => void;
 }
 
 export function useChatStream(options: UseChatStreamOptions = {}): UseChatStreamReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const {
@@ -34,7 +35,8 @@ export function useChatStream(options: UseChatStreamOptions = {}): UseChatStream
   } = useChatStore();
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, sessionId?: string) => {
+      const effectiveSessionId = sessionId ?? options.sessionId;
       // Clear previous events for new conversation
       clearEvents();
       setLocalError(null);
@@ -67,95 +69,45 @@ export function useChatStream(options: UseChatStreamOptions = {}): UseChatStream
       abortControllerRef.current = new AbortController();
 
       try {
-        const response = await fetch(`/api/v1/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'text/event-stream',
-          },
-          body: JSON.stringify({
-            message: {
-              type: 'user',
-              content: content,
-            },
-            session_id: options.sessionId,
+        let fullContent = '';
+        for await (const event of chatApi.streamChatEvents(
+          {
+            message: content,
+            session_id: effectiveSessionId,
             agent_type: options.agentType,
             orchestrate: options.orchestrate,
             folder_path: options.folderPath,
             stream: true,
-          }),
-          signal: abortControllerRef.current.signal,
-        });
+          },
+          abortControllerRef.current.signal
+        )) {
+          handleStreamEvent(event);
 
-        if (!response.ok) {
-          throw new ApiError(`Streaming error: ${response.status}`, response.status);
-        }
+          if (event.type === 'response') {
+            fullContent += event.data;
+            const currentEvents = useChatStore.getState().messages.find(
+              (m) => m.id === assistantMessageId
+            )?.events || [];
 
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new ApiError('No response body available');
-        }
-
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullContent = '';
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') continue;
-
-                try {
-                  const event: StreamEvent = JSON.parse(data);
-
-                  // Handle the event in the store
-                  handleStreamEvent(event);
-
-                  // Collect response content
-                  if (event.type === 'response') {
-                    fullContent += event.data;
-                    // Update the assistant message with accumulated content
-                    const currentEvents = useChatStore.getState().messages.find(
-                      (m) => m.id === assistantMessageId
-                    )?.events || [];
-
-                    useChatStore.getState().updateMessage(assistantMessageId, {
-                      content: fullContent,
-                      events: [...currentEvents, event],
-                    });
-                  }
-
-                  // Append other events to the message
-                  if (
-                    event.type !== 'response' &&
-                    event.type !== 'done' &&
-                    event.type !== 'error'
-                  ) {
-                    const currentEvents = useChatStore.getState().messages.find(
-                      (m) => m.id === assistantMessageId
-                    )?.events || [];
-
-                    useChatStore.getState().updateMessage(assistantMessageId, {
-                      events: [...currentEvents, event],
-                    });
-                  }
-                } catch (e) {
-                  console.warn('Failed to parse SSE event:', data, e);
-                }
-              }
-            }
+            useChatStore.getState().updateMessage(assistantMessageId, {
+              content: fullContent,
+              events: [...currentEvents, event],
+            });
           }
-        } finally {
-          reader.releaseLock();
+
+          if (
+            event.type !== 'response' &&
+            event.type !== 'done' &&
+            event.type !== 'error'
+          ) {
+            const currentEvents = useChatStore.getState().messages.find(
+              (m) => m.id === assistantMessageId
+            )?.events || [];
+
+            useChatStore.getState().updateMessage(assistantMessageId, {
+              events: [...currentEvents, event],
+            });
+          }
         }
 
         setIsStreaming(false);
@@ -189,6 +141,10 @@ export function useChatStream(options: UseChatStreamOptions = {}): UseChatStream
   );
 
   const stopStreaming = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     abortControllerRef.current?.abort();
     setIsStreaming(false);
   }, [setIsStreaming]);

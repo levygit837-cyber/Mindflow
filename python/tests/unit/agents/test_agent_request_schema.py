@@ -37,3 +37,12 @@ def test_agent_request_accepts_workspace_policy() -> None:
     )
 
     assert request.workspace_policy.value == "worktree"
+
+
+def test_agent_request_accepts_session_aliases_and_serializes_canonical_shape() -> None:
+    by_snake = AgentChatRequest.model_validate({"message": "oi", "session_id": "sess-1"})
+    by_camel = AgentChatRequest.model_validate({"message": "oi", "sessionId": "sess-2"})
+
+    assert by_snake.sessionId == "sess-1"
+    assert by_camel.sessionId == "sess-2"
+    assert by_camel.model_dump(by_alias=True)["session_id"] == "sess-2"

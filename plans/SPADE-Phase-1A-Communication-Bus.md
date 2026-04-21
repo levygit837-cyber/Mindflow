@@ -1,5 +1,9 @@
 # 🚌 Fase 1A — CommunicationBus: Camada de Transporte Abstrata
 
+# 🚌 Fase 1A — CommunicationBus: Camada de Transporte Abstrata
+
+# 🚌 Fase 1A — CommunicationBus: Camada de Transporte Abstrata
+
 **Fase:** 1A | **Semana:** 1–2 | **Prioridade:** P0  
 **PRD Base:** `docs/PRD/PRD-SPADE-Communication-Layer.md`  
 **Dependências:** Nenhuma — pode iniciar imediatamente  
@@ -45,6 +49,7 @@ Criar a camada de abstração `CommunicationBus` que unifica o transporte de men
 ## 🎯 O Que Fazer
 
 ### Estado Atual
+
 ```
 communication/
   ✅ protocols/p2p_protocol.py    → P2PProtocol implementado
@@ -56,6 +61,7 @@ communication/
 ```
 
 ### O Que Criar
+
 ```
 communication/
   bus/
@@ -452,6 +458,7 @@ async def send(self, from_agent, to_agent, message) -> bool:
 ## ✅ Checklist de Conclusão
 
 ### Sprint 1, Semana 1 (Dias 1–3)
+
 - [ ] Criar diretório `communication/bus/`
 - [ ] Criar `communication/bus/__init__.py`
 - [ ] Criar `communication/bus/communication_bus.py` (CommunicationBus abstract)
@@ -460,11 +467,13 @@ async def send(self, from_agent, to_agent, message) -> bool:
 - [ ] Atualizar `communication/__init__.py` com novos exports
 
 ### Sprint 1, Semana 1 (Dias 4–5)
+
 - [ ] Integrar `CircuitBreaker` no `InternalCommunicationBus.send()`
 - [ ] Adicionar registro de agentes no `AgentRuntime`
 - [ ] Testar `register_agent()` → `send()` → `receive()` manualmente
 
 ### Sprint 1, Semana 2
+
 - [ ] Testes unitários: `test_internal_bus.py`
   - [ ] `test_register_agent()`
   - [ ] `test_send_and_receive()`

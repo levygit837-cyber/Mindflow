@@ -1,4 +1,4 @@
-"""Compatibility node wrapper around the canonical router + planner flow."""
+"""RouteNode — Entry point using QueryLoop (Claude-style)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ from mindflow_backend.nodes.base.stateful import StatefulNode
 
 
 class RouteNode(StatefulNode, BaseNode):
-    """Node that analyzes messages and routes to appropriate agents.
+    """Node that executes QueryLoop with Orchestrator (Claude-style).
 
-    Uses the HybridRouter (Two-Tier) as the single entry point:
-      - Tier 1: Fast triage via IntelligentRouter (1 cheap LLM call)
-      - Tier 2: Targeted Auction via DecentralizedRouter (on-demand)
+    This replaces the HybridRouter with a direct QueryLoop that:
+      - Executes Orchestrator with AgentTool and SendMessageTool
+      - Continues looping while Orchestrator uses AgentTool
+      - No LLM routing calls before execution (0 latency overhead)
     """
 
     def __init__(self, node_id: str = "route") -> None:
@@ -21,83 +22,90 @@ class RouteNode(StatefulNode, BaseNode):
             node_id=node_id,
             node_type=NodeType.ROUTER,
             category=NodeCategory.CONTROL_FLOW,
-            description="Analyze user message and select agent personality",
+            description="Execute QueryLoop with Orchestrator using AgentTool",
         )
 
-        # Required inputs for routing
+        # Required inputs for QueryLoop
         self.config.required_inputs = {"message"}
-        self.config.outputs = {"decision", "complexity_score"}
+        self.config.outputs = {"messages", "turn_count"}
 
     async def execute(self, state: dict[str, Any]) -> dict[str, Any]:
-        """Route requests using the Two-Tier HybridRouter."""
+        """Execute QueryLoop with Orchestrator."""
+        from mindflow_backend.agents._registry import get_agent
+        from mindflow_backend.agents.tools import get_default_registry
         from mindflow_backend.infra.logging import get_logger
-        from mindflow_backend.orchestrator.routing.hybrid_router import get_hybrid_router
+        from mindflow_backend.query.budget.token_counter import TokenBudget
+        from mindflow_backend.query.query_loop import query_loop
 
         _logger = get_logger(__name__)
+        session_id = state.get("session_id")
+        execution_id = state.get("execution_id")
         folder_path = state.get("folder_path")
 
         _logger.info(
-            "route_node_starting",
+            "route_node_starting_queryloop",
             message=state["message"][:100],
             has_folder_path=bool(folder_path),
         )
 
         try:
-            router = get_hybrid_router()
-            decision = await router.route_message(
-                message=state["message"],
-                session=None,
-                folder_path=folder_path,
-            )
+            # Get Orchestrator agent
+            orchestrator = get_agent("orchestrator", session_id=session_id)
 
-            # Calculate complexity score based on strategy
-            complexity_map = {
-                "direct_response": 0.0,
-                "delegate": 0.5,
-                "team_session": 0.85,
-                "chain": 0.7,
-                "graph": 0.9,
-            }
-            score = complexity_map.get(decision.execution_strategy.value, 0.5)
+            # Get tools (AgentTool + SendMessageTool)
+            tools = get_default_registry().get_tools_for_scope("delegation")
+
+            # Set root_dir on tools if folder_path provided
+            if folder_path:
+                for tool in tools:
+                    if hasattr(tool, "root_dir"):
+                        tool.root_dir = folder_path
+                    if session_id and hasattr(tool, "session_id"):
+                        tool.session_id = session_id
+                    if execution_id and hasattr(tool, "execution_id"):
+                        tool.execution_id = execution_id
+
+            # Execute QueryLoop
+            messages = []
+            turn_count = 0
+
+            async for message in query_loop(
+                initial_message=state["message"],
+                orchestrator=orchestrator,
+                tools=tools,
+                max_turns=50,
+                token_budget=TokenBudget(max_tokens=200_000),
+                session_id=session_id,
+                execution_id=execution_id,
+            ):
+                messages.append(message)
+                turn_count += 1
 
             _logger.info(
-                "route_node_completed",
-                agent=decision.agent.value,
-                strategy=decision.execution_strategy.value,
-                specialist=decision.specialist.value if decision.specialist else None,
-                confidence=decision.confidence,
-                tools_count=len(decision.tools) if hasattr(decision, "tools") else 0,
+                "route_node_queryloop_completed",
+                turn_count=turn_count,
+                message_count=len(messages),
             )
 
-            self.set_node_state("last_agent", decision.agent.value)
-            self.set_node_state("last_complexity", score)
-            self.set_node_state(
-                "routing_count", self.get_node_state("routing_count", 0) + 1
-            )
+            self.set_node_state("last_turn_count", turn_count)
+            self.set_node_state("routing_count", self.get_node_state("routing_count", 0) + 1)
 
             return {
-                "decision": decision,
-                "complexity_score": score,
+                "messages": messages,
+                "turn_count": turn_count,
             }
 
         except Exception as exc:
-            _logger.error("route_node_error", error=str(exc), exc_info=True)
-            # Fallback to analyst on error
-            from mindflow_backend.schemas.orchestration.orchestrator import (
-                AgentType,
-                ExecutionStrategy,
-                OrchestratorDecision,
-            )
-
-            fallback_decision = OrchestratorDecision(
-                agent=AgentType.ANALYST,
-                execution_strategy=ExecutionStrategy.DELEGATE,
-                rationale=f"Routing failed, defaulting to analyst: {exc}",
-            )
-
+            _logger.error("route_node_queryloop_error", error=str(exc), exc_info=True)
+            # Fallback: return error message
             return {
-                "decision": fallback_decision,
-                "complexity_score": 0.5,
+                "messages": [
+                    {
+                        "type": "system",
+                        "content": f"QueryLoop error: {exc}",
+                    }
+                ],
+                "turn_count": 0,
             }
 
     def validate_inputs(self, state: dict[str, Any]) -> list[str]:

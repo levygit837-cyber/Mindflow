@@ -73,6 +73,30 @@ class TestSelectStrategy:
             payload = _FakePayload(orchestrate=True)
             assert select_strategy(payload) is QueryStrategy.DEEP_WORK
 
+    def test_invalid_strategy_override_falls_back(self):
+        class _FakeSettings:
+            queryengine_strategy_override = "invalid_strategy"
+            default_provider = "anthropic"
+            default_model = "claude-4"
+            max_agent_iterations = 50
+            max_deep_work_depth = 1000
+
+        with patch(
+            "mindflow_backend.query.selector.get_settings",
+            return_value=_FakeSettings(),
+        ):
+            # With no flags, should fall back to REACT instead of crashing
+            payload = _FakePayload()
+            assert select_strategy(payload) is QueryStrategy.REACT
+
+        with patch(
+            "mindflow_backend.query.selector.get_settings",
+            return_value=_FakeSettings(),
+        ):
+            # With orchestrate=True, should still route to DECOMPOSITION
+            payload = _FakePayload(orchestrate=True)
+            assert select_strategy(payload) is QueryStrategy.DECOMPOSITION
+
 
 # ---------------------------------------------------------------------------
 # build_strategy_context

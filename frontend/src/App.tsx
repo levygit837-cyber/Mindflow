@@ -4,7 +4,9 @@ import { AgentCard } from './components/agents/AgentCard';
 import { ChatView } from './components/chat/ChatView';
 import { FolderPickerModal } from './components/input/FolderPickerModal';
 import { useChatStream } from './hooks/useChatStream';
+import { useSessions } from './hooks/useSessions';
 import { useChatStore } from './stores/chatStore';
+import { chatApi } from './lib/api';
 import { AgentType } from './lib/constants';
 import './styles/animations.css';
 
@@ -15,21 +17,65 @@ function App() {
   const [folderPath, setFolderPath] = useState<string>('~');
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
 
-  // Get messages from store
-  const { messages, isStreaming, error } = useChatStore();
+  // Session management
+  const {
+    sessions,
+    currentSessionId,
+    createSession,
+    selectSession,
+    deleteSession,
+    renameSession,
+  } = useSessions();
 
-  // Initialize chat streaming hook
+  const { messages, isStreaming, error, isLoading: isSessionsLoading } = useChatStore();
+
+  // Initialize chat streaming hook with current session
   const { sendMessage, stopStreaming } = useChatStream({
+    sessionId: currentSessionId ?? undefined,
     agentType: selectedAgent || undefined,
     orchestrate: isOrchestrateMode,
     folderPath: folderPath,
   });
 
-  // Handle sending messages
+  // Handle sending messages — create a session on first message if none exists
   const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || isStreaming) return;
-    await sendMessage(text);
-  }, [sendMessage, isStreaming]);
+
+    let activeSessionId = currentSessionId;
+
+    // Try to create a session if we don't have one — non-blocking on failure
+    if (!activeSessionId) {
+      try {
+        activeSessionId = await createSession('New Chat');
+        useChatStore.setState({ currentSessionId: activeSessionId });
+      } catch {
+        // Session creation failed — send message anyway without persistence
+        activeSessionId = null;
+      }
+    }
+
+    await sendMessage(text, activeSessionId ?? undefined);
+
+    // Auto-generate title after first user message (non-blocking)
+    if (activeSessionId) {
+      const sessionMessages = useChatStore.getState().messages;
+      if (sessionMessages.filter((m) => m.role === 'user').length === 1) {
+        chatApi.generateTitle(activeSessionId, text).then((result) => {
+          useChatStore.setState((state) => ({
+            sessions: state.sessions.map((s) =>
+              s.id === activeSessionId ? { ...s, title: result.title } : s
+            ),
+          }));
+        }).catch(() => { /* non-fatal */ });
+      }
+    }
+  }, [sendMessage, isStreaming, currentSessionId, createSession]);
+
+  // Handle new session — clear messages and reset session
+  const handleNewSession = useCallback(async () => {
+    useChatStore.setState({ currentSessionId: null, messages: [] });
+    useChatStore.getState().clearEvents();
+  }, []);
 
   return (
     <>
@@ -38,10 +84,17 @@ function App() {
         selectedAgent={selectedAgent}
         contextPaths={contextPaths}
         isOrchestrateMode={isOrchestrateMode}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        isSessionsLoading={isSessionsLoading}
         onSend={handleSend}
         onSelectAgent={setSelectedAgent}
         onToggleOrchestrate={() => setIsOrchestrateMode(!isOrchestrateMode)}
         onFolderClick={() => setIsFolderPickerOpen(true)}
+        onNewSession={handleNewSession}
+        onSelectSession={selectSession}
+        onDeleteSession={deleteSession}
+        onRenameSession={renameSession}
       >
         <div className="space-y-6">
           {/* Error Display */}
@@ -93,7 +146,7 @@ function App() {
           )}
 
           {/* Chat View - messages with inline events */}
-          <ChatView />
+          <ChatView selectedAgent={selectedAgent} />
         </div>
       </ChatLayout>
 

@@ -85,19 +85,3 @@ Ajuste automático de limites
 
 - [ ] RemoteCircuitBreakerConfig
 - [ ] with_retry_and_fallback()
-- [ ] RetryableError
-- [ ] Testes de integração
-
-### Fase 3
-
-- [ ] ResilienceDashboard
-- [ ] Adaptive thresholds
-- [ ] Testes de resiliência
-
-## Critérios de Sucesso
-
-- 100% erros classificados corretamente
-- Latência P95 < 200ms
-- Taxa de retry < 5%
-- 0 falhas em testes de resiliência
-- Cobertura de testes > 80%

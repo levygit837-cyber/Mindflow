@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse, Response
 from mindflow_backend.infra.config import get_settings
 
 _BODY_METHODS = {"POST", "PUT", "PATCH"}
-_SSE_SUFFIXES = ("/stream", "/events")
+_SSE_SUFFIXES = ("/stream", "/events", "/chat")
 _JSON_MEDIA_TYPES = ("application/json", "application/merge-patch+json")
 
 

@@ -264,11 +264,13 @@ class HybridRouter:
     # ------------------------------------------------------------------
 
     def _build_direct_decision(self, intent: IntentAnalysis) -> OrchestratorDecision:
-        """Constrói decisão de resposta direta."""
+        """Constrói decisão compatível sem DIRECT_RESPONSE."""
         return OrchestratorDecision(
             agent=AgentType.ORCHESTRATOR,
-            execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
-            rationale="Direct response: no agent delegation needed",
+            agent_id="orchestrator",
+            execution_strategy=ExecutionStrategy.DELEGATE,
+            rationale="Compat: trivial request delegated back to orchestrator.",
+            task=intent.formulated_objective or intent.user_intent,
             confidence=intent.confidence,
         )
 
@@ -305,7 +307,7 @@ class HybridRouter:
         return OrchestratorDecision(
             agent=target_agent,
             specialist=specialist,
-            agent_id_override=agent_id_override,
+            agent_id=agent_id_override or target_agent.value,
             execution_strategy=ExecutionStrategy.DELEGATE,
             rationale=(
                 f"Tier-1 direct delegation to {agent_id_override or target_agent.value} "

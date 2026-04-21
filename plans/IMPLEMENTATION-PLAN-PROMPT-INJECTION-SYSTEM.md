@@ -683,4 +683,3 @@ PromptCacheManager.build_blocks() (Fase 3)
 └── [Memory Block] ← cache_control: ephemeral
         │
         ▼
-API Call com blocos cacheáveis

@@ -58,13 +58,18 @@ async def adapt_strategy_events(
         ev_type = ev.get("type")
 
         if ev_type == "assistant":
-            content = ev.get("content", "")
+            content = ev.get("content") or ""
             if content:
                 # Emit as a normalizer response chunk (preserves SSE data format)
                 yield normalizer.response_event(
                     next_seq(counter),
                     data=content,
                     run_id=run_id,
+                )
+            else:
+                _logger.debug(
+                    "adapt_strategy_events_empty_assistant",
+                    session_id=session_id,
                 )
 
         elif ev_type == "tool_result":

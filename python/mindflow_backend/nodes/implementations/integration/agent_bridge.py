@@ -69,17 +69,13 @@ class AgentBridge(StatefulNode, BaseNode):
                 # Dynamic agent selection based on decision
                 self._agent_instance = None
             
-            # Create tools registry
-            self._tools_registry = create_default_registry()
-            
-            # Create sandbox environment
             settings = get_settings()
             self._sandbox = MindFlowSandbox(
+                root_dir=getattr(settings, "working_path", None),
+                read_only=(self.sandbox_mode == SandboxMode.READ_ONLY),
                 mode=self.sandbox_mode,
-                tools_registry=self._tools_registry,
-                max_execution_time=settings.max_agent_execution_time,
-                max_memory_usage=settings.max_agent_memory_usage
             )
+            self._tools_registry = create_default_registry(self._sandbox)
             
             self._logger.info("agent_bridge_initialized", 
                            agent_type=self.agent_type, 
@@ -118,7 +114,7 @@ class AgentBridge(StatefulNode, BaseNode):
             return {
                 "response": response["content"],
                 "metadata": {
-                    "agent_type": self._agent_instance.personality.name if self._agent_instance else "unknown",
+                    "agent_type": getattr(self._agent_instance, "agent_id", self.agent_type or "unknown"),
                     "execution_time": response.get("execution_time", 0),
                     "tokens_used": response.get("tokens_used", 0),
                     "tools_used": response.get("tools_used", []),
@@ -221,12 +217,18 @@ class AgentBridge(StatefulNode, BaseNode):
         tools_registry: Any,
         memory_context: str
     ) -> Any:
-        """Execute agent using the proper architecture with LLM and tools."""
+        """Execute agent using the callable-tool runtime path."""
+        from mindflow_backend.agents.tools.base.tool_detection import (
+            get_tool_execution_strategy,
+        )
+        from mindflow_backend.agents.tools.base.tool_invocation_callable import (
+            invoke_with_callable_tools,
+        )
         from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
-        from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
         from mindflow_backend.infra.config import get_settings
         from mindflow_backend.infra.logging import get_logger
-        from mindflow_backend.runtime import get_model_for_provider
+        from mindflow_backend.runtime.providers.providers import get_model_for_provider
+        from mindflow_backend.schemas.tools import ToolContext
 
         _logger = get_logger(__name__)
         settings = get_settings()
@@ -257,25 +259,34 @@ class AgentBridge(StatefulNode, BaseNode):
 
             # Execute with tools if available
             if tools:
-                lc_tools = to_langchain_tools(tools)
-                if lc_tools:
-                    llm_with_tools = llm.bind_tools(lc_tools)
-
+                tool_strategy = get_tool_execution_strategy(tools)
+                if tool_strategy == "callable":
                     _logger.info(
                         "agent_bridge_executing",
                         agent_id=agent.agent_id,
                         max_iterations=policy.max_iterations,
-                        tools_count=len(lc_tools)
+                        tools_count=len(tools),
+                        tool_strategy=tool_strategy,
                     )
 
-                    # Legacy invoke_with_tools removed - LangChain tools no longer supported
-                    raise NotImplementedError(
-                        "invoke_with_tools was removed. LangChain tools are no longer supported. "
-                        "Use the new CallableTool architecture instead. "
-                        "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
+                    response_text = await invoke_with_callable_tools(
+                        llm=llm,
+                        messages=messages,
+                        callable_tools=tools,
+                        tool_context=ToolContext(
+                            root_dir=str(getattr(self._sandbox, "cwd", "")) or None,
+                            sandbox_mode=policy.sandbox,
+                            session_id=session_id,
+                            metadata={"agent_id": agent.agent_id},
+                        ),
+                        max_iterations=policy.max_iterations,
                     )
                 else:
-                    # No LangChain tools, use LLM directly
+                    _logger.warning(
+                        "agent_bridge_non_callable_tools_ignored",
+                        agent_id=agent.agent_id,
+                        tool_strategy=tool_strategy,
+                    )
                     response = await llm.ainvoke(messages)
                     response_text = response.content if hasattr(response, "content") else str(response)
             else:
@@ -304,19 +315,6 @@ class AgentBridge(StatefulNode, BaseNode):
                     self.tools_used = []
 
             return AgentResponse(f"Error executing agent: {exc}")
-            return AgentResponse(response_content)
-            
-        except Exception as exc:
-            _logger.error("agent_execution_failed", error=str(exc))
-            # Return error response
-            class AgentResponse:
-                def __init__(self, content: str):
-                    self.content = content
-                    self.execution_time = 0
-                    self.tokens_used = 0
-                    self.tools_used = []
-            
-            return AgentResponse(f"Error executing agent: {str(exc)}")
     
     def get_agent_capabilities(self) -> dict[str, Any]:
         """Get capabilities of the current agent."""

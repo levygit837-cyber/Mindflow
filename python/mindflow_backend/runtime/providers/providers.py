@@ -323,4 +323,24 @@ def get_model_for_provider(
             base_url=base_url or settings.lmstudio_base_url,
         )
 
+    if provider == "windsurf":
+        from .windsurf_provider import WindsurfChatModel
+        from .windsurf_session import WindsurfSessionManager
+        
+        if not hasattr(get_model_for_provider, "_windsurf_session_manager"):
+             get_model_for_provider._windsurf_session_manager = WindsurfSessionManager(
+                 gateway_url=settings.windsurf_gateway_url
+             )
+        
+        session_id = asyncio.run(get_model_for_provider._windsurf_session_manager.get_or_create_session(
+            workspace_path=settings.working_path or "/tmp" # MindFlow passes working_path in settings
+        ))
+
+        return WindsurfChatModel(
+            gateway_url=settings.windsurf_gateway_url,
+            session_id=session_id,
+            workspace_path=settings.working_path,
+            model_uid=model or settings.windsurf_default_model,
+        )
+
     raise ValueError(f"Unknown provider: {provider}")

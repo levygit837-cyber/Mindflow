@@ -1,4 +1,4 @@
-"""Job persistence layer using PostgreSQL.
+/"""Job persistence layer using PostgreSQL.
 
 Adapted from Claude Code CLI's src/utils/cronTasks.ts pattern.
 Stores scheduled jobs (cron and loop) in a PostgreSQL table via asyncpg.

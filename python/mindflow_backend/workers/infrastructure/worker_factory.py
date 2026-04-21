@@ -29,6 +29,8 @@ class WorkerFactory:
         "analyst": AnalystWorker,
         "researcher": ResearcherWorker,
         "orchestrator": OrchestratorWorker,
+        "browser": ResearcherWorker,
+        "content": ResearcherWorker,
         
         # System workers
         "vector": VectorWorker,
@@ -44,11 +46,26 @@ class WorkerFactory:
         
         # Load queue configurations
         self._load_queue_configs()
+        self._validate_queue_bindings()
     
     def _load_queue_configs(self) -> None:
         """Load queue configurations for all workers."""
         for queue_config in QueueDefinitions._ALL_QUEUES:
             self._worker_configs[queue_config.name] = queue_config
+
+    def _validate_queue_bindings(self) -> None:
+        """Fail fast when a queue publishes to an unregistered worker type."""
+        missing = sorted(
+            {
+                queue_config.worker_type
+                for queue_config in self._worker_configs.values()
+                if queue_config.worker_type not in self._worker_registry
+            }
+        )
+        if missing:
+            raise ValueError(
+                f"Queue configurations reference worker types without consumers: {', '.join(missing)}"
+            )
     
     def create_worker(
         self,
@@ -99,6 +116,8 @@ class WorkerFactory:
             "coder": "coder_high",
             "analyst": "analyst_high",
             "researcher": "researcher_high",
+            "browser": "browser_high",
+            "content": "content_medium",
             "orchestrator": "orchestrator_critical",
             "vector": "vector_medium",
             "memory": "memory_low",

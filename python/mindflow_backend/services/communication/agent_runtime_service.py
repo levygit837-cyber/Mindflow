@@ -4,13 +4,13 @@ from typing import Any
 from mindflow_backend.grpc_internal.generated import mindflow_backend_pb2 as pb2
 from mindflow_backend.grpc_internal.generated import mindflow_backend_pb2_grpc as pb2_grpc
 from mindflow_backend.grpc_internal.serialization import stream_event_to_proto
-from mindflow_backend.runtime.streaming.stream import AgentRuntime
+from mindflow_backend.runtime import RuntimeAgentRuntime
 from mindflow_backend.schemas.chat.agent import AgentChatRequest
 
 
 class AgentRuntimeServiceImpl(pb2_grpc.AgentRuntimeServiceServicer):
     def __init__(self) -> None:
-        self.runtime = AgentRuntime()
+        self.runtime = RuntimeAgentRuntime()
 
     async def StreamChat(
         self,

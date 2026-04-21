@@ -277,3 +277,36 @@ async def test_start_execution_calls_memory_start_execution():
     assert call["mode"] == "direct"
     assert call["provider"] == "anthropic"
     assert call["status"] == "running"
+
+
+# ---------------------------------------------------------------------------
+# query/persistence — snapshot_json recursion guard
+# ---------------------------------------------------------------------------
+from mindflow_backend.query.persistence import snapshot_json
+
+
+class _SelfReferential:
+    """Fake pydantic-like object that model_dump returns a reference to itself."""
+
+    def model_dump(self, mode: str = "json"):
+        return {"self": self}
+
+
+def test_snapshot_json_recursion_guard():
+    obj = _SelfReferential()
+    result = snapshot_json(obj)
+    # Must not raise RecursionError; should cap at max_depth.
+    # Result is a nested dict chain ending in <max-depth-exceeded>.
+    assert "<max-depth-exceeded>" in str(result)
+    assert isinstance(result, dict)
+
+
+def test_snapshot_json_max_depth_custom():
+    nested = {}
+    current = nested
+    for _ in range(30):
+        current["child"] = {}
+        current = current["child"]
+    result = snapshot_json(nested)
+    # default max_depth=20, so should hit the cap
+    assert "<max-depth-exceeded>" in str(result)

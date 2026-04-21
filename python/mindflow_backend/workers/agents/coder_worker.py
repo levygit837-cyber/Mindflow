@@ -334,7 +334,7 @@ class CoderWorker(BaseWorker):
         language = message_data.get("language", "python")
         context = message_data.get("context", {})
         provider = message_data.get("provider", "google")
-        model = message_data.get("model", "gemini-3.1-flash-lite-preview")
+        model = message_data.get("model", "gemini-2.5-flash")
 
         if not prompt:
             return WorkerResult(

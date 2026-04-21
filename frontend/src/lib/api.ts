@@ -83,6 +83,16 @@ export const chatApi = {
   },
 
   /**
+   * Rename (update) a session title
+   */
+  async renameSession(sessionId: string, title: string): Promise<void> {
+    await fetchWithError(`${API_BASE_URL}/chat/sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    });
+  },
+
+  /**
    * Save a message to a session
    */
   async saveMessage(
@@ -112,7 +122,8 @@ export const chatApi = {
    * Stream chat using fetch with ReadableStream for better control
    */
   async *streamChatEvents(
-    request: ChatRequest
+    request: ChatRequest,
+    signal?: AbortSignal
   ): AsyncGenerator<StreamEvent, void, unknown> {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
@@ -133,6 +144,7 @@ export const chatApi = {
         folder_path: request.folder_path,
         stream: true,
       }),
+      signal,
     });
 
     if (!response.ok) {

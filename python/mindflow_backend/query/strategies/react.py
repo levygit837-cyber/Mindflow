@@ -251,31 +251,49 @@ def _extract_tool_use_blocks(response: Any) -> list[dict[str, Any]]:
 
     if hasattr(response, "tool_calls") and response.tool_calls:
         for tool_call in response.tool_calls:
-            tool_use_blocks.append(
-                {
-                    "name": tool_call.function.name
-                    if hasattr(tool_call.function, "name")
-                    else tool_call.get("name"),
-                    "input": tool_call.function.arguments
-                    if hasattr(tool_call.function, "arguments")
-                    else tool_call.get("input", {}),
-                    "id": tool_call.id if hasattr(tool_call, "id") else tool_call.get("id"),
-                }
-            )
+            if isinstance(tool_call, dict):
+                tool_use_blocks.append(
+                    {
+                        "name": tool_call.get("name"),
+                        "input": tool_call.get("input", {}),
+                        "id": tool_call.get("id"),
+                    }
+                )
+            else:
+                tool_use_blocks.append(
+                    {
+                        "name": tool_call.function.name
+                        if hasattr(tool_call.function, "name")
+                        else getattr(tool_call, "name", None),
+                        "input": tool_call.function.arguments
+                        if hasattr(tool_call.function, "arguments")
+                        else getattr(tool_call, "input", {}),
+                        "id": tool_call.id if hasattr(tool_call, "id") else getattr(tool_call, "id", None),
+                    }
+                )
 
     elif hasattr(response, "structured_tool_calls") and response.structured_tool_calls:
         for tool_call in response.structured_tool_calls:
-            tool_use_blocks.append(
-                {
-                    "name": tool_call.name
-                    if hasattr(tool_call, "name")
-                    else tool_call.get("name"),
-                    "input": tool_call.args
-                    if hasattr(tool_call, "args")
-                    else tool_call.get("input", {}),
-                    "id": tool_call.id if hasattr(tool_call, "id") else tool_call.get("id"),
-                }
-            )
+            if isinstance(tool_call, dict):
+                tool_use_blocks.append(
+                    {
+                        "name": tool_call.get("name"),
+                        "input": tool_call.get("input", {}),
+                        "id": tool_call.get("id"),
+                    }
+                )
+            else:
+                tool_use_blocks.append(
+                    {
+                        "name": tool_call.name
+                        if hasattr(tool_call, "name")
+                        else getattr(tool_call, "name", None),
+                        "input": tool_call.args
+                        if hasattr(tool_call, "args")
+                        else getattr(tool_call, "input", {}),
+                        "id": tool_call.id if hasattr(tool_call, "id") else getattr(tool_call, "id", None),
+                    }
+                )
 
     return tool_use_blocks
 

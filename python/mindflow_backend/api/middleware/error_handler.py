@@ -282,7 +282,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         return JSONResponse(
             status_code=status_code,
-            content=error_response.model_dump(),
+            content=error_response.model_dump(mode='json'),
         )
     
     def _get_status_code(self, category: ErrorCategory) -> int:

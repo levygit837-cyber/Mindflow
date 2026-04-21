@@ -40,8 +40,9 @@ export const InputBar: React.FC<InputBarProps> = ({
 
   const handleSend = async () => {
     if (text.trim()) {
-      await onSend?.(text);
+      const messageToSend = text;
       setText('');
+      await onSend?.(messageToSend);
     }
   };
 

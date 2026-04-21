@@ -170,7 +170,7 @@ app.add_middleware(PerformanceMiddleware, cache_ttl=300, max_cache_size=1000)
 # Security and validation middleware
 app.add_middleware(ErrorHandlerMiddleware, debug=settings.app_env != "production")
 app.add_middleware(ContentNegotiationMiddleware)
-app.add_middleware(ValidationMiddleware, enable_in_memory_rate_limit=False)
+# app.add_middleware(ValidationMiddleware, enable_in_memory_rate_limit=False)  # Disabled - consumes request body before FastAPI can parse it
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(RequestContextMiddleware)

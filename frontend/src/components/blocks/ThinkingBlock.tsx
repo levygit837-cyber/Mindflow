@@ -7,6 +7,7 @@ interface ThinkingBlockProps {
   agentType: AgentType;
   reasoning: string;
   isExpanded?: boolean;
+  isStreaming?: boolean;
   className?: string;
   onToggle?: (isExpanded: boolean) => void;
 }
@@ -15,11 +16,13 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   agentType,
   reasoning,
   isExpanded: controlledExpanded,
+  isStreaming = false,
   className = '',
   onToggle,
 }) => {
   const [internalExpanded, setInternalExpanded] = useState(false);
-  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+  // Auto-expand during streaming
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : (isStreaming ? true : internalExpanded);
   const agent = AGENTS[agentType];
 
   const handleToggle = () => {
@@ -53,12 +56,15 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
       </button>
       
       {isExpanded && (
-        <div 
+        <div
           className="p-4 border-t border-[#2a2a2a]"
           style={{ borderLeftWidth: '3px', borderLeftColor: agent.color }}
         >
           <p className="text-[13px] text-[#b0b0b0] leading-relaxed whitespace-pre-wrap">
             {reasoning}
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 ml-1 bg-[#707070] animate-pulse align-middle" />
+            )}
           </p>
         </div>
       )}

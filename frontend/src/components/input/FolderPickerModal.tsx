@@ -8,6 +8,7 @@ import {
   GitBranch,
   ArrowClockwise,
   House,
+  MagnifyingGlass,
 } from '@phosphor-icons/react';
 
 interface FolderEntry {
@@ -41,10 +42,12 @@ export const FolderPickerModal: React.FC<FolderPickerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string>(currentPath || '');
   const [inputPath, setInputPath] = useState<string>(currentPath || '');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchDirectory = useCallback(async (path: string) => {
     setIsLoading(true);
     setError(null);
+    setSearchQuery('');
     try {
       const encoded = encodeURIComponent(path);
       const res = await fetch(`/api/v1/filesystem/browse?path=${encoded}`);
@@ -87,9 +90,21 @@ export const FolderPickerModal: React.FC<FolderPickerModalProps> = ({
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputPath.trim()) {
+      setSelectedPath(inputPath.trim());
       fetchDirectory(inputPath.trim());
     }
   };
+
+  const handleUseInputAsSelection = () => {
+    if (inputPath.trim()) {
+      setSelectedPath(inputPath.trim());
+    }
+  };
+
+  const filteredEntries = browseData?.entries.filter(entry =>
+    entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entry.path.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   const handleConfirm = () => {
     if (selectedPath) {
@@ -154,6 +169,15 @@ export const FolderPickerModal: React.FC<FolderPickerModalProps> = ({
             spellCheck={false}
           />
           <button
+            type="button"
+            onClick={handleUseInputAsSelection}
+            disabled={!inputPath.trim()}
+            className="p-1.5 rounded hover:bg-[#0D6E6E]/20 text-[#707070] hover:text-[#0D6E6E] transition-colors flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Use this path as selection"
+          >
+            <Check size={15} weight="bold" />
+          </button>
+          <button
             type="submit"
             className="p-1.5 rounded hover:bg-[#2a2a2a] text-[#707070] hover:text-white transition-colors flex-shrink-0"
             title="Navigate to path"
@@ -161,6 +185,28 @@ export const FolderPickerModal: React.FC<FolderPickerModalProps> = ({
             <ArrowClockwise size={15} weight="bold" />
           </button>
         </form>
+
+        {/* Search bar */}
+        <div className="px-4 py-2 border-b border-[#2a2a2a] flex items-center gap-2">
+          <MagnifyingGlass className="text-[#707070]" size={14} weight="bold" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent border-none px-0 py-1 text-[12px] text-white outline-none placeholder-[#505050]"
+            placeholder="Search folders in current directory..."
+            spellCheck={false}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="p-1 rounded hover:bg-[#2a2a2a] text-[#707070] hover:text-white transition-colors"
+            >
+              <X size={12} weight="bold" />
+            </button>
+          )}
+        </div>
 
         {/* Directory listing */}
         <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: '340px' }}>
@@ -182,13 +228,15 @@ export const FolderPickerModal: React.FC<FolderPickerModalProps> = ({
 
           {!isLoading && !error && browseData && (
             <>
-              {browseData.entries.length === 0 && (
+              {filteredEntries.length === 0 && (
                 <div className="flex items-center justify-center py-12">
-                  <p className="text-[12px] text-[#505050]">No subdirectories found</p>
+                  <p className="text-[12px] text-[#505050]">
+                    {searchQuery ? 'No matching folders found' : 'No subdirectories found'}
+                  </p>
                 </div>
               )}
 
-              {browseData.entries.map((entry) => (
+              {filteredEntries.map((entry) => (
                 <button
                   key={entry.path}
                   onClick={() => handleNavigate(entry.path)}

@@ -162,3 +162,57 @@ async def test_react_stops_at_max_turns():
     # Must end with a system message indicating max turns
     assert events[-1]["type"] == "system"
     assert "Max turns" in events[-1]["content"]
+
+
+class _FakeResponseWithDictToolCalls:
+    """Mimics LangChain AIMessage.tool_calls which returns plain dicts."""
+
+    def __init__(self, content: str, tool_calls: list[dict] | None = None):
+        self.content = content
+        self.tool_calls = tool_calls or []
+
+
+class _ScriptedOrchestratorDictTools:
+    """Returns responses with dict-format tool_calls (LangChain native)."""
+
+    def __init__(self, scripted: list[_FakeResponseWithDictToolCalls]):
+        self.scripted = list(scripted)
+        self.call_count = 0
+
+    async def ainvoke(self, messages, tools=None, context=None):
+        self.call_count += 1
+        if not self.scripted:
+            return _FakeResponseWithDictToolCalls(content="done")
+        return self.scripted.pop(0)
+
+
+@pytest.mark.asyncio
+async def test_react_dict_format_tool_calls():
+    """LangChain AIMessage.tool_calls returns dicts — must not crash on dict.function."""
+    orchestrator = _ScriptedOrchestratorDictTools(
+        [
+            _FakeResponseWithDictToolCalls(
+                content="calling tool",
+                tool_calls=[
+                    {"name": "echo", "input": {"x": 1}, "id": "tc-dict-1"}
+                ],
+            ),
+            _FakeResponseWithDictToolCalls(content="wrap-up", tool_calls=[]),
+        ]
+    )
+    tool = _FakeTool(name="echo", result="dict-tool-ok")
+    ctx = StrategyContext(
+        message="hi",
+        tools=[tool],
+        services={"orchestrator": orchestrator},
+        token_budget=TokenBudget(max_tokens=1000),
+    )
+
+    events = [ev async for ev in ReActStrategy().run(ctx)]
+
+    kinds = [ev["type"] for ev in events]
+    assert kinds.count("assistant") == 2
+    assert kinds.count("tool_result") == 1
+    tool_result = next(ev for ev in events if ev["type"] == "tool_result")
+    assert tool_result["tool_use_id"] == "tc-dict-1"
+    assert tool_result["content"] == "dict-tool-ok"

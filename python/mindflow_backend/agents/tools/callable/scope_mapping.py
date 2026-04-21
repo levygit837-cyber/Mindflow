@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import Any
 
 from mindflow_backend.agents.tools.callable import (
+    AgentToolCallable,
+    SendMessageCallable,
     FileReadCallable,
     DirectoryListCallable,
     FileFinderCallable,
@@ -32,6 +34,12 @@ from mindflow_backend.agents.tools.callable import (
     MultiTabSearchCallable,
     LLMResearchSynthesisCallable,
     LLMQueryRefinementCallable,
+    ScratchpadReadCallable,
+    ScratchpadWriteCallable,
+    StoreFactCallable,
+    SearchFactsCallable,
+    RetrieveTaskContextCallable,
+    RecallSessionMemoryCallable,
 )
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.schemas.tools import CallableTool
@@ -93,6 +101,8 @@ def get_callable_tools_for_scope(scope: Any) -> list[CallableTool]:
                 TodoListFocusCallable,
                 LLMResearchSynthesisCallable,
                 LLMQueryRefinementCallable,
+                ScratchpadReadCallable,
+                ScratchpadWriteCallable,
             ]
 
         elif scope == ToolScope.CODE_ANALYSIS:
@@ -105,13 +115,32 @@ def get_callable_tools_for_scope(scope: Any) -> list[CallableTool]:
                 GlobSearchCallable,
             ]
 
+        elif scope == ToolScope.MEMORY:
+            return [
+                StoreFactCallable,
+                SearchFactsCallable,
+                RetrieveTaskContextCallable,
+                RecallSessionMemoryCallable,
+            ]
+
+        elif scope == ToolScope.DELEGATION:
+            return [
+                AgentToolCallable,
+                SendMessageCallable,
+            ]
+
+        elif scope == ToolScope.ORCHESTRATION:
+            return [
+                AgentToolCallable,
+                SendMessageCallable,
+                StoreFactCallable,
+                SearchFactsCallable,
+                RetrieveTaskContextCallable,
+                RecallSessionMemoryCallable,
+            ]
+
         # Scopes not yet migrated to callable pattern
-        elif scope in (
-            ToolScope.DATABASE,
-            ToolScope.MEMORY,
-            ToolScope.DELEGATION,
-            ToolScope.ORCHESTRATION,
-        ):
+        elif scope == ToolScope.DATABASE:
             _logger.debug(f"ToolScope {scope} not yet migrated to callable pattern")
             return []
 
@@ -153,12 +182,21 @@ def get_all_callable_tools() -> list[CallableTool]:
         BrowserSearchCallable,
         DeepPageScraperCallable,
         MultiTabSearchCallable,
-        # Planning + LLM (5 tools)
+        # Planning + LLM + scratchpad
         TodoListReadCallable,
         TodoListWriteCallable,
         TodoListFocusCallable,
         LLMResearchSynthesisCallable,
         LLMQueryRefinementCallable,
+        ScratchpadReadCallable,
+        ScratchpadWriteCallable,
+        # Memory + orchestration
+        StoreFactCallable,
+        SearchFactsCallable,
+        RetrieveTaskContextCallable,
+        RecallSessionMemoryCallable,
+        AgentToolCallable,
+        SendMessageCallable,
     ]
 
 

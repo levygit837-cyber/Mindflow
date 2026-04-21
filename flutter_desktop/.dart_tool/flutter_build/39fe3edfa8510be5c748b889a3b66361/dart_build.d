@@ -1,0 +1,1 @@
+ /home/levybonito/Projetos/MindFlow/flutter_desktop/.dart_tool/flutter_build/39fe3edfa8510be5c748b889a3b66361/dart_build_result.json:  /home/levybonito/Downloads/Flutter/flutter/bin/cache/dart-sdk/version /home/levybonito/Projetos/MindFlow/flutter_desktop/.dart_tool/package_config.json /home/levybonito/Projetos/MindFlow/flutter_desktop/pubspec.yaml

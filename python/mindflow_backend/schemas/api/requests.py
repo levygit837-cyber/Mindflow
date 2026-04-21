@@ -4,31 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
-from mindflow_backend.schemas.core.common import LLMProvider
+from mindflow_backend.schemas.chat.agent import AgentChatRequest
 from mindflow_backend.schemas.orchestration.orchestrator import WorkspacePolicy
-
-
-class AgentChatRequest(BaseModel):
-    """Request for agent chat interaction."""
-    
-    model_config = ConfigDict(populate_by_name=True)
-    
-    message: str = Field(min_length=1, max_length=100000, description="User message")
-    provider: LLMProvider | None = Field(default=None, description="LLM provider")
-    model: str | None = Field(default=None, description="Model name")
-    session_id: str | None = Field(default=None, alias="sessionId", description="Session ID")
-    agent_type: str | None = Field(default=None, description="Agent type to use")
-    orchestrate: bool = Field(default=False, description="Whether to use orchestration")
-    debug_steps: bool = Field(default=False, alias="debugSteps", description="Enable debug steps")
-    folder_path: str | None = Field(default=None, description="Working directory for filesystem tools")
-    workspace_policy: WorkspacePolicy = Field(
-        default=WorkspacePolicy.AUTO,
-        alias="workspacePolicy",
-        validation_alias=AliasChoices("workspace_policy", "workspacePolicy"),
-        description="Workspace isolation strategy for the request runtime",
-    )
 
 
 class SessionCreateRequest(BaseModel):

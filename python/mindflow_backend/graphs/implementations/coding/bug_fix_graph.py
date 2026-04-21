@@ -1,4 +1,4 @@
-"""BugFixGraph — Reproduce, diagnose, fix, verify.
+oda"""BugFixGraph — Reproduce, diagnose, fix, verify.
 
 Fluxo: initialize → reproduce → diagnose → (fix → verify)* → test → report
 """

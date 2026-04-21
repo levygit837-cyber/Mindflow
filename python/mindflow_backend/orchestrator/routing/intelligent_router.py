@@ -338,24 +338,25 @@ STRICT RULES:
                 agents=[a.value for a in intent.agent_sequence],
             )
 
-        # --- DIRECT_RESPONSE: Orchestrator answers itself ---
+        # --- Trivial response: normalize to orchestrator delegation ---
         if intent.execution_strategy == ExecutionStrategy.DIRECT_RESPONSE:
-            _logger.info("orchestrator_direct_response", intent=intent.user_intent)
+            _logger.info("orchestrator_trivial_delegate", intent=intent.user_intent)
             return WorkflowRouteDecision(
-                rationale="Orchestrator answering directly — no delegation needed.",
+                rationale="Trivial request routed back to the orchestrator through the unified delegate path.",
                 agent_role=AgentType.ORCHESTRATOR,
-                agent_id_override=agent_id_override,
-                specialist=specialist,
+                agent_id_override="orchestrator",
+                specialist=None,
                 task=message,
                 thinking=ThinkingLevel.MEDIUM,
                 priority=Priority.NORMAL,
-                execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
+                execution_strategy=ExecutionStrategy.DELEGATE,
                 tools=self._get_tools_for_agent(
                     AgentType.ORCHESTRATOR,
                     session_id=session_id,
-                    agent_id=agent_id_override,
+                    agent_id="orchestrator",
                 ),
                 confidence=intent.confidence,
+                metadata={"legacy_execution_strategy": "direct_response"},
             )
 
         # --- CHAIN: planner resolves the concrete chain ---

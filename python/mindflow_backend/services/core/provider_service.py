@@ -33,6 +33,8 @@ class ProviderService(BaseAbstractService, ProviderServiceInterface):
             "google": {
                 "name": "Google/VertexAI",
                 "models": [
+                    {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "context_window": 1048576, "supports_vision": True, "supports_thinking": True},
+                    {"id": "gemini-2.5-pro", "name": "Gemini 2.5 Pro", "context_window": 1048576, "supports_vision": True, "supports_thinking": True},
                     {"id": "gemini-3.1-flash-lite-preview", "name": "Gemini 3.1 Flash Lite Preview", "context_window": 1048576, "supports_vision": True},
                     {"id": "gemini-3.1-pro-preview", "name": "Gemini 3.1 Pro Preview", "context_window": 1048576, "supports_vision": True},
                     {"id": "gemini-3.1-pro-preview-customtools", "name": "Gemini 3.1 Pro Preview Custom Tools", "context_window": 1048576, "supports_vision": True},

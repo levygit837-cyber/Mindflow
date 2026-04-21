@@ -378,10 +378,14 @@ class _DefaultRegistry:
         tools = []
 
         try:
-            from .orchestration import DelegateToAgentTool
+            from .orchestration import AgentTool
+            from mindflow_backend.communication.tools import SendMessageTool
 
-            tools = [DelegateToAgentTool()]
-            _logger.info(f"Loaded {len(tools)} delegation tools")
+            tools = [
+                AgentTool(),  # Claude-style AgentTool
+                SendMessageTool(),  # Fast in-process communication
+            ]
+            _logger.info(f"Loaded {len(tools)} delegation tools (AgentTool + SendMessageTool)")
 
         except ImportError as e:
             _logger.warning(f"Could not import delegation tools: {e}")
@@ -430,6 +434,8 @@ class _DefaultRegistry:
             "retrieve_task_context",
             "recall_session_memory",
             "delegate_to_agent",
+            "AgentTool",
+            "SendMessage",
         }
 
         for tool in tools:

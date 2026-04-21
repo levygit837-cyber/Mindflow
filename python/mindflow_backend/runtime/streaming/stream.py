@@ -7,12 +7,6 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-
-from mindflow_backend.agents.tools.search_web import search_web
-from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
-    build_simple_orchestrator_flow,
-)
 from mindflow_backend.hooks.event_broadcaster import HookEventBroadcaster
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
@@ -43,14 +37,7 @@ from mindflow_backend.query.streaming import custom_event as _custom_event_fn
 from mindflow_backend.query.streaming import done_event as _done_event_fn
 from mindflow_backend.query.streaming import error_event as _error_event_fn
 from mindflow_backend.query.streaming import next_seq as _next_seq_fn
-from mindflow_backend.runtime.providers import (
-    _is_thinking_supported,
-    get_model_for_provider,
-    resolve_provider_model_for_tools,
-)
-from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
-from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
 from mindflow_backend.schemas.orchestration.orchestrator import (
     WorkspaceBinding,
@@ -76,12 +63,6 @@ except Exception as exc:  # pragma: no cover - import guard for lean test envs
     _logger.warning("execution_memory_service_import_failed", error=str(exc))
 
 try:
-    from mindflow_backend.memory.agent_memory.checkpointer import langgraph_memory
-except Exception as exc:  # pragma: no cover - import guard for lean test envs
-    langgraph_memory = None
-    _logger.warning("langgraph_memory_import_failed", error=str(exc))
-
-try:
     from mindflow_backend.workers.system.publishers.memory_publisher import (
         RabbitMQMemoryTaskPublisher as _RabbitMQMemoryTaskPublisher,
     )
@@ -103,104 +84,8 @@ except Exception as exc:  # pragma: no cover - import guard for lean test envs
     ChatSession = None
     _logger.warning("runtime_db_import_failed", error=str(exc))
 
-SYSTEM_PROMPT = (
-    "You are MindFlow, a pragmatic engineering assistant. "
-    "Be concise, factual, and action-oriented. "
-    "Always keep outputs clear and useful for software engineering context."
-)
-
-_OLLAMA_CODER_TOOL_RUNTIME_PROMPT = (
-    "Runtime rules for the current task: use the available tools directly before any prose and do not "
-    "describe tool calls in plain text. For new files, call write_file. For existing files, read first "
-    "and then edit. Do not output code blocks for files that have not been written yet. "
-    "If asked to build a Python CLI task tracker, create exactly app.py, test_app.py, and README.md in "
-    "the provided folder. The CLI contract is exact: "
-    'python app.py add "text", python app.py list, and python app.py done 1. '
-    "Do not invent flags like --task-text or --task-id. Use positional arguments only. "
-    "Use simple integer task IDs starting at 1, persist tasks in tasks.json, and keep the implementation "
-    "standard-library only. In tests, invoke the CLI with sys.executable instead of the bare python command. "
-    "Before the final response, run python -m py_compile app.py test_app.py, then python -m unittest -q, "
-    "then a real smoke check with add/list/done, and fix failures if any command fails. "
-    "Only send the final response after verification, and include a FINAL_STATUS section with files_created, "
-    "tests_passed, and how_to_run."
-)
-
-# Maximum number of past user/assistant messages to inject per turn (Mudança 3)
-_HISTORY_WINDOW = 8
-_ORCHESTRATOR_INTERRUPT_AFTER = ["route", "execute", "respond"]
-
-
-async def _load_history_messages(session_id: str, limit: int = _HISTORY_WINDOW) -> list[Any]:
-    """Load the last ``limit`` user/assistant turns for ``session_id``.
-
-    Returns a list of LangChain HumanMessage / AIMessage objects in chronological
-    order, ready to be injected between the system messages and the current user
-    message.  Returns an empty list when the DB is unavailable or the session has
-    no prior messages.
-    """
-    if db_session is None or ChatMessage is None:
-        return []
-    try:
-        from sqlalchemy import select
-        async with db_session() as db:
-            result = await db.execute(
-                select(ChatMessage)
-                .where(ChatMessage.session_id == session_id)
-                .where(ChatMessage.role.in_(["user", "assistant"]))
-                .order_by(ChatMessage.created_at.desc())
-                .limit(limit)
-            )
-            rows = list(reversed(result.scalars().all()))
-            lc_msgs: list[Any] = []
-            for row in rows:
-                if row.role == "user":
-                    lc_msgs.append(HumanMessage(content=row.content))
-                else:
-                    lc_msgs.append(AIMessage(content=row.content))
-            return lc_msgs
-    except Exception as exc:
-        _logger.warning("history_load_failed", session_id=session_id, error=str(exc))
-        return []
-
-# ── Canonical compiled orchestrator graph singleton ───────────────────────────
-# Production orchestration enters here and uses the compiled LangGraph built by
-# `graphs/implementations/orchestrator/simple_flow.py`. Compatibility shims may
-# re-export this behavior, but they must not construct competing runtimes.
-_ORCHESTRATOR_GRAPH: Any = None
-
-
-def _get_orchestrator_graph() -> Any:
-    global _ORCHESTRATOR_GRAPH
-    if _ORCHESTRATOR_GRAPH is None:
-        _logger.info("orchestrator_graph_compiling")
-        _ORCHESTRATOR_GRAPH = build_simple_orchestrator_flow()
-        _logger.info("orchestrator_graph_compiled_and_cached")
-    return _ORCHESTRATOR_GRAPH
-
-
-def _select_direct_agent_system_prompt(
-    *,
-    agent_type: str,
-    base_prompt: str,
-    provider: str,
-    model: str,
-    tools_bound: bool,
-) -> str:
-    if (
-        tools_bound
-        and agent_type == "coder"
-        and provider == "ollama"
-        and model.strip().lower() == "qwen3:8b"
-    ):
-        return f"{base_prompt}\n\n{_OLLAMA_CODER_TOOL_RUNTIME_PROMPT}"
-    return base_prompt
-
-
 class AgentRuntime:
     def __init__(self) -> None:
-        # Lazy-load the graph so direct-agent and test paths do not pay the
-        # compilation cost unless orchestration is actually requested.
-        self._orchestrator_graph = None
         self._memory_service = _get_memory_service() if _get_memory_service else None
         self._execution_memory = _get_execution_memory_service() if _get_execution_memory_service else None
         self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
@@ -750,21 +635,29 @@ class AgentRuntime:
             # (flag=False) until Phase 5 removes it entirely.
             if settings.unified_engine_enabled:
                 from mindflow_backend.query.engine import QueryEngine
+                from mindflow_backend.runtime.providers.providers import (
+                    get_model_for_provider,
+                )
 
                 qe: QueryEngine = QueryEngine(
                     providers=[],
                     session_id=session_id,
                 )
                 strategy = _select_strategy(payload)
+
+                provider_str, model_str, current_run_id, normalizer, ev_counter = (
+                    self._create_stream_context(payload, session_id, run_id)
+                )
+                # Strategies expect an object with .ainvoke(messages, tools, context).
+                # QueryEngine does NOT have that contract — the LLM model does.
+                # TODO(Phase 7): wire real tool registry (sandbox, delegation, etc.)
+                llm = get_model_for_provider(provider_str, model_str)
                 ctx = _build_strategy_context(
                     payload,
                     session_id=session_id,
                     execution_id=execution_id,
                     run_id=run_id,
-                    services={"agent": qe},
-                )
-                provider_str, model_str, current_run_id, normalizer, ev_counter = (
-                    self._create_stream_context(payload, session_id, run_id)
+                    services={"orchestrator": llm, "agent": llm, "qe": qe},
                 )
                 async for stream_event in _adapt_strategy_events(
                     qe.execute(strategy, ctx),
@@ -911,7 +804,7 @@ class AgentRuntime:
             path="_stream_chat_direct_agent",
             session_id=session_id,
             agent_type=getattr(payload, "agent_type", None),
-            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable in Phase 5",
+            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable (post-validation / Phase 8)",
         )
         from mindflow_backend.agents._registry import get_agent
         from mindflow_backend.agents.tools.base.tool_detection import (
@@ -1572,7 +1465,7 @@ class AgentRuntime:
             "legacy_stream_path_active",
             path="_stream_chat_legacy",
             session_id=session_id,
-            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable in Phase 5",
+            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable (post-validation / Phase 8)",
         )
         provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
 
@@ -2150,7 +2043,7 @@ class AgentRuntime:
             path="_stream_chat_orchestrated",
             session_id=session_id,
             orchestrate=getattr(payload, "orchestrate", False),
-            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable in Phase 5",
+            deprecation_note="Will be removed after UNIFIED_ENGINE_ENABLED=True is stable (post-validation / Phase 8)",
         )
         provider, model, run_id, normalizer, counter = self._create_stream_context(payload, session_id, run_id)
         agent_state: dict[str, str | None] = {"current_agent": None}

@@ -16,10 +16,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.query.strategies.base import QueryStrategy, StrategyContext
 
 if TYPE_CHECKING:  # pragma: no cover
     from mindflow_backend.schemas.chat.agent import AgentChatRequest
+
+_logger = get_logger(__name__)
 
 
 def select_strategy(payload: AgentChatRequest) -> QueryStrategy:
@@ -37,7 +40,11 @@ def select_strategy(payload: AgentChatRequest) -> QueryStrategy:
     settings = get_settings()
     override = getattr(settings, "queryengine_strategy_override", None)
     if override:
-        return QueryStrategy(override)
+        try:
+            return QueryStrategy(override)
+        except ValueError:
+            _logger.warning("invalid_strategy_override", override=override)
+            # fall through to normal selection
 
     if _is_orchestrated(payload):
         return QueryStrategy.DECOMPOSITION

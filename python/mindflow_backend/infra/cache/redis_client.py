@@ -16,20 +16,45 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-import redis.asyncio as redis
-from redis.asyncio import ConnectionPool
-from redis.exceptions import (
-    ConnectionError,
-    RedisError,
-    ResponseError,
-    TimeoutError,
-)
+try:
+    import redis.asyncio as redis
+    from redis.asyncio import ConnectionPool
+    from redis.exceptions import (
+        ConnectionError,
+        RedisError,
+        ResponseError,
+        TimeoutError,
+    )
+except ImportError:  # pragma: no cover - optional dependency in test envs
+    redis = None  # type: ignore[assignment]
+    ConnectionPool = Any  # type: ignore[assignment]
+
+    class RedisError(Exception):
+        """Fallback Redis base exception when the redis package is absent."""
+
+    class ConnectionError(RedisError):
+        """Fallback connection error."""
+
+    class ResponseError(RedisError):
+        """Fallback response error."""
+
+    class TimeoutError(RedisError):
+        """Fallback timeout error."""
 
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.infra.resilience import RetryConfig, with_retry
 
 _logger = get_logger(__name__)
+
+
+def _require_redis_package() -> None:
+    """Raise a clear error when redis extras are not installed."""
+    if redis is None:  # pragma: no cover - exercised only in reduced test envs
+        raise ModuleNotFoundError(
+            "The 'redis' package is required for Redis-backed cache operations. "
+            "Install the optional cache dependencies or disable Redis features in this environment."
+        )
 
 
 class RedisSerializationFormat(Enum):
@@ -116,6 +141,7 @@ class RedisClient:
         
     async def initialize(self) -> None:
         """Initialize Redis connection pool and client."""
+        _require_redis_package()
         settings = get_settings()
         cache_config = settings.cache
         
@@ -799,6 +825,7 @@ def get_async_redis():
     Use this when you need direct access to the Redis protocol (xadd, pipeline,
     pub/sub, etc.) rather than the high-level RedisClient wrapper.
     """
+    _require_redis_package()
     import redis.asyncio as _redis_async  # type: ignore
 
     settings = get_settings()
@@ -812,6 +839,7 @@ def get_sync_redis():
     Use this for sync contexts (workers, CLI scripts).  Prefer the async
     variant in async code paths.
     """
+    _require_redis_package()
     import redis as _redis  # type: ignore
 
     settings = get_settings()

@@ -80,6 +80,45 @@ class ToolResult(Generic[O]):
         return f"ToolResult(success=False, error={self.error!r})"
 
 
+CallableToolResult = ToolResult
+
+
+def _callable_result_from_dict(
+    data: dict[str, Any] | None,
+    success: bool,
+    error: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> ToolResult[dict[str, Any]]:
+    """Backwards-compatible helper for callable tools that return dictionaries."""
+    return ToolResult(
+        data=data if success else None,
+        success=success,
+        error=error,
+        metadata=metadata or {},
+    )
+
+
+def build_callable_tool(*args, **kwargs):
+    """Compatibility proxy to the callable tool builder module."""
+    from mindflow_backend.schemas.tools.callable_builder import build_callable_tool as _builder
+
+    return _builder(*args, **kwargs)
+
+
+def build_readonly_tool(*args, **kwargs):
+    """Compatibility proxy to the read-only callable tool builder."""
+    from mindflow_backend.schemas.tools.callable_builder import build_readonly_tool as _builder
+
+    return _builder(*args, **kwargs)
+
+
+def build_destructive_tool(*args, **kwargs):
+    """Compatibility proxy to the destructive callable tool builder."""
+    from mindflow_backend.schemas.tools.callable_builder import build_destructive_tool as _builder
+
+    return _builder(*args, **kwargs)
+
+
 # Type alias for progress callback
 ProgressCallback = Callable[[dict[str, Any]], Awaitable[None]]
 

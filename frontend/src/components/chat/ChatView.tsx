@@ -8,12 +8,14 @@ import { StreamingIndicator } from '../events/StreamingIndicator';
 import { AgentBadge } from '../agents/AgentBadge';
 import { AGENTS } from '../../lib/constants';
 import { AgentType, StreamEvent } from '../../types/backend';
+import { MessageContent } from '../message/MessageContent';
 
 interface ChatViewProps {
   className?: string;
+  selectedAgent?: AgentType | null;
 }
 
-export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
+export const ChatView: React.FC<ChatViewProps> = ({ className = '', selectedAgent }) => {
   const {
     messages,
     thinkingEvents,
@@ -22,6 +24,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
     activeStreamings,
     isStreaming,
     currentAgent,
+    thinkingStreamings,
     updateThinkingEvent,
   } = useChatStore();
 
@@ -34,12 +37,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
 
   // Get events in order for a message
   const getOrderedEventsForMessage = (messageEvents: StreamEvent[]) => {
-    const seen = new Set<string>();
+    const seenEventIds = new Set<string>();
+    const seenThinkingAgents = new Set<string>(); // deduplicate per-agent thinking block
+    const seenToolIds = new Set<string>();
 
     return messageEvents
       .filter((e) => {
-        if (seen.has(e.id)) return false;
-        seen.add(e.id);
+        if (seenEventIds.has(e.id)) return false;
+        seenEventIds.add(e.id);
         return true;
       })
       .map((e) => {
@@ -52,18 +57,35 @@ export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
           e.type === 'orchestrator_thinking_end' ||
           e.type === 'specialist_thinking'
         ) {
-          const thinking = thinkingEvents.get(e.id);
-          return thinking ? { kind: 'thinking' as const, data: thinking } : null;
+          // All thinking for an agent is accumulated under a stable key in the store
+          const thinkingKey = `thinking-${agentType}`;
+          if (seenThinkingAgents.has(thinkingKey)) return null;
+          seenThinkingAgents.add(thinkingKey);
+          const thinking = thinkingEvents.get(thinkingKey);
+          return thinking && thinking.reasoning.trim()
+            ? { kind: 'thinking' as const, data: thinking }
+            : null;
         }
 
         if (
           e.type === 'tool_call' ||
-          e.type === 'tool_operation_start' ||
-          e.type === 'tool_result' ||
-          e.type === 'tool_operation_complete'
+          e.type === 'tool_operation_start'
         ) {
-          const tool = toolCallEvents.get(e.id);
+          // Resolve the stable tool id the same way chatStore does
+          let toolId = e.id;
+          try {
+            const parsed = JSON.parse(e.data);
+            toolId = parsed.id || e.meta?.toolCallId || e.id;
+          } catch { /* use e.id */ }
+          if (seenToolIds.has(toolId)) return null;
+          seenToolIds.add(toolId);
+          const tool = toolCallEvents.get(toolId);
           return tool ? { kind: 'tool' as const, data: tool } : null;
+        }
+
+        // Skip tool_result events from rendering — they update the tool card directly
+        if (e.type === 'tool_result' || e.type === 'tool_operation_complete') {
+          return null;
         }
 
         if (e.type === 'agent_delegation_start') {
@@ -145,6 +167,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
                         agentType={event.data.agentType}
                         reasoning={event.data.reasoning}
                         isExpanded={event.data.isExpanded}
+                        isStreaming={thinkingStreamings.has(event.data.agentType)}
                         onToggle={(expanded) =>
                           updateThinkingEvent(event.data.id, { isExpanded: expanded })
                         }
@@ -198,9 +221,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
             {/* Response content */}
             {message.content && (
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl rounded-tl-sm px-4 py-3">
-                <p className="text-[14px] text-[#e0e0e0] whitespace-pre-wrap leading-relaxed">
-                  {message.content}
-                </p>
+                <MessageContent content={message.content} agentType={agentType} />
               </div>
             )}
 
@@ -208,9 +229,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ className = '' }) => {
             {isStreaming &&
               message.id === messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.id && (
                 <div className="space-y-2 ml-1">
-                  {/* Active thinking indicator - spinner during transitions */}
-                  {currentAgent && !message.content && (
-                    <ThinkingIndicator type={currentAgent} />
+                  {/* Active thinking indicator - shown as soon as streaming starts, before any event arrives */}
+                  {!message.content && (
+                    <ThinkingIndicator type={currentAgent || selectedAgent || 'orchestrator'} />
                   )}
 
                   {/* Coding streaming indicator for Coder agent */}

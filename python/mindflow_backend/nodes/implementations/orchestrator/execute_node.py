@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+from mindflow_backend.infra.config import get_settings
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.nodes.base.node import BaseNode, NodeCategory, NodeType
 from mindflow_backend.nodes.base.streamable import StreamableNode
 from mindflow_backend.schemas.orchestration.orchestrator import (
@@ -76,8 +79,9 @@ class ExecuteNode(StreamableNode, BaseNode):
                 bridge_result = await agent_bridge.execute(agent_context)
 
                 # Extract response from bridge result
-                response = bridge_result.get("agent_response", "")
+                response = bridge_result.get("response", "")
                 error = bridge_result.get("error")
+                metadata = bridge_result.get("metadata", {})
 
                 if error:
                     _logger.error("execute_node_bridge_error", error=error, depth=current_depth)
@@ -93,10 +97,13 @@ class ExecuteNode(StreamableNode, BaseNode):
                 # Update node state
                 self.set_node_state("execution_count", self.get_node_state("execution_count", 0) + 1)
                 self.set_node_state("last_agent", decision.agent.value)
-                self.set_node_state("tokens_used", self.get_node_state("tokens_used", 0) + bridge_result.get("tokens_used", 0))
+                self.set_node_state(
+                    "tokens_used",
+                    self.get_node_state("tokens_used", 0) + metadata.get("tokens_used", 0),
+                )
 
                 # Capture thoughts if available
-                thought = bridge_result.get("agent_thoughts")
+                thought = metadata.get("last_thought")
                 if thought:
                     self.set_node_state("last_thought", thought)
 

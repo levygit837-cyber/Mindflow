@@ -18,11 +18,16 @@ from mindflow_backend.schemas.tools.callable import (
     _callable_result_from_dict,
     build_readonly_tool,
 )
-from mindflow_backend.agents.tools.web.lightpanda_browser_search import (
-    get_lightpanda_browser_search_tool,
-)
 
 _logger = get_logger(__name__)
+
+
+def _get_browser_tool():
+    from mindflow_backend.agents.tools.web.lightpanda_browser_search import (
+        get_lightpanda_browser_search_tool,
+    )
+
+    return get_lightpanda_browser_search_tool()
 
 
 def _callable_result_from_dict(
@@ -76,8 +81,7 @@ async def browser_search_impl(
 ) -> CallableToolResult[dict[str, Any]]:
     """Execute web search through LightPanda browser service."""
     try:
-        # Get LightPanda browser search tool
-        browser_tool = get_lightpanda_browser_search_tool()
+        browser_tool = _get_browser_tool()
 
         # Execute search
         result = await browser_tool.search_web(
@@ -175,8 +179,7 @@ async def deep_page_scraper_impl(
 ) -> CallableToolResult[dict[str, Any]]:
     """Execute deep page scraping with scroll and link mapping through LightPanda."""
     try:
-        # Get LightPanda browser search tool
-        browser_tool = get_lightpanda_browser_search_tool()
+        browser_tool = _get_browser_tool()
 
         # Report progress
         if on_progress:
@@ -305,7 +308,7 @@ async def multi_tab_search_impl(
         import asyncio
 
         # Get LightPanda browser search tool
-        browser_tool = get_lightpanda_browser_search_tool()
+        browser_tool = _get_browser_tool()
 
         # Execute searches in parallel
         tasks = []

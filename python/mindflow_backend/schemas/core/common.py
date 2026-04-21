@@ -1,3 +1,3 @@
 from typing import Literal
 
-LLMProvider = Literal["anthropic", "openai", "ollama", "google", "vertexai", "lmstudio"]
+LLMProvider = Literal["anthropic", "openai", "ollama", "google", "vertexai", "lmstudio", "windsurf"]

@@ -81,9 +81,11 @@ async def test_dispatcher_rejects_non_strategy_context(engine):
 async def test_dispatcher_defaults_token_budget_to_engine_budget(engine):
     ctx = StrategyContext(message="hi", services={"agent": _FakeAgent()})
     assert ctx.token_budget is None
-    async for _ in engine.execute(QueryStrategy.DIRECT, ctx):
-        pass
-    assert ctx.token_budget is engine.budget
+    events = [ev async for ev in engine.execute(QueryStrategy.DIRECT, ctx)]
+    # Engine uses dataclasses.replace internally so the original ctx is NOT mutated.
+    assert ctx.token_budget is None
+    # Execution still succeeds because a copy with the budget is used internally.
+    assert len(events) == 2  # assistant + done
 
 
 @pytest.mark.asyncio

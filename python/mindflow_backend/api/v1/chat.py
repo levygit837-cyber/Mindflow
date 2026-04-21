@@ -90,27 +90,55 @@ async def chat(payload: dict, request: Request):
         run_id = str(uuid.uuid4())
         
         full_content = []
-        async for event in grpc_client.stream_chat(
-            session_id=session_id,
-            message=message_content,
-            provider=agent_request.provider,
-            model=agent_request.model,
-            run_id=run_id,
-            orchestrate=agent_request.orchestrate,
-            agent_type=agent_request.agent_type,
-            folder_path=agent_request.folder_path,
-        ):
-            # Collect assistant text from events
-            if hasattr(event, 'data'):
-                full_content.append(event.data)
-            elif hasattr(event, 'assistant_text_delta'):
-                full_content.append(event.assistant_text_delta)
+        timeout_seconds = 120  # Timeout for event collection
+        start_time = asyncio.get_event_loop().time()
+        
+        try:
+            async for event in grpc_client.stream_chat(
+                session_id=session_id,
+                message=message_content,
+                provider=agent_request.provider,
+                model=agent_request.model,
+                run_id=run_id,
+                orchestrate=agent_request.orchestrate,
+                agent_type=agent_request.agent_type,
+                folder_path=agent_request.folder_path,
+            ):
+                # Check timeout
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if elapsed > timeout_seconds:
+                    raise TimeoutError(f"Event collection timeout after {timeout_seconds}s")
+                
+                # Collect assistant text from events
+                if hasattr(event, 'data'):
+                    full_content.append(event.data)
+                elif hasattr(event, 'assistant_text_delta'):
+                    full_content.append(event.assistant_text_delta)
+                
+                # Break on done event
+                if hasattr(event, 'type') and event.type == "done":
+                    break
+        except asyncio.TimeoutError:
+            # Log timeout error
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Event collection timeout after {timeout_seconds}s for session {session_id}")
+            # Return partial content or error message
+            if not full_content:
+                raise HTTPException(status_code=504, detail="Agent response timeout")
+        except Exception as e:
+            # Log error and re-raise
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error collecting events for session {session_id}: {str(e)}")
+            if not full_content:
+                raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
         
         # Return as AssistantMessage format
         return {
             "message": {
                 "type": "assistant",
-                "content": "".join(full_content),
+                "content": "".join(full_content) if full_content else "No response generated",
                 "timestamp": datetime.now(UTC).isoformat(),
                 "uuid": payload.get("message", {}).get("uuid") if isinstance(payload.get("message"), dict) else None,
                 "session_id": session_id,

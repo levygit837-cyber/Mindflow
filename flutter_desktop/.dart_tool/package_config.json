@@ -69,9 +69,9 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///home/levybonito/flutter/packages/flutter",
+      "rootUri": "file:///home/levybonito/Downloads/Flutter/flutter/packages/flutter",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.9"
     },
     {
       "name": "flutter_lints",
@@ -87,9 +87,9 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///home/levybonito/flutter/packages/flutter_test",
+      "rootUri": "file:///home/levybonito/Downloads/Flutter/flutter/packages/flutter_test",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.9"
     },
     {
       "name": "glob",
@@ -183,7 +183,7 @@
     },
     {
       "name": "meta",
-      "rootUri": "file:///home/levybonito/.pub-cache/hosted/pub.dev/meta-1.18.0",
+      "rootUri": "file:///home/levybonito/.pub-cache/hosted/pub.dev/meta-1.17.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -285,9 +285,9 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///home/levybonito/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///home/levybonito/Downloads/Flutter/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.9"
     },
     {
       "name": "source_span",
@@ -321,7 +321,7 @@
     },
     {
       "name": "test_api",
-      "rootUri": "file:///home/levybonito/.pub-cache/hosted/pub.dev/test_api-0.7.11",
+      "rootUri": "file:///home/levybonito/.pub-cache/hosted/pub.dev/test_api-0.7.10",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -387,8 +387,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.12.0-320.0.dev",
-  "flutterRoot": "file:///home/levybonito/flutter",
-  "flutterVersion": "3.43.0-1.0.pre-508",
+  "generatorVersion": "3.11.4",
+  "flutterRoot": "file:///home/levybonito/Downloads/Flutter/flutter",
+  "flutterVersion": "3.41.6",
   "pubCache": "file:///home/levybonito/.pub-cache"
 }

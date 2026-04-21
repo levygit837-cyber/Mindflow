@@ -12,7 +12,7 @@ interface EventRailProps {
 }
 
 export const EventRail: React.FC<EventRailProps> = ({ className = '' }) => {
-  const { thinkingEvents, toolCallEvents, delegationEvents, activeStreamings, isStreaming } =
+  const { thinkingEvents, toolCallEvents, delegationEvents, activeStreamings, isStreaming, thinkingStreamings } =
     useChatStore();
 
   // Convert maps to arrays and sort by timestamp
@@ -93,6 +93,7 @@ export const EventRail: React.FC<EventRailProps> = ({ className = '' }) => {
                 agentType={event.data.agentType}
                 reasoning={event.data.reasoning}
                 isExpanded={event.data.isExpanded}
+                isStreaming={thinkingStreamings.has(event.data.agentType)}
                 onToggle={(expanded) => handleToggleThinking(event.data.id, expanded)}
               />
             );

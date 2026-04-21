@@ -18,8 +18,16 @@ class AgentChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=100000)
     provider: LLMProvider | None = None
     model: str | None = None
-    sessionId: str | None = Field(default=None, alias="session_id")
-    debugSteps: bool = False
+    sessionId: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("session_id", "sessionId"),
+        serialization_alias="session_id",
+    )
+    debugSteps: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("debug_steps", "debugSteps"),
+        serialization_alias="debug_steps",
+    )
     orchestrate: bool = False
     agent_type: str | None = Field(
         default=None,
@@ -150,6 +158,7 @@ StreamEventType = Literal[
     "tool_operation_complete",
     "routing_analysis",
     "agent_execution_start",
+    "initialization",
 ]
 
 

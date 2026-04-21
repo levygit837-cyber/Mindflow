@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from mindflow_backend.agents.tools.callable.filesystem import FileReadCallable
+
 if "redis" not in sys.modules:
     redis_module = types.ModuleType("redis")
     redis_asyncio_module = types.ModuleType("redis.asyncio")
@@ -20,6 +22,7 @@ from mindflow_backend.hooks.event_broadcaster import (
     HookExecutionEvent,
     HookExecutionState,
 )
+from mindflow_backend.runtime.core.agent_runtime import AgentRuntime as CoreAgentRuntime
 from mindflow_backend.runtime.streaming.stream import AgentRuntime
 from mindflow_backend.schemas.agent import AgentChatRequest
 
@@ -85,7 +88,9 @@ class _FakeExecutionMemory:
     async def get_execution(self, execution_id: str):
         record = self.executions.get(execution_id)
         return SimpleNamespace(**record) if record else None
-
+def test_core_runtime_is_compatibility_alias_for_streaming_runtime() -> None:
+    runtime = CoreAgentRuntime()
+    assert isinstance(runtime, AgentRuntime)
 
 
 @pytest.mark.asyncio
@@ -222,13 +227,9 @@ async def test_direct_agent_uses_tool_capable_fallback_model_when_requested_mode
 
     class _FakeRegistry:
         def get_tools_for_agent(self, _agent):
-            return ["tool-a"]
+            return [FileReadCallable]
 
     monkeypatch.setattr("mindflow_backend.agents.tools.create_default_registry", lambda *_args, **_kwargs: _FakeRegistry())
-    monkeypatch.setattr(
-        "mindflow_backend.agents.tools.base.langchain_adapter.to_langchain_tools",
-        lambda _tools: ["lc-tool"],
-    )
 
     runtime = AgentRuntime()
     monkeypatch.setattr(runtime, "_save_message_bg", AsyncMock())
@@ -405,13 +406,9 @@ async def test_direct_coder_uses_augmented_ollama_runtime_prompt_for_qwen_tool_f
 
     class _FakeRegistry:
         def get_tools_for_agent(self, _agent):
-            return ["tool-a"]
+            return [FileReadCallable]
 
     monkeypatch.setattr("mindflow_backend.agents.tools.create_default_registry", lambda *_args, **_kwargs: _FakeRegistry())
-    monkeypatch.setattr(
-        "mindflow_backend.agents.tools.base.langchain_adapter.to_langchain_tools",
-        lambda _tools: ["lc-tool"],
-    )
     monkeypatch.setattr(
         runtime_stream_module,
         "resolve_provider_model_for_tools",

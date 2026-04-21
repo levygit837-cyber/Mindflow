@@ -9,12 +9,37 @@ Two-Tier Hybrid Router:
     RoutingMetrics — Observability for routing cost/latency
 """
 
+from mindflow_backend.orchestrator.routing.hybrid_router import (  # noqa: F401
+    HybridRouter,
+    get_hybrid_router,
+)
+from mindflow_backend.orchestrator.routing.decentralized_router import (  # noqa: F401
+    DecentralizedRouter,
+    route_message_decentralized,
+)
+from mindflow_backend.orchestrator.routing.proposal_collector import (  # noqa: F401
+    ProposalCollector,
+)
+from mindflow_backend.orchestrator.routing.proposal_evaluator import (  # noqa: F401
+    ProposalEvaluator,
+)
+from mindflow_backend.orchestrator.routing.routing_metrics import (  # noqa: F401
+    RoutingMetrics,
+)
+from mindflow_backend.orchestrator.routing.squad_registry import (  # noqa: F401
+    SquadRegistry,
+    SquadTemplate,
+    get_squad_registry,
+)
 from mindflow_backend.orchestrator.routing.intelligent_router import (  # noqa: F401
     IntelligentRouter,
     route_message_intelligently,
 )
-from mindflow_backend.orchestrator.routing.intelligent_router import (
-    route_message_intelligently as route_message,  # noqa: F401
+from mindflow_backend.orchestrator.routing.orchestration_router import (  # noqa: F401
+    OrchestrationRouter,
+    RoutingContext,
+    get_orchestration_router,
+    route_message,
 )
 
 __all__ = [
@@ -27,6 +52,9 @@ __all__ = [
     "get_squad_registry",
     # Metrics / observability
     "RoutingMetrics",
+    "OrchestrationRouter",
+    "RoutingContext",
+    "get_orchestration_router",
     # Tier 1 (kept for direct use)
     "route_message",
     "route_message_intelligently",

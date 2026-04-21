@@ -17,6 +17,11 @@ from mindflow_backend.graphs.base.types import GraphConfig, GraphType
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.indexing import is_continuation_prompt
+from mindflow_backend.orchestrator.chain_integration import build_workflow_plan
+from mindflow_backend.orchestrator.routing.orchestration_router import (
+    RoutingContext,
+    get_orchestration_router,
+)
 from mindflow_backend.nodes.implementations.orchestrator.execute_node import ExecuteNode
 from mindflow_backend.nodes.implementations.orchestrator.respond_node import RespondNode
 from mindflow_backend.nodes.implementations.orchestrator.route_node import RouteNode
@@ -146,7 +151,9 @@ class SimpleOrchestratorGraph(SimpleGraph):
             "session_id": state.get("session_id", ""),
             "memory_context": state.get("memory_context", ""),
             "agent_type": state.get("agent_type"),
+            "orchestrate": state.get("orchestrate", False),
             "folder_path": state.get("folder_path"),
+            "workspace_policy": state.get("workspace_policy"),
             "conversation_history": state.get("conversation_history", []),
         }
     
@@ -158,21 +165,36 @@ class SimpleOrchestratorGraph(SimpleGraph):
         )
     
     async def _route_node_legacy(self, state: dict[str, Any]) -> dict[str, Any]:
-        """Route all requests directly to the Orchestrator.
-
-        The Orchestrator is the sole entry point — it converses with the user
-        and decides when to delegate via the delegate_to_agent tool.  No
-        IntelligentRouter LLM call is needed here.
-        """
-        from mindflow_backend.schemas.orchestration.orchestrator import AgentType
-
-        decision = OrchestratorDecision(
-            agent=AgentType.ORCHESTRATOR,
-            execution_strategy=ExecutionStrategy.DIRECT_RESPONSE,
-            rationale="Orchestrator handles all requests directly.",
+        """Route via the canonical orchestration façade and build one workflow plan."""
+        router = get_orchestration_router()
+        route = await router.route(
+            RoutingContext(
+                message=state["message"],
+                session_id=str(state.get("session_id") or ""),
+                folder_path=state.get("folder_path"),
+                agent_type=state.get("agent_type"),
+                orchestrate=bool(state.get("orchestrate", False)),
+                metadata={"source": "simple_orchestrator_flow"},
+            )
         )
-        _logger.info("route_node_completed", agent="orchestrator", strategy="direct_response")
-        return {"decision": decision, "workflow_plan": None, "complexity_score": 0.0}
+        workflow_plan = build_workflow_plan(
+            message=state["message"],
+            route=route,
+            folder_path=state.get("folder_path"),
+            session_id=str(state.get("session_id") or ""),
+        )
+        decision = workflow_plan.to_decision()
+        _logger.info(
+            "route_node_completed",
+            agent=decision.agent_id,
+            strategy=decision.execution_strategy.value,
+            planner_rule=getattr(workflow_plan, "planner_rule", None),
+        )
+        return {
+            "decision": decision,
+            "workflow_plan": workflow_plan,
+            "complexity_score": route.confidence,
+        }
     
     async def _execute_node_legacy(self, state: dict[str, Any]) -> dict[str, Any]:
         """Execute node implementation with full orchestrator functionality."""
@@ -215,7 +237,7 @@ class SimpleOrchestratorGraph(SimpleGraph):
                 memory_result=memory_result,
             )
 
-        # -1. DIRECT_RESPONSE: Orchestrator is the entity — it answers the user directly.
+        # Compatibility shim for persisted legacy direct_response decisions.
         if getattr(decision, "execution_strategy", ExecutionStrategy.DELEGATE) == ExecutionStrategy.DIRECT_RESPONSE:
             return await self._orchestrator_direct_response(
                 state,
@@ -356,32 +378,33 @@ class SimpleOrchestratorGraph(SimpleGraph):
         memory_context: str = "",
         memory_grounded: bool = False,
     ) -> dict[str, Any]:
-        """Orchestrator acts as central agent with delegate_to_agent tool.
-
-        This is the primary execution path.  The Orchestrator LLM decides whether
-        to answer directly or call delegate_to_agent to invoke a specialist.
-        """
+        """Compatibility direct-response executor using callable tools only."""
         from langchain_core.callbacks.manager import adispatch_custom_event
 
-        from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-        from mindflow_backend.agents.tools.orchestration.delegate_to_agent import (
-            DelegateToAgentTool,
+        from mindflow_backend.agents.specialists.runtime_policy import get_agent_runtime_policy
+        from mindflow_backend.agents.tools import create_default_registry
+        from mindflow_backend.agents.tools.base.tool_detection import get_tool_execution_strategy
+        from mindflow_backend.agents.tools.base.tool_invocation_callable import (
+            invoke_with_callable_tools,
         )
+        from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
+        from mindflow_backend.runtime.providers.providers import get_model_for_provider
+        from mindflow_backend.schemas.tools import ToolContext
 
         agent = get_agent(agent_id="orchestrator")
         session_id = str(state.get("session_id", ""))
         execution_id = state.get("execution_id")
-
-        # Build the delegate tool with runtime context
-        delegate_tool = DelegateToAgentTool()
-        if state.get("folder_path"):
-            delegate_tool.root_dir = state["folder_path"]
-        if session_id:
-            delegate_tool.session_id = session_id
-        if execution_id:
-            delegate_tool.execution_id = str(execution_id)
-
-        lc_tools = to_langchain_tools([delegate_tool])
+        policy = get_agent_runtime_policy(agent_id="orchestrator", session_id=session_id)
+        sandbox = MindFlowSandbox(
+            root_dir=state.get("folder_path") or getattr(get_settings(), "working_path", None),
+            read_only=False,
+        )
+        tool_registry = create_default_registry(
+            sandbox,
+            session_id=session_id,
+            execution_id=str(execution_id) if execution_id else None,
+        )
+        tools = tool_registry.get_tools_for_scopes(list(policy.tools))
 
         messages: list[dict] = [
             {"role": "system", "content": agent.system_prompt},
@@ -409,23 +432,30 @@ class SimpleOrchestratorGraph(SimpleGraph):
         messages.append({"role": "user", "content": state["message"]})
 
         try:
-            from mindflow_backend.runtime.providers.providers import get_model_for_provider
-
             llm = get_model_for_provider(provider, model)
-            llm_with_tools = llm.bind_tools(lc_tools)
 
-            async def _chunk_dispatch(text: str) -> None:
-                await adispatch_custom_event("agent_response", {"chunk": text})
+            strategy = get_tool_execution_strategy(tools)
+            if strategy == "callable":
+                response_text = await invoke_with_callable_tools(
+                    llm=llm,
+                    messages=messages,
+                    callable_tools=tools,
+                    tool_context=ToolContext(
+                        root_dir=state.get("folder_path"),
+                        session_id=session_id,
+                        execution_id=str(execution_id) if execution_id else None,
+                        sandbox_mode=policy.sandbox,
+                        metadata={"agent_id": "orchestrator"},
+                    ),
+                    event_dispatcher=self._make_callable_event_dispatcher(adispatch_custom_event),
+                    max_iterations=policy.max_iterations,
+                )
+            else:
+                response = await llm.ainvoke(messages)
+                response_text = response.content if hasattr(response, "content") else str(response)
 
-            async def _event_dispatch(name: str, payload: dict) -> None:
-                await adispatch_custom_event(name, payload)
-
-            # Legacy stream_with_tools removed - LangChain tools no longer supported
-            raise NotImplementedError(
-                "stream_with_tools was removed. LangChain tools are no longer supported. "
-                "Use the new CallableTool architecture with StreamingToolExecutor instead. "
-                "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
-            )
+            if response_text.strip():
+                await adispatch_custom_event("agent_response", {"chunk": response_text})
 
             if not response_text.strip():
                 response_text = "Como posso ajudar?"
@@ -434,6 +464,18 @@ class SimpleOrchestratorGraph(SimpleGraph):
         except Exception as exc:
             _logger.error("orchestrator_direct_response_error", error=str(exc))
             return {"response": "", "error": str(exc)}
+
+    def _make_callable_event_dispatcher(self, adispatch_custom_event):
+        async def _dispatch(name: str, payload: dict[str, Any]) -> None:
+            if name == "tool_call_start":
+                await adispatch_custom_event("tool_call", payload)
+                return
+            if name == "tool_call":
+                await adispatch_custom_event("tool_result", payload)
+                return
+            await adispatch_custom_event(name, payload)
+
+        return _dispatch
 
     async def _orchestrator_reflect_on_result(
         self,

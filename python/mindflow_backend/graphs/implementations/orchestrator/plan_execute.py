@@ -21,12 +21,16 @@ from langgraph.graph import END, StateGraph  # type: ignore[import]
 
 from mindflow_backend.agents._registry import get_agent
 from mindflow_backend.agents.tools import create_default_registry
-from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
+from mindflow_backend.agents.tools.base.tool_detection import get_tool_execution_strategy
+from mindflow_backend.agents.tools.base.tool_invocation_callable import (
+    invoke_with_callable_tools,
+)
 from mindflow_backend.agents.tools.sandbox import MindFlowSandbox
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.runtime import get_model_for_provider
 from mindflow_backend.schemas.orchestration.orchestrator import AgentType, SandboxMode, ToolScope
+from mindflow_backend.schemas.tools import ToolContext
 from mindflow_backend.services import get_todo_planning_service
 from mindflow_backend.services.orchestration.todo_planning_service import build_todo_items_from_plan
 
@@ -111,7 +115,6 @@ async def _planner_node(state: PlanExecuteState) -> dict:
     )
     tool_registry = create_default_registry(sandbox, session_id=session_id)
     planning_tools = tool_registry.get_tools_for_scopes([ToolScope.PLANNING])
-    lc_tools = to_langchain_tools(planning_tools)
 
     planner_prompt = (
         "You are a planning agent. Given a user request, decompose it into 2-5 concrete subtasks. "
@@ -144,12 +147,18 @@ async def _planner_node(state: PlanExecuteState) -> dict:
     )
 
     try:
-        if lc_tools:
-            # Legacy invoke_with_tools removed - LangChain tools no longer supported
-            raise NotImplementedError(
-                "invoke_with_tools was removed. LangChain tools are no longer supported. "
-                "Use the new CallableTool architecture instead. "
-                "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
+        if get_tool_execution_strategy(planning_tools) == "callable":
+            raw = await invoke_with_callable_tools(
+                llm=llm,
+                messages=messages,
+                callable_tools=planning_tools,
+                tool_context=ToolContext(
+                    root_dir=state.get("folder_path"),
+                    session_id=session_id,
+                    sandbox_mode=SandboxMode.FULL,
+                    metadata={"agent_id": "orchestrator"},
+                ),
+                max_iterations=8,
             )
         else:
             response = await llm.ainvoke(messages)
@@ -302,19 +311,19 @@ async def _executor_node(state: PlanExecuteState) -> dict:
     llm = get_model_for_provider(provider, model)
 
     try:
-        if tools:
-            lc_tools = to_langchain_tools(tools)
-            if lc_tools:
-                llm_with_tools = llm.bind_tools(lc_tools)
-                # Legacy invoke_with_tools removed - LangChain tools no longer supported
-                raise NotImplementedError(
-                    "invoke_with_tools was removed. LangChain tools are no longer supported. "
-                    "Use the new CallableTool architecture instead. "
-                    "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
-                )
-            else:
-                response = await llm.ainvoke(messages)
-                result_text = response.content if hasattr(response, "content") else str(response)
+        if get_tool_execution_strategy(tools) == "callable":
+            result_text = await invoke_with_callable_tools(
+                llm=llm,
+                messages=messages,
+                callable_tools=tools,
+                tool_context=ToolContext(
+                    root_dir=sandbox_root,
+                    session_id=session_id,
+                    sandbox_mode=agent.sandbox,
+                    metadata={"agent_id": getattr(agent, "agent_id", agent_name.lower())},
+                ),
+                max_iterations=getattr(agent, "max_iterations", 16),
+            )
         else:
             response = await llm.ainvoke(messages)
             result_text = response.content if hasattr(response, "content") else str(response)

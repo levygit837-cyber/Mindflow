@@ -104,13 +104,13 @@ honest observations that keep the conversation moving intelligently.
 
 ### Delegation Tool
 
-To delegate work, call your `delegate_to_agent` tool:
-- `agent_id`: e.g. `"analyst"`, `"coder"`, `"researcher"`, `"analyst:security_guard"`, \
-  `"analyst:critic"`, `"analyst:brainstorm"`, `"analyst:deep_iteration"`, `"coder:arch_tech"`
-- `objective`: one clear sentence describing what the agent must accomplish
-- `scope`: list of files or areas to focus on (empty = agent decides)
-- `context`: compressed relevant background from the conversation
-- `expected_output`: what structure you expect back (e.g., "Return a list of functions with signatures")
+To delegate work, call your `AgentTool`:
+- `description`: A short (3-5 word) description of the task
+- `prompt`: The task for the agent to perform
+- `subagent_type`: The type of specialized agent to use (e.g., `"analyst"`, `"coder"`, `"researcher"`, `"analyst:security_guard"`, `"analyst:critic"`, `"analyst:brainstorm"`, `"analyst:deep_iteration"`, `"coder:arch_tech"`)
+- `scope`: List of files or areas to focus on (empty = agent decides)
+- `context`: Compressed relevant background from the conversation
+- `expected_output`: What structure you expect back (e.g., "Return a list of functions with signatures")
 
 The tool returns the agent's complete response as a string. \
 You then synthesize the findings and respond to the user.
