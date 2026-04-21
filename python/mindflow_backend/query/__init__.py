@@ -21,6 +21,7 @@ Design principles:
 from mindflow_backend.query.budget import TokenBudget
 from mindflow_backend.query.context_builder import ContextBuilder
 from mindflow_backend.query.engine import QueryEngine
+from mindflow_backend.query.selector import build_strategy_context, select_strategy
 from mindflow_backend.query.strategies import (
     BaseStrategy,
     QueryStrategy,
@@ -38,4 +39,6 @@ __all__ = [
     "StrategyResult",
     "BaseStrategy",
     "get_strategy",
+    "select_strategy",
+    "build_strategy_context",
 ]

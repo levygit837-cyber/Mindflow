@@ -29,7 +29,6 @@ Uso recomendado — imports diretos para evitar circular imports:
     from mindflow_backend.execution.loops import (
         StreamingToolExecutor,
         partition_tool_calls,
-        ToolOrchestrator,
     )
 
     # Task

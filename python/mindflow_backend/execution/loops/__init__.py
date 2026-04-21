@@ -4,7 +4,7 @@ Canonical location for StreamingToolExecutor / partition_tool_calls is now
 ``mindflow_backend.runtime.execution``. This package keeps re-exports so
 existing callers continue to work during the unified-engine migration.
 
-Only ``tool_orchestration`` still has its primary definition here.
+``tool_orchestration`` was removed in Phase 6 (dead code, zero production callers).
 """
 
 from mindflow_backend.runtime.execution.streaming_executor import (
@@ -17,14 +17,10 @@ from mindflow_backend.runtime.execution.tool_partition import (
     partition_tool_calls,
 )
 
-from .tool_orchestration import OrchestratedToolCallResult, ToolOrchestrator
-
 __all__ = [
     "StreamingToolExecutor",
     "ToolDefinition",
     "ToolUseContext",
     "partition_tool_calls",
     "ToolBatch",
-    "ToolOrchestrator",
-    "OrchestratedToolCallResult",
 ]
