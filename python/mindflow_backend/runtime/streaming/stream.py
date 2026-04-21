@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import hashlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
@@ -13,21 +14,38 @@ from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
     build_simple_orchestrator_flow,
 )
 from mindflow_backend.hooks.event_broadcaster import HookEventBroadcaster
-from mindflow_backend.hooks.handlers.session_end import SessionEndHandler
-from mindflow_backend.hooks.handlers.session_start import SessionStartHandler
-from mindflow_backend.hooks.handlers.user_prompt_submit import UserPromptSubmitHandler
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.memory.indexing import is_continuation_prompt
+from mindflow_backend.query.hooks import (
+    attach_hook_event_bridge as _attach_hook_event_bridge_fn,
+)
+from mindflow_backend.query.hooks import fire_session_end as _fire_session_end
+from mindflow_backend.query.hooks import fire_session_start as _fire_session_start
+from mindflow_backend.query.hooks import (
+    fire_user_prompt_submit as _fire_user_prompt_submit,
+)
+from mindflow_backend.query.persistence import (
+    dispatch_memory_message as _dispatch_memory_message_fn,
+)
+from mindflow_backend.query.persistence import save_message_bg as _save_message_bg_fn
+from mindflow_backend.query.persistence import snapshot_json as _snapshot_json_fn
+from mindflow_backend.query.persistence import (
+    start_execution as _start_execution_fn,
+)
+from mindflow_backend.query.persistence import (
+    sync_session_runtime_state as _sync_session_runtime_state_fn,
+)
+from mindflow_backend.query.streaming import custom_event as _custom_event_fn
+from mindflow_backend.query.streaming import done_event as _done_event_fn
+from mindflow_backend.query.streaming import error_event as _error_event_fn
+from mindflow_backend.query.streaming import next_seq as _next_seq_fn
 from mindflow_backend.runtime.providers import (
+    _is_thinking_supported,
     get_model_for_provider,
     resolve_provider_model_for_tools,
 )
 from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
-from mindflow_backend.runtime.streaming.history_loader import (
-    _HISTORY_WINDOW,
-    _load_history_messages,
-)
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
 from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
 from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
@@ -184,23 +202,12 @@ class AgentRuntime:
         self._execution_memory = _get_execution_memory_service() if _get_execution_memory_service else None
         self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
         self._worktree_service = get_worktree_service()
+        # Cache only active executions by durable execution_id.
+        self._execution_cache: dict[str, Any] = {}
 
     async def start_session(self, session_id: str, *, cwd: str | None = None) -> None:
         """Executa SessionStart e InstructionsLoaded no runtime canônico."""
-        try:
-            async for result in SessionStartHandler.execute(session_id=session_id, cwd=cwd):
-                if result.add_context:
-                    _logger.debug(
-                        "session_start_hook_context",
-                        session_id=session_id,
-                        context=result.add_context[:200],
-                    )
-        except Exception as exc:
-            _logger.warning(
-                "session_start_hooks_error",
-                session_id=session_id,
-                error=str(exc),
-            )
+        await _fire_session_start(session_id, cwd=cwd)
 
     async def end_session(
         self,
@@ -210,26 +217,7 @@ class AgentRuntime:
         cwd: str | None = None,
     ) -> None:
         """Executa SessionEnd no runtime canônico."""
-        try:
-            async for result in SessionEndHandler.execute(
-                session_id=session_id,
-                reason=reason,
-                cwd=cwd,
-            ):
-                if result.add_context:
-                    _logger.debug(
-                        "session_end_hook_context",
-                        session_id=session_id,
-                        reason=reason,
-                        context=result.add_context[:200],
-                    )
-        except Exception as exc:
-            _logger.warning(
-                "session_end_hooks_error",
-                session_id=session_id,
-                reason=reason,
-                error=str(exc),
-            )
+        await _fire_session_end(session_id, reason, cwd=cwd)
 
     async def handle_user_prompt(
         self,
@@ -239,24 +227,7 @@ class AgentRuntime:
         cwd: str | None = None,
     ) -> None:
         """Executa UserPromptSubmit no runtime canônico."""
-        del prompt
-        try:
-            async for result in UserPromptSubmitHandler.execute(
-                session_id=session_id,
-                cwd=cwd or get_settings().working_path,
-            ):
-                if result.add_context:
-                    _logger.debug(
-                        "user_prompt_submit_hook_context",
-                        session_id=session_id,
-                        context=result.add_context[:200],
-                    )
-        except Exception as exc:
-            _logger.warning(
-                "user_prompt_submit_hooks_error",
-                session_id=session_id,
-                error=str(exc),
-            )
+        await _fire_user_prompt_submit(session_id, prompt, cwd=cwd)
 
     async def _attach_hook_event_bridge(
         self,
@@ -265,38 +236,11 @@ class AgentRuntime:
         session_id: str,
     ):
         """Registra bridge de HookEventBroadcaster para execution events."""
-        if self._execution_memory is None or not execution_id:
-            return None
-
-        broadcaster = HookEventBroadcaster.get_instance()
-
-        async def _handler(event) -> None:
-            if event.session_id not in {None, session_id}:
-                return
-            await self._execution_memory.append_event(
-                execution_id,
-                "hook_execution",
-                {
-                    "hook_id": event.hook_id,
-                    "hook_name": event.hook_name,
-                    "hook_event": event.hook_event,
-                    "hook_state": event.state.value,
-                    "stdout": event.stdout,
-                    "stderr": event.stderr,
-                    "output": event.output,
-                    "exit_code": event.exit_code,
-                    "outcome": event.outcome,
-                    "visibility": "internal",
-                },
-                stage="hooking",
-            )
-
-        broadcaster.register(_handler)
-        for pending in broadcaster.drain_pending(
-            lambda event: event.session_id in {None, session_id},
-        ):
-            await _handler(pending)
-        return _handler
+        return await _attach_hook_event_bridge_fn(
+            execution_id=execution_id,
+            session_id=session_id,
+            execution_memory=self._execution_memory,
+        )
 
     async def _save_message_bg(
         self,
@@ -310,41 +254,21 @@ class AgentRuntime:
         derived_from_recall: bool = False,
     ) -> None:
         """Fire-and-forget DB + memory write — runs in background task."""
-        from datetime import UTC, datetime
-        if db_session is None or ChatMessage is None or ChatSession is None:
-            return
-        try:
-            async with db_session() as db:
-                # Ensure session exists
-                sess = await db.get(ChatSession, session_id)
-                if not sess:
-                    sess = ChatSession(id=session_id, title="New Chat")
-                    db.add(sess)
-
-                msg = ChatMessage(
-                    session_id=session_id,
-                    role=role,
-                    content=content,
-                    provider=provider if role == "assistant" else None,
-                    model=model if role == "assistant" else None,
-                )
-                db.add(msg)
-                sess.updated_at = datetime.now(UTC)
-                await db.commit()
-                await db.refresh(msg)
-
-                await self._dispatch_memory_message(
-                    db=db,
-                    session_id=session_id,
-                    agent_id=memory_agent_id,
-                    role=role,
-                    content=content,
-                    source_message_id=msg.id,
-                    source_status=source_status,
-                    derived_from_recall=derived_from_recall,
-                )
-        except Exception as exc:
-            _logger.error("bg_save_message_failed", role=role, error=str(exc))
+        await _save_message_bg_fn(
+            session_id=session_id,
+            role=role,
+            content=content,
+            memory_agent_id=memory_agent_id,
+            memory_service=self._memory_service,
+            db_session=db_session,
+            chat_message_cls=ChatMessage,
+            chat_session_cls=ChatSession,
+            memory_publisher=self._memory_publisher,
+            provider=provider,
+            model=model,
+            source_status=source_status,
+            derived_from_recall=derived_from_recall,
+        )
 
     def _resolve_execution_mode(self, payload: AgentChatRequest) -> str:
         if payload.orchestrate or self._should_force_structured_analyst_flow(payload):
@@ -414,19 +338,7 @@ class AgentRuntime:
 
     @staticmethod
     def _snapshot_json(value: Any) -> Any:
-        if value is None or isinstance(value, (str, int, float, bool)):
-            return value
-        if isinstance(value, list):
-            return [AgentRuntime._snapshot_json(item) for item in value]
-        if isinstance(value, tuple):
-            return [AgentRuntime._snapshot_json(item) for item in value]
-        if isinstance(value, dict):
-            return {str(key): AgentRuntime._snapshot_json(item) for key, item in value.items()}
-        if hasattr(value, "model_dump"):
-            return AgentRuntime._snapshot_json(value.model_dump(mode="json"))
-        if hasattr(value, "value"):
-            return AgentRuntime._snapshot_json(value.value)
-        return str(value)
+        return _snapshot_json_fn(value)
 
     async def _sync_session_runtime_state(
         self,
@@ -434,56 +346,11 @@ class AgentRuntime:
         session_id: str | None,
         execution_id: str | None,
     ) -> None:
-        if self._execution_memory is None or not session_id or not execution_id:
-            return
-
-        try:
-            execution = await self._execution_memory.get_execution(execution_id)
-            if execution is None:
-                return
-
-            root_execution_id = getattr(execution, "root_execution_id", None) or execution_id
-            root_execution = execution
-            if root_execution_id != execution_id:
-                loaded_root = await self._execution_memory.get_execution(root_execution_id)
-                if loaded_root is not None:
-                    root_execution = loaded_root
-
-            status = getattr(root_execution, "status", None)
-            active = status in {"queued", "running", "pause_requested", "paused", "resuming"}
-            state = {
-                "agent_runtime": {
-                    "latest_execution_id": execution_id,
-                    "latest_root_execution_id": root_execution_id,
-                    "active_execution_id": root_execution_id if active else None,
-                    "root_execution_id": root_execution_id,
-                    "status": status,
-                    "stage": getattr(root_execution, "current_stage", None),
-                    "progress": getattr(root_execution, "progress", None),
-                    "can_resume": status in {"paused", "pause_requested"},
-                    "active": active,
-                    "updated_at": self._snapshot_json(
-                        getattr(root_execution, "updated_at", None)
-                        or getattr(root_execution, "created_at", None)
-                    ),
-                }
-            }
-            metadata = getattr(root_execution, "metadata", {}) or {}
-            workspace = metadata.get("workspace")
-            if isinstance(workspace, dict):
-                state["workspace"] = {"session": workspace}
-            await self._execution_memory.save_session_runtime_state(
-                session_id=session_id,
-                execution_id=root_execution_id,
-                state=state,
-            )
-        except Exception as exc:
-            _logger.warning(
-                "session_runtime_state_sync_failed",
-                session_id=session_id,
-                execution_id=execution_id,
-                error=str(exc),
-            )
+        await _sync_session_runtime_state_fn(
+            execution_memory=self._execution_memory,
+            session_id=session_id,
+            execution_id=execution_id,
+        )
 
     def _build_context_bundle(self, state_values: dict[str, Any], *, next_nodes: tuple[str, ...] | list[str]) -> dict[str, Any]:
         values = self._snapshot_json(state_values)
@@ -510,48 +377,25 @@ class AgentRuntime:
         status: str = "running",
         stage: str | None = None,
     ) -> Any | None:
-        if self._execution_memory is None:
-            return None
-
         execution_mode = self._resolve_execution_mode(payload)
-        requested_folder_path = getattr(payload, "folder_path", None)
         workspace_binding = await self._prepare_workspace_binding(
             payload=payload,
             session_id=session_id,
             execution_id=execution_id,
         )
-        metadata: dict[str, Any] = {
-            "provider": provider,
-            "model": model,
-            "agent_type": getattr(payload, "agent_type", None),
-            "folder_path": getattr(payload, "folder_path", None),
-            "requested_folder_path": requested_folder_path,
-            "orchestrate": bool(payload.orchestrate),
-            "message": payload.message,
-        }
-        if workspace_binding is not None:
-            metadata["workspace"] = workspace_binding.model_dump(mode="json")
-
-        try:
-            return await self._execution_memory.start_execution(
-                session_id=session_id,
-                execution_id=execution_id or getattr(payload, "execution_id", None),
-                run_id=run_id,
-                mode=execution_mode,
-                provider=provider,
-                model=model,
-                status=status,
-                stage=stage or ("routing" if execution_mode == "orchestrated" else "booting"),
-                metadata=metadata,
-            )
-        except Exception as exc:
-            _logger.warning(
-                "execution_start_persistence_failed",
-                session_id=session_id,
-                mode=execution_mode,
-                error=str(exc),
-            )
-            return None
+        return await _start_execution_fn(
+            execution_memory=self._execution_memory,
+            payload=payload,
+            session_id=session_id,
+            run_id=run_id,
+            provider=provider,
+            model=model,
+            execution_mode=execution_mode,
+            workspace_binding=workspace_binding,
+            execution_id=execution_id,
+            status=status,
+            stage=stage,
+        )
 
     async def create_execution(
         self,
@@ -818,7 +662,11 @@ class AgentRuntime:
         await self._prepare_workspace_binding(payload=payload, session_id=session_id)
         execution = None
         requested_execution_id = getattr(payload, "execution_id", None)
-        if self._execution_memory is not None and requested_execution_id:
+        
+        if requested_execution_id and requested_execution_id in self._execution_cache:
+            execution = self._execution_cache[requested_execution_id]
+            _logger.debug("execution_cache_hit", execution_id=requested_execution_id)
+        elif self._execution_memory is not None and requested_execution_id:
             execution = await self._execution_memory.get_execution(requested_execution_id)
             if execution is not None:
                 with contextlib.suppress(Exception):
@@ -837,6 +685,8 @@ class AgentRuntime:
                 model=model,
                 execution_id=requested_execution_id,
             )
+            if execution is not None and getattr(execution, "id", None):
+                self._execution_cache[getattr(execution, "id")] = execution
         else:
             await self._prepare_workspace_binding(
                 payload=payload,
@@ -891,6 +741,21 @@ class AgentRuntime:
         assistant_completed = False
 
         try:
+            # Emit initialization event for visual feedback on cold starts
+            is_cold_start = execution_id and getattr(execution, "status", None) == "running"
+            if is_cold_start:
+                yield self._custom_event(
+                    counter=counter,
+                    run_id=run_id or str(uuid.uuid4()),
+                    session_id=session_id,
+                    event_type="initialization",
+                    data=json.dumps({
+                        "message": "Initializing agent runtime...",
+                        "stage": "cold_start"
+                    }),
+                    agent="system",
+                )
+            
             if execution_id:
                 yield self._custom_event(
                     counter=counter,
@@ -979,6 +844,17 @@ class AgentRuntime:
                 )
             if hook_event_handler is not None:
                 HookEventBroadcaster.get_instance().unregister(hook_event_handler)
+            
+            # 4. Ensure 'done' event is always emitted to prevent infinite spinner
+            # If streaming failed before emitting 'done', emit it now
+            if not assistant_completed:
+                yield self._done_event(
+                    counter=counter,
+                    provider=provider,
+                    model=model,
+                    run_id=run_id,
+                    session_id=session_id,
+                )
 
     async def _stream_chat_direct_agent(
         self,
@@ -989,6 +865,9 @@ class AgentRuntime:
         execution_id: str | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         from mindflow_backend.agents._registry import get_agent
+        from mindflow_backend.agents.tools.base.tool_detection import (
+            get_tool_execution_strategy,
+        )
 
         provider, model, run_id, _normalizer, counter = self._create_stream_context(payload, session_id, run_id)
         agent_type = getattr(payload, "agent_type", "coder")
@@ -1019,17 +898,12 @@ class AgentRuntime:
                     execution_id=execution_id,
                 )
                 tools = registry.get_tools_for_agent(agent)
-
-            lc_tools: list[Any] = []
-            if tools:
-                from mindflow_backend.agents.tools.base.langchain_adapter import to_langchain_tools
-
-                lc_tools = to_langchain_tools(tools)
+            tool_strategy = get_tool_execution_strategy(tools)
 
             resolved_provider, resolved_model = resolve_provider_model_for_tools(
                 provider,
                 model,
-                tools_required=bool(lc_tools),
+                tools_required=bool(tools),
             )
             if (resolved_provider, resolved_model) != (provider, model):
                 _logger.warning(
@@ -1047,7 +921,7 @@ class AgentRuntime:
                 base_prompt=base_system_prompt,
                 provider=provider,
                 model=model,
-                tools_bound=bool(lc_tools),
+                tools_bound=bool(tools),
             )
             messages = [SystemMessage(content=system_prompt)]
 
@@ -1082,25 +956,34 @@ class AgentRuntime:
             )
 
             emitted_response = False
-            if lc_tools:
-                llm_with_tools = llm.bind_tools(lc_tools)
+            if tool_strategy == "callable":
                 async for event in self._stream_tool_aware_direct_agent(
-                    llm=llm_with_tools,
+                    llm=llm,
                     messages=messages,
-                    lc_tools=lc_tools,
+                    tools=tools,
                     normalizer=normalizer,
                     counter=counter,
                     run_id=run_id,
                     agent_type=agent_type,
                     session_id=session_id,
+                    execution_id=execution_id,
+                    sandbox_root=str(sandbox_root) if sandbox_root else None,
+                    sandbox_mode=getattr(agent, "sandbox", None),
                 ):
                     if event.type == "response":
                         emitted_response = True
                     yield event
             else:
+                if tools and tool_strategy != "none":
+                    _logger.warning(
+                        "direct_agent_non_callable_tools_fallback",
+                        agent_type=agent_type,
+                        strategy=tool_strategy,
+                    )
                 async for chunk in llm.astream(messages):
                     thought, texts = extract_chunk_parts(chunk)
                     if thought:
+                        _logger.debug("stream_thinking_event", thought_length=len(thought), agent_type=agent_type)
                         yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
                     for text in texts:
                         emitted_response = True
@@ -1269,22 +1152,92 @@ class AgentRuntime:
         *,
         llm: Any,
         messages: list[Any],
-        lc_tools: list[Any],
+        tools: list[Any],
         normalizer: AgentChatStreamNormalizer,
         counter: list[int],
         run_id: str,
         agent_type: str,
         session_id: str,
+        execution_id: str | None,
+        sandbox_root: str | None,
+        sandbox_mode: Any,
     ) -> AsyncGenerator[StreamEvent, None]:
-        # Legacy stream_with_tools removed - LangChain tools no longer supported
-        # This code path uses LangChain tools (lc_tools) which were removed.
-        # If this functionality is still needed, it must be reimplemented
-        # using the new CallableTool architecture.
-        raise NotImplementedError(
-            "stream_with_tools was removed. LangChain tools are no longer supported. "
-            "Use the new CallableTool architecture with StreamingToolExecutor instead. "
-            "See: mindflow_backend.agents.tools.base.tool_invocation_callable.invoke_with_callable_tools"
+        from mindflow_backend.agents.tools.base.tool_invocation_callable import (
+            invoke_with_callable_tools,
         )
+        from mindflow_backend.schemas.tools import ToolContext
+
+        queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+        async def _dispatch(name: str, payload: dict[str, Any]) -> None:
+            await queue.put(("event", (name, payload)))
+
+        async def _runner() -> None:
+            try:
+                response_text = await invoke_with_callable_tools(
+                    llm=llm,
+                    messages=messages,
+                    callable_tools=tools,
+                    tool_context=ToolContext(
+                        root_dir=sandbox_root,
+                        sandbox_mode=sandbox_mode,
+                        session_id=session_id,
+                        execution_id=execution_id,
+                        metadata={"agent_id": agent_type},
+                    ),
+                    event_dispatcher=_dispatch,
+                    max_iterations=50,
+                )
+                await queue.put(("response", response_text))
+            except Exception as exc:
+                await queue.put(("error", exc))
+            finally:
+                await queue.put(("done", None))
+
+        task = asyncio.create_task(_runner())
+
+        try:
+            while True:
+                event_type, payload = await queue.get()
+                if event_type == "done":
+                    break
+                if event_type == "error":
+                    raise payload
+                if event_type == "response":
+                    if payload:
+                        yield normalizer.response_event(
+                            self._next_seq(counter),
+                            payload,
+                            run_id=run_id,
+                            extra_meta={"agent": agent_type},
+                        )
+                    continue
+
+                name, data = payload
+                tool_call_id = data.get("tool_call_id") or str(uuid.uuid4())
+                if name == "tool_call_start":
+                    yield normalizer.tool_call_event(
+                        self._next_seq(counter),
+                        tool_call_id=tool_call_id,
+                        name=data.get("tool", "tool"),
+                        args=data.get("args", {}),
+                        run_id=run_id,
+                        extra_meta={"agent": agent_type},
+                    )
+                elif name == "tool_call":
+                    yield normalizer.tool_result_event(
+                        self._next_seq(counter),
+                        tool_call_id=tool_call_id,
+                        name=data.get("tool", "tool"),
+                        result=data.get("result_preview", ""),
+                        run_id=run_id,
+                        extra_meta={"agent": agent_type},
+                    )
+        finally:
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
 
     def _should_force_structured_analyst_flow(self, payload: AgentChatRequest) -> bool:
         return (
@@ -1496,8 +1449,7 @@ class AgentRuntime:
     @staticmethod
     def _next_seq(counter: list[int]) -> int:
         """Increment and return the mutable sequence counter."""
-        counter[0] += 1
-        return counter[0]
+        return _next_seq_fn(counter)
 
     def _error_event(
         self,
@@ -1512,22 +1464,15 @@ class AgentRuntime:
         node_category: str,
     ) -> StreamEvent:
         """Build a typed error StreamEvent."""
-        seq = self._next_seq(counter)
-        return StreamEvent(
-            id=f"evt-{seq}",
-            seq=seq,
-            type="error",
-            mode="custom",
-            data=str(exc),
-            meta=StreamEventMeta(
-                provider=provider,
-                model=model,
-                runId=run_id,
-                turnRunId=session_id,
-                node=node,
-                nodeCategory=node_category,
-                userVisible=True,
-            ),
+        return _error_event_fn(
+            exc=exc,
+            counter=counter,
+            provider=provider,
+            model=model,
+            run_id=run_id,
+            session_id=session_id,
+            node=node,
+            node_category=node_category,
         )
 
     def _done_event(
@@ -1540,14 +1485,12 @@ class AgentRuntime:
         session_id: str,
     ) -> StreamEvent:
         """Build the terminal done StreamEvent."""
-        seq = self._next_seq(counter)
-        return StreamEvent(
-            id=f"evt-{seq}",
-            seq=seq,
-            type="done",
-            mode="messages",
-            data="",
-            meta=StreamEventMeta(provider=provider, model=model, runId=run_id, turnRunId=session_id),
+        return _done_event_fn(
+            counter=counter,
+            provider=provider,
+            model=model,
+            run_id=run_id,
+            session_id=session_id,
         )
 
     def _custom_event(
@@ -1561,23 +1504,13 @@ class AgentRuntime:
         agent: str | None = None,
     ) -> StreamEvent:
         """Build a custom stream event (orchestrator_*, reflection_*, agent_delegation_*, etc.)."""
-        seq = self._next_seq(counter)
-        meta = StreamEventMeta(
-            runId=run_id,
-            turnRunId=session_id,
-            node="orchestrator",
-            nodeCategory="RUNTIME",
-            userVisible=True,
-        )
-        if agent:
-            meta.agent = agent
-        return StreamEvent(
-            id=f"evt-{seq}",
-            seq=seq,
-            type=event_type,  # type: ignore[arg-type]
-            mode="custom",
+        return _custom_event_fn(
+            counter=counter,
+            run_id=run_id,
+            session_id=session_id,
+            event_type=event_type,
             data=data,
-            meta=meta,
+            agent=agent,
         )
 
     async def _stream_chat_legacy(
@@ -1673,9 +1606,12 @@ class AgentRuntime:
 
         try:
             llm = get_model_for_provider(provider, model)
+            _logger.debug("stream_chat_model_config", provider=provider, model=model, supports_thinking=_is_thinking_supported(model))
             async for chunk in llm.astream(messages):
+                _logger.debug("stream_chat_orchestrated_thinking_event", chunk=chunk)
                 thought, texts = extract_chunk_parts(chunk)
                 if thought:
+                    _logger.debug("stream_thinking_event", thought_length=len(thought))
                     yield normalizer.thought_event(self._next_seq(counter), thought, run_id=run_id)
                 for text in texts:
                     yield normalizer.response_event(self._next_seq(counter), text, run_id=run_id)
@@ -1845,6 +1781,7 @@ class AgentRuntime:
             "session_id": session_id,
             "execution_id": execution_id,
             "agent_type": getattr(payload, "agent_type", None),
+            "orchestrate": bool(payload.orchestrate),
             "folder_path": getattr(payload, "folder_path", None),
             "workspace_policy": getattr(payload, "workspace_policy", WorkspacePolicy.AUTO).value,
             "workspace": (
