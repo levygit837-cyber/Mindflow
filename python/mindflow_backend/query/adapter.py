@@ -19,7 +19,7 @@ from typing import Any
 
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.query.streaming import custom_event, done_event, error_event, next_seq
-from mindflow_backend.schemas.chat.agent import StreamEvent, StreamEventMeta
+from mindflow_backend.schemas.chat.agent import StreamEvent
 
 _logger = get_logger(__name__)
 
