@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -433,6 +434,34 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
             _logger.error("get_session_memory_summary_failed", error=str(exc))
             return {"session_id": session_id, "total_events": 0, "total_tokens": 0}
 
+    async def get_recent_messages(self, session_id: str, limit: int = 50) -> list[Any]:
+        """Load recent chat messages as LangChain message objects."""
+        try:
+            from mindflow_backend.infra.database.connection import get_db_session
+            from mindflow_backend.storage.postgresql.models import ChatMessage
+
+            async with get_db_session() as db:
+                result = await db.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_id == session_id)
+                    .order_by(ChatMessage.created_at.desc())
+                    .limit(limit)
+                )
+                rows = list(reversed(result.scalars().all()))
+
+            messages: list[Any] = []
+            for row in rows:
+                if row.role == "user":
+                    messages.append(HumanMessage(content=row.content))
+                elif row.role == "assistant":
+                    messages.append(AIMessage(content=row.content))
+                elif row.role == "system":
+                    messages.append(SystemMessage(content=row.content))
+            return messages
+        except Exception as exc:
+            _logger.error("get_recent_messages_failed", error=str(exc))
+            return []
+
     # --- Backward compatibility method for streaming system ---
 
     async def record_message(
@@ -535,3 +564,14 @@ class SessionMemoryService(BaseAbstractService, MemoryServiceInterface):
         embedding_id = str(session_embedding.id)
         _logger.info("session_embedding_stored", embedding_id=embedding_id, session_id=session_id)
         return embedding_id
+
+
+_session_memory_service: SessionMemoryService | None = None
+
+
+def get_session_memory_service() -> SessionMemoryService:
+    """Return the process-local session memory service instance."""
+    global _session_memory_service
+    if _session_memory_service is None:
+        _session_memory_service = SessionMemoryService()
+    return _session_memory_service

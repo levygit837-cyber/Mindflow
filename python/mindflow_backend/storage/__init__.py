@@ -36,11 +36,17 @@ except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test e
     db_session = None
     async_db_session = None
 
+try:
+    from mindflow_backend.infra.database.connection import get_db_session as async_session_factory
+except ModuleNotFoundError:  # pragma: no cover - optional in lightweight test envs
+    async_session_factory = None
+
 from .postgresql.models import (
     AgentMemoryCursor,
     AgentMemoryEvent,
     AgentMemoryFact,
     AgentMemoryWindow,
+    ApiKey,
     Base,
     BrowserActionTrail,
     BrowserInstance,
@@ -113,6 +119,7 @@ __all__ = [
     "Base",
     "db_session",
     "async_db_session",
+    "async_session_factory",
     # Models
     "ChatSession",
     "ChatMessage",
@@ -126,6 +133,7 @@ __all__ = [
     "BrowserActionTrail",
     "ResearchFinding",
     "BrowserInstance",
+    "ApiKey",
     # Repositories
     "ChatRepository",
     "NeuralRepository",

@@ -1,16 +1,24 @@
 import asyncio
 import contextlib
-import hashlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 
+from langchain_core.messages import HumanMessage, SystemMessage
+
+from mindflow_backend.agents.prompts.core.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
+from mindflow_backend.agents.tools.search_web import search_web
+from mindflow_backend.graphs.implementations.orchestrator.simple_flow import (
+    build_simple_orchestrator_flow,
+)
 from mindflow_backend.hooks.event_broadcaster import HookEventBroadcaster
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.logging import get_logger
+from mindflow_backend.memory.agent_memory.checkpointer import langgraph_memory
 from mindflow_backend.memory.indexing import is_continuation_prompt
+from mindflow_backend.query.adapter import adapt_strategy_events as _adapt_strategy_events
 from mindflow_backend.query.hooks import (
     attach_hook_event_bridge as _attach_hook_event_bridge_fn,
 )
@@ -19,12 +27,6 @@ from mindflow_backend.query.hooks import fire_session_start as _fire_session_sta
 from mindflow_backend.query.hooks import (
     fire_user_prompt_submit as _fire_user_prompt_submit,
 )
-from mindflow_backend.query.adapter import adapt_strategy_events as _adapt_strategy_events
-from mindflow_backend.query.persistence import (
-    dispatch_memory_message as _dispatch_memory_message_fn,
-)
-from mindflow_backend.query.selector import build_strategy_context as _build_strategy_context
-from mindflow_backend.query.selector import select_strategy as _select_strategy
 from mindflow_backend.query.persistence import save_message_bg as _save_message_bg_fn
 from mindflow_backend.query.persistence import snapshot_json as _snapshot_json_fn
 from mindflow_backend.query.persistence import (
@@ -33,17 +35,49 @@ from mindflow_backend.query.persistence import (
 from mindflow_backend.query.persistence import (
     sync_session_runtime_state as _sync_session_runtime_state_fn,
 )
+from mindflow_backend.query.selector import build_strategy_context as _build_strategy_context
+from mindflow_backend.query.selector import select_strategy as _select_strategy
 from mindflow_backend.query.streaming import custom_event as _custom_event_fn
 from mindflow_backend.query.streaming import done_event as _done_event_fn
 from mindflow_backend.query.streaming import error_event as _error_event_fn
 from mindflow_backend.query.streaming import next_seq as _next_seq_fn
+from mindflow_backend.runtime.providers import (
+    _is_thinking_supported,
+    get_model_for_provider,
+    resolve_provider_model_for_tools,
+)
+from mindflow_backend.runtime.streaming.chunk_extract import extract_chunk_parts
+from mindflow_backend.runtime.streaming.history_loader import _load_history_messages
 from mindflow_backend.runtime.streaming.normalizer import AgentChatStreamNormalizer
-from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent, StreamEventMeta
+from mindflow_backend.runtime.streaming.notifier_policy import should_emit_backend_notifier
+from mindflow_backend.schemas.chat.agent import AgentChatRequest, StreamEvent
 from mindflow_backend.schemas.orchestration.orchestrator import (
     WorkspaceBinding,
     WorkspacePolicy,
 )
 from mindflow_backend.services.core import get_worktree_service
+
+SYSTEM_PROMPT = ORCHESTRATOR_SYSTEM_PROMPT
+_ORCHESTRATOR_INTERRUPT_AFTER = ["route"]
+
+
+def _get_orchestrator_graph() -> Any:
+    """Build the legacy orchestrator graph without LangGraph persistence."""
+    return build_simple_orchestrator_flow()
+
+
+def _select_direct_agent_system_prompt(
+    *,
+    agent_type: str,
+    base_prompt: str,
+    provider: str,
+    model: str,
+    tools_bound: bool,
+) -> str:
+    """Resolve the direct-agent prompt for the legacy stream path."""
+    del agent_type, provider, model, tools_bound
+    return base_prompt
+
 
 try:
     from mindflow_backend.memory import get_memory_service as _get_memory_service
@@ -90,6 +124,7 @@ class AgentRuntime:
         self._execution_memory = _get_execution_memory_service() if _get_execution_memory_service else None
         self._memory_publisher = _RabbitMQMemoryTaskPublisher() if _RabbitMQMemoryTaskPublisher else None
         self._worktree_service = get_worktree_service()
+        self._orchestrator_graph = None
         # Cache only active executions by durable execution_id.
         self._execution_cache: dict[str, Any] = {}
 
@@ -633,7 +668,7 @@ class AgentRuntime:
             # When UNIFIED_ENGINE_ENABLED=True the new QueryEngine kernel
             # handles the request. The legacy path is still the default
             # (flag=False) until Phase 5 removes it entirely.
-            if settings.unified_engine_enabled:
+            if getattr(settings, "unified_engine_enabled", False):
                 from mindflow_backend.query.engine import QueryEngine
                 from mindflow_backend.runtime.providers.providers import (
                     get_model_for_provider,
@@ -2252,7 +2287,14 @@ class AgentRuntime:
                         {"visibility": "internal"},
                         stage="responding",
                     )
-                    await self._execution_memory.mark_status(execution_id, "running", stage="responding")
+                    execution_record = await self._execution_memory.get_execution(execution_id)
+                    terminal_statuses = {"completed", "failed", "paused", "pause_requested", "canceled"}
+                    if getattr(execution_record, "status", None) not in terminal_statuses:
+                        await self._execution_memory.mark_status(
+                            execution_id,
+                            "running",
+                            stage="responding",
+                        )
                     await self._sync_session_runtime_state(
                         session_id=session_id,
                         execution_id=execution_id,

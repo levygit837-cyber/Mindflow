@@ -45,7 +45,9 @@ class MessageResponse(BaseResponse):
 
 class SessionListResponse(PaginationResponse[SessionResponse]):
     """Paginated response for session listings."""
-    pass
+    success: bool = True
+    message: str | None = None
+    timestamp: str | None = None
 
 
 class OrchestrationResponse(BaseResponse):

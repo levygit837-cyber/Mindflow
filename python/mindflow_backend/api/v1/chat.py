@@ -6,24 +6,25 @@ Security:
 - Legacy sessions (owner_id='legacy-system') are only accessible to admin callers.
 """
 
+import asyncio
+import logging
+import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from sqlalchemy import select
 
 from mindflow_backend.api.controllers.agent_controller import AgentController
+from mindflow_backend.api.controllers.session_controller import SessionController
 from mindflow_backend.api.dependencies import protected_route_dependencies
-from mindflow_backend.execution_memory import get_execution_memory_service
 from mindflow_backend.infra.config import get_settings
 from mindflow_backend.infra.database.connection import get_db_session
 from mindflow_backend.infra.middleware.auth import require_api_key
 from mindflow_backend.schemas.api.chat import (
-    ChatSessionCreateRequest,
     ChatSessionMessageCreateRequest,
     ChatSessionTitleGenerateRequest,
-    ChatSessionUpdateRequest,
 )
+from mindflow_backend.schemas.api.common import PaginationParams
+from mindflow_backend.schemas.api.requests import SessionCreateRequest, SessionUpdateRequest
 from mindflow_backend.schemas.chat.agent import AgentChatRequest
 from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
 
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/chat", tags=["chat"], dependencies=protected_route_d
 
 # Initialize agent controller for chat forwarding
 agent_controller = AgentController()
+session_controller = SessionController
 
 _LEGACY_OWNER = "legacy-system"
 
@@ -83,8 +85,7 @@ async def chat(payload: dict, request: Request):
         # Non-streaming mode: use streaming internally and collect result
         # Call the agent runtime directly to collect events
         from mindflow_backend.grpc_internal.factory import get_runtime_client
-        import uuid
-        
+
         grpc_client = get_runtime_client()
         session_id = payload.get("session_id") or agent_request.sessionId
         run_id = str(uuid.uuid4())
@@ -118,21 +119,19 @@ async def chat(payload: dict, request: Request):
                 # Break on done event
                 if hasattr(event, 'type') and event.type == "done":
                     break
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Log timeout error
-            import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Event collection timeout after {timeout_seconds}s for session {session_id}")
             # Return partial content or error message
             if not full_content:
-                raise HTTPException(status_code=504, detail="Agent response timeout")
+                raise HTTPException(status_code=504, detail="Agent response timeout") from None
         except Exception as e:
             # Log error and re-raise
-            import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error collecting events for session {session_id}: {str(e)}")
             if not full_content:
-                raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}") from e
         
         # Return as AssistantMessage format
         return {
@@ -187,32 +186,22 @@ def _resolve_owner(api_key: str | None) -> str:
 
 @router.post("/sessions")
 async def create_session(
-    body: ChatSessionCreateRequest,
+    body: SessionCreateRequest,
     api_key: str | None = Depends(require_api_key),
 ):
-    import uuid
-    session_id = f"sess-{uuid.uuid4()}"
-    owner_id = _resolve_owner(api_key)
-
-    async with get_db_session() as db:
-        sess = ChatSession(id=session_id, title=body.title, owner_id=owner_id)
-        db.add(sess)
-        await db.commit()
-        await db.refresh(sess)
-        return _session_dict(sess)
+    del api_key
+    return await session_controller().create_session(body)
 
 
 @router.get("/sessions")
-async def list_sessions(api_key: str | None = Depends(require_api_key)):
-    owner_id = _resolve_owner(api_key)
-    async with get_db_session() as db:
-        query = select(ChatSession).order_by(ChatSession.updated_at.desc()).limit(100)
-        # Admin sees all sessions; regular callers only see their own
-        if owner_id != "admin":
-            query = query.where(ChatSession.owner_id == owner_id)
-        result = await db.execute(query)
-        sessions = result.scalars().all()
-        return [_session_dict(s) for s in sessions]
+async def list_sessions(
+    limit: int = 50,
+    offset: int = 0,
+    api_key: str | None = Depends(require_api_key),
+):
+    del api_key
+    pagination = PaginationParams(limit=limit, offset=offset)
+    return await session_controller().list_sessions(pagination)
 
 
 @router.get("/sessions/{session_id}")
@@ -220,64 +209,18 @@ async def get_session(
     session_id: str,
     api_key: str | None = Depends(require_api_key),
 ):
-    owner_id = _resolve_owner(api_key)
-    async with get_db_session() as db:
-        sess = await db.get(ChatSession, session_id)
-        if not sess:
-            raise HTTPException(status_code=404, detail="Session not found")
-
-        # Ownership check: admin sees all; others only see their own (+ legacy)
-        if owner_id != "admin" and sess.owner_id not in (owner_id, _LEGACY_OWNER, None):
-            raise HTTPException(status_code=403, detail="Access denied to this session")
-
-        result = await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.created_at.asc())
-        )
-        messages = result.scalars().all()
-
-        data = _session_dict(sess)
-        data["messages"] = [_message_dict(m) for m in messages]
-        with_runtime_state = None
-        with_runtime_payload = {}
-        try:
-            execution_memory = get_execution_memory_service()
-            with_runtime_state = await execution_memory.load_session_runtime_state(session_id=session_id)
-        except Exception:
-            with_runtime_state = None
-
-        if with_runtime_state is not None:
-            with_runtime_payload = {
-                "execution_id": getattr(with_runtime_state, "execution_id", None),
-                "state": getattr(with_runtime_state, "state_json", {}) or {},
-                "version": getattr(with_runtime_state, "version", None),
-                "updated_at": getattr(with_runtime_state, "updated_at", None).isoformat()
-                if getattr(with_runtime_state, "updated_at", None)
-                else None,
-            }
-        data["runtime_state"] = with_runtime_payload
-        return data
+    del api_key
+    return await session_controller().get_session(session_id)
 
 
 @router.put("/sessions/{session_id}")
 async def update_session(
     session_id: str,
-    body: ChatSessionUpdateRequest,
+    body: SessionUpdateRequest,
     api_key: str | None = Depends(require_api_key),
 ):
-    owner_id = _resolve_owner(api_key)
-    async with get_db_session() as db:
-        sess = await db.get(ChatSession, session_id)
-        if not sess:
-            raise HTTPException(status_code=404, detail="Session not found")
-        if owner_id != "admin" and sess.owner_id not in (owner_id, _LEGACY_OWNER, None):
-            raise HTTPException(status_code=403, detail="Access denied to this session")
-
-        sess.title = body.title
-        sess.updated_at = datetime.now(UTC)
-        await db.commit()
-        return _session_dict(sess)
+    del api_key
+    return await session_controller().update_session(session_id, body)
 
 
 @router.delete("/sessions/{session_id}")
@@ -285,15 +228,27 @@ async def delete_session(
     session_id: str,
     api_key: str | None = Depends(require_api_key),
 ):
-    owner_id = _resolve_owner(api_key)
-    async with get_db_session() as db:
-        sess = await db.get(ChatSession, session_id)
-        if sess:
-            if owner_id != "admin" and sess.owner_id not in (owner_id, _LEGACY_OWNER, None):
-                raise HTTPException(status_code=403, detail="Access denied to this session")
-            await db.delete(sess)
-            await db.commit()
-        return {"success": True, "session_id": session_id}
+    del api_key
+    return await session_controller().delete_session(session_id)
+
+
+@router.post("/sessions/{session_id}/messages")
+async def add_message(
+    session_id: str,
+    role: str,
+    content: str,
+    provider: str | None = None,
+    model: str | None = None,
+    api_key: str | None = Depends(require_api_key),
+):
+    del api_key
+    return await session_controller().add_message(
+        session_id=session_id,
+        role=role,
+        content=content,
+        provider=provider,
+        model=model,
+    )
 
 
 # ── message persistence ────────────────────────────────────────────────────────

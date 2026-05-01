@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Any
-from loguru import logger
 
+from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.permissions.mode_controller import ModeController
 from mindflow_backend.permissions.types import PermissionMode
 
-_logger = logger.bind(name=__name__)
+_logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/modes", tags=["modes"])
 
 

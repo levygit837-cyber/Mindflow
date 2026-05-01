@@ -11,10 +11,15 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import func, select
+
+from mindflow_backend.infra.database.connection import get_db_session
 from mindflow_backend.infra.logging import get_logger
 from mindflow_backend.services.interfaces.base_interfaces import BaseAbstractService
 from mindflow_backend.services.interfaces.core_interfaces import SessionServiceInterface
-from mindflow_backend.storage import ChatMessage, ChatRepository, ChatSession
+from mindflow_backend.storage.postgresql.models import ChatMessage, ChatSession
+
+_SESSION_METADATA: dict[str, dict[str, Any]] = {}
 
 
 class SessionService(BaseAbstractService, SessionServiceInterface):
@@ -27,7 +32,6 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     def __init__(self) -> None:
         """Initialize session service with repository and dependencies."""
         super().__init__()
-        self._chat_repo = ChatRepository()
         
         # Lazy load dependencies to avoid circular imports
         self._memory_service = None
@@ -41,8 +45,8 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
     def _get_memory_service(self):
         """Get memory service instance (lazy loading)."""
         if self._memory_service is None:
-            from mindflow_backend.memory import get_memory_service
-            self._memory_service = get_memory_service()
+            from mindflow_backend.memory.session_memory.service import SessionMemoryService
+            self._memory_service = SessionMemoryService()
         return self._memory_service
     
     def _get_agent_service(self):
@@ -58,6 +62,28 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             from mindflow_backend.runtime.streaming.stream import AgentRuntime
             self._runtime = AgentRuntime()
         return self._runtime
+
+    @staticmethod
+    def _session_owner(chat_session: ChatSession) -> str | None:
+        """Return the compatibility user id for a chat session."""
+        return getattr(chat_session, "owner_id", None)
+
+    @staticmethod
+    def _message_metadata(_message: ChatMessage) -> dict[str, Any]:
+        """Return message metadata for legacy response contracts."""
+        return {}
+
+    @staticmethod
+    def _session_metadata(session_id: str) -> dict[str, Any]:
+        """Return mutable compatibility metadata for session mode state."""
+        return _SESSION_METADATA.setdefault(session_id, {})
+
+    @staticmethod
+    async def _message_count(db_session: Any, session_id: str) -> int:
+        result = await db_session.execute(
+            select(func.count(ChatMessage.id)).where(ChatMessage.session_id == session_id)
+        )
+        return int(result.scalar() or 0)
     
     async def create_session(
         self,
@@ -80,11 +106,11 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             session_id = f"sess-{uuid.uuid4()}"
             
             # Create session in database
-            async with async_session_factory() as session:
+            async with get_db_session() as session:
                 chat_session = ChatSession(
                     id=session_id,
                     title=title or "New Session",
-                    user_id=user_id
+                    owner_id=user_id,
                 )
                 session.add(chat_session)
                 await session.commit()
@@ -92,10 +118,11 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 
                 # Initialize memory for this session
                 memory_service = self._get_memory_service()
-                await memory_service.initialize_session_memory(
-                    session_id=session_id,
-                    agent_types=["analyst", "coder", "researcher", "reviewer"]
-                )
+                if hasattr(memory_service, "initialize_session_memory"):
+                    await memory_service.initialize_session_memory(
+                        session_id=session_id,
+                        agent_types=["analyst", "coder", "researcher", "reviewer"],
+                    )
                 
                 # Fire SessionStart hook (background task — non-blocking)
                 asyncio.create_task(self._fire_session_start_hook(session_id))
@@ -103,7 +130,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 return {
                     "id": chat_session.id,
                     "title": chat_session.title,
-                    "user_id": chat_session.user_id,
+                    "user_id": self._session_owner(chat_session),
                     "created_at": chat_session.created_at.isoformat(),
                     "updated_at": chat_session.updated_at.isoformat(),
                     "message_count": 0,
@@ -138,15 +165,20 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("get_session", session_id=session_id)
         
         try:
-            async with async_session_factory() as session:
+            async with get_db_session() as session:
                 # Get session
-                chat_session = await self._chat_repo.get_session_async(session, session_id)
+                chat_session = await session.get(ChatSession, session_id)
                 
                 if not chat_session:
                     raise ValueError(f"Session not found: {session_id}")
                 
                 # Get messages
-                messages = await self._chat_repo.get_messages_async(session, session_id)
+                result = await session.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_id == session_id)
+                    .order_by(ChatMessage.created_at.asc())
+                )
+                messages = list(result.scalars().all())
                 
                 # Get memory context
                 memory_service = self._get_memory_service()
@@ -155,7 +187,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 return {
                     "id": chat_session.id,
                     "title": chat_session.title,
-                    "user_id": chat_session.user_id,
+                    "user_id": self._session_owner(chat_session),
                     "created_at": chat_session.created_at.isoformat(),
                     "updated_at": chat_session.updated_at.isoformat(),
                     "messages": [
@@ -167,7 +199,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                             "model": msg.model,
                             "token_count": msg.token_count,
                             "created_at": msg.created_at.isoformat(),
-                            "metadata": msg.metadata
+                            "metadata": self._message_metadata(msg),
                         }
                         for msg in messages
                     ],
@@ -199,20 +231,27 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("list_sessions", limit=limit, offset=offset, user_id=user_id)
         
         try:
-            async with async_session_factory() as session:
-                sessions = await self._chat_repo.list_sessions_async(
-                    session, limit=limit, offset=offset, user_id=user_id
-                )
+            async with get_db_session() as session:
+                stmt = select(ChatSession).order_by(ChatSession.updated_at.desc()).offset(offset).limit(limit)
+                if user_id:
+                    stmt = stmt.where(ChatSession.owner_id == user_id)
+                result = await session.execute(stmt)
+                sessions = list(result.scalars().all())
+
+                counts = {
+                    sess.id: await self._message_count(session, sess.id)
+                    for sess in sessions
+                }
                 
                 return [
                     {
                         "id": sess.id,
                         "title": sess.title,
-                        "user_id": sess.user_id,
+                        "user_id": self._session_owner(sess),
                         "created_at": sess.created_at.isoformat(),
                         "updated_at": sess.updated_at.isoformat(),
-                        "message_count": sess.message_count or 0,
-                        "status": "active"
+                        "message_count": counts.get(sess.id, 0),
+                        "status": "active",
                     }
                     for sess in sessions
                 ]
@@ -233,14 +272,11 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("count_sessions", user_id=user_id)
         
         try:
-            async with async_session_factory() as session:
-                from sqlalchemy import func, select
-                from mindflow_backend.db.models import ChatSession
-                
+            async with get_db_session() as session:
                 # Build query
                 stmt = select(func.count(ChatSession.id))
                 if user_id:
-                    stmt = stmt.where(ChatSession.user_id == user_id)
+                    stmt = stmt.where(ChatSession.owner_id == user_id)
                 
                 result = await session.execute(stmt)
                 count = result.scalar() or 0
@@ -268,9 +304,9 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("update_session", session_id=session_id, title=title)
         
         try:
-            async with async_session_factory() as session:
+            async with get_db_session() as session:
                 # Get existing session
-                chat_session = await self._chat_repo.get_session_async(session, session_id)
+                chat_session = await session.get(ChatSession, session_id)
                 
                 if not chat_session:
                     raise ValueError(f"Session not found: {session_id}")
@@ -286,10 +322,10 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 return {
                     "id": chat_session.id,
                     "title": chat_session.title,
-                    "user_id": chat_session.user_id,
+                    "user_id": self._session_owner(chat_session),
                     "created_at": chat_session.created_at.isoformat(),
                     "updated_at": chat_session.updated_at.isoformat(),
-                    "message_count": chat_session.message_count or 0,
+                    "message_count": await self._message_count(session, session_id),
                     "status": "updated"
                 }
                 
@@ -309,14 +345,19 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("delete_session", session_id=session_id)
         
         try:
-            async with async_session_factory() as session:
+            async with get_db_session() as session:
                 # Delete session (cascade deletes messages)
-                deleted = await self._chat_repo.delete_session_async(session, session_id)
+                chat_session = await session.get(ChatSession, session_id)
+                deleted = chat_session is not None
+                if chat_session is not None:
+                    await session.delete(chat_session)
+                    await session.commit()
                 
                 if deleted:
                     # Clean up memory data
                     memory_service = self._get_memory_service()
-                    await memory_service.cleanup_session_memory(session_id)
+                    if hasattr(memory_service, "cleanup_session_memory"):
+                        await memory_service.cleanup_session_memory(session_id)
                     
                     # Fire SessionEnd hook (background task — non-blocking)
                     asyncio.create_task(self._fire_session_end_hook(session_id))
@@ -375,9 +416,9 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             if not content or len(content.strip()) == 0:
                 raise ValueError("Message content cannot be empty")
             
-            async with async_session_factory() as db_session:
+            async with get_db_session() as db_session:
                 # Verify session exists
-                chat_session = await self._chat_repo.get_session_async(db_session, session_id)
+                chat_session = await db_session.get(ChatSession, session_id)
                 if not chat_session:
                     raise ValueError(f"Session not found: {session_id}")
                 
@@ -388,8 +429,6 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                     content=content,
                     provider=provider,
                     model=model,
-                    token_count=self._estimate_token_count(content),
-                    metadata={}
                 )
                 
                 # Add to database
@@ -397,7 +436,6 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 
                 # Update session timestamp
                 chat_session.updated_at = datetime.now(UTC)
-                chat_session.message_count = (chat_session.message_count or 0) + 1
                 
                 await db_session.commit()
                 await db_session.refresh(message)
@@ -405,14 +443,15 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 # Store in memory service for context retrieval
                 if role in ["user", "assistant"]:
                     memory_service = self._get_memory_service()
-                    await memory_service.add_memory_event(
-                        agent_id="session",  # General session memory
-                        session_id=session_id,
-                        role=role,
-                        content=content,
-                        token_count=message.token_count,
-                        source_message_id=message.id
-                    )
+                    if hasattr(memory_service, "add_memory_event"):
+                        await memory_service.add_memory_event(
+                            agent_id="session",
+                            session_id=session_id,
+                            role=role,
+                            content=content,
+                            token_count=message.token_count,
+                            source_message_id=message.id,
+                        )
                 
                 return {
                     "id": message.id,
@@ -423,7 +462,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                     "model": message.model,
                     "token_count": message.token_count,
                     "created_at": message.created_at.isoformat(),
-                    "metadata": message.metadata
+                    "metadata": self._message_metadata(message),
                 }
                 
         except Exception as exc:
@@ -449,10 +488,15 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("get_session_messages", session_id=session_id, limit=limit, offset=offset)
         
         try:
-            async with async_session_factory() as session:
-                messages = await self._chat_repo.get_messages_async(
-                    session, session_id, limit=limit, offset=offset
+            async with get_db_session() as session:
+                result = await session.execute(
+                    select(ChatMessage)
+                    .where(ChatMessage.session_id == session_id)
+                    .order_by(ChatMessage.created_at.asc())
+                    .offset(offset)
+                    .limit(limit)
                 )
+                messages = list(result.scalars().all())
                 
                 return [
                     {
@@ -464,7 +508,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                         "model": msg.model,
                         "token_count": msg.token_count,
                         "created_at": msg.created_at.isoformat(),
-                        "metadata": msg.metadata
+                        "metadata": self._message_metadata(msg),
                     }
                     for msg in messages
                 ]
@@ -493,8 +537,10 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
             memory_context = await memory_service.get_session_memory_summary(session_id)
             
             # Get agent interaction history
-            agent_service = self._get_agent_service()
-            agent_history = await memory_service.get_agent_interaction_history(session_id)
+            if hasattr(memory_service, "get_agent_interaction_history"):
+                agent_history = await memory_service.get_agent_interaction_history(session_id)
+            else:
+                agent_history = []
             
             return {
                 "session": session_data,
@@ -546,14 +592,14 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("get_permission_mode", session_id=session_id)
         
         try:
-            async with async_session_factory() as session:
-                chat_session = await self._chat_repo.get_session_async(session, session_id)
+            async with get_db_session() as session:
+                chat_session = await session.get(ChatSession, session_id)
                 if not chat_session:
                     self._logger.warning(f"Session {session_id} not found, returning DEFAULT mode")
                     return PermissionMode.DEFAULT
                 
                 # Get mode from session metadata
-                metadata = chat_session.metadata or {}
+                metadata = self._session_metadata(session_id)
                 mode_value = metadata.get("permission_mode", PermissionMode.DEFAULT.value)
                 
                 # Convert to PermissionMode enum
@@ -588,20 +634,20 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         )
         
         try:
-            async with async_session_factory() as session:
-                chat_session = await self._chat_repo.get_session_async(session, session_id)
+            async with get_db_session() as session:
+                chat_session = await session.get(ChatSession, session_id)
                 if not chat_session:
                     raise ValueError(f"Session {session_id} not found")
                 
                 # Update metadata with new mode
-                metadata = chat_session.metadata or {}
+                metadata = self._session_metadata(session_id)
                 metadata["permission_mode"] = mode.value if hasattr(mode, "value") else str(mode)
                 
                 # Save pre-plan mode snapshot if provided
                 if pre_plan_mode is not None:
                     metadata["pre_plan_mode"] = pre_plan_mode.value if hasattr(pre_plan_mode, "value") else str(pre_plan_mode)
                 
-                chat_session.metadata = metadata
+                chat_session.updated_at = datetime.now(UTC)
                 await session.commit()
                 
                 self._logger.info(
@@ -633,12 +679,12 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
         self.log_operation("exit_plan_mode", session_id=session_id, action=action)
         
         try:
-            async with async_session_factory() as session:
-                chat_session = await self._chat_repo.get_session_async(session, session_id)
+            async with get_db_session() as session:
+                chat_session = await session.get(ChatSession, session_id)
                 if not chat_session:
                     raise ValueError(f"Session {session_id} not found")
                 
-                metadata = chat_session.metadata or {}
+                metadata = self._session_metadata(session_id)
                 pre_plan_mode_value = metadata.get("pre_plan_mode", PermissionMode.DEFAULT.value)
                 
                 # Determine target mode based on action
@@ -656,7 +702,7 @@ class SessionService(BaseAbstractService, SessionServiceInterface):
                 metadata["permission_mode"] = target_mode.value
                 metadata.pop("pre_plan_mode", None)  # Clear pre-plan snapshot
                 
-                chat_session.metadata = metadata
+                chat_session.updated_at = datetime.now(UTC)
                 await session.commit()
                 
                 self._logger.info(

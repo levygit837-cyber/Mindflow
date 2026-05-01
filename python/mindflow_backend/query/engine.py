@@ -1063,7 +1063,7 @@ class QueryEngine:
 
             else:
                 # No tools or unsupported tool type - skip tool execution
-                _logger.warning(
+                logger.warning(
                     "no_tools_or_unsupported_type",
                     strategy=strategy,
                     tool_count=len(tools),
@@ -1209,7 +1209,7 @@ SCOPE: {', '.join(task.scope) if task.scope else 'Determine appropriate scope ba
 
 EXCLUSIONS: {', '.join(task.exclusions) if task.exclusions else 'None'}
 
-EXPECTED OUTPUT FORMAT: {task.expected_output or 'Provide a complete solution following your agent\'s best practices'}
+EXPECTED OUTPUT FORMAT: {task.expected_output or "Provide a complete solution following your agent's best practices"}
 
 PRIORITY: {task.priority.value}
 
@@ -1371,7 +1371,7 @@ Use this context to inform your work, but focus on the current objective.
     def _extract_files_mentioned(self, response: str) -> list[str]:
         """Extract file paths mentioned in response."""
         # Simple regex to find file-like patterns
-        file_pattern = r'\b[\w\-_\/\.]+\.(py|js|ts|json|yaml|yml|md|txt|sql)\b'
+        file_pattern = r'\b[\w\-_\/\.]+\.(?:py|js|ts|json|yaml|yml|md|txt|sql)\b'
         matches = re.findall(file_pattern, response, re.IGNORECASE)
         return list(set(matches))
 

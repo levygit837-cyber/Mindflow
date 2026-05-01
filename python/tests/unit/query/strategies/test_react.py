@@ -8,7 +8,7 @@ import pytest
 
 from mindflow_backend.query.budget.token_counter import TokenBudget
 from mindflow_backend.query.strategies import StrategyContext
-from mindflow_backend.query.strategies.react import ReActStrategy
+from mindflow_backend.query.strategies.react import ReActStrategy, react_loop
 
 
 @dataclass
@@ -79,6 +79,27 @@ async def test_react_terminates_when_no_tool_use():
     assert len(assistant_events) == 1
     assert assistant_events[0]["content"] == "final answer"
     assert orchestrator.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_react_counts_response_against_token_budget():
+    orchestrator = _ScriptedOrchestrator([_FakeResponse(content="x" * 200)])
+    budget = TokenBudget(max_tokens=20, use_tiktoken=False)
+
+    events = [
+        ev
+        async for ev in react_loop(
+            initial_message="hi",
+            orchestrator=orchestrator,
+            tools=[],
+            token_budget=budget,
+        )
+    ]
+
+    assert any(ev["type"] == "assistant" for ev in events)
+    assert events[-1]["type"] == "system"
+    assert "Token budget exhausted" in events[-1]["content"]
+    assert budget.remaining_tokens == 0
 
 
 @pytest.mark.asyncio

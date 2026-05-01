@@ -8,10 +8,11 @@ Core Services:
 - MemoryDatabase: Persistência especializada
 """
 
-from .service import SessionMemoryService
+from .service import SessionMemoryService, get_session_memory_service
 from .storage import MemoryDatabase
 
 __all__ = [
     "SessionMemoryService",
+    "get_session_memory_service",
     "MemoryDatabase",
 ]

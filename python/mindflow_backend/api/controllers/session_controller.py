@@ -118,6 +118,8 @@ class SessionController(BaseController):
             
             # Calculate has_next based on actual total
             current_end = pagination.offset + len(session_responses)
+            if not isinstance(total_count, int):
+                total_count = current_end
             has_next = current_end < total_count
             
             return SessionListResponse(
@@ -211,6 +213,8 @@ class SessionController(BaseController):
                 provider=provider,
                 model=model
             )
+            if isinstance(message_data, dict):
+                message_data = {**message_data, "content": sanitized_content}
             
             return {
                 "success": True,

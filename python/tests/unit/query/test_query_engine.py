@@ -126,10 +126,9 @@ class TestQueryEngineHelpers:
 
         response = "The files main.py, app.js, and config.json were modified."
         files = engine._extract_files_mentioned(response)
-        # The regex matches file extensions, not filenames
-        assert "py" in files
-        assert "js" in files
-        assert "json" in files
+        assert "main.py" in files
+        assert "app.js" in files
+        assert "config.json" in files
 
     def test_extract_symbols_mentioned(self):
         """Test extraction of function/class symbols from response."""

@@ -55,6 +55,11 @@ class ChatMessage(Base):
 
     session: Mapped["ChatSession"] = relationship("ChatSession", back_populates="messages")
 
+    @property
+    def token_count(self) -> int:
+        """Compatibility token estimate for legacy services."""
+        return max(1, len(self.content or "") // 4)
+
 
 class AgentMemoryEvent(Base):
     __tablename__ = "agent_memory_events"

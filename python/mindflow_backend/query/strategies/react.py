@@ -112,6 +112,7 @@ async def react_loop(
         max_turns=max_turns,
         token_budget=state.token_budget.max_tokens if state.token_budget else None,
     )
+    _consume_budget(state.token_budget, "react:user:initial", initial_message)
 
     while True:
         # 1. Check limits
@@ -159,6 +160,19 @@ async def react_loop(
             }
             yield assistant_message
             state.messages.append(assistant_message)
+            _consume_budget(
+                state.token_budget,
+                f"react:assistant:{state.turn_count}",
+                assistant_message["content"],
+            )
+
+            if state.token_budget and state.token_budget.remaining_tokens <= 0:
+                logger.info("react_loop_token_budget_exhausted_after_response")
+                yield {
+                    "type": "system",
+                    "content": "Token budget exhausted. Stopping execution.",
+                }
+                break
 
             # 4. Collect tool_use blocks
             tool_use_blocks = _extract_tool_use_blocks(response)
@@ -186,6 +200,11 @@ async def react_loop(
                         "content": error_msg,
                         "is_error": True,
                     }
+                    _consume_budget(
+                        state.token_budget,
+                        f"react:tool:{tool_id}:missing",
+                        error_msg,
+                    )
                     state.messages.append(
                         {
                             "role": "tool_result",
@@ -204,6 +223,11 @@ async def react_loop(
                     }
                     yield tool_result_message
                     state.messages.append(tool_result_message)
+                    _consume_budget(
+                        state.token_budget,
+                        f"react:tool:{tool_id}",
+                        str(result),
+                    )
 
                 except Exception as exc:  # noqa: BLE001 - surfaced to the client
                     error_msg = f"Tool execution error: {exc}"
@@ -218,6 +242,11 @@ async def react_loop(
                         "content": error_msg,
                         "is_error": True,
                     }
+                    _consume_budget(
+                        state.token_budget,
+                        f"react:tool:{tool_id}:error",
+                        error_msg,
+                    )
                     state.messages.append(
                         {
                             "role": "tool_result",
@@ -296,6 +325,13 @@ def _extract_tool_use_blocks(response: Any) -> list[dict[str, Any]]:
                 )
 
     return tool_use_blocks
+
+
+def _consume_budget(token_budget: TokenBudget | None, source: str, content: str) -> None:
+    """Track loop messages against the same token budget used for context."""
+    if token_budget is None or not content:
+        return
+    token_budget.add_context(source=source, content=content, priority=10)
 
 
 def _find_tool(

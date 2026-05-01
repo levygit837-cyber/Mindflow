@@ -12,7 +12,7 @@ character-based estimation as fallback.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class TokenBudget:
             try:
                 import tiktoken
 
-                self._tiktoken_encoder = tiktoken.encoding_for_model("claude-3-5-sonnet-20241022")
+                self._tiktoken_encoder = tiktoken.get_encoding("cl100k_base")
             except Exception:
                 logger.debug("tiktoken not available, using character estimation")
                 self._tiktoken_encoder = None
