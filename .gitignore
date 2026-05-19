@@ -180,3 +180,8 @@ config.local.yaml
 *.pyo
 .gitkeep
 # Build / Dist
+
+# ============================
+# Local-only directories
+# ============================
+claude/
