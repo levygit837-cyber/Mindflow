@@ -12,30 +12,23 @@
 # next.js
 /.next/
 /out/
-
 # production
 /build
-
 # misc
 .DS_Store
 *.pem
-
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
 # env
 .env*.local
-
 # vercel
 .vercel
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
 # python
 __pycache__/
 *.pyc
@@ -44,11 +37,9 @@ __pycache__/
 .mypy_cache/
 python/.env
 python/*.egg-info/
-
 # local data
 /data/
 /src/data/
-
 # backup files
 *.bak
 python/backups/
@@ -57,57 +48,42 @@ python/backups/
 !archive/old/**
 !archive/backup/**
 !archive/legacy/**
-
-
 # IDE
 .vscode/
 .idea/
-
 # desktop runtime artifacts
 python/.qt/
 python/mindflow_desktop/.cache/
 python/.logs/
-
 # searxng docker volume (permission-restricted)
 backend/searxng/searxng/
-
 # local AI tool artifacts
 .tools/
-
 # Git worktrees
 .worktrees/
-
 # documentation
-
 # local configuration and planning (never commit)
 .serena/
 .coa/
 .planning/
 design/
 .plugin-config/
-
 # ADR-IA (local only)
 /ADR-IA
-
 # local-only explicit files
 *.log
 start_dev.sh
-
 # Claude Code worktrees (local only)
 .claude/worktrees/
-
 # AI tools and IDE configurations
 .windsurf/
 .claude/
-
 # Context+ MCP cache
 .mcp_data/
-
 # CodeX integration (local development artifacts)
 .codex/
 .vscode/settings.json
 .vscode/extensions.json
-
 # Project documentation and analysis files
 .env.example
 .complexity-log.md
@@ -116,10 +92,8 @@ ANALYSIS_REPORT.md
 MIGRATION_GUIDE.md
 SERVICES_RESTRUCTURE_SUMMARY.md
 AGENTS.md
-
 # Personal Claude Code preferences (not shared with team)
 CLAUDE.local.md
-
 # ── GSD baseline (auto-generated) ──
 .gsd
 Thumbs.db
@@ -142,3 +116,67 @@ coverage/
 tmp/
 .aidesigner/*
 !.aidesigner/.gitkeep
+# ============================
+# Portfolio protection rules
+# Logs e arquivos temporários
+*.txt
+!requirements.txt
+logs/
+temp/
+# Arquivos de IA / Assistants
+.aidesigner/
+.aider/
+.agents/
+.archive/
+.bg-shell/
+.clinerules/
+.factory/
+.kiro/
+.mcp.json
+.playwright-cli/
+.qwen/
+codedb.snapshot
+# Status / Temp docs
+ANALISE*.md
+ANALISE-*.md
+CORRECAO*.md
+CORRECAO-*.md
+DECISAO*.md
+IMPLEMENTACAO*.md
+IMPLEMENTATION_*.md
+RESUMO*.md
+RESUMO-*.md
+SOLUCAO*.md
+STREAMING_FIX*.md
+SUCESSO*.md
+TESTE*.md
+SELFCODE-REVIEW*.md
+CODE-REVIEW*.md
+LIGHTPANDA*.md
+PROJECT_STRUCTURE.md
+FRONTEND_CONECTADO.md
+PHASE-*-TEST-RESULTS.md
+blocked.txt
+pytest_output.txt
+pytest_fail_details.txt
+# Arquivos binários / Artefatos
+*.docx
+*.doc
+*.xlsx
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+output/
+# IDE / Local
+# Secrets / Configs locais
+.env.local
+.env.*.local
+config.yaml
+config.local.yaml
+# Dependências
+*.pyo
+.gitkeep
+# Build / Dist
