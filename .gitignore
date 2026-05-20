@@ -185,3 +185,15 @@ config.local.yaml
 # Local-only directories
 # ============================
 claude/
+
+# Documentacoes tecnicas internas - nao commitar em repo publico
+docs/
+docker/
+docker-compose*.yml
+python/docker-compose*.yml
+python/requirements*.txt
+**/PHASE*_SUMMARY.md
+**/COMPLETE_IMPLEMENTATION_SUMMARY.md
+**/FINAL_IMPLEMENTATION_REPORT.md
+**/BACKEND_INTEGRATION.md
+**/REFACTORING-SUMMARY.md
